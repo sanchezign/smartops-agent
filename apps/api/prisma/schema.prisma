@@ -117,6 +117,16 @@ enum AuditActorType {
   n8n
 }
 
+enum WebhookProvider {
+  whatsapp
+}
+
+enum WebhookEventStatus {
+  received
+  processed
+  failed
+}
+
 // ─── Suppliers & contacts ───────────────────────────────────────────────────
 
 model Supplier {
@@ -223,6 +233,29 @@ model MediaFile {
   message Message?
 
   @@map("media_files")
+}
+
+/// Every signature-verified webhook delivery, stored before the 200 ack.
+/// bodySha256 = SHA-256 of the RAW body: an identical re-delivery from Meta hits the
+/// unique constraint and is not stored twice. Message-level idempotency is still
+/// enforced by Message.waMessageId (a retry may batch events differently).
+/// Retention: no cleanup job yet (see Known issues in CLAUDE.md).
+model WebhookEvent {
+  id          String             @id @default(uuid(7)) @db.Uuid
+  provider    WebhookProvider
+  /// Lowercase hex SHA-256 of the raw request body.
+  bodySha256  String             @map("body_sha256") @db.Char(64)
+  payload     Json
+  status      WebhookEventStatus @default(received)
+  attempts    Int                @default(0)
+  error       String?
+  receivedAt  DateTime           @default(now()) @map("received_at") @db.Timestamptz(3)
+  processedAt DateTime?          @map("processed_at") @db.Timestamptz(3)
+  updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([provider, bodySha256])
+  @@index([status, receivedAt])
+  @@map("webhook_events")
 }
 
 // ─── Catalog ────────────────────────────────────────────────────────────────

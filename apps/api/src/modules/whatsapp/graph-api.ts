@@ -1,0 +1,79 @@
+/**
+ * Minimal Meta Graph API client (native fetch + timeout). Shared by the WhatsApp
+ * outbound client, media download and CLI scripts. Never logs the access token.
+ */
+
+const GRAPH_BASE_URL = "https://graph.facebook.com";
+
+export interface GraphApiConfig {
+  version: string;
+  accessToken: string;
+  timeoutMs: number;
+}
+
+/** Error returned by the Graph API (`{ error: { message, type, code, error_subcode, fbtrace_id } }`). */
+export class GraphApiError extends Error {
+  constructor(
+    message: string,
+    public readonly httpStatus: number,
+    public readonly code?: number,
+    public readonly subcode?: number,
+    public readonly type?: string,
+    public readonly details?: string,
+    public readonly fbtraceId?: string,
+  ) {
+    super(message);
+    this.name = "GraphApiError";
+  }
+}
+
+interface GraphErrorBody {
+  error?: {
+    message?: string;
+    type?: string;
+    code?: number;
+    error_subcode?: number;
+    error_data?: { details?: string };
+    fbtrace_id?: string;
+  };
+}
+
+export async function graphRequest<T>(
+  config: GraphApiConfig,
+  method: "GET" | "POST" | "DELETE",
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  const url = `${GRAPH_BASE_URL}/${config.version}/${path.replace(/^\//, "")}`;
+  const response = await fetch(url, {
+    method,
+    headers: {
+      Authorization: `Bearer ${config.accessToken}`,
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    signal: AbortSignal.timeout(config.timeoutMs),
+  });
+
+  const text = await response.text();
+  let json: unknown;
+  try {
+    json = text ? JSON.parse(text) : {};
+  } catch {
+    json = {};
+  }
+
+  if (!response.ok) {
+    const error = (json as GraphErrorBody).error ?? {};
+    throw new GraphApiError(
+      error.message ?? `Graph API ${method} ${path} failed with HTTP ${response.status}`,
+      response.status,
+      error.code,
+      error.error_subcode,
+      error.type,
+      error.error_data?.details,
+      error.fbtrace_id,
+    );
+  }
+  return json as T;
+}

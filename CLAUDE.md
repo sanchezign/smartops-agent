@@ -189,13 +189,45 @@ Each one gets an ADR in docs/adr/.
 - Rate limit: global on /api/v1 (health skipped), 429 goes through the error
   middleware. Phase 3: webhook router mounted before `express.json` (raw body)
   with its own limit.
+- 2026-09-24 (phase 3, milestone 1) WhatsApp webhook at `/api/v1/webhooks/whatsapp`
+  (`src/modules/whatsapp/`): `express.raw` 3mb (Meta max payload), own rate limit
+  `WEBHOOK_RATE_LIMIT_MAX` (excluded from the global limiter), HMAC check with
+  `timingSafeEqual`, verify token compared in constant time. Graph API `v26.0`
+  (env `WHATSAPP_GRAPH_API_VERSION`). WhatsApp env vars are REQUIRED at startup
+  in every environment.
+- `WebhookEvent` (table `webhook_events`, migration `webhook_events`): every
+  signature-valid delivery is stored before the 200; unique (`provider`,
+  `body_sha256`) = SHA-256 of the raw body → identical Meta re-deliveries are
+  acked 200 and not stored twice. Message-level idempotency stays on
+  `Message.waMessageId` (milestone 2).
+- Phone numbers are MASKED in logs (`maskPhone`: `598*****160`, first 3 + last 3;
+  `maskPhonesInText` for provider error texts). Full values only in the DB. Logs
+  never include message bodies, contact names or media ids. `hub.verify_token` is
+  redacted from request-log URLs.
+- Milestone 1 logs a log-safe summary of each delivery (status + Meta error codes)
+  inline — read-only diagnostics; processing moves to the pg-boss worker in milestone 2.
+- `src/modules/whatsapp/graph-api.ts`: shared Graph API fetch helper (timeout,
+  typed `GraphApiError`). CLI `pnpm --filter @smartops/api wa:subscribe` ensures
+  the app is subscribed to the WABA (`/{WABA_ID}/subscribed_apps`).
+- Local tunnel: cloudflared quick tunnel (`cloudflared tunnel --url
+  http://localhost:4000`); URL changes on every restart → update it in Meta.
 
 ## Current phase
 1. scaffold — done (2026-09-24).
 2. config/env/logging + initial Prisma schema — done (2026-09-24). Migrations:
-   `init`, `price_change_rules`. Next: 3. core integration (WhatsApp Cloud API).
+   `init`, `price_change_rules`.
+3. core integration (WhatsApp Cloud API) — IN PROGRESS. Approved plan milestones:
+   M1 webhook verify + signed capture + status diagnostics — done (2026-09-24),
+   waiting on the checkpoint (real failed-status error code from Meta).
+   Next: M2 pg-boss queue + worker + idempotent persistence (Message,
+   MessageStatusEvent) → M3 media download + storage (ADR-008: bytea behind
+   `MediaStorage`, 25 MB cap) → M4 outbound client + 24h window + CLI send script
+   → M5 real anonymized fixtures + tests.
 
 ## Known issues (out of scope)
+- `webhook_events` has no retention yet: every delivery is kept forever (payloads
+  up to 3 MB). Future: scheduled pg-boss cleanup job (e.g. delete `processed` events
+  older than N days, keep `failed` longer), N configurable.
 - n8n 2.40.6 logs "Failed to start Python task runner… Python 3 is missing"
   at startup. JS Code nodes work; Python Code nodes would need an external
   runner. Not needed so far.

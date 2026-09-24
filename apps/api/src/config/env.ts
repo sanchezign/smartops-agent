@@ -40,6 +40,20 @@ export const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
+
+  // ─── WhatsApp Business Cloud API (Meta) ───
+  WHATSAPP_GRAPH_API_VERSION: z
+    .string()
+    .regex(/^v\d+\.\d+$/, 'must look like "v26.0"')
+    .default("v26.0"),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().regex(/^\d+$/, "must be the numeric Phone Number ID"),
+  WHATSAPP_WABA_ID: z.string().regex(/^\d+$/, "must be the numeric WhatsApp Business Account ID"),
+  WHATSAPP_ACCESS_TOKEN: z.string().min(20, "must be a Meta access token"),
+  WHATSAPP_APP_SECRET: z.string().min(16, "must be the App Secret (App settings → Basic)"),
+  WHATSAPP_VERIFY_TOKEN: z.string().min(16, "use a random string of at least 16 characters"),
+  WHATSAPP_API_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
+  /** Per-IP limit for the webhook endpoint (separate from the global /api/v1 limit). */
+  WEBHOOK_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(600),
 });
 
 export type Env = z.infer<typeof envSchema>;

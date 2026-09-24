@@ -11,6 +11,13 @@ function fullPath(req: IncomingMessage): string {
   return url.split("?")[0] ?? "";
 }
 
+/** Query params whose values must never reach the logs (e.g. Meta webhook verify token). */
+const SENSITIVE_QUERY_PARAMS = /([?&]hub(?:\.|%2E)verify_token=)[^&#]*/gi;
+
+export function redactUrl(url: string): string {
+  return url.replace(SENSITIVE_QUERY_PARAMS, "$1[redacted]");
+}
+
 /** pino-http: one compact log line per request, with request-id on every child log (req.log). */
 export function createHttpLogger(logger: Logger) {
   return pinoHttp({
@@ -27,7 +34,9 @@ export function createHttpLogger(logger: Logger) {
       req: (req: IncomingMessage & { id?: unknown; remoteAddress?: string }) => ({
         id: req.id,
         method: req.method,
-        url: (req as IncomingMessage & { originalUrl?: string }).originalUrl ?? req.url,
+        url: redactUrl(
+          (req as IncomingMessage & { originalUrl?: string }).originalUrl ?? req.url ?? "",
+        ),
         remoteAddress: req.remoteAddress,
       }),
       res: (res: ServerResponse) => ({ statusCode: res.statusCode }),

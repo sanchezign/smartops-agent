@@ -14,7 +14,8 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:status": "prisma migrate status",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "wa:subscribe": "tsx --env-file-if-exists=.env scripts/whatsapp-subscribe.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",

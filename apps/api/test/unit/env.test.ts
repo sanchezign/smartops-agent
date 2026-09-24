@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { EnvValidationError, parseEnv } from "../../src/config/env.js";
+import { TEST_WHATSAPP_ENV } from "../helpers/build-app.js";
 
-const base = { DATABASE_URL: "postgresql://u:p@localhost:5432/db" };
+const base: Record<string, string> = {
+  DATABASE_URL: "postgresql://u:p@localhost:5432/db",
+  ...TEST_WHATSAPP_ENV,
+};
+const baseWithoutDb = Object.fromEntries(
+  Object.entries(base).filter(([key]) => key !== "DATABASE_URL"),
+);
 
 function issuesOf(source: Record<string, string>): string[] {
   try {
@@ -40,7 +47,7 @@ describe("parseEnv", () => {
   });
 
   it("fails when DATABASE_URL is missing", () => {
-    expect(issuesOf({})).toEqual([expect.stringContaining("DATABASE_URL")]);
+    expect(issuesOf(baseWithoutDb)).toEqual([expect.stringContaining("DATABASE_URL")]);
   });
 
   it("rejects a non-postgres DATABASE_URL", () => {
@@ -78,6 +85,41 @@ describe("parseEnv", () => {
   });
 
   it("reports every problem at once", () => {
-    expect(issuesOf({ PORT: "abc", LOG_LEVEL: "loud" }).length).toBe(3);
+    expect(issuesOf({ ...baseWithoutDb, PORT: "abc", LOG_LEVEL: "loud" }).length).toBe(3);
+  });
+
+  it("applies WhatsApp defaults", () => {
+    expect(parseEnv(base)).toMatchObject({
+      WHATSAPP_GRAPH_API_VERSION: "v26.0",
+      WHATSAPP_API_TIMEOUT_MS: 15_000,
+      WEBHOOK_RATE_LIMIT_MAX: 600,
+    });
+  });
+
+  it("requires every WhatsApp credential", () => {
+    const issues = issuesOf({ DATABASE_URL: base.DATABASE_URL! });
+    for (const name of [
+      "WHATSAPP_PHONE_NUMBER_ID",
+      "WHATSAPP_WABA_ID",
+      "WHATSAPP_ACCESS_TOKEN",
+      "WHATSAPP_APP_SECRET",
+      "WHATSAPP_VERIFY_TOKEN",
+    ]) {
+      expect(issues).toContainEqual(expect.stringContaining(name));
+    }
+  });
+
+  it("rejects malformed WhatsApp values", () => {
+    const issues = issuesOf({
+      ...base,
+      WHATSAPP_GRAPH_API_VERSION: "26",
+      WHATSAPP_PHONE_NUMBER_ID: "+598 123",
+      WHATSAPP_VERIFY_TOKEN: "short",
+    });
+    expect(issues).toEqual([
+      expect.stringContaining("WHATSAPP_GRAPH_API_VERSION"),
+      expect.stringContaining("WHATSAPP_PHONE_NUMBER_ID"),
+      expect.stringContaining("WHATSAPP_VERIFY_TOKEN"),
+    ]);
   });
 });

@@ -8,15 +8,23 @@ import { createCors, createRateLimiter } from "./common/middleware/security.js";
 import type { Env } from "./config/env.js";
 import type { HealthRepository } from "./modules/health/health.repository.js";
 import { createHealthRouter } from "./modules/health/health.routes.js";
+import type { WhatsAppWebhookRepository } from "./modules/whatsapp/whatsapp-webhook.repository.js";
+import { createWhatsAppWebhookRouter } from "./modules/whatsapp/whatsapp-webhook.routes.js";
 
 export interface AppDeps {
   env: Env;
   logger: Logger;
   healthRepository: HealthRepository;
+  whatsappWebhookRepository: WhatsAppWebhookRepository;
 }
 
 /** Builds the Express app without listening (server.ts listens; Supertest uses it directly). */
-export function createApp({ env, logger, healthRepository }: AppDeps): Express {
+export function createApp({
+  env,
+  logger,
+  healthRepository,
+  whatsappWebhookRepository,
+}: AppDeps): Express {
   const app = express();
 
   app.disable("x-powered-by");
@@ -33,12 +41,21 @@ export function createApp({ env, logger, healthRepository }: AppDeps): Express {
     createRateLimiter({
       windowMs: env.RATE_LIMIT_WINDOW_MS,
       limit: env.RATE_LIMIT_MAX,
-      skipPaths: ["/health"],
+      // Webhooks have their own limiter (see the webhook router).
+      skipPaths: ["/health", "/webhooks/whatsapp"],
     }),
   );
 
-  // Phase 3: the WhatsApp webhook router (express.raw for signature checks) is
-  // mounted HERE, before express.json.
+  // Webhooks need the RAW body for signature checks: mounted BEFORE express.json.
+  app.use(
+    "/api/v1/webhooks/whatsapp",
+    createWhatsAppWebhookRouter({
+      repository: whatsappWebhookRepository,
+      appSecret: env.WHATSAPP_APP_SECRET,
+      verifyToken: env.WHATSAPP_VERIFY_TOKEN,
+      rateLimit: { windowMs: env.RATE_LIMIT_WINDOW_MS, limit: env.WEBHOOK_RATE_LIMIT_MAX },
+    }),
+  );
   app.use(express.json({ limit: "1mb" }));
 
   const v1 = express.Router();

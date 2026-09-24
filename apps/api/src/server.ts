@@ -3,6 +3,7 @@ import { createPrismaClient } from "./common/db.js";
 import { createLogger } from "./common/logger.js";
 import { loadEnv } from "./config/env.js";
 import { createHealthRepository } from "./modules/health/health.repository.js";
+import { createWhatsAppWebhookRepository } from "./modules/whatsapp/whatsapp-webhook.repository.js";
 
 const SHUTDOWN_TIMEOUT_MS = 10_000;
 
@@ -21,7 +22,12 @@ try {
   process.exit(1);
 }
 
-const app = createApp({ env, logger, healthRepository });
+const app = createApp({
+  env,
+  logger,
+  healthRepository,
+  whatsappWebhookRepository: createWhatsAppWebhookRepository(prisma),
+});
 const server = app.listen(env.PORT, () => {
   logger.info(
     { port: env.PORT, env: env.NODE_ENV },

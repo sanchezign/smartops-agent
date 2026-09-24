@@ -1,0 +1,30 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "200000000000002",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550000000",
+              "phone_number_id": "100000000000001"
+            },
+            "contacts": [{ "profile": { "name": "Test Supplier" }, "wa_id": "59899000111" }],
+            "messages": [
+              {
+                "from": "59899000111",
+                "id": "wamid.TEST_TEXT_0001",
+                "timestamp": "1790000000",
+                "type": "text",
+                "text": { "body": "Lista de precios: tornillo 6mm $12" }
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}
