@@ -13,7 +13,27 @@ client. Start date: 2026-09-24. Original pitch: docs/pitch.md.
 express-postgres
 
 ## Deploy target
-render
+Custom $0 target (user decision 2026-09-24, see "Cost constraint"; replaces `render`):
+- Option A (preferred): Oracle Cloud Always Free VM (ARM, 2 OCPU / 12 GB) running the
+  same docker compose (api, worker, n8n, postgres) + Caddy (Let's Encrypt HTTPS);
+  admin panel on Vercel Hobby.
+- Option B (fallback): Render free (api + worker in ONE process in demo mode; n8n
+  separate) + Supabase free Postgres + Vercel Hobby.
+This is not one of the standard targets (`vercel-render` | `render`): record it in an
+ADR (superseding ADR-007) when phase 12 starts.
+
+## Cost constraint (user rule, 2026-09-24)
+Portfolio demo with a target of **$0 infrastructure** (max ~5 USD of Claude API
+credits). **Nothing that generates charges without asking the user first** (paid
+plans, paid APIs beyond the Claude credits, domains, credit-card-only trials).
+- Phase 4: Groq FREE plan only (whisper-large-v3: 20 req/min, 2,000 req/day,
+  7,200 audio s/hour, 28,800 audio s/day, 25 MB files; 429 + retry-after when
+  exceeded). Enable Zero Data Retention.
+- Phase 5: Claude API with a spend limit set in the Anthropic Console (≤ ~5 USD) +
+  a "fake" LLM provider for development, tests and a demo without a key.
+- Phase 12: $0 deploy (see Deploy target). NOT Neon for Postgres: pg-boss and n8n poll
+  constantly and would burn its compute hours. Also document (README) the paid deploy
+  for a real client (cost estimate).
 
 ## Tests
 required
@@ -118,12 +138,15 @@ Week 4
     API auth, ingest full vs partial.
 11. CI/CD — GitHub Actions: lint + typecheck + test + build (Postgres
     service container for e2e).
-12. deploy config — render.yaml Blueprint: `api` (web service + worker
-    process or separate worker), `admin` (web service), `n8n` (Docker image
-    service), Render Postgres (shared instance, separate `n8n` database).
-    Webhook receiver and n8n need paid instances (no sleep); free Postgres
-    has limits — verify current Render plans and document the monthly cost
-    in the README. `prisma migrate deploy` on release.
+12. deploy config — $0 deploy (see "Cost constraint" and "Deploy target"; ADR
+    superseding ADR-007). Option A (preferred): Oracle Cloud Always Free ARM VM with
+    the docker compose stack (api, worker, n8n, postgres) + Caddy/Let's Encrypt;
+    admin on Vercel Hobby. Option B (fallback): Render free (api + worker in one
+    process, demo mode; n8n separate) + Supabase free Postgres (not Neon) + Vercel.
+    Verify current free-tier limits before implementing. `prisma migrate deploy` on
+    release. Also document the paid deploy for a real client (e.g. Render paid
+    instances + managed Postgres) with a monthly cost estimate. Ask before anything
+    that could generate charges.
 13. docs — README: problem, architecture diagram, flow, setup with Meta test
     number, env var table, demo GIF, cost estimate, ADR list.
 
@@ -143,7 +166,9 @@ Alert · Setting/Rule · User (admin|operator) · AuditLog
 - AI/LLM: Claude API via Anthropic SDK (optional module).
 - Speech-to-text: Whisper-compatible API (optional module).
 - No OAuth — internal panel uses JWT only.
-- Deploy target `render` — all services on Render (no Vercel).
+- Deploy target: $0 custom target (Oracle Cloud Always Free VM + Caddy, or Render free
+  + Supabase; admin on Vercel Hobby) instead of `render` — cost constraint of the
+  portfolio demo (2026-09-24). ADR in phase 12 (supersedes ADR-007).
 Each one gets an ADR in docs/adr/.
 
 ## Architecture decisions
@@ -378,6 +403,8 @@ Each one gets an ADR in docs/adr/.
   `prisma.$queryRaw()` invocation"); the cause is in `err.meta`. Cosmetic.
 
 ## Conventions in this project
+- Costs: never create or enable anything that generates charges without asking first
+  (see "Cost constraint").
 - Git / GitHub backup (user rule, 2026-09-24): remote `origin` =
   https://github.com/sanchezign/smartops-agent (private). At the end of EVERY milestone,
   right after its commit, run `git push` of the CURRENT branch (never `--force`).
