@@ -96,6 +96,11 @@ Week 3
    a configurable timeout (scheduled pg-boss job) or manually from the panel.
    Fallback if coexistence is not available for the number: humans reply
    only from the panel.
+   REQUIRED (WhatsApp policy, before production): opt-out. Inbound keywords such as
+   "STOP", "BAJA" (case/accents-insensitive, configurable list) set
+   `Contact.optOutAt`, confirm the opt-out to the user and block every
+   business-initiated message (templates) to that contact; opting back in needs an
+   explicit new opt-in. Admin panel shows opted-out contacts.
 8. admin auth — JWT access + refresh, roles `admin` and `operator`. No OAuth.
 9. admin UI — Next.js (noindex), real-time via SSE:
    - Dashboard: messages processed, automation rate, errors, per day
@@ -303,26 +308,26 @@ Each one gets an ADR in docs/adr/.
 1. scaffold — done (2026-09-24).
 2. config/env/logging + initial Prisma schema — done (2026-09-24). Migrations:
    `init`, `price_change_rules`.
-3. core integration (WhatsApp Cloud API) — IN PROGRESS. Approved plan milestones:
-   M1 webhook verify + signed capture + status diagnostics — done (2026-09-24).
-   Checkpoint: real Meta webhook verified (signed test event stored once;
-   wa:subscribe subscribed the app to the WABA). The real failed-status error code
-   is still pending: Meta says the test number is still being set up.
-   2026-09-24: Meta disabled the portfolio + WABA (review requested, see Known
-   issues) → continue with a local WhatsApp simulator.
-   M2.5 local WhatsApp simulator (`wa:simulate` + `wa:fake-graph`) — done
-   (2026-09-24).
-   M3 media download + storage (ADR-008) — done (2026-09-24), tested against the fake
-   Graph API. Migration `media_storage`.
-   M4 outbound messages + 24h window + opt-in (ADR-009) — done (2026-09-24), tested
-   against the fake Graph API. Migration `outbound_messages`.
-   Next: M5 real anonymized fixtures + remaining tests (blocked on Meta for real
-   payloads), then phase 4 (media normalization / transcription).
-   M2 pg-boss queue + worker + idempotent persistence — done (2026-09-24),
-   branch `feat/phase-3-whatsapp`. Migration `whatsapp_worker`.
-   Next: M3 media download + storage (ADR-008: bytea behind
-   `MediaStorage`, 25 MB cap) → M4 outbound client + 24h window + CLI send script
-   → M5 real anonymized fixtures + tests.
+3. core integration (WhatsApp Cloud API) — DONE (2026-09-24), merged to `main`, except
+   M5 (blocked by Meta). Branch `feat/phase-3-whatsapp`.
+   - M1 webhook verify + signed capture + status diagnostics — done. Checkpoint: real
+     Meta webhook verified (signed test event stored once; wa:subscribe subscribed the
+     app to the WABA). Meta then disabled the portfolio + WABA (review requested, see
+     Known issues) → development continued against a local simulator.
+   - M2 pg-boss queue + worker + idempotent persistence — done. Migration `whatsapp_worker`.
+   - M2.5 local WhatsApp simulator (`wa:simulate` + `wa:fake-graph`) — done.
+   - M3 media download + storage (ADR-008) — done. Migration `media_storage`.
+   - M4 outbound messages + 24h window + opt-in (ADR-009) — done. Migration
+     `outbound_messages`.
+   - **PENDING — M5, BLOCKED BY META:** replace the doc-based fixtures in
+     `apps/api/test/fixtures/whatsapp/` with real anonymized payloads (text, image,
+     document, audio, statuses sent/delivered/read/failed, BSUID) captured from
+     `webhook_events`; get the real failed-status error code of the M1 checkpoint;
+     validate M1–M4 end to end with real Meta traffic (remove
+     `WHATSAPP_GRAPH_BASE_URL` from `apps/api/.env` first). Resume as soon as Meta
+     restores the account, before phase 12 (deploy).
+4. media normalization (Whisper for voice notes) — IN PROGRESS (plan stage). Branch
+   `feat/phase-4-media-normalization`.
 
 ## Known issues (out of scope)
 - **BLOCKER (external), 2026-09-24: Meta disabled the business portfolio and the
@@ -345,11 +350,11 @@ Each one gets an ADR in docs/adr/.
   throws, the job retries but the message is then a duplicate and the hook is NOT
   called again. Phase 6 must make the hand-off durable (enqueue its own job /
   outbox) instead of calling n8n inline from the hook.
-- Real WhatsApp payloads are pending (test number still being set up in Meta):
-  fixtures are doc-based. Replace in M5 with anonymized real captures.
-- Opt-in (ADR-009): no opt-out yet ("STOP" → `optOutAt`, block templates) and a manual
-  opt-in does not record who confirmed it. Needed before the panel (phase 9) and real
-  business-initiated traffic.
+- Real WhatsApp payloads are pending: fixtures are doc-based. Phase 3 M5 (blocked by
+  Meta, see Current phase) replaces them with anonymized real captures.
+- Opt-in (ADR-009): opt-out ("STOP", "BAJA") is not implemented yet — it is a
+  REQUIRED part of phase 7 (see Phase order). A manual opt-in does not record who
+  confirmed it (needed before the panel, phase 9).
 - Outbound: no template catalog sync from Meta (`GET /{WABA}/message_templates`) — the
   phase 6 notifier needs it; no outbound media and no read receipts for inbound
   messages yet (phase 7 coexistence).
