@@ -256,6 +256,8 @@ Each one gets an ADR in docs/adr/.
    Checkpoint: real Meta webhook verified (signed test event stored once;
    wa:subscribe subscribed the app to the WABA). The real failed-status error code
    is still pending: Meta says the test number is still being set up.
+   2026-09-24: Meta disabled the portfolio + WABA (review requested, see Known
+   issues) → continue with a local WhatsApp simulator.
    M2 pg-boss queue + worker + idempotent persistence — done (2026-09-24),
    branch `feat/phase-3-whatsapp`. Migration `whatsapp_worker`.
    Next: M3 media download + storage (ADR-008: bytea behind
@@ -263,6 +265,14 @@ Each one gets an ADR in docs/adr/.
    → M5 real anonymized fixtures + tests.
 
 ## Known issues (out of scope)
+- **BLOCKER (external), 2026-09-24: Meta disabled the business portfolio and the
+  WABA** for "Acceptable Use Policy" (likely a false positive on a new account).
+  The user requested a review. Until it is restored there are no real webhooks,
+  outbound sends, media downloads or templates, and the real failed-status error
+  code (M1 checkpoint) cannot be obtained. Development continues against a local
+  simulator. When the account is back: re-run `wa:subscribe`, re-check the webhook
+  config in the App Dashboard, and validate M1–M3 end to end with real traffic.
+  If the review is rejected, a new portfolio/WABA (new ids in `.env`) is needed.
 - `onInboundMessage` hook (phases 6/7) runs after the message is committed: if it
   throws, the job retries but the message is then a duplicate and the hook is NOT
   called again. Phase 6 must make the hand-off durable (enqueue its own job /
