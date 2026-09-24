@@ -120,6 +120,12 @@ export function createWhatsAppIngestRepository(
         contactId = plan.id;
       }
 
+      // ADR-009: a contact who writes to us first has an implicit opt-in.
+      await tx.contact.updateMany({
+        where: { id: contactId, optInAt: null },
+        data: { optInAt: message.timestamp ?? new Date(), optInSource: "inbound" },
+      });
+
       const conversation = await tx.conversation.upsert({
         where: { contactId },
         create: { contactId },

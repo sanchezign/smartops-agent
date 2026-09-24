@@ -21,7 +21,8 @@
     "wa:subscribe": "tsx --env-file-if-exists=.env scripts/whatsapp-subscribe.ts",
     "wa:simulate": "tsx --env-file-if-exists=.env scripts/simulator/simulate.ts",
     "wa:fake-graph": "tsx --env-file-if-exists=.env scripts/simulator/fake-graph-cli.ts",
-    "wa:media:retry": "tsx --env-file-if-exists=.env scripts/media-retry.ts"
+    "wa:media:retry": "tsx --env-file-if-exists=.env scripts/media-retry.ts",
+    "wa:send": "tsx --env-file-if-exists=.env scripts/whatsapp-send.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",

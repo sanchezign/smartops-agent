@@ -10,6 +10,8 @@ export const QUEUES = {
   webhookSweeper: "webhook-sweeper",
   whatsappMedia: "whatsapp-media",
   whatsappMediaDlq: "whatsapp-media-dlq",
+  whatsappOutbound: "whatsapp-outbound",
+  whatsappOutboundDlq: "whatsapp-outbound-dlq",
 } as const;
 
 export interface WebhookEventJob {
@@ -18,6 +20,10 @@ export interface WebhookEventJob {
 
 export interface MediaDownloadJob {
   mediaFileId: string;
+}
+
+export interface OutboundMessageJob {
+  messageId: string;
 }
 
 type QueueDefinition = Omit<Queue, "name"> & { name: string };
@@ -56,6 +62,26 @@ export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
     // Two Graph calls + a download of up to MEDIA_DOWNLOAD_TIMEOUT_MS.
     expireInSeconds: 180,
     deadLetter: QUEUES.whatsappMediaDlq,
+  },
+  {
+    name: QUEUES.whatsappOutboundDlq,
+    retryLimit: 3,
+    retryDelay: 30,
+    deleteAfterSeconds: 30 * 24 * 3600,
+  },
+  {
+    name: QUEUES.whatsappOutbound,
+    // Strict FIFO per singletonKey (= conversationId): messages to one contact go out in
+    // order; different conversations run in parallel. A job in active/retry/failed
+    // state holds back later jobs of the same conversation. The policy is fixed at
+    // creation (updateQueue cannot change it).
+    policy: "key_strict_fifo",
+    retryLimit: 5,
+    retryDelay: 5,
+    retryBackoff: true,
+    retryDelayMax: 600,
+    expireInSeconds: 60,
+    deadLetter: QUEUES.whatsappOutboundDlq,
   },
   {
     name: QUEUES.webhookSweeper,

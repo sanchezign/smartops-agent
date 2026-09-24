@@ -20,6 +20,14 @@ datasource db {
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
+/// How a contact gave consent to receive business-initiated messages (ADR-009).
+enum OptInSource {
+  /// The contact wrote to us first (implicit opt-in).
+  inbound
+  /// Recorded by an operator/CLI after confirming consent outside WhatsApp.
+  manual
+}
+
 enum ContactKind {
   supplier
   customer
@@ -167,18 +175,21 @@ model Supplier {
 /// not model CHECKs; keep it when editing this model). Meta may omit the phone for users
 /// with a WhatsApp username, and the BSUID changes if the user changes phone number.
 model Contact {
-  id         String      @id @default(uuid(7)) @db.Uuid
+  id          String       @id @default(uuid(7)) @db.Uuid
   /// WhatsApp id (phone number in international format, digits only). Null when Meta only sent a BSUID.
-  waId       String?     @unique @map("wa_id")
+  waId        String?      @unique @map("wa_id")
   /// Business-scoped user id (e.g. "US.13491208655302741918"), from contacts[].user_id / from_user_id.
-  bsuid      String?     @unique
+  bsuid       String?      @unique
   /// WhatsApp username, when the user adopted one.
-  username   String?
-  name       String?
-  kind       ContactKind @default(unknown)
-  supplierId String?     @map("supplier_id") @db.Uuid
-  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt  DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+  username    String?
+  name        String?
+  kind        ContactKind  @default(unknown)
+  supplierId  String?      @map("supplier_id") @db.Uuid
+  /// Consent for business-initiated messages (templates). Null = no opt-in → templates refused (ADR-009).
+  optInAt     DateTime?    @map("opt_in_at") @db.Timestamptz(3)
+  optInSource OptInSource? @map("opt_in_source")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   supplier     Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   conversation Conversation?
@@ -215,6 +226,8 @@ model Message {
   conversationId String           @map("conversation_id") @db.Uuid
   /// WhatsApp message id (wamid). Unique → idempotency. Null for outbound messages not yet accepted by Meta.
   waMessageId    String?          @unique @map("wa_message_id")
+  /// Outbound only: caller-provided key; retrying a send with the same key returns the same message.
+  idempotencyKey String?          @unique @map("idempotency_key")
   direction      MessageDirection
   type           MessageType
   author         MessageAuthor

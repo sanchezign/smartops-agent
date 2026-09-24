@@ -44,6 +44,8 @@ export interface FakeGraphOptions {
   failSendCode?: number | null;
   /** Free-form (non-template) messages fail with 131047 (outside the 24h window). */
   outsideWindow?: boolean;
+  /** Approved template names; others fail with 132001 like Meta. Default: hello_world. */
+  templates?: string[];
   /** Forced HTTP errors per endpoint. */
   faults?: Partial<Record<FaultTarget, FaultSpec>>;
   latencyMs?: number;
@@ -68,6 +70,7 @@ export function createFakeGraph(options: FakeGraphOptions) {
   const statusDelayMs = options.statusDelayMs ?? 1_000;
   const statusFlow = options.statusFlow ?? ["sent", "delivered", "read"];
   const signingKey = randomBytes(32);
+  const approvedTemplates = new Set(options.templates ?? ["hello_world"]);
   const timers = new Set<NodeJS.Timeout>();
   const sent: SentMessage[] = [];
   const log = options.logger;
@@ -308,6 +311,18 @@ export function createFakeGraph(options: FakeGraphOptions) {
         graphError(res, 400, { message: valid, code: 100 });
         return;
       }
+      if (valid.type === "template") {
+        const name = (body as { template: { name: string } }).template.name;
+        if (!approvedTemplates.has(name)) {
+          graphError(res, 400, {
+            message: `(#132001) Template name does not exist in the translation`,
+            code: 132001,
+            details: `template name (${name}) does not exist in the approved templates`,
+          });
+          return;
+        }
+      }
+      const toIsBsuid = !/^\+?\d+$/.test(valid.to);
       const message: SentMessage = {
         wamid: fakeWamid(),
         to: valid.to,
@@ -317,7 +332,10 @@ export function createFakeGraph(options: FakeGraphOptions) {
       sent.push(message);
       sendJson(res, 200, {
         messaging_product: "whatsapp",
-        contacts: [{ input: valid.to, wa_id: valid.to }],
+        // Sent to a BSUID ("recipient"): Meta includes user_id and no wa_id.
+        contacts: [
+          toIsBsuid ? { input: valid.to, user_id: valid.to } : { input: valid.to, wa_id: valid.to },
+        ],
         messages: [
           {
             id: message.wamid,

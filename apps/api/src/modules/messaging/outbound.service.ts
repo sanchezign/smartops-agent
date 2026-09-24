@@ -1,0 +1,214 @@
+import { errors } from "../../common/errors/app-error.js";
+import type { Logger } from "../../common/logger.js";
+import { maskPhone, maskUserId } from "../../common/phone.js";
+import type { MessageAuthor } from "../../generated/prisma/enums.js";
+import { customerServiceWindow } from "../whatsapp/customer-service-window.js";
+import {
+  buildSendPayload,
+  WhatsAppSendError,
+  type SendContent,
+  type SendRecipient,
+  type WhatsAppSendClient,
+} from "../whatsapp/whatsapp-send.client.js";
+import {
+  idempotencyKeySchema,
+  sendContentSchema,
+  type SendContentInput,
+} from "./outbound.schemas.js";
+import type { OutboundRepository, RecipientRef } from "./outbound.repository.js";
+
+/**
+ * Outbound WhatsApp messages.
+ *  send()            — validates (content, 24h window, opt-in), stores a pending Message
+ *                      and enqueues its job in ONE transaction; returns immediately.
+ *  processOutbound() — the job: re-checks the rules, calls Meta, stores the wamid.
+ * Rules: free-form text only inside the customer service window; templates only to
+ * contacts with opt-in (ADR-009). Order per conversation: pg-boss key_strict_fifo.
+ */
+
+export interface SendInput {
+  recipient: RecipientRef;
+  content: SendContentInput;
+  author: MessageAuthor;
+  authorUserId?: string;
+  idempotencyKey?: string;
+}
+
+export interface SendOutput {
+  messageId: string;
+  conversationId: string | null;
+  duplicate: boolean;
+}
+
+export type OutboundOutcome = "accepted" | "failed" | "already_sent" | "not_found";
+
+export interface OutboundService {
+  send(input: SendInput, log: Logger): Promise<SendOutput>;
+  /** Records a manual opt-in (operator confirmed consent outside WhatsApp). */
+  recordManualOptIn(ref: { waId: string } | { bsuid: string }, log: Logger): Promise<void>;
+  processOutbound(
+    messageId: string,
+    log: Logger,
+    options: { finalAttempt: boolean },
+  ): Promise<{ outcome: OutboundOutcome; reason?: string }>;
+}
+
+function templateSummary(content: Extract<SendContent, { kind: "template" }>): string {
+  const params = (content.components ?? []).flatMap((c) => c.parameters.map((p) => p.text));
+  return `[template ${content.name} ${content.languageCode}]${params.length ? ` ${params.join(" | ")}` : ""}`;
+}
+
+export function createOutboundService(deps: {
+  repository: OutboundRepository;
+  client: WhatsAppSendClient;
+  now?: () => Date;
+}): OutboundService {
+  const now = deps.now ?? (() => new Date());
+
+  return {
+    async send(input, log) {
+      const content = sendContentSchema.parse(input.content) as SendContent;
+      const idempotencyKey =
+        input.idempotencyKey === undefined
+          ? undefined
+          : idempotencyKeySchema.parse(input.idempotencyKey);
+
+      if (idempotencyKey) {
+        const existing = await deps.repository.findByIdempotencyKey(idempotencyKey);
+        if (existing) {
+          log.info({ messageId: existing.id }, "outbound send deduplicated by idempotency key");
+          return { messageId: existing.id, conversationId: null, duplicate: true };
+        }
+      }
+
+      const found = await deps.repository.findRecipient(input.recipient);
+      if (content.kind === "text") {
+        const window = customerServiceWindow(found?.conversation?.lastInboundAt ?? null, now());
+        if (!found || !window.open) {
+          throw errors.windowClosed({
+            lastInboundAt: found?.conversation?.lastInboundAt?.toISOString() ?? null,
+            closedAt: window.closesAt?.toISOString() ?? null,
+          });
+        }
+      } else if (!found?.contact.optInAt) {
+        throw errors.optInRequired({ contactId: found?.contact.id ?? null });
+      }
+      // `found` is non-null past the checks above.
+      const { contact } = found as NonNullable<typeof found>;
+
+      const recipient: SendRecipient = contact.waId
+        ? { waId: contact.waId }
+        : { bsuid: contact.bsuid as string };
+      const created = await deps.repository.createOutbound({
+        contactId: contact.id,
+        type: content.kind,
+        text: content.kind === "text" ? content.body : templateSummary(content),
+        author: input.author,
+        ...(input.authorUserId ? { authorUserId: input.authorUserId } : {}),
+        ...(idempotencyKey ? { idempotencyKey } : {}),
+        request: buildSendPayload(recipient, content),
+      });
+      log.info(
+        {
+          messageId: created.messageId,
+          conversationId: created.conversationId,
+          kind: content.kind,
+          to: contact.waId ? maskPhone(contact.waId) : maskUserId(contact.bsuid),
+          duplicate: created.duplicate,
+        },
+        "outbound message queued",
+      );
+      return created;
+    },
+
+    async recordManualOptIn(ref, log) {
+      const result = await deps.repository.recordOptIn(ref, "manual", now());
+      log.info(
+        {
+          contactId: result.contactId,
+          optInSource: result.optInSource,
+          created: result.created,
+        },
+        "opt-in recorded",
+      );
+    },
+
+    async processOutbound(messageId, log, { finalAttempt }) {
+      const message = await deps.repository.getForSend(messageId);
+      if (!message) {
+        log.warn({ messageId }, "outbound message not found");
+        return { outcome: "not_found" };
+      }
+      if (message.status !== "pending" || message.waMessageId) {
+        log.debug({ messageId, status: message.status }, "outbound already sent, skipping");
+        return { outcome: "already_sent" };
+      }
+
+      const fail = async (code: string, reason: string) => {
+        await deps.repository.markFailed(messageId, code, reason);
+        log.warn({ messageId, errorCode: code, reason }, "outbound message failed");
+        return { outcome: "failed" as const, reason: code };
+      };
+
+      // Re-check: the window may have closed while the job waited in the queue.
+      if (message.type === "text") {
+        if (!customerServiceWindow(message.lastInboundAt, now()).open) {
+          return fail("window_closed", "Customer service window closed before sending");
+        }
+      } else if (!message.contactOptInAt) {
+        return fail("opt_in_required", "Contact has no opt-in");
+      }
+
+      let result;
+      try {
+        result = await deps.client.send(message.request);
+      } catch (err) {
+        if (!(err instanceof WhatsAppSendError)) throw err;
+        const code = err.metaCode !== undefined ? String(err.metaCode) : err.category;
+        if (err.category === "unauthorized") {
+          log.error("WhatsApp access token invalid or expired: renew WHATSAPP_ACCESS_TOKEN");
+        }
+        if (err.retryable && !finalAttempt) {
+          log.warn(
+            { messageId, category: err.category, code },
+            "outbound send failed (will retry)",
+          );
+          throw err;
+        }
+        // Final attempt or permanent error: settle the job WITHOUT throwing, so the
+        // key_strict_fifo queue never keeps a failed job blocking the conversation.
+        return fail(code, err.message);
+      }
+
+      // Meta accepted the message. From here on NEVER throw: a retry would send it twice.
+      try {
+        const { appliedStatuses } = await deps.repository.markAccepted(messageId, {
+          wamid: result.wamid,
+          response: {
+            messageStatus: result.messageStatus,
+            waId: result.waId,
+            userId: result.userId,
+          },
+          at: now(),
+        });
+        const level = result.messageStatus && result.messageStatus !== "accepted" ? "warn" : "info";
+        log[level](
+          {
+            messageId,
+            wamid: result.wamid,
+            messageStatus: result.messageStatus,
+            appliedStatuses,
+          },
+          "outbound message accepted by WhatsApp",
+        );
+        return { outcome: "accepted" };
+      } catch (err) {
+        log.error(
+          { err, messageId, wamid: result.wamid },
+          "outbound message SENT but its wamid could not be stored (not retried to avoid a duplicate)",
+        );
+        return { outcome: "accepted", reason: "wamid_not_stored" };
+      }
+    },
+  };
+}

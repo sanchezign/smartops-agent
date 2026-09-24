@@ -81,6 +81,10 @@ export const envSchema = z.object({
   MEDIA_DOWNLOAD_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
   /** Parallel media downloads per worker process (each buffers up to MEDIA_MAX_BYTES). */
   MEDIA_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(10).default(2),
+
+  // ─── Outbound messages ───
+  /** Parallel outbound sends per worker (order per conversation is kept by the queue). */
+  OUTBOUND_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(20).default(2),
 });
 
 export type Env = z.infer<typeof envSchema>;

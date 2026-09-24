@@ -275,6 +275,27 @@ Each one gets an ADR in docs/adr/.
   `WHATSAPP_GRAPH_BASE_URL` host. Download URLs are never logged.
 - Vitest projects: `unit` (unit + e2e, parallel) and `integration` (global setup,
   `fileParallelism: false` — files share and TRUNCATE the test DB).
+- 2026-09-24 (phase 3, M4) Outbound messages (`src/modules/messaging/`): `send()`
+  validates content (Zod), the 24h customer service window (text) and opt-in
+  (templates), then stores a pending Message + enqueues its job in ONE transaction
+  (`fromPrisma`). Worker `whatsapp-outbound` re-checks rules, calls Meta
+  (`whatsapp-send.client.ts`: `to` for phones, `recipient` for BSUIDs), stores the
+  wamid and backfills statuses that arrived before it (`markAccepted`).
+- Window rule (`customer-service-window.ts`): open while now < lastInboundAt + 24h − 2 min
+  (safety margin). Error codes `WINDOW_CLOSED` and `OPT_IN_REQUIRED` (409).
+- Opt-in (ADR-009): `Contact.optInAt/optInSource` (inbound | manual); implicit inbound
+  opt-in set on ingestion + backfilled in migration; CHECK `contacts_opt_in_chk`.
+- Order per conversation: queue `whatsapp-outbound` uses pg-boss native
+  `key_strict_fifo` with `singletonKey = conversationId` (parallel across
+  conversations; verified with real workers). A job in failed state blocks its key, so:
+  the FINAL attempt settles the message as failed without throwing, and the DLQ worker
+  deletes the failed source job (`sourceId`) to unblock the conversation.
+- Meta error mapping (`classifySendError`): 131047 window, 131026/131030 recipient,
+  132xxx template, 100/131008/131009/131051 bad request, 190 token, 368/131031 account →
+  permanent (Message failed with Meta's code); 130429/131056/131000/5xx/network → retry.
+  Once Meta accepted a message the job never throws (a retry would send it twice).
+- `Message.idempotencyKey` (unique): repeated sends with the same key return the same
+  message (for n8n retries in phase 6).
 - Local tunnel: cloudflared quick tunnel (`cloudflared tunnel --url
   http://localhost:4000`); URL changes on every restart → update it in Meta.
 
@@ -293,7 +314,10 @@ Each one gets an ADR in docs/adr/.
    (2026-09-24).
    M3 media download + storage (ADR-008) — done (2026-09-24), tested against the fake
    Graph API. Migration `media_storage`.
-   Next: M4 outbound client + 24h window + CLI send script (fake Graph API), then M5.
+   M4 outbound messages + 24h window + opt-in (ADR-009) — done (2026-09-24), tested
+   against the fake Graph API. Migration `outbound_messages`.
+   Next: M5 real anonymized fixtures + remaining tests (blocked on Meta for real
+   payloads), then phase 4 (media normalization / transcription).
    M2 pg-boss queue + worker + idempotent persistence — done (2026-09-24),
    branch `feat/phase-3-whatsapp`. Migration `whatsapp_worker`.
    Next: M3 media download + storage (ADR-008: bytea behind
@@ -323,6 +347,14 @@ Each one gets an ADR in docs/adr/.
   outbox) instead of calling n8n inline from the hook.
 - Real WhatsApp payloads are pending (test number still being set up in Meta):
   fixtures are doc-based. Replace in M5 with anonymized real captures.
+- Opt-in (ADR-009): no opt-out yet ("STOP" → `optOutAt`, block templates) and a manual
+  opt-in does not record who confirmed it. Needed before the panel (phase 9) and real
+  business-initiated traffic.
+- Outbound: no template catalog sync from Meta (`GET /{WABA}/message_templates`) — the
+  phase 6 notifier needs it; no outbound media and no read receipts for inbound
+  messages yet (phase 7 coexistence).
+- Outbound network timeouts are retried: if Meta accepted the request but the response
+  was lost, the contact may receive the message twice (WhatsApp has no idempotency key).
 - `media_blobs` has no retention yet (ADR-008): media is kept forever and grows the DB
   and its backups. Define a retention policy (e.g. delete blobs of processed media after
   N days, keep extracted data) before real traffic.

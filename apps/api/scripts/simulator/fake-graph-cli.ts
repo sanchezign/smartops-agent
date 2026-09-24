@@ -6,6 +6,7 @@
  *   pnpm --filter @smartops/api wa:fake-graph --fault media-info:404 --fault download:500
  *   pnpm --filter @smartops/api wa:fake-graph --fault download:corrupt   (checksum mismatch)
  *   pnpm --filter @smartops/api wa:fake-graph --outside-window --status-delay 3000
+ *   pnpm --filter @smartops/api wa:fake-graph --templates hello_world,price_alert  (others → 132001)
  *
  * Point the API at it with WHATSAPP_GRAPH_BASE_URL=http://localhost:4010 in apps/api/.env.
  * Accepts the same WHATSAPP_ACCESS_TOKEN as the API; signs status webhooks with
@@ -33,6 +34,7 @@ const { values } = parseArgs({
     "status-flow": { type: "string", default: "sent,delivered,read" },
     "fail-send": { type: "string" },
     "outside-window": { type: "boolean", default: false },
+    templates: { type: "string", default: "hello_world" },
     fault: { type: "string", multiple: true, default: [] },
     latency: { type: "string", default: "0" },
     "sha-format": { type: "string", default: "hex" },
@@ -84,6 +86,10 @@ const fake = createFakeGraph({
   statusFlow: statusFlow as ("sent" | "delivered" | "read")[],
   failSendCode: values["fail-send"] ? Number(values["fail-send"]) : null,
   outsideWindow: values["outside-window"],
+  templates: values.templates
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean),
   faults,
   latencyMs: Number(values.latency),
   shaFormat: values["sha-format"] === "base64" ? "base64" : "hex",

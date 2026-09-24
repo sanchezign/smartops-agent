@@ -1,10 +1,12 @@
 import { fromPrisma, PgBoss } from "pg-boss";
 import type { Logger } from "../common/logger.js";
+import type { EnqueueOutboundInTx } from "../modules/messaging/outbound.repository.js";
 import type { EnqueueMediaInTx } from "../modules/whatsapp/whatsapp-ingest.repository.js";
 import {
   QUEUE_DEFINITIONS,
   QUEUES,
   type MediaDownloadJob,
+  type OutboundMessageJob,
   type WebhookEventJob,
   type WebhookQueue,
 } from "./queues.js";
@@ -80,4 +82,19 @@ export async function enqueueMediaDownload(boss: PgBoss, mediaFileId: string): P
   const data: MediaDownloadJob = { mediaFileId };
   const jobId = await boss.send(QUEUES.whatsappMedia, data);
   if (!jobId) throw new Error(`pg-boss did not create a media job for ${mediaFileId}`);
+}
+
+/**
+ * Enqueues an outbound send inside the caller's Prisma transaction, keyed by
+ * conversation (key_strict_fifo → strict order per conversation).
+ */
+export function createEnqueueOutboundInTx(boss: PgBoss): EnqueueOutboundInTx {
+  return async (tx, { messageId, conversationId }) => {
+    const data: OutboundMessageJob = { messageId };
+    const jobId = await boss.send(QUEUES.whatsappOutbound, data, {
+      db: fromPrisma(tx),
+      singletonKey: conversationId,
+    });
+    if (!jobId) throw new Error(`pg-boss did not create an outbound job for ${messageId}`);
+  };
 }

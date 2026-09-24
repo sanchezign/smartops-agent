@@ -6,6 +6,10 @@ export type ErrorCode =
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
+  /** WhatsApp: free-form message outside the 24h customer service window (send a template). */
+  | "WINDOW_CLOSED"
+  /** WhatsApp: business-initiated message to a contact without opt-in (ADR-009). */
+  | "OPT_IN_REQUIRED"
   | "PAYLOAD_TOO_LARGE"
   | "RATE_LIMITED"
   | "SERVICE_UNAVAILABLE"
@@ -45,6 +49,14 @@ export const errors = {
   notFound: (message = "Resource not found") => new AppError(404, "NOT_FOUND", message),
   conflict: (message = "Resource already exists", details?: unknown) =>
     new AppError(409, "CONFLICT", message, details),
+  windowClosed: (
+    details: unknown,
+    message = "Outside the 24h customer service window: send an approved template",
+  ) => new AppError(409, "WINDOW_CLOSED", message, details),
+  optInRequired: (
+    details: unknown,
+    message = "The contact has not opted in to receive business-initiated messages",
+  ) => new AppError(409, "OPT_IN_REQUIRED", message, details),
   rateLimited: (message = "Too many requests, try again later") =>
     new AppError(429, "RATE_LIMITED", message),
   serviceUnavailable: (message = "Service unavailable") =>
