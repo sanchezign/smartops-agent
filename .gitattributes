@@ -1,0 +1,8 @@
+* text=auto eol=lf
+# Shell scripts run inside Linux containers: CRLF would break them.
+*.sh text eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
+*.ogg binary

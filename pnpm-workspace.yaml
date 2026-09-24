@@ -1,0 +1,11 @@
+packages:
+  - apps/*
+
+# pnpm >= 11: dependency build scripts must be explicitly allowed (true) or
+# explicitly skipped (false); unreviewed ones fail the install.
+allowBuilds:
+  # tsx / vitest bundler binary
+  esbuild: true
+  # eslint-config-next resolver: prebuilt native binding ships as an optional
+  # dependency, the postinstall fallback is not needed.
+  unrs-resolver: false

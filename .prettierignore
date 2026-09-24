@@ -1,0 +1,11 @@
+node_modules
+dist
+.next
+out
+coverage
+pnpm-lock.yaml
+n8n/workflows
+apps/admin/next-env.d.ts
+# Hand-written project docs: keep the author formatting
+CLAUDE.md
+docs/pitch.md
