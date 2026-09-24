@@ -5,7 +5,7 @@ information over WhatsApp in chaotic formats (text, PDFs, photos, voice notes);
 SmartOps extracts structured data with Claude, keeps a product catalog up to
 date, alerts the team and coexists with human operators on the same number.
 
-> Status: **phase 1 — scaffold**. See `CLAUDE.md` for the full phase plan and
+> Status: **phase 2 — config/env/logging + initial Prisma schema**. See `CLAUDE.md` for the full phase plan and
 > `docs/pitch.md` for the original pitch.
 
 ## Repository layout
@@ -44,8 +44,12 @@ cp apps/admin/.env.example apps/admin/.env.local
 docker compose up -d
 docker compose ps        # postgres and n8n should become "healthy"
 
-# 4. Apps
+# 4. Database schema (Prisma migrations)
+pnpm --filter @smartops/api db:migrate
+
+# 5. Apps
 pnpm dev                 # api on http://localhost:4000, admin on http://localhost:3000
+curl http://localhost:4000/api/v1/health   # {"status":"ok","db":"up",...}
 ```
 
 n8n UI: http://localhost:5678 (create the owner account on first visit).
@@ -84,7 +88,26 @@ Alternatively, create the role/database manually with `psql` on the existing vol
 
 Per app: `pnpm --filter @smartops/api <script>` / `pnpm --filter @smartops/admin <script>`.
 
-## Environment variables (phase 1)
+Database (API, run with `pnpm --filter @smartops/api <script>`):
+
+| Script        | What it does                                                         |
+| ------------- | -------------------------------------------------------------------- |
+| `db:generate` | Generates the Prisma client into `src/generated/prisma` (gitignored) |
+| `db:migrate`  | `prisma migrate dev` — creates/applies migrations (local only)       |
+| `db:deploy`   | `prisma migrate deploy` — applies versioned migrations (release)     |
+| `db:status`   | Shows pending migrations                                             |
+| `db:studio`   | Prisma Studio                                                        |
+
+`build`, `typecheck` and `test` run `prisma generate` first.
+
+## API conventions
+
+- All routes under `/api/v1/`. Health: `GET /api/v1/health` → 200 `{status:"ok",db:"up"}` / 503 when the DB is down.
+- Every error uses one JSON shape: `{ "error": { "code", "message", "details?", "requestId" } }`.
+- Every response carries `X-Request-Id` (a safe incoming value is reused); it is on every log line.
+- Money (Prisma `Decimal`) is always serialized as a **string** (`"1234.5"`), never a JSON number.
+
+## Environment variables
 
 | Variable                    | Where        | Purpose                                              |
 | --------------------------- | ------------ | ---------------------------------------------------- |
@@ -94,7 +117,11 @@ Per app: `pnpm --filter @smartops/api <script>` / `pnpm --filter @smartops/admin
 | `N8N_WEBHOOK_URL`           | root `.env`  | Public base URL n8n uses for webhook URLs            |
 | `TIMEZONE`                  | root `.env`  | n8n timezone (default `America/Montevideo`)          |
 | `NODE_ENV`, `PORT`          | `apps/api`   | Runtime mode and HTTP port (default 4000)            |
-| `DATABASE_URL`              | `apps/api`   | Postgres connection string (used from phase 2)       |
+| `LOG_LEVEL`                 | `apps/api`   | Pino level (default `info`)                          |
+| `DATABASE_URL`              | `apps/api`   | Postgres connection string                           |
+| `CORS_ORIGINS`              | `apps/api`   | Comma-separated allowed origins (required in prod)   |
+| `RATE_LIMIT_WINDOW_MS/MAX`  | `apps/api`   | Global /api/v1 rate limit per IP (300 / 60 s)        |
+| `TRUST_PROXY`               | `apps/api`   | Proxy hops in front of the API (0 local, 1 Render)   |
 | `NEXT_PUBLIC_API_URL`       | `apps/admin` | Base URL of the API                                  |
 
 ## Architecture decisions

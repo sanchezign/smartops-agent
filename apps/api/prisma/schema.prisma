@@ -1,0 +1,391 @@
+// SmartOps Agent — Prisma schema (Prisma 7, PostgreSQL via @prisma/adapter-pg).
+// The datasource URL lives in prisma.config.ts (Prisma 7), not here.
+//
+// Conventions:
+// - ids: UUIDv7 (time-ordered) stored as native uuid.
+// - timestamps: timestamptz(3). Mutable models have createdAt + updatedAt.
+// - money: Decimal(18,4), never Float. Serialized as string in JSON responses.
+// - tables/columns: snake_case via @@map / @map.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum ContactKind {
+  supplier
+  customer
+  internal
+  unknown
+}
+
+enum ConversationMode {
+  bot
+  human
+}
+
+enum MessageDirection {
+  inbound
+  outbound
+}
+
+enum MessageType {
+  text
+  image
+  document
+  audio
+  video
+  sticker
+  location
+  contacts
+  interactive
+  button
+  reaction
+  template
+  unsupported
+}
+
+/// Who authored the message: the external contact, the bot, or a human operator.
+enum MessageAuthor {
+  contact
+  bot
+  human
+}
+
+enum MessageStatus {
+  received
+  pending
+  sent
+  delivered
+  read
+  failed
+}
+
+enum IngestionClassification {
+  price_list_full
+  price_update_partial
+  customer_query
+  internal_order
+  other
+}
+
+enum IngestionStatus {
+  pending
+  classified
+  extracted
+  ingested
+  needs_review
+  failed
+}
+
+enum AlertType {
+  price_change
+  low_stock
+  missing_data
+  ingestion_error
+}
+
+enum AlertSeverity {
+  info
+  warning
+  critical
+}
+
+enum AlertStatus {
+  open
+  sent
+  acknowledged
+  dismissed
+}
+
+enum UserRole {
+  admin
+  operator
+}
+
+enum AuditActorType {
+  user
+  system
+  n8n
+}
+
+// ─── Suppliers & contacts ───────────────────────────────────────────────────
+
+model Supplier {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  name      String
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  contacts      Contact[]
+  products      Product[]
+  ingestionRuns IngestionRun[]
+
+  @@map("suppliers")
+}
+
+model Contact {
+  id         String      @id @default(uuid(7)) @db.Uuid
+  /// WhatsApp id (phone number in international format, digits only).
+  waId       String      @unique @map("wa_id")
+  name       String?
+  kind       ContactKind @default(unknown)
+  supplierId String?     @map("supplier_id") @db.Uuid
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  supplier     Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  conversation Conversation?
+
+  @@index([supplierId])
+  @@map("contacts")
+}
+
+// ─── Conversations & messages ───────────────────────────────────────────────
+
+/// One conversation per contact (per business number).
+model Conversation {
+  id            String           @id @default(uuid(7)) @db.Uuid
+  contactId     String           @unique @map("contact_id") @db.Uuid
+  mode          ConversationMode @default(bot)
+  /// While mode = human, the bot reactivates after this instant (null = until manual reactivation).
+  humanUntil    DateTime?        @map("human_until") @db.Timestamptz(3)
+  /// Last inbound message from the contact — drives the 24h customer service window.
+  lastInboundAt DateTime?        @map("last_inbound_at") @db.Timestamptz(3)
+  lastMessageAt DateTime?        @map("last_message_at") @db.Timestamptz(3)
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  contact  Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([mode, humanUntil])
+  @@index([lastMessageAt])
+  @@map("conversations")
+}
+
+model Message {
+  id             String           @id @default(uuid(7)) @db.Uuid
+  conversationId String           @map("conversation_id") @db.Uuid
+  /// WhatsApp message id (wamid). Unique → idempotency. Null for outbound messages not yet accepted by Meta.
+  waMessageId    String?          @unique @map("wa_message_id")
+  direction      MessageDirection
+  type           MessageType
+  author         MessageAuthor
+  /// Set when author = human and the reply came from the admin panel.
+  authorUserId   String?          @map("author_user_id") @db.Uuid
+  text           String?
+  /// Speech-to-text output for audio messages.
+  transcript     String?
+  status         MessageStatus    @default(received)
+  statusAt       DateTime?        @map("status_at") @db.Timestamptz(3)
+  errorCode      String?          @map("error_code")
+  errorMessage   String?          @map("error_message")
+  /// Timestamp reported by WhatsApp.
+  waTimestamp    DateTime?        @map("wa_timestamp") @db.Timestamptz(3)
+  mediaFileId    String?          @unique @map("media_file_id") @db.Uuid
+  /// Original message object from the webhook payload (for debugging / reprocessing).
+  raw            Json?
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  conversation  Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  authorUser    User?          @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+  mediaFile     MediaFile?     @relation(fields: [mediaFileId], references: [id], onDelete: SetNull)
+  ingestionRuns IngestionRun[]
+  priceChanges  PriceChange[]
+
+  @@index([conversationId, createdAt])
+  @@index([authorUserId])
+  @@map("messages")
+}
+
+/// Media metadata. Storage columns (bytea vs bucket key) are added in phase 3 (see ADR).
+model MediaFile {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  waMediaId String   @unique @map("wa_media_id")
+  mimeType  String   @map("mime_type")
+  sizeBytes Int?     @map("size_bytes")
+  sha256    String?
+  filename  String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  message Message?
+
+  @@map("media_files")
+}
+
+// ─── Catalog ────────────────────────────────────────────────────────────────
+
+model Product {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  supplierId     String    @map("supplier_id") @db.Uuid
+  name           String
+  /// Normalized name used for duplicate detection (unique per supplier).
+  normalizedName String    @map("normalized_name")
+  sku            String?
+  unit           String?
+  price          Decimal   @db.Decimal(18, 4)
+  /// ISO 4217 code.
+  currency       String    @db.Char(3)
+  available      Boolean   @default(true)
+  stock          Int?
+  /// Last time the product appeared in a supplier list/update.
+  lastSeenAt     DateTime? @map("last_seen_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  supplier     Supplier      @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  priceChanges PriceChange[]
+  alerts       Alert[]
+
+  @@unique([supplierId, normalizedName])
+  @@map("products")
+}
+
+/// Append-only history of price changes.
+/// If the currency changes, changePct is null and currencyChanged = true.
+/// Enforced by CHECK constraints in migration `price_change_rules` (Prisma does not
+/// model CHECKs; keep them when editing this model). Computed by
+/// src/modules/catalog/price-change.ts.
+model PriceChange {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  productId       String   @map("product_id") @db.Uuid
+  /// Null for the first price of a new product.
+  oldPrice        Decimal? @map("old_price") @db.Decimal(18, 4)
+  oldCurrency     String?  @map("old_currency") @db.Char(3)
+  newPrice        Decimal  @map("new_price") @db.Decimal(18, 4)
+  newCurrency     String   @map("new_currency") @db.Char(3)
+  /// (new - old) / old * 100, rounded to 4 decimals. Null when there is no old
+  /// price, the old price is 0, or the currency changed. Unbounded numeric so
+  /// outliers (e.g. +999900%) can still be recorded.
+  changePct       Decimal? @map("change_pct") @db.Decimal
+  currencyChanged Boolean  @default(false) @map("currency_changed")
+  ingestionRunId  String?  @map("ingestion_run_id") @db.Uuid
+  sourceMessageId String?  @map("source_message_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingestionRun  IngestionRun? @relation(fields: [ingestionRunId], references: [id], onDelete: SetNull)
+  sourceMessage Message?      @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+
+  @@index([productId, createdAt])
+  @@index([ingestionRunId])
+  @@index([sourceMessageId])
+  @@map("price_changes")
+}
+
+/// One classification + extraction + ingestion attempt for a message.
+model IngestionRun {
+  id             String                   @id @default(uuid(7)) @db.Uuid
+  messageId      String                   @map("message_id") @db.Uuid
+  supplierId     String?                  @map("supplier_id") @db.Uuid
+  classification IngestionClassification?
+  status         IngestionStatus          @default(pending)
+  /// Raw structured output from the extractor (validated before ingestion).
+  rawExtraction  Json?                    @map("raw_extraction")
+  /// Ingestion report: created/updated/unchanged/unavailable products, warnings.
+  report         Json?
+  errors         Json?
+  model          String?
+  inputTokens    Int?                     @map("input_tokens")
+  outputTokens   Int?                     @map("output_tokens")
+  latencyMs      Int?                     @map("latency_ms")
+  finishedAt     DateTime?                @map("finished_at") @db.Timestamptz(3)
+  createdAt      DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  message      Message       @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  supplier     Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  priceChanges PriceChange[]
+  alerts       Alert[]
+
+  @@index([status, createdAt])
+  @@index([messageId])
+  @@index([supplierId])
+  @@map("ingestion_runs")
+}
+
+// ─── Alerts, settings, users, audit ─────────────────────────────────────────
+
+model Alert {
+  id             String        @id @default(uuid(7)) @db.Uuid
+  type           AlertType
+  severity       AlertSeverity @default(info)
+  status         AlertStatus   @default(open)
+  title          String
+  payload        Json?
+  productId      String?       @map("product_id") @db.Uuid
+  ingestionRunId String?       @map("ingestion_run_id") @db.Uuid
+  sentAt         DateTime?     @map("sent_at") @db.Timestamptz(3)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  product      Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  ingestionRun IngestionRun? @relation(fields: [ingestionRunId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([productId])
+  @@index([ingestionRunId])
+  @@map("alerts")
+}
+
+/// No-code rules/config as key → JSON value. Each key is validated with Zod in the service layer.
+model Setting {
+  key         String   @id
+  value       Json
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  updatedBy User? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("settings")
+}
+
+model User {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  role         UserRole @default(operator)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  messages  Message[]
+  settings  Setting[]
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+/// Append-only audit trail.
+model AuditLog {
+  id        String         @id @default(uuid(7)) @db.Uuid
+  actorType AuditActorType @map("actor_type")
+  userId    String?        @map("user_id") @db.Uuid
+  action    String
+  entity    String
+  entityId  String?        @map("entity_id")
+  data      Json?
+  requestId String?        @map("request_id")
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

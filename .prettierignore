@@ -6,6 +6,7 @@ coverage
 pnpm-lock.yaml
 n8n/workflows
 apps/admin/next-env.d.ts
+apps/api/src/generated
 # Hand-written project docs: keep the author formatting
 CLAUDE.md
 docs/pitch.md

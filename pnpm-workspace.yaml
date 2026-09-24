@@ -9,3 +9,7 @@ allowBuilds:
   # eslint-config-next resolver: prebuilt native binding ships as an optional
   # dependency, the postinstall fallback is not needed.
   unrs-resolver: false
+  # Prisma CLI: preinstall only checks the Node version; @prisma/engines
+  # postinstall downloads the schema engine binary used by `prisma migrate`.
+  prisma: true
+  "@prisma/engines": true
