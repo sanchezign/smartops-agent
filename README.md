@@ -74,6 +74,69 @@ docker compose up -d
 
 Alternatively, create the role/database manually with `psql` on the existing volume.
 
+## Desarrollo sin Meta
+
+The whole project can be run and tested **without a Meta / WhatsApp Business
+account**: no app, no WABA, no phone number, no tunnel. A local simulator takes the
+place of Meta in both directions, using the same payload formats, the same
+`X-Hub-Signature-256` signature and the same Graph API paths and error shapes. The
+production code does not change: it is only pointed at another URL.
+
+| Tool                      | Replaces               | What it does                                                                                                                                                                 |
+| ------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wa:simulate`             | Meta → API (webhooks)  | Sends **signed** webhooks to the local API: text, image, document, audio, interactive replies, delivery statuses (incl. `failed` with a Meta error code) and stored fixtures |
+| `wa:fake-graph` (`:4010`) | API → Meta (Graph API) | Serves media (metadata + short-lived download URL), accepts outbound messages and sends back signed `sent → delivered → read` (or `failed`) status webhooks                  |
+
+Setup (once), in `apps/api/.env`:
+
+```bash
+# Any values work locally — they only need to be consistent between the API and the simulator.
+WHATSAPP_PHONE_NUMBER_ID=100000000000001
+WHATSAPP_WABA_ID=200000000000002
+WHATSAPP_ACCESS_TOKEN=local-simulator-token-000000
+WHATSAPP_APP_SECRET=local-simulator-app-secret-000
+WHATSAPP_VERIFY_TOKEN=local-simulator-verify-token-000
+WHATSAPP_GRAPH_BASE_URL=http://localhost:4010
+```
+
+Run it (three terminals):
+
+```bash
+pnpm dev                                     # API + worker (+ admin)
+pnpm --filter @smartops/api wa:fake-graph    # fake Graph API on http://localhost:4010
+
+# Simulate traffic
+pnpm --filter @smartops/api wa:simulate text --text "Lista: tornillo 6mm $12"
+pnpm --filter @smartops/api wa:simulate document --file ./lista.pdf --caption "Lista septiembre"
+pnpm --filter @smartops/api wa:simulate audio --file ./nota.ogg
+pnpm --filter @smartops/api wa:simulate text --text "hola" --bsuid-only --username ferreteria.sur
+pnpm --filter @smartops/api wa:simulate text --text "hola" --duplicate    # dedupe check
+pnpm --filter @smartops/api wa:simulate status --wamid <wamid> --status failed --code 131030
+pnpm --filter @smartops/api wa:simulate fixture message-image             # any file in test/fixtures/whatsapp
+pnpm --filter @smartops/api wa:simulate help
+```
+
+Failure scenarios for the fake Graph API (to exercise retries and error handling), all
+as `pnpm --filter @smartops/api wa:fake-graph <flags>`:
+
+```bash
+wa:fake-graph --fail-send 131030                   # every outbound message fails with that Meta code
+wa:fake-graph --outside-window                     # free-form text fails with 131047; templates pass
+wa:fake-graph --fault media-info:404 --fault download:500 --fault send:401
+wa:fake-graph --latency 2000 --status-delay 5000   # slow API / slow deliveries
+```
+
+Notes:
+
+- Media files registered by `wa:simulate` are stored in `apps/api/.sim/media`
+  (gitignored) and served from there by `wa:fake-graph`.
+- `WHATSAPP_GRAPH_BASE_URL` must be `https://graph.facebook.com` in production: the
+  API refuses to start otherwise, so the fake can never be used on Render.
+- The simulator follows Meta's documentation, not Meta itself. Before going live,
+  validate the WhatsApp flow end to end with a real Meta account.
+- It covers the WhatsApp side only. Other providers (Claude, speech-to-text) need
+  their own keys or test doubles, added in their phases.
+
 ## Scripts (root)
 
 | Script              | What it does                            |
@@ -90,12 +153,14 @@ Per app: `pnpm --filter @smartops/api <script>` / `pnpm --filter @smartops/admin
 
 API processes (run with `pnpm --filter @smartops/api <script>`):
 
-| Script         | What it does                                                             |
-| -------------- | ------------------------------------------------------------------------ |
-| `dev`          | HTTP server + worker in watch mode (`dev:api` and `dev:worker`)          |
-| `start`        | HTTP server from `dist/` (webhooks, API)                                 |
-| `start:worker` | Worker from `dist/` (pg-boss: webhook processing, dead letters, sweeper) |
-| `wa:subscribe` | Subscribes the Meta app to the WABA webhooks (idempotent)                |
+| Script          | What it does                                                              |
+| --------------- | ------------------------------------------------------------------------- |
+| `dev`           | HTTP server + worker in watch mode (`dev:api` and `dev:worker`)           |
+| `start`         | HTTP server from `dist/` (webhooks, API)                                  |
+| `start:worker`  | Worker from `dist/` (pg-boss: webhook processing, dead letters, sweeper)  |
+| `wa:subscribe`  | Subscribes the Meta app to the WABA webhooks (idempotent)                 |
+| `wa:simulate`   | Sends signed WhatsApp webhooks to the local API (see Desarrollo sin Meta) |
+| `wa:fake-graph` | Local fake Meta Graph API on :4010 (see Desarrollo sin Meta)              |
 
 Tests: `pnpm --filter @smartops/api test`. Integration tests (`test/integration`) run
 against a real Postgres when `TEST_DATABASE_URL` is set in `apps/api/.env` (database
@@ -135,6 +200,11 @@ Database (API, run with `pnpm --filter @smartops/api <script>`):
 | `CORS_ORIGINS`              | `apps/api`   | Comma-separated allowed origins (required in prod)   |
 | `RATE_LIMIT_WINDOW_MS/MAX`  | `apps/api`   | Global /api/v1 rate limit per IP (300 / 60 s)        |
 | `TRUST_PROXY`               | `apps/api`   | Proxy hops in front of the API (0 local, 1 Render)   |
+| `WHATSAPP_*`                | `apps/api`   | Meta app / WABA credentials — see `.env.example`     |
+| `WHATSAPP_GRAPH_BASE_URL`   | `apps/api`   | Graph API host; `http://localhost:4010` = simulator  |
+| `WEBHOOK_RATE_LIMIT_MAX`    | `apps/api`   | Per-IP limit for the WhatsApp webhook                |
+| `WORKER_CONCURRENCY`        | `apps/api`   | Parallel webhook jobs per worker process             |
+| `TEST_DATABASE_URL`         | `apps/api`   | Optional; enables integration tests (`*_test` DB)    |
 | `NEXT_PUBLIC_API_URL`       | `apps/admin` | Base URL of the API                                  |
 
 ## Architecture decisions

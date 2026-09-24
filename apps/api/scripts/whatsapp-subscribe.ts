@@ -23,6 +23,7 @@ interface SubscribedAppsResponse {
 const env = loadEnv();
 const logger = createLogger(env);
 const config: GraphApiConfig = {
+  baseUrl: env.WHATSAPP_GRAPH_BASE_URL,
   version: env.WHATSAPP_GRAPH_API_VERSION,
   accessToken: env.WHATSAPP_ACCESS_TOKEN,
   timeoutMs: env.WHATSAPP_API_TIMEOUT_MS,

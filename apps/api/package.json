@@ -18,7 +18,9 @@
     "db:deploy": "prisma migrate deploy",
     "db:status": "prisma migrate status",
     "db:studio": "prisma studio",
-    "wa:subscribe": "tsx --env-file-if-exists=.env scripts/whatsapp-subscribe.ts"
+    "wa:subscribe": "tsx --env-file-if-exists=.env scripts/whatsapp-subscribe.ts",
+    "wa:simulate": "tsx --env-file-if-exists=.env scripts/simulator/simulate.ts",
+    "wa:fake-graph": "tsx --env-file-if-exists=.env scripts/simulator/fake-graph-cli.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",

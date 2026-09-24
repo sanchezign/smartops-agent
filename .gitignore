@@ -14,6 +14,9 @@ apps/api/src/generated/
 # tests
 coverage/
 
+# local WhatsApp simulator data (media registered by wa:simulate)
+apps/api/.sim/
+
 # env — only .env.example files are versioned
 .env
 .env.*

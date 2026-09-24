@@ -3,9 +3,9 @@
  * outbound client, media download and CLI scripts. Never logs the access token.
  */
 
-const GRAPH_BASE_URL = "https://graph.facebook.com";
-
 export interface GraphApiConfig {
+  /** https://graph.facebook.com, or the local fake Graph API in development. */
+  baseUrl: string;
   version: string;
   accessToken: string;
   timeoutMs: number;
@@ -44,7 +44,7 @@ export async function graphRequest<T>(
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const url = `${GRAPH_BASE_URL}/${config.version}/${path.replace(/^\//, "")}`;
+  const url = `${config.baseUrl}/${config.version}/${path.replace(/^\//, "")}`;
   const response = await fetch(url, {
     method,
     headers: {

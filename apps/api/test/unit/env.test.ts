@@ -122,4 +122,34 @@ describe("parseEnv", () => {
       expect.stringContaining("WHATSAPP_VERIFY_TOKEN"),
     ]);
   });
+
+  describe("WHATSAPP_GRAPH_BASE_URL", () => {
+    it("defaults to Meta and strips trailing slashes", () => {
+      expect(parseEnv(base).WHATSAPP_GRAPH_BASE_URL).toBe("https://graph.facebook.com");
+      expect(
+        parseEnv({ ...base, WHATSAPP_GRAPH_BASE_URL: "http://localhost:4010/" })
+          .WHATSAPP_GRAPH_BASE_URL,
+      ).toBe("http://localhost:4010");
+    });
+
+    it("rejects URLs with a path or another protocol", () => {
+      expect(
+        issuesOf({ ...base, WHATSAPP_GRAPH_BASE_URL: "http://localhost:4010/v26.0" })[0],
+      ).toContain("WHATSAPP_GRAPH_BASE_URL");
+      expect(issuesOf({ ...base, WHATSAPP_GRAPH_BASE_URL: "ftp://x" })[0]).toContain(
+        "WHATSAPP_GRAPH_BASE_URL",
+      );
+    });
+
+    it("only allows Meta in production (the fake Graph API can never ship)", () => {
+      const prod = { ...base, NODE_ENV: "production", CORS_ORIGINS: "https://admin.example.com" };
+      expect(issuesOf({ ...prod, WHATSAPP_GRAPH_BASE_URL: "http://localhost:4010" })).toEqual([
+        "WHATSAPP_GRAPH_BASE_URL: must be https://graph.facebook.com in production",
+      ]);
+      expect(
+        parseEnv({ ...prod, WHATSAPP_GRAPH_BASE_URL: "https://graph.facebook.com/" }),
+      ).toBeTruthy();
+      expect(parseEnv(prod).WHATSAPP_GRAPH_BASE_URL).toBe("https://graph.facebook.com");
+    });
+  });
 });

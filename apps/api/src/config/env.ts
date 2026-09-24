@@ -5,6 +5,9 @@ import { z } from "zod";
  * `parseEnv` is pure (testable); `loadEnv` fails fast on startup.
  */
 
+/** The only Graph API host allowed in production (the fake Graph API is for local dev). */
+export const META_GRAPH_BASE_URL = "https://graph.facebook.com";
+
 const LOG_LEVELS = ["fatal", "error", "warn", "info", "debug", "trace", "silent"] as const;
 
 const corsOrigins = z
@@ -46,6 +49,14 @@ export const envSchema = z.object({
     .string()
     .regex(/^v\d+\.\d+$/, 'must look like "v26.0"')
     .default("v26.0"),
+  /** Graph API host. Local dev may point it at the fake Graph API (wa:fake-graph). */
+  WHATSAPP_GRAPH_BASE_URL: z
+    .string()
+    .default(META_GRAPH_BASE_URL)
+    .refine(isBaseUrl, {
+      message: "must be an http(s) URL without path, e.g. http://localhost:4010",
+    })
+    .transform((url) => url.replace(/\/+$/, "")),
   WHATSAPP_PHONE_NUMBER_ID: z.string().regex(/^\d+$/, "must be the numeric Phone Number ID"),
   WHATSAPP_WABA_ID: z.string().regex(/^\d+$/, "must be the numeric WhatsApp Business Account ID"),
   WHATSAPP_ACCESS_TOKEN: z.string().min(20, "must be a Meta access token"),
@@ -70,6 +81,13 @@ function crossFieldIssues(source: Record<string, string | undefined>): string[] 
   const issues: string[] = [];
   if (source.NODE_ENV === "production" && !source.CORS_ORIGINS?.replaceAll(",", "").trim()) {
     issues.push("CORS_ORIGINS: is required in production");
+  }
+  if (
+    source.NODE_ENV === "production" &&
+    source.WHATSAPP_GRAPH_BASE_URL !== undefined &&
+    source.WHATSAPP_GRAPH_BASE_URL.replace(/\/+$/, "") !== META_GRAPH_BASE_URL
+  ) {
+    issues.push(`WHATSAPP_GRAPH_BASE_URL: must be ${META_GRAPH_BASE_URL} in production`);
   }
   return issues;
 }
@@ -108,6 +126,20 @@ export function loadEnv(): Env {
       process.exit(1);
     }
     throw error;
+  }
+}
+
+function isBaseUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      (url.protocol === "http:" || url.protocol === "https:") &&
+      (url.pathname === "/" || url.pathname === "") &&
+      !url.search &&
+      !url.hash
+    );
+  } catch {
+    return false;
   }
 }
 

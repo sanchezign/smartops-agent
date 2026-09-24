@@ -3,6 +3,7 @@ dist
 .next
 out
 coverage
+apps/api/.sim
 pnpm-lock.yaml
 n8n/workflows
 apps/admin/next-env.d.ts

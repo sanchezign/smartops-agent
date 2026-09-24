@@ -244,6 +244,17 @@ Each one gets an ADR in docs/adr/.
 - `prisma migrate dev` refuses to run non-interactively when adding enum values;
   migration `whatsapp_worker` was generated with `prisma migrate diff` +
   `migrate deploy`.
+- 2026-09-24 (phase 3, M2.5) Local WhatsApp simulator (dev tooling, not built:
+  `apps/api/scripts/simulator/`). `wa:simulate` = Meta → API (signed webhooks built
+  by `payloads.ts`, unit-tested against the production parser). `wa:fake-graph` =
+  API → Meta: `node:http` server (127.0.0.1:4010) with Graph paths/auth/error shapes:
+  media metadata + expiring signed download URL (`/media-download/{id}`, Bearer
+  required), POST `/{phone-number-id}/messages` → wamid + signed status webhooks
+  back, `subscribed_apps`; faults via flags. Shared media dir `apps/api/.sim/media`
+  (gitignored + prettierignored). Only production change:
+  `WHATSAPP_GRAPH_BASE_URL` (default `https://graph.facebook.com`; env.ts rejects
+  any other value in production) used by `graph-api.ts` (`GraphApiConfig.baseUrl`).
+  Default simulator media sha256 format: hex (`--sha-format base64` available).
 - Local tunnel: cloudflared quick tunnel (`cloudflared tunnel --url
   http://localhost:4000`); URL changes on every restart → update it in Meta.
 
@@ -258,6 +269,9 @@ Each one gets an ADR in docs/adr/.
    is still pending: Meta says the test number is still being set up.
    2026-09-24: Meta disabled the portfolio + WABA (review requested, see Known
    issues) → continue with a local WhatsApp simulator.
+   M2.5 local WhatsApp simulator (`wa:simulate` + `wa:fake-graph`) — done
+   (2026-09-24). Next: M3 media download + storage (ADR-008), tested against the
+   fake Graph API.
    M2 pg-boss queue + worker + idempotent persistence — done (2026-09-24),
    branch `feat/phase-3-whatsapp`. Migration `whatsapp_worker`.
    Next: M3 media download + storage (ADR-008: bytea behind
@@ -293,6 +307,9 @@ Each one gets an ADR in docs/adr/.
 
 ## Conventions in this project
 - WhatsApp fixtures: `apps/api/test/fixtures/whatsapp/`
+- Local WhatsApp without Meta: `wa:simulate` + `wa:fake-graph` (README "Desarrollo
+  sin Meta"). New WhatsApp features must work against the fake Graph API; extend
+  `fake-graph.ts` when a phase needs a new Graph endpoint.
 - Prompts: `apps/api/src/ai/prompts/*.md`
 - n8n workflows: `n8n/workflows/{receiver,processor,notifier}.json`
 - Internal API for n8n: `/api/v1/internal/*` with `X-Internal-Api-Key`
