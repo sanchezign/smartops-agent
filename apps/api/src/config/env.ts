@@ -69,6 +69,18 @@ export const envSchema = z.object({
   // ─── Worker (pg-boss) ───
   /** Parallel webhook-processing jobs per worker process. */
   WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(20).default(2),
+
+  // ─── Media (ADR-008) ───
+  /** Own cap on downloaded media, on top of Meta limits (default 25 MB). */
+  MEDIA_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1024)
+    .max(100 * 1024 * 1024)
+    .default(25 * 1024 * 1024),
+  MEDIA_DOWNLOAD_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+  /** Parallel media downloads per worker process (each buffers up to MEDIA_MAX_BYTES). */
+  MEDIA_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(10).default(2),
 });
 
 export type Env = z.infer<typeof envSchema>;

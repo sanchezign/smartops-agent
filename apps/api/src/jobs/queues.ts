@@ -8,10 +8,16 @@ export const QUEUES = {
   whatsappWebhook: "whatsapp-webhook",
   whatsappWebhookDlq: "whatsapp-webhook-dlq",
   webhookSweeper: "webhook-sweeper",
+  whatsappMedia: "whatsapp-media",
+  whatsappMediaDlq: "whatsapp-media-dlq",
 } as const;
 
 export interface WebhookEventJob {
   eventId: string;
+}
+
+export interface MediaDownloadJob {
+  mediaFileId: string;
 }
 
 type QueueDefinition = Omit<Queue, "name"> & { name: string };
@@ -33,6 +39,23 @@ export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
     retryDelayMax: 300,
     expireInSeconds: 60,
     deadLetter: QUEUES.whatsappWebhookDlq,
+  },
+  {
+    name: QUEUES.whatsappMediaDlq,
+    retryLimit: 3,
+    retryDelay: 30,
+    deleteAfterSeconds: 30 * 24 * 3600,
+  },
+  {
+    name: QUEUES.whatsappMedia,
+    // Media ids live 7 days; backoff 10 s → 30 min over 6 retries (e.g. token renewal).
+    retryLimit: 6,
+    retryDelay: 10,
+    retryBackoff: true,
+    retryDelayMax: 1800,
+    // Two Graph calls + a download of up to MEDIA_DOWNLOAD_TIMEOUT_MS.
+    expireInSeconds: 180,
+    deadLetter: QUEUES.whatsappMediaDlq,
   },
   {
     name: QUEUES.webhookSweeper,

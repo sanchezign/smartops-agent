@@ -255,6 +255,26 @@ Each one gets an ADR in docs/adr/.
   `WHATSAPP_GRAPH_BASE_URL` (default `https://graph.facebook.com`; env.ts rejects
   any other value in production) used by `graph-api.ts` (`GraphApiConfig.baseUrl`).
   Default simulator media sha256 format: hex (`--sha-format base64` available).
+- 2026-09-24 (phase 3, M3) Media download (ADR-008): bytes in `media_blobs` (bytea,
+  STORAGE EXTERNAL set in migration `media_storage` — keep it) behind `MediaStorage`
+  (`src/modules/media/`). MediaFile.status pending|stored|skipped|rejected|failed +
+  rejectReason/error/attempts/contentSha256 (`sha256` = Meta's declared value).
+  Policy (`media-policy.ts`, pure): whitelist per message type, effective cap =
+  min(Meta limit, MEDIA_MAX_BYTES), magic-byte sniffing, sha256 hex OR base64. Video and
+  sticker → skipped at ingest (no job); unsupported declared mime → rejected at ingest.
+- Media job enqueued INSIDE the ingestion transaction with pg-boss `fromPrisma(tx)`
+  (`createEnqueueMediaInTx`); verified against real pg-boss (rollback → no job). Queue
+  `whatsapp-media` (retryLimit 6, backoff 10s→30min, expire 180s, DLQ
+  `whatsapp-media-dlq` → failed/retries_exhausted), `MEDIA_WORKER_CONCURRENCY`.
+- Download error policy: media id 404 → failed (no retry); URL 404 → one fresh URL in
+  the same attempt; 401/403/190 → retry + loud "renew token" log; too large / bad
+  mime / content mismatch / empty → rejected; 5xx, timeout, network, checksum mismatch
+  → retry. `wa:media:retry` resets failed → pending and re-enqueues.
+- Access token only sent to allowed download hosts (`isAllowedDownloadUrl`): HTTPS
+  graph.facebook.com, lookaside.fbsbx.com, *.fbsbx.com; outside production also the
+  `WHATSAPP_GRAPH_BASE_URL` host. Download URLs are never logged.
+- Vitest projects: `unit` (unit + e2e, parallel) and `integration` (global setup,
+  `fileParallelism: false` — files share and TRUNCATE the test DB).
 - Local tunnel: cloudflared quick tunnel (`cloudflared tunnel --url
   http://localhost:4000`); URL changes on every restart → update it in Meta.
 
@@ -270,8 +290,10 @@ Each one gets an ADR in docs/adr/.
    2026-09-24: Meta disabled the portfolio + WABA (review requested, see Known
    issues) → continue with a local WhatsApp simulator.
    M2.5 local WhatsApp simulator (`wa:simulate` + `wa:fake-graph`) — done
-   (2026-09-24). Next: M3 media download + storage (ADR-008), tested against the
-   fake Graph API.
+   (2026-09-24).
+   M3 media download + storage (ADR-008) — done (2026-09-24), tested against the fake
+   Graph API. Migration `media_storage`.
+   Next: M4 outbound client + 24h window + CLI send script (fake Graph API), then M5.
    M2 pg-boss queue + worker + idempotent persistence — done (2026-09-24),
    branch `feat/phase-3-whatsapp`. Migration `whatsapp_worker`.
    Next: M3 media download + storage (ADR-008: bytea behind
@@ -287,12 +309,25 @@ Each one gets an ADR in docs/adr/.
   simulator. When the account is back: re-run `wa:subscribe`, re-check the webhook
   config in the App Dashboard, and validate M1–M3 end to end with real traffic.
   If the review is rejected, a new portfolio/WABA (new ids in `.env`) is needed.
+- **Local `apps/api/.env` points at the simulator**: `WHATSAPP_GRAPH_BASE_URL=http://localhost:4010`
+  (added 2026-09-24 while Meta is blocked). When Meta restores the account, REMOVE that
+  line (default = `https://graph.facebook.com`) to use the real Graph API again, restart
+  API + worker, then run `wa:subscribe`.
+- **Phase 5 (extraction):** Claude reads PDF and images natively, but NOT xlsx / xls /
+  csv / docx. Those documents are stored in M3 but must be converted to text (e.g. sheet →
+  CSV/Markdown table) before extraction. Evaluate the parsing library and record an ADR
+  in phase 5.
 - `onInboundMessage` hook (phases 6/7) runs after the message is committed: if it
   throws, the job retries but the message is then a duplicate and the hook is NOT
   called again. Phase 6 must make the hand-off durable (enqueue its own job /
   outbox) instead of calling n8n inline from the hook.
 - Real WhatsApp payloads are pending (test number still being set up in Meta):
   fixtures are doc-based. Replace in M5 with anonymized real captures.
+- `media_blobs` has no retention yet (ADR-008): media is kept forever and grows the DB
+  and its backups. Define a retention policy (e.g. delete blobs of processed media after
+  N days, keep extracted data) before real traffic.
+- Allowed media download hosts (graph.facebook.com, *.fbsbx.com) come from docs and
+  community reports; confirm with real Meta traffic when the account is restored.
 - `webhook_events` has no retention yet: every delivery is kept forever (payloads
   up to 3 MB). Future: scheduled pg-boss cleanup job (e.g. delete `processed` events
   older than N days, keep `failed` longer), N configurable.

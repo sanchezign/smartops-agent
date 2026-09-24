@@ -117,6 +117,22 @@ enum AuditActorType {
   n8n
 }
 
+enum MediaStatus {
+  /// Waiting for the download job.
+  pending
+  stored
+  /// Not downloaded by design (e.g. video, sticker).
+  skipped
+  /// Refused: unsupported mime, too large, content does not match its type.
+  rejected
+  /// Download impossible (media expired / not found) or retries exhausted.
+  failed
+}
+
+enum MediaStorageKind {
+  postgres
+}
+
 enum WebhookProvider {
   whatsapp
 }
@@ -235,20 +251,48 @@ model Message {
   @@map("messages")
 }
 
-/// Media metadata. Storage columns (bytea vs bucket key) are added in phase 3 (see ADR).
+/// Media metadata + download state. Bytes live in MediaBlob (see ADR-008).
 model MediaFile {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  waMediaId String   @unique @map("wa_media_id")
-  mimeType  String   @map("mime_type")
-  sizeBytes Int?     @map("size_bytes")
-  sha256    String?
-  filename  String?
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id            String            @id @default(uuid(7)) @db.Uuid
+  waMediaId     String            @unique @map("wa_media_id")
+  /// Mime type (from the webhook; replaced by Meta's media API value on download).
+  mimeType      String            @map("mime_type")
+  sizeBytes     Int?              @map("size_bytes")
+  /// SHA-256 declared by Meta (webhook / media API), hex or base64 as Meta sends it.
+  sha256        String?
+  /// Lowercase hex SHA-256 of the stored bytes.
+  contentSha256 String?           @map("content_sha256") @db.Char(64)
+  filename      String?
+  status        MediaStatus       @default(pending)
+  storage       MediaStorageKind?
+  /// Machine-readable reason when status = rejected | skipped | failed.
+  rejectReason  String?           @map("reject_reason")
+  /// Last error (download attempts), for diagnostics.
+  error         String?
+  attempts      Int               @default(0)
+  downloadedAt  DateTime?         @map("downloaded_at") @db.Timestamptz(3)
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   message Message?
+  blob    MediaBlob?
 
+  @@index([status, createdAt])
   @@map("media_files")
+}
+
+/// Media bytes (ADR-008: Postgres bytea behind the MediaStorage interface). Separate
+/// table so selecting media_files never loads the bytes. Column storage is EXTERNAL
+/// (no TOAST compression: PDF/JPEG/OGG are already compressed) — set in migration
+/// `media_storage`; keep it when editing this model.
+model MediaBlob {
+  mediaFileId String   @id @map("media_file_id") @db.Uuid
+  data        Bytes
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  mediaFile MediaFile @relation(fields: [mediaFileId], references: [id], onDelete: Cascade)
+
+  @@map("media_blobs")
 }
 
 /// Every signature-verified webhook delivery, stored before the 200 ack.

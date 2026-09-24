@@ -36,6 +36,18 @@ export interface RecordStatusResult {
   messageUpdated: boolean;
 }
 
+/** What to do with the media of an inbound message (decided by the ingest service). */
+export interface MediaIngestPlan {
+  status: "pending" | "skipped" | "rejected";
+  rejectReason?: string;
+}
+
+/**
+ * Enqueues the media download job INSIDE the ingestion transaction (pg-boss
+ * `fromPrisma(tx)`): the message and its job are committed — or rolled back — together.
+ */
+export type EnqueueMediaInTx = (tx: Prisma.TransactionClient, mediaFileId: string) => Promise<void>;
+
 export interface WhatsAppIngestRepository {
   getEvent(id: string): Promise<StoredWebhookEvent | null>;
   incrementAttempts(id: string): Promise<void>;
@@ -47,6 +59,8 @@ export interface WhatsAppIngestRepository {
   ingestInboundMessage(input: {
     message: ParsedInboundMessage;
     webhookEventId: string;
+    /** Required when the message has media. */
+    mediaPlan?: MediaIngestPlan;
   }): Promise<IngestMessageResult>;
   recordStatus(input: {
     status: ParsedStatus;
@@ -64,10 +78,14 @@ function truncate(value: string): string {
   return value.length > MAX_ERROR_LENGTH ? `${value.slice(0, MAX_ERROR_LENGTH)}…` : value;
 }
 
-export function createWhatsAppIngestRepository(prisma: PrismaClient): WhatsAppIngestRepository {
+export function createWhatsAppIngestRepository(
+  prisma: PrismaClient,
+  deps: { enqueueMediaInTx: EnqueueMediaInTx },
+): WhatsAppIngestRepository {
   async function ingestOnce(
     message: ParsedInboundMessage,
     webhookEventId: string,
+    mediaPlan: MediaIngestPlan | undefined,
   ): Promise<IngestMessageResult> {
     return prisma.$transaction(async (tx) => {
       const existing = await tx.message.findUnique({
@@ -118,6 +136,7 @@ export function createWhatsAppIngestRepository(prisma: PrismaClient): WhatsAppIn
                updated_at = now()
          WHERE id = ${conversation.id}::uuid`;
 
+      const media = mediaPlan ?? { status: "pending" as const };
       const mediaFile = message.media
         ? await tx.mediaFile.create({
             data: {
@@ -125,10 +144,15 @@ export function createWhatsAppIngestRepository(prisma: PrismaClient): WhatsAppIn
               mimeType: message.media.mimeType ?? "application/octet-stream",
               sha256: message.media.sha256,
               filename: message.media.filename,
+              status: media.status,
+              rejectReason: media.rejectReason ?? null,
             },
             select: { id: true },
           })
         : null;
+      if (mediaFile && media.status === "pending") {
+        await deps.enqueueMediaInTx(tx, mediaFile.id);
+      }
 
       const firstError = message.errors[0];
       const created = await tx.message.create({
@@ -194,9 +218,9 @@ export function createWhatsAppIngestRepository(prisma: PrismaClient): WhatsAppIn
       });
     },
 
-    async ingestInboundMessage({ message, webhookEventId }) {
+    async ingestInboundMessage({ message, webhookEventId, mediaPlan }) {
       try {
-        return await ingestOnce(message, webhookEventId);
+        return await ingestOnce(message, webhookEventId, mediaPlan);
       } catch (err) {
         if (!isUniqueViolation(err)) throw err;
         // Lost a race: either the same message (duplicate delivery processed in
@@ -206,7 +230,7 @@ export function createWhatsAppIngestRepository(prisma: PrismaClient): WhatsAppIn
           select: { id: true },
         });
         if (existing) return { outcome: "duplicate" };
-        return ingestOnce(message, webhookEventId);
+        return ingestOnce(message, webhookEventId, mediaPlan);
       }
     },
 

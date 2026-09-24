@@ -1,6 +1,7 @@
 import type { Logger } from "../../common/logger.js";
 import { maskPhone, maskUserId } from "../../common/phone.js";
-import type { WhatsAppIngestRepository } from "./whatsapp-ingest.repository.js";
+import { planMedia } from "../media/media-policy.js";
+import type { MediaIngestPlan, WhatsAppIngestRepository } from "./whatsapp-ingest.repository.js";
 import { parseWhatsAppWebhook, type ParsedInboundMessage } from "./whatsapp-webhook.parser.js";
 import { summarizeParsedWebhook, toSummaryErrors } from "./whatsapp-webhook.summary.js";
 
@@ -32,6 +33,13 @@ export interface ProcessEventResult {
 
 export interface WhatsAppIngestService {
   processEvent(eventId: string, log: Logger): Promise<ProcessEventResult>;
+}
+
+/** Media policy at ingest time: skipped/rejected media never gets a download job. */
+function toMediaIngestPlan(message: ParsedInboundMessage): MediaIngestPlan {
+  const plan = planMedia(message.waType, message.media?.mimeType);
+  if (plan.action === "download") return { status: "pending" };
+  return { status: plan.action === "skip" ? "skipped" : "rejected", rejectReason: plan.reason };
 }
 
 /** Default hook until phases 6/7: log only — no bot action yet. */
@@ -144,6 +152,7 @@ export function createWhatsAppIngestService(deps: {
           const ingested = await deps.repository.ingestInboundMessage({
             message,
             webhookEventId: eventId,
+            ...(message.media ? { mediaPlan: toMediaIngestPlan(message) } : {}),
           });
           if (ingested.outcome === "duplicate") {
             result.duplicateMessages += 1;

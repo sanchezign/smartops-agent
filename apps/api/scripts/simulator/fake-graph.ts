@@ -25,6 +25,8 @@ import { postSignedWebhook } from "./webhook-client.js";
 
 export type FaultTarget = "media-info" | "download" | "send" | "subscribed-apps";
 export type FaultStatus = 401 | 404 | 429 | 500 | 503;
+/** An HTTP error, or "corrupt" (download only: 200 with altered bytes → checksum mismatch). */
+export type FaultSpec = FaultStatus | "corrupt";
 
 export interface FakeGraphOptions {
   business: SimBusiness;
@@ -43,7 +45,7 @@ export interface FakeGraphOptions {
   /** Free-form (non-template) messages fail with 131047 (outside the 24h window). */
   outsideWindow?: boolean;
   /** Forced HTTP errors per endpoint. */
-  faults?: Partial<Record<FaultTarget, FaultStatus>>;
+  faults?: Partial<Record<FaultTarget, FaultSpec>>;
   latencyMs?: number;
   shaFormat?: "hex" | "base64";
   /** Download URL lifetime (Meta: 5 minutes). */
@@ -97,7 +99,7 @@ export function createFakeGraph(options: FakeGraphOptions) {
 
   function faultResponse(res: ServerResponse, target: FaultTarget): boolean {
     const status = options.faults?.[target];
-    if (!status) return false;
+    if (!status || status === "corrupt") return false;
     const byStatus: Record<FaultStatus, { message: string; code: number; type?: string }> = {
       401: { message: "Error validating access token: Session has expired.", code: 190 },
       404: {
@@ -234,11 +236,19 @@ export function createFakeGraph(options: FakeGraphOptions) {
         res.end("Not Found");
         return;
       }
+      let body: Buffer = media.bytes;
+      if (options.faults?.download === "corrupt") {
+        // Same length, last byte flipped: the SHA-256 no longer matches Meta's.
+        body = Buffer.from(media.bytes);
+        const last = body.length - 1;
+        if (last >= 0) body[last] = (body[last] ?? 0) ^ 0xff;
+        log.warn("fake graph: injected fault (corrupt download)");
+      }
       res.writeHead(200, {
         "Content-Type": media.meta.mimeType,
-        "Content-Length": String(media.bytes.length),
+        "Content-Length": String(body.length),
       });
-      res.end(media.bytes);
+      res.end(body);
       log.info({ mediaSize: media.meta.size }, "fake graph: media downloaded");
       return;
     }

@@ -1,6 +1,13 @@
-import { PgBoss } from "pg-boss";
+import { fromPrisma, PgBoss } from "pg-boss";
 import type { Logger } from "../common/logger.js";
-import { QUEUE_DEFINITIONS, QUEUES, type WebhookEventJob, type WebhookQueue } from "./queues.js";
+import type { EnqueueMediaInTx } from "../modules/whatsapp/whatsapp-ingest.repository.js";
+import {
+  QUEUE_DEFINITIONS,
+  QUEUES,
+  type MediaDownloadJob,
+  type WebhookEventJob,
+  type WebhookQueue,
+} from "./queues.js";
 
 const BOSS_SCHEMA = "pgboss";
 /** Small pools: API and worker each hold their own (Render Postgres has connection limits). */
@@ -57,4 +64,20 @@ export function createPgBossWebhookQueue(boss: PgBoss): WebhookQueue {
       if (!jobId) throw new Error(`pg-boss did not create a job for webhook event ${eventId}`);
     },
   };
+}
+
+/** Enqueues a media download inside the caller's Prisma transaction (atomic with the message). */
+export function createEnqueueMediaInTx(boss: PgBoss): EnqueueMediaInTx {
+  return async (tx, mediaFileId) => {
+    const data: MediaDownloadJob = { mediaFileId };
+    const jobId = await boss.send(QUEUES.whatsappMedia, data, { db: fromPrisma(tx) });
+    if (!jobId) throw new Error(`pg-boss did not create a media job for ${mediaFileId}`);
+  };
+}
+
+/** Enqueues a media download outside a transaction (manual retries). */
+export async function enqueueMediaDownload(boss: PgBoss, mediaFileId: string): Promise<void> {
+  const data: MediaDownloadJob = { mediaFileId };
+  const jobId = await boss.send(QUEUES.whatsappMedia, data);
+  if (!jobId) throw new Error(`pg-boss did not create a media job for ${mediaFileId}`);
 }

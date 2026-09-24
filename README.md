@@ -82,10 +82,11 @@ place of Meta in both directions, using the same payload formats, the same
 `X-Hub-Signature-256` signature and the same Graph API paths and error shapes. The
 production code does not change: it is only pointed at another URL.
 
-| Tool                      | Replaces               | What it does                                                                                                                                                                 |
-| ------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `wa:simulate`             | Meta → API (webhooks)  | Sends **signed** webhooks to the local API: text, image, document, audio, interactive replies, delivery statuses (incl. `failed` with a Meta error code) and stored fixtures |
-| `wa:fake-graph` (`:4010`) | API → Meta (Graph API) | Serves media (metadata + short-lived download URL), accepts outbound messages and sends back signed `sent → delivered → read` (or `failed`) status webhooks                  |
+| Tool                      | Replaces                                                                      | What it does                                                                                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wa:simulate`             | Meta → API (webhooks)                                                         | Sends **signed** webhooks to the local API: text, image, document, audio, interactive replies, delivery statuses (incl. `failed` with a Meta error code) and stored fixtures |
+| `wa:fake-graph` (`:4010`) | API → Meta (Graph API)                                                        | Serves media (metadata + short-lived download URL), accepts outbound messages and sends back signed `sent → delivered → read` (or `failed`) status webhooks                  |
+| `wa:media:retry`          | Re-enqueues `failed` media downloads (`--all-failed` or `--id <mediaFileId>`) |
 
 Setup (once), in `apps/api/.env`:
 
@@ -125,6 +126,13 @@ wa:fake-graph --outside-window                     # free-form text fails with 1
 wa:fake-graph --fault media-info:404 --fault download:500 --fault send:401
 wa:fake-graph --latency 2000 --status-delay 5000   # slow API / slow deliveries
 ```
+
+Media flow: `wa:simulate document --file ./lista.pdf` → the worker stores the message
+and enqueues the download → it calls the fake Graph API (metadata + download URL) →
+verifies SHA-256 and magic bytes → stores the bytes in `media_blobs` (ADR-008). Check it
+in Prisma Studio (`media_files.status = stored`). Add `--fault download:corrupt`,
+`--fault media-info:404` or `--fault download:500` to `wa:fake-graph` to see the
+retry / failure paths; `wa:media:retry --all-failed` re-enqueues failed downloads.
 
 Notes:
 
@@ -204,6 +212,9 @@ Database (API, run with `pnpm --filter @smartops/api <script>`):
 | `WHATSAPP_GRAPH_BASE_URL`   | `apps/api`   | Graph API host; `http://localhost:4010` = simulator  |
 | `WEBHOOK_RATE_LIMIT_MAX`    | `apps/api`   | Per-IP limit for the WhatsApp webhook                |
 | `WORKER_CONCURRENCY`        | `apps/api`   | Parallel webhook jobs per worker process             |
+| `MEDIA_MAX_BYTES`           | `apps/api`   | Own media size cap (25 MB), on top of Meta limits    |
+| `MEDIA_DOWNLOAD_TIMEOUT_MS` | `apps/api`   | Timeout per media download (60 s)                    |
+| `MEDIA_WORKER_CONCURRENCY`  | `apps/api`   | Parallel media downloads per worker process          |
 | `TEST_DATABASE_URL`         | `apps/api`   | Optional; enables integration tests (`*_test` DB)    |
 | `NEXT_PUBLIC_API_URL`       | `apps/admin` | Base URL of the API                                  |
 
@@ -216,3 +227,4 @@ Database (API, run with `pnpm --filter @smartops/api <script>`):
 - [ADR-005](docs/adr/ADR-005-whisper-transcription.md) — Whisper-compatible speech-to-text
 - [ADR-006](docs/adr/ADR-006-no-oauth.md) — No OAuth, JWT only
 - [ADR-007](docs/adr/ADR-007-deploy-render.md) — Deploy everything on Render
+- [ADR-008](docs/adr/ADR-008-media-storage.md) — Media stored in Postgres (bytea) behind `MediaStorage`

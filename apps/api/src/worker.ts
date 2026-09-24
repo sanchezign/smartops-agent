@@ -1,15 +1,21 @@
 import { createPrismaClient } from "./common/db.js";
 import { createLogger } from "./common/logger.js";
 import { loadEnv } from "./config/env.js";
-import { createPgBossWebhookQueue, startBoss } from "./jobs/boss.js";
+import { createEnqueueMediaInTx, createPgBossWebhookQueue, startBoss } from "./jobs/boss.js";
+import { registerWhatsAppMediaWorkers } from "./jobs/whatsapp-media.job.js";
 import { registerWhatsAppWebhookWorkers } from "./jobs/whatsapp-webhook.job.js";
+import { createPostgresMediaStorage } from "./modules/media/media-storage.js";
+import { createMediaRepository } from "./modules/media/media.repository.js";
+import { createMediaDownloadService } from "./modules/media/media.service.js";
 import { createWebhookSweeper } from "./modules/whatsapp/webhook-sweeper.js";
+import { createWhatsAppMediaClient } from "./modules/whatsapp/whatsapp-media.client.js";
 import { createWhatsAppIngestRepository } from "./modules/whatsapp/whatsapp-ingest.repository.js";
 import { createWhatsAppIngestService } from "./modules/whatsapp/whatsapp-ingest.service.js";
 import { createWhatsAppWebhookRepository } from "./modules/whatsapp/whatsapp-webhook.repository.js";
 
 /**
- * Worker process: consumes pg-boss queues (webhook processing, dead letters, sweeper).
+ * Worker process: consumes pg-boss queues (webhook processing, media downloads, dead
+ * letters, sweeper).
  * Separate from the HTTP server so slow jobs never delay webhook acks.
  */
 
@@ -38,7 +44,9 @@ try {
   process.exit(1);
 }
 
-const ingestRepository = createWhatsAppIngestRepository(prisma);
+const ingestRepository = createWhatsAppIngestRepository(prisma, {
+  enqueueMediaInTx: createEnqueueMediaInTx(boss),
+});
 await registerWhatsAppWebhookWorkers(boss, {
   ingest: createWhatsAppIngestService({
     repository: ingestRepository,
@@ -52,7 +60,36 @@ await registerWhatsAppWebhookWorkers(boss, {
   logger,
   concurrency: env.WORKER_CONCURRENCY,
 });
-logger.info({ concurrency: env.WORKER_CONCURRENCY }, "worker started");
+const mediaRepository = createMediaRepository(prisma);
+await registerWhatsAppMediaWorkers(boss, {
+  service: createMediaDownloadService({
+    repository: mediaRepository,
+    storage: createPostgresMediaStorage(prisma),
+    client: createWhatsAppMediaClient({
+      graph: {
+        baseUrl: env.WHATSAPP_GRAPH_BASE_URL,
+        version: env.WHATSAPP_GRAPH_API_VERSION,
+        accessToken: env.WHATSAPP_ACCESS_TOKEN,
+        timeoutMs: env.WHATSAPP_API_TIMEOUT_MS,
+      },
+      phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID,
+      downloadTimeoutMs: env.MEDIA_DOWNLOAD_TIMEOUT_MS,
+      production: env.NODE_ENV === "production",
+    }),
+    maxBytes: env.MEDIA_MAX_BYTES,
+  }),
+  repository: mediaRepository,
+  logger,
+  concurrency: env.MEDIA_WORKER_CONCURRENCY,
+});
+logger.info(
+  {
+    concurrency: env.WORKER_CONCURRENCY,
+    mediaConcurrency: env.MEDIA_WORKER_CONCURRENCY,
+    graphBaseUrl: env.WHATSAPP_GRAPH_BASE_URL,
+  },
+  "worker started",
+);
 
 let shuttingDown = false;
 

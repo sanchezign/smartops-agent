@@ -45,10 +45,15 @@ describe.skipIf(!testDatabaseUrl)("WhatsApp ingestion against Postgres", () => {
   let repository: ReturnType<typeof createWhatsAppIngestRepository>;
   let webhookRepository: ReturnType<typeof createWhatsAppWebhookRepository>;
   let eventId: string;
+  const enqueuedMedia: string[] = [];
 
   beforeAll(async () => {
     prisma = createTestPrisma();
-    repository = createWhatsAppIngestRepository(prisma);
+    repository = createWhatsAppIngestRepository(prisma, {
+      enqueueMediaInTx: async (_tx, mediaFileId) => {
+        enqueuedMedia.push(mediaFileId);
+      },
+    });
     webhookRepository = createWhatsAppWebhookRepository(prisma);
   });
 
@@ -112,10 +117,12 @@ describe.skipIf(!testDatabaseUrl)("WhatsApp ingestion against Postgres", () => {
       expect(await prisma.conversation.count()).toBe(1);
     });
 
-    it("stores media metadata (download happens in milestone 3)", async () => {
+    it("stores media metadata as pending and enqueues its download in the transaction", async () => {
+      enqueuedMedia.length = 0;
       await repository.ingestInboundMessage({
         message: inboundFrom("message-document"),
         webhookEventId: eventId,
+        mediaPlan: { status: "pending" },
       });
       const stored = await prisma.message.findFirstOrThrow({ include: { mediaFile: true } });
       expect(stored.text).toBe("Lista septiembre");
@@ -123,7 +130,23 @@ describe.skipIf(!testDatabaseUrl)("WhatsApp ingestion against Postgres", () => {
         waMediaId: "900000000000002",
         mimeType: "application/pdf",
         filename: "lista-precios.pdf",
+        status: "pending",
       });
+      expect(enqueuedMedia).toEqual([stored.mediaFile?.id]);
+    });
+
+    it("does not enqueue media planned as skipped or rejected", async () => {
+      enqueuedMedia.length = 0;
+      await repository.ingestInboundMessage({
+        message: inboundFrom("message-image"),
+        webhookEventId: eventId,
+        mediaPlan: { status: "rejected", rejectReason: "unsupported_mime" },
+      });
+      expect(await prisma.mediaFile.findFirstOrThrow()).toMatchObject({
+        status: "rejected",
+        rejectReason: "unsupported_mime",
+      });
+      expect(enqueuedMedia).toEqual([]);
     });
 
     it("links a BSUID-only contact to its phone number when a later message has both", async () => {

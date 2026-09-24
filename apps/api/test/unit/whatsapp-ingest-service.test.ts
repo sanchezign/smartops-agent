@@ -257,4 +257,63 @@ describe("WhatsAppIngestService.processEvent", () => {
     await expect(service.processEvent("evt-1", captureLogger().log)).rejects.toThrow("db down");
     expect(repo.finishEvent).not.toHaveBeenCalled();
   });
+
+  describe("media plan passed to the repository", () => {
+    function mediaEvent(type: string, media: Record<string, unknown>) {
+      return event({
+        object: "whatsapp_business_account",
+        entry: [
+          {
+            id: "1",
+            changes: [
+              {
+                field: "messages",
+                value: {
+                  metadata: { phone_number_id: PHONE_NUMBER_ID },
+                  messages: [{ id: `wamid.${type}`, from: "59899000111", type, [type]: media }],
+                },
+              },
+            ],
+          },
+        ],
+      });
+    }
+
+    it.each([
+      ["document", { id: "1", mime_type: "application/pdf" }, { status: "pending" }],
+      ["audio", { id: "2", mime_type: "audio/ogg; codecs=opus" }, { status: "pending" }],
+      [
+        "video",
+        { id: "3", mime_type: "video/mp4" },
+        { status: "skipped", rejectReason: "type_not_downloaded" },
+      ],
+      [
+        "document",
+        { id: "4", mime_type: "application/x-msdownload" },
+        { status: "rejected", rejectReason: "unsupported_mime" },
+      ],
+    ])("%s %o → %o", async (type, media, expected) => {
+      const { repo } = fakeRepository(mediaEvent(type, media));
+      const service = createWhatsAppIngestService({
+        repository: repo,
+        phoneNumberId: PHONE_NUMBER_ID,
+      });
+      await service.processEvent("evt-1", captureLogger().log);
+      expect(repo.ingestInboundMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ mediaPlan: expected }),
+      );
+    });
+
+    it("text messages carry no media plan", async () => {
+      const { repo } = fakeRepository(event(whatsappFixtureJson("message-text")));
+      const service = createWhatsAppIngestService({
+        repository: repo,
+        phoneNumberId: PHONE_NUMBER_ID,
+      });
+      await service.processEvent("evt-1", captureLogger().log);
+      expect(repo.ingestInboundMessage).toHaveBeenCalledWith(
+        expect.not.objectContaining({ mediaPlan: expect.anything() }),
+      );
+    });
+  });
 });

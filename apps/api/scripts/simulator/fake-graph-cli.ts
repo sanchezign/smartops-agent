@@ -4,6 +4,7 @@
  *   pnpm --filter @smartops/api wa:fake-graph
  *   pnpm --filter @smartops/api wa:fake-graph --fail-send 131030
  *   pnpm --filter @smartops/api wa:fake-graph --fault media-info:404 --fault download:500
+ *   pnpm --filter @smartops/api wa:fake-graph --fault download:corrupt   (checksum mismatch)
  *   pnpm --filter @smartops/api wa:fake-graph --outside-window --status-delay 3000
  *
  * Point the API at it with WHATSAPP_GRAPH_BASE_URL=http://localhost:4010 in apps/api/.env.
@@ -13,7 +14,12 @@
 import { parseArgs } from "node:util";
 import { pino } from "pino";
 import { loadEnv } from "../../src/config/env.js";
-import { createFakeGraph, type FaultStatus, type FaultTarget } from "./fake-graph.js";
+import {
+  createFakeGraph,
+  type FaultSpec,
+  type FaultStatus,
+  type FaultTarget,
+} from "./fake-graph.js";
 import { createMediaStore } from "./media-store.js";
 
 const FAULT_TARGETS: FaultTarget[] = ["media-info", "download", "send", "subscribed-apps"];
@@ -40,19 +46,20 @@ const logger = pino({
   transport: { target: "pino-pretty", options: { colorize: true, ignore: "pid,hostname" } },
 });
 
-const faults: Partial<Record<FaultTarget, FaultStatus>> = {};
+const faults: Partial<Record<FaultTarget, FaultSpec>> = {};
 for (const spec of values.fault) {
   const [target, status] = spec.split(":");
+  const isCorrupt = target === "download" && status === "corrupt";
   if (
     !FAULT_TARGETS.includes(target as FaultTarget) ||
-    !FAULT_STATUSES.includes(Number(status) as FaultStatus)
+    (!isCorrupt && !FAULT_STATUSES.includes(Number(status) as FaultStatus))
   ) {
     logger.fatal(
-      `invalid --fault "${spec}" (use ${FAULT_TARGETS.join("|")}:${FAULT_STATUSES.join("|")})`,
+      `invalid --fault "${spec}" (use ${FAULT_TARGETS.join("|")}:${FAULT_STATUSES.join("|")}, or download:corrupt)`,
     );
     process.exit(1);
   }
-  faults[target as FaultTarget] = Number(status) as FaultStatus;
+  faults[target as FaultTarget] = isCorrupt ? "corrupt" : (Number(status) as FaultStatus);
 }
 
 const statusFlow = values["status-flow"].split(",").map((s) => s.trim());
