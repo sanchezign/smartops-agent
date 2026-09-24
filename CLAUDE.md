@@ -209,6 +209,41 @@ Each one gets an ADR in docs/adr/.
 - `src/modules/whatsapp/graph-api.ts`: shared Graph API fetch helper (timeout,
   typed `GraphApiError`). CLI `pnpm --filter @smartops/api wa:subscribe` ensures
   the app is subscribed to the WABA (`/{WABA_ID}/subscribed_apps`).
+- 2026-09-24 (phase 3, milestone 2) Webhook processing via pg-boss 12 (schema
+  `pgboss`, pool max 5 per process). Queues: `whatsapp-webhook` (retryLimit 5,
+  backoff 5s→300s, expire 60s, DLQ `whatsapp-webhook-dlq` created first),
+  `webhook-sweeper` (cron every minute). API process = send only
+  (`supervise:false, schedule:false`); worker process `src/worker.ts` runs workers,
+  maintenance and cron. `pnpm dev` in apps/api runs `dev:api` + `dev:worker`.
+- Outbox: `WebhookEvent` is the source of truth. Receive = store → try enqueue →
+  `enqueuedAt` → ALWAYS 200 once stored. Enqueue failures are recovered by the
+  sweeper (events `received` + `enqueuedAt` null older than 60s). pg-boss
+  `singletonKey` is throttling, not a uniqueness guarantee → idempotency lives in
+  the worker (event not `received` → skip; unique `waMessageId`; unique
+  `MessageStatusEvent (waMessageId, status)`).
+- Dead letters: DLQ worker marks the event `failed` (only if still `received`);
+  every failed attempt stores the error in `webhook_events.error`.
+- Events for another `phone_number_id` (Meta dashboard "Test" sample uses
+  `123456123`) or fields not handled yet are marked `ignored` (new enum value).
+- Contact identity: phone (`waId`, now nullable) and/or Meta BSUID (`bsuid`,
+  unique) + `username`; CHECK `contacts_identity_chk` (one of them required) in
+  migration `whatsapp_worker` — keep it when editing Contact. Resolution by bsuid,
+  then waId; missing ids are filled in; two different contacts are never merged
+  (warn log). Pure rules in `contact-identity.ts`. BSUIDs are masked in logs
+  (`US.134…918`, `maskUserId`).
+- Outbound status rules (`message-status.ts`): forward-only pending<sent<delivered<read,
+  played→read; failed overrides pending/sent/delivered, never read; failed is final.
+  Applied with a conditional `updateMany` (atomic). Statuses for unknown wamids are
+  kept with `messageId = null` (M4 backfills when an outbound message gets its wamid).
+- Conversation `lastInboundAt`/`lastMessageAt` are monotonic (SQL GREATEST).
+- Parser (`whatsapp-webhook.parser.ts`) validates items one by one: an invalid item
+  is logged (`invalid_items`) and skipped, never fails the whole delivery.
+- Integration tests: `test/integration` against real Postgres when
+  `TEST_DATABASE_URL` is set (name must end in `_test`; global setup creates the DB
+  and runs `prisma migrate deploy`; tables are TRUNCATEd). Skipped otherwise.
+- `prisma migrate dev` refuses to run non-interactively when adding enum values;
+  migration `whatsapp_worker` was generated with `prisma migrate diff` +
+  `migrate deploy`.
 - Local tunnel: cloudflared quick tunnel (`cloudflared tunnel --url
   http://localhost:4000`); URL changes on every restart → update it in Meta.
 
@@ -217,14 +252,23 @@ Each one gets an ADR in docs/adr/.
 2. config/env/logging + initial Prisma schema — done (2026-09-24). Migrations:
    `init`, `price_change_rules`.
 3. core integration (WhatsApp Cloud API) — IN PROGRESS. Approved plan milestones:
-   M1 webhook verify + signed capture + status diagnostics — done (2026-09-24),
-   waiting on the checkpoint (real failed-status error code from Meta).
-   Next: M2 pg-boss queue + worker + idempotent persistence (Message,
-   MessageStatusEvent) → M3 media download + storage (ADR-008: bytea behind
+   M1 webhook verify + signed capture + status diagnostics — done (2026-09-24).
+   Checkpoint: real Meta webhook verified (signed test event stored once;
+   wa:subscribe subscribed the app to the WABA). The real failed-status error code
+   is still pending: Meta says the test number is still being set up.
+   M2 pg-boss queue + worker + idempotent persistence — done (2026-09-24),
+   branch `feat/phase-3-whatsapp`. Migration `whatsapp_worker`.
+   Next: M3 media download + storage (ADR-008: bytea behind
    `MediaStorage`, 25 MB cap) → M4 outbound client + 24h window + CLI send script
    → M5 real anonymized fixtures + tests.
 
 ## Known issues (out of scope)
+- `onInboundMessage` hook (phases 6/7) runs after the message is committed: if it
+  throws, the job retries but the message is then a duplicate and the hook is NOT
+  called again. Phase 6 must make the hand-off durable (enqueue its own job /
+  outbox) instead of calling n8n inline from the hook.
+- Real WhatsApp payloads are pending (test number still being set up in Meta):
+  fixtures are doc-based. Replace in M5 with anonymized real captures.
 - `webhook_events` has no retention yet: every delivery is kept forever (payloads
   up to 3 MB). Future: scheduled pg-boss cleanup job (e.g. delete `processed` events
   older than N days, keep `failed` longer), N configurable.

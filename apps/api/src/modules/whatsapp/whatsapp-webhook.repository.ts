@@ -13,6 +13,9 @@ export type SaveWebhookEventResult =
 
 export interface WhatsAppWebhookRepository {
   saveEvent(input: SaveWebhookEventInput): Promise<SaveWebhookEventResult>;
+  markEnqueued(id: string): Promise<void>;
+  /** `received` events never enqueued and older than `receivedBefore` (for the sweeper). */
+  findUnenqueued(options: { receivedBefore: Date; limit: number }): Promise<string[]>;
 }
 
 export function createWhatsAppWebhookRepository(prisma: PrismaClient): WhatsAppWebhookRepository {
@@ -34,6 +37,25 @@ export function createWhatsAppWebhookRepository(prisma: PrismaClient): WhatsAppW
         }
         throw err;
       }
+    },
+
+    async markEnqueued(id) {
+      await prisma.webhookEvent.update({ where: { id }, data: { enqueuedAt: new Date() } });
+    },
+
+    async findUnenqueued({ receivedBefore, limit }) {
+      const rows = await prisma.webhookEvent.findMany({
+        where: {
+          provider: "whatsapp",
+          status: "received",
+          enqueuedAt: null,
+          receivedAt: { lt: receivedBefore },
+        },
+        orderBy: { receivedAt: "asc" },
+        take: limit,
+        select: { id: true },
+      });
+      return rows.map((row) => row.id);
     },
   };
 }

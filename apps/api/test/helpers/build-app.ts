@@ -1,6 +1,7 @@
 import { createApp } from "../../src/app.js";
 import { createLogger } from "../../src/common/logger.js";
 import { parseEnv } from "../../src/config/env.js";
+import type { WebhookQueue } from "../../src/jobs/queues.js";
 import type { HealthRepository } from "../../src/modules/health/health.repository.js";
 import type {
   SaveWebhookEventInput,
@@ -34,18 +35,49 @@ export const downDb: HealthRepository = {
   },
 };
 
+type StoredEvent = SaveWebhookEventInput & {
+  id: string;
+  receivedAt: Date;
+  enqueuedAt: Date | null;
+};
+
 /** In-memory WebhookEvent store mirroring the unique (provider, body_sha256) constraint. */
-export function createInMemoryWebhookRepository(): WhatsAppWebhookRepository & {
-  events: (SaveWebhookEventInput & { id: string })[];
-} {
-  const events: (SaveWebhookEventInput & { id: string })[] = [];
+export function createInMemoryWebhookRepository(
+  options: { now?: () => Date } = {},
+): WhatsAppWebhookRepository & { events: StoredEvent[] } {
+  const now = options.now ?? (() => new Date());
+  const events: StoredEvent[] = [];
   return {
     events,
     async saveEvent(input) {
       if (events.some((e) => e.bodySha256 === input.bodySha256)) return { duplicate: true };
       const id = `evt-${events.length + 1}`;
-      events.push({ ...input, id });
+      events.push({ ...input, id, receivedAt: now(), enqueuedAt: null });
       return { duplicate: false, id };
+    },
+    async markEnqueued(id) {
+      const event = events.find((e) => e.id === id);
+      if (event) event.enqueuedAt = now();
+    },
+    async findUnenqueued({ receivedBefore, limit }) {
+      return events
+        .filter((e) => e.enqueuedAt === null && e.receivedAt < receivedBefore)
+        .slice(0, limit)
+        .map((e) => e.id);
+    },
+  };
+}
+
+/** Records enqueued event ids; `failWith` simulates pg-boss being down. */
+export function createFakeWebhookQueue(
+  options: { failWith?: Error } = {},
+): WebhookQueue & { enqueued: string[] } {
+  const enqueued: string[] = [];
+  return {
+    enqueued,
+    async enqueueWebhookEvent(eventId) {
+      if (options.failWith) throw options.failWith;
+      enqueued.push(eventId);
     },
   };
 }
@@ -56,6 +88,7 @@ export function buildTestApp(
     env?: Record<string, string>;
     healthRepository?: HealthRepository;
     whatsappWebhookRepository?: WhatsAppWebhookRepository;
+    webhookQueue?: WebhookQueue;
   } = {},
 ) {
   const env = parseEnv({ ...TEST_ENV_SOURCE, ...options.env });
@@ -65,5 +98,6 @@ export function buildTestApp(
     healthRepository: options.healthRepository ?? healthyDb,
     whatsappWebhookRepository:
       options.whatsappWebhookRepository ?? createInMemoryWebhookRepository(),
+    webhookQueue: options.webhookQueue ?? createFakeWebhookQueue(),
   });
 }

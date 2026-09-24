@@ -10,6 +10,19 @@ export function maskPhone(value: string | null | undefined): string {
   return `${digits.slice(0, 3)}${"*".repeat(digits.length - 6)}${digits.slice(-3)}`;
 }
 
+/**
+ * Masks a Meta business-scoped user id for logs: keeps the country prefix, the first 3
+ * and last 3 characters ("US.13491208655302741918" → "US.134…918").
+ */
+export function maskUserId(value: string | null | undefined): string {
+  if (!value) return "";
+  const dot = value.indexOf(".");
+  const prefix = dot > 0 && dot <= 3 ? value.slice(0, dot + 1) : "";
+  const id = value.slice(prefix.length);
+  if (id.length <= 6) return `${prefix}${"*".repeat(Math.max(id.length, 3))}`;
+  return `${prefix}${id.slice(0, 3)}…${id.slice(-3)}`;
+}
+
 /** Masks every run of 8+ digits (optionally "+"-prefixed) inside free text, e.g. provider error details. */
 export function maskPhonesInText(text: string): string {
   return text.replace(/\+?\d{8,}/g, (match) => maskPhone(match));

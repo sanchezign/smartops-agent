@@ -54,6 +54,10 @@ export const envSchema = z.object({
   WHATSAPP_API_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
   /** Per-IP limit for the webhook endpoint (separate from the global /api/v1 limit). */
   WEBHOOK_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(600),
+
+  // ─── Worker (pg-boss) ───
+  /** Parallel webhook-processing jobs per worker process. */
+  WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(20).default(2),
 });
 
 export type Env = z.infer<typeof envSchema>;

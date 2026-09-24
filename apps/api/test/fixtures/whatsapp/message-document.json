@@ -1,0 +1,45 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "200000000000002",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550000000",
+              "phone_number_id": "100000000000001"
+            },
+            "contacts": [
+              {
+                "wa_id": "59899000111",
+                "user_id": "UY.1A2B3C4D5E6F7G8H9I0J",
+                "profile": {
+                  "name": "Test Supplier"
+                }
+              }
+            ],
+            "messages": [
+              {
+                "from": "59899000111",
+                "from_user_id": "UY.1A2B3C4D5E6F7G8H9I0J",
+                "timestamp": "1790000100",
+                "id": "wamid.TEST_DOC_0001",
+                "type": "document",
+                "document": {
+                  "caption": "Lista septiembre",
+                  "filename": "lista-precios.pdf",
+                  "mime_type": "application/pdf",
+                  "sha256": "b4e2d1ef6c3f5a8b0d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c",
+                  "id": "900000000000002"
+                }
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}

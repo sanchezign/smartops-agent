@@ -1,10 +1,11 @@
-import { maskPhone, maskPhonesInText } from "../../common/phone.js";
-import { whatsappWebhookSchema, type WhatsAppError } from "./whatsapp-webhook.schemas.js";
+import { maskPhone, maskPhonesInText, maskUserId } from "../../common/phone.js";
+import { parseWhatsAppWebhook, type ParsedWebhook } from "./whatsapp-webhook.parser.js";
+import type { WhatsAppError } from "./whatsapp-webhook.schemas.js";
 
 /**
  * Log-safe summary of a webhook delivery: ids, types, statuses and Meta error codes.
- * Phone numbers are masked; message bodies, names and media ids are never included.
- * Pure — used for diagnostics logging and unit tested.
+ * Phone numbers and BSUIDs are masked; message bodies, names and media ids are never
+ * included. Pure — unit tested.
  */
 
 export interface SummaryError {
@@ -22,11 +23,20 @@ export type WebhookSummaryItem =
       wamid: string;
       status: string;
       recipient: string;
+      recipientUserId?: string;
       timestamp?: string;
       errors: SummaryError[];
     }
-  | { kind: "message"; field: string; wamid: string; type: string; from: string }
+  | {
+      kind: "message";
+      field: string;
+      wamid: string;
+      type: string;
+      from: string;
+      fromUserId?: string;
+    }
   | { kind: "error"; field: string; errors: SummaryError[] }
+  | { kind: "invalid_items"; field: string; items: { kind: string; index: number }[] }
   | { kind: "other_field"; field: string };
 
 export interface WebhookSummary {
@@ -36,7 +46,7 @@ export interface WebhookSummary {
   items: WebhookSummaryItem[];
 }
 
-function toSummaryErrors(errors: WhatsAppError[] | undefined): SummaryError[] {
+export function toSummaryErrors(errors: WhatsAppError[] | undefined): SummaryError[] {
   return (errors ?? []).map((e) => ({
     code: e.code,
     ...(e.title === undefined ? {} : { title: maskPhonesInText(e.title) }),
@@ -50,42 +60,50 @@ function toSummaryErrors(errors: WhatsAppError[] | undefined): SummaryError[] {
   }));
 }
 
-export function summarizeWhatsAppWebhook(payload: unknown): WebhookSummary {
-  const parsed = whatsappWebhookSchema.safeParse(payload);
-  if (!parsed.success) return { recognized: false, items: [] };
+export function summarizeParsedWebhook(parsed: ParsedWebhook): WebhookSummary {
+  if (!parsed.recognized) return { recognized: false, items: [] };
 
   const items: WebhookSummaryItem[] = [];
-  for (const entry of parsed.data.entry) {
-    for (const change of entry.changes) {
-      const { field, value } = change;
-      if (field !== "messages") {
-        items.push({ kind: "other_field", field });
-        continue;
-      }
-      for (const status of value.statuses ?? []) {
-        items.push({
-          kind: "status",
-          field,
-          wamid: status.id,
-          status: status.status,
-          recipient: maskPhone(status.recipient_id),
-          ...(status.timestamp === undefined ? {} : { timestamp: status.timestamp }),
-          errors: toSummaryErrors(status.errors),
-        });
-      }
-      for (const message of value.messages ?? []) {
-        items.push({
-          kind: "message",
-          field,
-          wamid: message.id,
-          type: message.type,
-          from: maskPhone(message.from),
-        });
-      }
-      if (value.errors?.length) {
-        items.push({ kind: "error", field, errors: toSummaryErrors(value.errors) });
-      }
+  for (const change of parsed.changes) {
+    const { field } = change;
+    if (field !== "messages") {
+      items.push({ kind: "other_field", field });
+      continue;
+    }
+    for (const status of change.statuses) {
+      items.push({
+        kind: "status",
+        field,
+        wamid: status.waMessageId,
+        status: status.status,
+        recipient: maskPhone(status.recipientWaId),
+        ...(status.recipientUserId ? { recipientUserId: maskUserId(status.recipientUserId) } : {}),
+        ...(status.timestamp
+          ? { timestamp: String(Math.floor(status.timestamp.getTime() / 1000)) }
+          : {}),
+        errors: toSummaryErrors(status.errors),
+      });
+    }
+    for (const message of change.messages) {
+      items.push({
+        kind: "message",
+        field,
+        wamid: message.waMessageId,
+        type: message.waType,
+        from: maskPhone(message.fromWaId),
+        ...(message.fromUserId ? { fromUserId: maskUserId(message.fromUserId) } : {}),
+      });
+    }
+    if (change.errors.length > 0) {
+      items.push({ kind: "error", field, errors: toSummaryErrors(change.errors) });
+    }
+    if (change.invalidItems.length > 0) {
+      items.push({ kind: "invalid_items", field, items: change.invalidItems });
     }
   }
-  return { recognized: true, object: parsed.data.object, items };
+  return { recognized: true, object: parsed.object, items };
+}
+
+export function summarizeWhatsAppWebhook(payload: unknown): WebhookSummary {
+  return summarizeParsedWebhook(parseWhatsAppWebhook(payload));
 }

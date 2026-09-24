@@ -1,0 +1,40 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "200000000000002",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550000000",
+              "phone_number_id": "100000000000001"
+            },
+            "contacts": [
+              {
+                "user_id": "UY.9Z8Y7X6W5V4U3T2S1R0Q",
+                "profile": {
+                  "name": "Username User",
+                  "username": "ferreteria.sur"
+                }
+              }
+            ],
+            "messages": [
+              {
+                "from_user_id": "UY.9Z8Y7X6W5V4U3T2S1R0Q",
+                "id": "wamid.TEST_BSUID_0001",
+                "timestamp": "1790000200",
+                "type": "text",
+                "text": {
+                  "body": "Hola, soy nuevo proveedor"
+                }
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}

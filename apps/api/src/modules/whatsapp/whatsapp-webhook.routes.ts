@@ -1,4 +1,5 @@
 import express, { Router } from "express";
+import type { WebhookQueue } from "../../jobs/queues.js";
 import { createRateLimiter } from "../../common/middleware/security.js";
 import { validate } from "../../common/middleware/validate.js";
 import { createWhatsAppWebhookController } from "./whatsapp-webhook.controller.js";
@@ -16,6 +17,7 @@ const WEBHOOK_BODY_LIMIT = "3mb";
  */
 export function createWhatsAppWebhookRouter(deps: {
   repository: WhatsAppWebhookRepository;
+  queue: WebhookQueue;
   appSecret: string;
   verifyToken: string;
   rateLimit: { windowMs: number; limit: number };
@@ -23,6 +25,7 @@ export function createWhatsAppWebhookRouter(deps: {
   const controller = createWhatsAppWebhookController(
     createWhatsAppWebhookService({
       repository: deps.repository,
+      queue: deps.queue,
       appSecret: deps.appSecret,
       verifyToken: deps.verifyToken,
     }),

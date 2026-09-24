@@ -124,6 +124,9 @@ enum WebhookProvider {
 enum WebhookEventStatus {
   received
   processed
+  /// Nothing to process for this business number (e.g. Meta dashboard test payloads,
+  /// another phone_number_id, fields not handled yet).
+  ignored
   failed
 }
 
@@ -143,10 +146,18 @@ model Supplier {
   @@map("suppliers")
 }
 
+/// Identity: phone (waId) and/or Meta business-scoped user id (bsuid). At least one is
+/// required — CHECK `contacts_identity_chk` in migration `whatsapp_worker` (Prisma does
+/// not model CHECKs; keep it when editing this model). Meta may omit the phone for users
+/// with a WhatsApp username, and the BSUID changes if the user changes phone number.
 model Contact {
   id         String      @id @default(uuid(7)) @db.Uuid
-  /// WhatsApp id (phone number in international format, digits only).
-  waId       String      @unique @map("wa_id")
+  /// WhatsApp id (phone number in international format, digits only). Null when Meta only sent a BSUID.
+  waId       String?     @unique @map("wa_id")
+  /// Business-scoped user id (e.g. "US.13491208655302741918"), from contacts[].user_id / from_user_id.
+  bsuid      String?     @unique
+  /// WhatsApp username, when the user adopted one.
+  username   String?
   name       String?
   kind       ContactKind @default(unknown)
   supplierId String?     @map("supplier_id") @db.Uuid
@@ -203,19 +214,24 @@ model Message {
   /// Timestamp reported by WhatsApp.
   waTimestamp    DateTime?        @map("wa_timestamp") @db.Timestamptz(3)
   mediaFileId    String?          @unique @map("media_file_id") @db.Uuid
+  /// Webhook delivery that created this message (inbound only).
+  webhookEventId String?          @map("webhook_event_id") @db.Uuid
   /// Original message object from the webhook payload (for debugging / reprocessing).
   raw            Json?
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  conversation  Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  authorUser    User?          @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
-  mediaFile     MediaFile?     @relation(fields: [mediaFileId], references: [id], onDelete: SetNull)
+  conversation  Conversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  authorUser    User?                @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+  mediaFile     MediaFile?           @relation(fields: [mediaFileId], references: [id], onDelete: SetNull)
+  webhookEvent  WebhookEvent?        @relation(fields: [webhookEventId], references: [id], onDelete: SetNull)
   ingestionRuns IngestionRun[]
   priceChanges  PriceChange[]
+  statusEvents  MessageStatusEvent[]
 
   @@index([conversationId, createdAt])
   @@index([authorUserId])
+  @@index([webhookEventId])
   @@map("messages")
 }
 
@@ -250,12 +266,44 @@ model WebhookEvent {
   attempts    Int                @default(0)
   error       String?
   receivedAt  DateTime           @default(now()) @map("received_at") @db.Timestamptz(3)
+  /// Set when a processing job was enqueued. Null + status received = the sweeper re-enqueues it.
+  enqueuedAt  DateTime?          @map("enqueued_at") @db.Timestamptz(3)
   processedAt DateTime?          @map("processed_at") @db.Timestamptz(3)
   updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  messages     Message[]
+  statusEvents MessageStatusEvent[]
 
   @@unique([provider, bodySha256])
   @@index([status, receivedAt])
   @@map("webhook_events")
+}
+
+/// Append-only log of WhatsApp delivery statuses (sent/delivered/read/played/failed).
+/// Unique (waMessageId, status) → re-deliveries are ignored. messageId is null when the
+/// message was not sent through this API (e.g. Meta dashboard test sends) or the status
+/// arrived before the outbound Message stored its wamid.
+model MessageStatusEvent {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  waMessageId     String    @map("wa_message_id")
+  /// Raw status value from Meta (kept as text to tolerate new values).
+  status          String
+  occurredAt      DateTime? @map("occurred_at") @db.Timestamptz(3)
+  recipientWaId   String?   @map("recipient_wa_id")
+  recipientUserId String?   @map("recipient_user_id")
+  errors          Json?
+  pricing         Json?
+  messageId       String?   @map("message_id") @db.Uuid
+  webhookEventId  String?   @map("webhook_event_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  message      Message?      @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  webhookEvent WebhookEvent? @relation(fields: [webhookEventId], references: [id], onDelete: SetNull)
+
+  @@unique([waMessageId, status])
+  @@index([messageId])
+  @@index([webhookEventId])
+  @@map("message_status_events")
 }
 
 // ─── Catalog ────────────────────────────────────────────────────────────────

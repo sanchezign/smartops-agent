@@ -33,16 +33,72 @@ export const whatsappStatusSchema = z
     status: z.string(),
     timestamp: z.string().optional(),
     recipient_id: z.string().optional(),
+    /** Business-scoped user id of the recipient (BSUID). */
+    recipient_user_id: z.string().optional(),
     errors: z.array(whatsappErrorSchema).optional(),
+    pricing: z.record(z.string(), z.unknown()).optional(),
+  })
+  .loose();
+
+const mediaSchema = z
+  .object({
+    id: z.string(),
+    mime_type: z.string().optional(),
+    sha256: z.string().optional(),
+    caption: z.string().optional(),
+    filename: z.string().optional(),
+    voice: z.boolean().optional(),
+  })
+  .loose();
+
+export const whatsappContactSchema = z
+  .object({
+    wa_id: z.string().optional(),
+    /** Business-scoped user id (BSUID). */
+    user_id: z.string().optional(),
+    profile: z
+      .object({ name: z.string().optional(), username: z.string().optional() })
+      .loose()
+      .optional(),
   })
   .loose();
 
 export const whatsappMessageSchema = z
   .object({
     id: z.string(),
+    /** Phone number (wa_id). May be omitted, or carry a BSUID, for users with a username. */
     from: z.string().optional(),
+    /** Business-scoped user id (BSUID) of the sender. */
+    from_user_id: z.string().optional(),
     timestamp: z.string().optional(),
     type: z.string(),
+    text: z.object({ body: z.string() }).loose().optional(),
+    image: mediaSchema.optional(),
+    document: mediaSchema.optional(),
+    audio: mediaSchema.optional(),
+    video: mediaSchema.optional(),
+    sticker: mediaSchema.optional(),
+    button: z.object({ text: z.string().optional() }).loose().optional(),
+    interactive: z
+      .object({
+        type: z.string().optional(),
+        button_reply: z.object({ title: z.string().optional() }).loose().optional(),
+        list_reply: z.object({ title: z.string().optional() }).loose().optional(),
+      })
+      .loose()
+      .optional(),
+    reaction: z.object({ emoji: z.string().optional() }).loose().optional(),
+    location: z
+      .object({
+        latitude: z.number().optional(),
+        longitude: z.number().optional(),
+        name: z.string().optional(),
+        address: z.string().optional(),
+      })
+      .loose()
+      .optional(),
+    system: z.object({ body: z.string().optional() }).loose().optional(),
+    errors: z.array(whatsappErrorSchema).optional(),
   })
   .loose();
 
@@ -56,9 +112,12 @@ export const whatsappChangeValueSchema = z
       })
       .loose()
       .optional(),
-    messages: z.array(whatsappMessageSchema).optional(),
-    statuses: z.array(whatsappStatusSchema).optional(),
-    errors: z.array(whatsappErrorSchema).optional(),
+    // Items are validated one by one by the parser: a malformed item must not
+    // invalidate the rest of the delivery.
+    contacts: z.array(z.unknown()).optional(),
+    messages: z.array(z.unknown()).optional(),
+    statuses: z.array(z.unknown()).optional(),
+    errors: z.array(z.unknown()).optional(),
   })
   .loose();
 
@@ -80,3 +139,6 @@ export const whatsappWebhookSchema = z
 
 export type WhatsAppWebhook = z.infer<typeof whatsappWebhookSchema>;
 export type WhatsAppError = z.infer<typeof whatsappErrorSchema>;
+export type WhatsAppMessage = z.infer<typeof whatsappMessageSchema>;
+export type WhatsAppStatus = z.infer<typeof whatsappStatusSchema>;
+export type WhatsAppContact = z.infer<typeof whatsappContactSchema>;

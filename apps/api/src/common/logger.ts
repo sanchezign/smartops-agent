@@ -10,10 +10,13 @@ export const REDACTED_PATHS = [
   'res.headers["set-cookie"]',
 ];
 
-export function createLogger(env: Pick<Env, "LOG_LEVEL" | "NODE_ENV">): Logger {
+export function createLogger(
+  env: Pick<Env, "LOG_LEVEL" | "NODE_ENV">,
+  service: "api" | "worker" = "api",
+): Logger {
   return pino({
     level: env.LOG_LEVEL,
-    base: { service: "api" },
+    base: { service },
     redact: { paths: REDACTED_PATHS, censor: "[redacted]" },
     ...(env.NODE_ENV === "development"
       ? {

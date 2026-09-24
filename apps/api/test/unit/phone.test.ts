@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { maskPhone, maskPhonesInText } from "../../src/common/phone.js";
+import { maskPhone, maskPhonesInText, maskUserId } from "../../src/common/phone.js";
+
+describe("maskUserId", () => {
+  it("keeps the country prefix, first 3 and last 3 characters", () => {
+    expect(maskUserId("US.13491208655302741918")).toBe("US.134…918");
+  });
+
+  it("masks short or prefix-less ids and handles empty input", () => {
+    expect(maskUserId("UY.ABC")).toBe("UY.***");
+    expect(maskUserId("ABCDEFGHIJ")).toBe("ABC…HIJ");
+    expect(maskUserId(null)).toBe("");
+  });
+});
 
 describe("maskPhone", () => {
   it("keeps the first 3 and last 3 digits", () => {

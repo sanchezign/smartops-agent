@@ -8,6 +8,7 @@ import { parseEnv } from "../../src/config/env.js";
 import { signWhatsAppBody } from "../../src/modules/whatsapp/whatsapp-signature.js";
 import {
   buildTestApp,
+  createFakeWebhookQueue,
   createInMemoryWebhookRepository,
   healthyDb,
   TEST_ENV_SOURCE,
@@ -153,7 +154,52 @@ describe("POST /api/v1/webhooks/whatsapp", () => {
     expect(res.status).toBe(200);
   });
 
-  it("logs the Meta error code of a failed status with the phone number masked", async () => {
+  it("enqueues the stored event and marks it enqueued", async () => {
+    const repository = createInMemoryWebhookRepository();
+    const queue = createFakeWebhookQueue();
+    const body = whatsappFixture("message-text");
+
+    const res = await post(
+      buildTestApp({ whatsappWebhookRepository: repository, webhookQueue: queue }),
+      body,
+      signWhatsAppBody(body, TEST_WHATSAPP_APP_SECRET),
+    );
+
+    expect(res.status).toBe(200);
+    expect(queue.enqueued).toEqual(["evt-1"]);
+    expect(repository.events[0]?.enqueuedAt).toBeInstanceOf(Date);
+  });
+
+  it("does not enqueue an identical re-delivery again", async () => {
+    const queue = createFakeWebhookQueue();
+    const app = buildTestApp({ webhookQueue: queue });
+    const body = whatsappFixture("status-sent");
+    const signature = signWhatsAppBody(body, TEST_WHATSAPP_APP_SECRET);
+
+    await post(app, body, signature);
+    await post(app, body, signature);
+    expect(queue.enqueued).toHaveLength(1);
+  });
+
+  it("still acks 200 when the queue is down, leaving the event for the sweeper", async () => {
+    const repository = createInMemoryWebhookRepository();
+    const body = whatsappFixture("message-text");
+
+    const res = await post(
+      buildTestApp({
+        whatsappWebhookRepository: repository,
+        webhookQueue: createFakeWebhookQueue({ failWith: new Error("pg-boss down") }),
+      }),
+      body,
+      signWhatsAppBody(body, TEST_WHATSAPP_APP_SECRET),
+    );
+
+    expect(res.status).toBe(200);
+    expect(repository.events).toHaveLength(1);
+    expect(repository.events[0]?.enqueuedAt).toBeNull();
+  });
+
+  it("never writes full phone numbers or message bodies to the logs", async () => {
     const lines: string[] = [];
     const sink = new Writable({
       write(chunk: Buffer, _encoding, callback) {
@@ -161,28 +207,22 @@ describe("POST /api/v1/webhooks/whatsapp", () => {
         callback();
       },
     });
-    const env = parseEnv({ ...TEST_ENV_SOURCE, LOG_LEVEL: "info" });
+    const env = parseEnv({ ...TEST_ENV_SOURCE, LOG_LEVEL: "trace" });
     const app = createApp({
       env,
-      logger: pino({ level: "info" }, sink),
+      logger: pino({ level: "trace" }, sink),
       healthRepository: healthyDb,
       whatsappWebhookRepository: createInMemoryWebhookRepository(),
+      webhookQueue: createFakeWebhookQueue(),
     });
-    const body = whatsappFixture("status-failed");
+    const body = whatsappFixture("message-text");
 
     const res = await post(app, body, signWhatsAppBody(body, TEST_WHATSAPP_APP_SECRET));
     expect(res.status).toBe(200);
 
     const logs = lines.join("");
-    const failed = lines
-      .map((line) => JSON.parse(line) as Record<string, unknown>)
-      .find((entry) => entry.msg === "whatsapp status: failed");
-    expect(failed).toMatchObject({
-      level: 40,
-      wamid: "wamid.TEST_FAILED_0001",
-      recipient: "598*****111",
-      errors: [expect.objectContaining({ code: 131030 })],
-    });
+    expect(logs).toContain("whatsapp webhook stored and enqueued");
     expect(logs).not.toContain("59899000111");
+    expect(logs).not.toContain("tornillo");
   });
 });

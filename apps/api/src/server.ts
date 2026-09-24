@@ -2,6 +2,7 @@ import { createApp } from "./app.js";
 import { createPrismaClient } from "./common/db.js";
 import { createLogger } from "./common/logger.js";
 import { loadEnv } from "./config/env.js";
+import { createPgBossWebhookQueue, startBoss } from "./jobs/boss.js";
 import { createHealthRepository } from "./modules/health/health.repository.js";
 import { createWhatsAppWebhookRepository } from "./modules/whatsapp/whatsapp-webhook.repository.js";
 
@@ -22,11 +23,22 @@ try {
   process.exit(1);
 }
 
+// pg-boss (send-only in the API). Fail fast: without it webhooks could not be queued.
+let boss: Awaited<ReturnType<typeof startBoss>>;
+try {
+  boss = await startBoss({ databaseUrl: env.DATABASE_URL, logger, role: "api" });
+  logger.info("job queue ready");
+} catch (err) {
+  logger.fatal({ err }, "job queue (pg-boss) failed to start");
+  process.exit(1);
+}
+
 const app = createApp({
   env,
   logger,
   healthRepository,
   whatsappWebhookRepository: createWhatsAppWebhookRepository(prisma),
+  webhookQueue: createPgBossWebhookQueue(boss),
 });
 const server = app.listen(env.PORT, () => {
   logger.info(
@@ -48,8 +60,10 @@ function shutdown(reason: string, exitCode: number): void {
   }, SHUTDOWN_TIMEOUT_MS).unref();
 
   server.close(() => {
-    prisma
-      .$disconnect()
+    boss
+      .stop({ graceful: true, timeout: 5_000 })
+      .catch((err: unknown) => logger.error({ err }, "error stopping pg-boss"))
+      .then(() => prisma.$disconnect())
       .catch((err: unknown) => logger.error({ err }, "error disconnecting prisma"))
       .finally(() => process.exit(exitCode));
   });

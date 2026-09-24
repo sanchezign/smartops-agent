@@ -6,6 +6,7 @@ import type { Logger } from "./common/logger.js";
 import { createHttpLogger } from "./common/middleware/http-logger.js";
 import { createCors, createRateLimiter } from "./common/middleware/security.js";
 import type { Env } from "./config/env.js";
+import type { WebhookQueue } from "./jobs/queues.js";
 import type { HealthRepository } from "./modules/health/health.repository.js";
 import { createHealthRouter } from "./modules/health/health.routes.js";
 import type { WhatsAppWebhookRepository } from "./modules/whatsapp/whatsapp-webhook.repository.js";
@@ -16,6 +17,7 @@ export interface AppDeps {
   logger: Logger;
   healthRepository: HealthRepository;
   whatsappWebhookRepository: WhatsAppWebhookRepository;
+  webhookQueue: WebhookQueue;
 }
 
 /** Builds the Express app without listening (server.ts listens; Supertest uses it directly). */
@@ -24,6 +26,7 @@ export function createApp({
   logger,
   healthRepository,
   whatsappWebhookRepository,
+  webhookQueue,
 }: AppDeps): Express {
   const app = express();
 
@@ -51,6 +54,7 @@ export function createApp({
     "/api/v1/webhooks/whatsapp",
     createWhatsAppWebhookRouter({
       repository: whatsappWebhookRepository,
+      queue: webhookQueue,
       appSecret: env.WHATSAPP_APP_SECRET,
       verifyToken: env.WHATSAPP_VERIFY_TOKEN,
       rateLimit: { windowMs: env.RATE_LIMIT_WINDOW_MS, limit: env.WEBHOOK_RATE_LIMIT_MAX },

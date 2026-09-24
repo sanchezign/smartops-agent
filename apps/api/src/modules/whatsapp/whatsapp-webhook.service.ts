@@ -1,26 +1,27 @@
 import { createHash } from "node:crypto";
 import { errors } from "../../common/errors/app-error.js";
 import type { Logger } from "../../common/logger.js";
+import type { WebhookQueue } from "../../jobs/queues.js";
 import type { WhatsAppWebhookRepository } from "./whatsapp-webhook.repository.js";
 import { isValidWhatsAppSignature, safeEqual } from "./whatsapp-signature.js";
-import { summarizeWhatsAppWebhook, type WebhookSummaryItem } from "./whatsapp-webhook.summary.js";
 
 export interface WhatsAppWebhookService {
   /** GET verification handshake. Returns hub.challenge or throws 403. */
   verifySubscription(query: { mode: string; token: string; challenge: string }): string;
   /**
    * POST delivery: verify signature over the RAW body (401 if invalid), parse, store
-   * (dedupe by body hash). Must stay fast: Meta expects a quick 200.
+   * (dedupe by body hash), enqueue. Never processes inline: Meta expects a quick 200.
    */
   receive(input: {
     rawBody: Buffer;
     signature: string | undefined;
     log: Logger;
-  }): Promise<{ eventId?: string; duplicate: boolean }>;
+  }): Promise<{ eventId?: string; duplicate: boolean; enqueued: boolean }>;
 }
 
 export function createWhatsAppWebhookService(deps: {
   repository: WhatsAppWebhookRepository;
+  queue: WebhookQueue;
   appSecret: string;
   verifyToken: string;
 }): WhatsAppWebhookService {
@@ -55,53 +56,24 @@ export function createWhatsAppWebhookService(deps: {
       const saved = await deps.repository.saveEvent({ bodySha256, payload });
 
       if (saved.duplicate) {
+        // If the original was never enqueued, the sweeper picks it up.
         log.info({ bodySha256 }, "whatsapp webhook duplicate delivery ignored");
-        return { duplicate: true };
+        return { duplicate: true, enqueued: false };
       }
 
-      // Milestone 1 (diagnostics): log-safe summary of what arrived. Processing is
-      // NOT done here — milestone 2 moves it to the pg-boss worker.
-      logSummary(log, saved.id, summarizeWhatsAppWebhook(payload));
-      return { eventId: saved.id, duplicate: false };
+      // The stored event is the source of truth (outbox): if enqueueing fails we still
+      // ack 200 and the sweeper re-enqueues it. A 5xx would make Meta re-deliver an
+      // identical body, which would be deduped — and the event would be lost.
+      try {
+        await deps.queue.enqueueWebhookEvent(saved.id);
+        await deps.repository.markEnqueued(saved.id);
+      } catch (err) {
+        log.error({ err, eventId: saved.id }, "enqueue failed; the sweeper will retry");
+        return { eventId: saved.id, duplicate: false, enqueued: false };
+      }
+
+      log.info({ eventId: saved.id }, "whatsapp webhook stored and enqueued");
+      return { eventId: saved.id, duplicate: false, enqueued: true };
     },
   };
-}
-
-function logSummary(
-  log: Logger,
-  eventId: string,
-  summary: ReturnType<typeof summarizeWhatsAppWebhook>,
-): void {
-  if (!summary.recognized) {
-    log.warn({ eventId }, "whatsapp webhook stored but payload shape not recognized");
-    return;
-  }
-  if (summary.items.length === 0) {
-    log.info({ eventId, object: summary.object }, "whatsapp webhook stored (no items)");
-    return;
-  }
-  for (const item of summary.items) {
-    logItem(log, eventId, item);
-  }
-}
-
-function logItem(log: Logger, eventId: string, item: WebhookSummaryItem): void {
-  switch (item.kind) {
-    case "status":
-      if (item.status === "failed" || item.errors.length > 0) {
-        log.warn({ eventId, ...item }, "whatsapp status: failed");
-      } else {
-        log.info({ eventId, ...item }, `whatsapp status: ${item.status}`);
-      }
-      return;
-    case "message":
-      log.info({ eventId, ...item }, "whatsapp inbound message");
-      return;
-    case "error":
-      log.warn({ eventId, field: item.field, errors: item.errors }, "whatsapp webhook errors");
-      return;
-    case "other_field":
-      log.info({ eventId, field: item.field }, "whatsapp webhook for another field");
-      return;
-  }
 }

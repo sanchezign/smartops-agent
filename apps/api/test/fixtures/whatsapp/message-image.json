@@ -1,0 +1,44 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "200000000000002",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550000000",
+              "phone_number_id": "100000000000001"
+            },
+            "contacts": [
+              {
+                "wa_id": "59899000111",
+                "user_id": "UY.1A2B3C4D5E6F7G8H9I0J",
+                "profile": {
+                  "name": "Test Supplier"
+                }
+              }
+            ],
+            "messages": [
+              {
+                "from": "59899000111",
+                "from_user_id": "UY.1A2B3C4D5E6F7G8H9I0J",
+                "timestamp": "1790000100",
+                "id": "wamid.TEST_IMAGE_0001",
+                "type": "image",
+                "image": {
+                  "caption": "Precios nuevos",
+                  "mime_type": "image/jpeg",
+                  "sha256": "a3f1c0de5b2e4f7a9c8d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b",
+                  "id": "900000000000001"
+                }
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}

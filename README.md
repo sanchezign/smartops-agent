@@ -48,7 +48,7 @@ docker compose ps        # postgres and n8n should become "healthy"
 pnpm --filter @smartops/api db:migrate
 
 # 5. Apps
-pnpm dev                 # api on http://localhost:4000, admin on http://localhost:3000
+pnpm dev                 # api on http://localhost:4000 + api worker, admin on http://localhost:3000
 curl http://localhost:4000/api/v1/health   # {"status":"ok","db":"up",...}
 ```
 
@@ -87,6 +87,19 @@ Alternatively, create the role/database manually with `psql` on the existing vol
 | `pnpm format:check` | Prettier check                          |
 
 Per app: `pnpm --filter @smartops/api <script>` / `pnpm --filter @smartops/admin <script>`.
+
+API processes (run with `pnpm --filter @smartops/api <script>`):
+
+| Script         | What it does                                                             |
+| -------------- | ------------------------------------------------------------------------ |
+| `dev`          | HTTP server + worker in watch mode (`dev:api` and `dev:worker`)          |
+| `start`        | HTTP server from `dist/` (webhooks, API)                                 |
+| `start:worker` | Worker from `dist/` (pg-boss: webhook processing, dead letters, sweeper) |
+| `wa:subscribe` | Subscribes the Meta app to the WABA webhooks (idempotent)                |
+
+Tests: `pnpm --filter @smartops/api test`. Integration tests (`test/integration`) run
+against a real Postgres when `TEST_DATABASE_URL` is set in `apps/api/.env` (database
+name must end in `_test`; created and migrated automatically), otherwise they are skipped.
 
 Database (API, run with `pnpm --filter @smartops/api <script>`):
 
