@@ -341,6 +341,12 @@ Each one gets an ADR in docs/adr/.
   `prisma.$queryRaw()` invocation"); the cause is in `err.meta`. Cosmetic.
 
 ## Conventions in this project
+- Git / GitHub backup (user rule, 2026-09-24): remote `origin` =
+  https://github.com/sanchezign/smartops-agent (private). At the end of EVERY milestone,
+  right after its commit, run `git push` of the CURRENT branch (never `--force`).
+  Any other push — other branches, force pushes, tags, deleting remote branches — must
+  be asked first. Run the secrets audit (no `.env`/`.sim` tracked, no real tokens)
+  before pushing.
 - WhatsApp fixtures: `apps/api/test/fixtures/whatsapp/`
 - Local WhatsApp without Meta: `wa:simulate` + `wa:fake-graph` (README "Desarrollo
   sin Meta"). New WhatsApp features must work against the fake Graph API; extend
