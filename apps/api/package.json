@@ -7,7 +7,7 @@
     "dev": "pnpm run \"/^dev:(api|worker)$/\"",
     "dev:api": "tsx watch --env-file-if-exists=.env src/server.ts",
     "dev:worker": "tsx watch --env-file-if-exists=.env src/worker.ts",
-    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "build": "prisma generate && tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
     "start": "node --env-file-if-exists=.env dist/server.js",
     "start:worker": "node --env-file-if-exists=.env dist/worker.js",
     "lint": "eslint .",

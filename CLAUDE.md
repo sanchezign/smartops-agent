@@ -326,6 +326,20 @@ Each one gets an ADR in docs/adr/.
   Once Meta accepted a message the job never throws (a retry would send it twice).
 - `Message.idempotencyKey` (unique): repeated sends with the same key return the same
   message (for n8n retries in phase 6).
+- 2026-09-24 (phase 4, M1) Speech-to-text (`src/modules/transcription/`): `Transcriber`
+  interface; `providers/openai-compatible.ts` (POST {baseUrl}/audio/transcriptions,
+  multipart via native FormData/Blob, file named `audio.<ext>` because providers infer
+  the format from the extension; `verbose_json` for whisper models, `json` otherwise;
+  temperature 0; errors: 400/413/415/422 invalid_audio (permanent), 401/403
+  unauthorized, 429 rate_limited (+ retry-after), 5xx/timeout/network transient).
+  Accepted as-is: Groq flac/mp3/m4a/ogg/wav/webm; OpenAI the same WITHOUT ogg; nobody
+  takes aac/amr. `providers/fake.ts` returns `<TRANSCRIPTION_FAKE_DIR>/<sha256>.txt` or a
+  placeholder. Env: `TRANSCRIPTION_PROVIDER` defaults to `fake`; key required unless
+  fake; fake rejected in production. Empty env values (`KEY=`) mean unset
+  (`optionalString`).
+- Versioned prompt files are runtime assets: `scripts/copy-assets.mjs` copies every
+  `src/**/prompts/` directory into `dist/` after tsc (build script). The vocabulary
+  prompt is validated at load (≤ 800 chars ≈ Whisper's 224-token limit).
 - Local tunnel: cloudflared quick tunnel (`cloudflared tunnel --url
   http://localhost:4000`); URL changes on every restart → update it in Meta.
 
@@ -351,8 +365,15 @@ Each one gets an ADR in docs/adr/.
      validate M1–M4 end to end with real Meta traffic (remove
      `WHATSAPP_GRAPH_BASE_URL` from `apps/api/.env` first). Resume as soon as Meta
      restores the account, before phase 12 (deploy).
-4. media normalization (Whisper for voice notes) — IN PROGRESS (plan stage). Branch
-   `feat/phase-4-media-normalization`.
+4. media normalization (Whisper for voice notes) — IN PROGRESS. Branch
+   `feat/phase-4-media-normalization`. Approved plan: Groq whisper-large-v3 free plan
+   (ADR-010), AAC/AMR skipped (unsupported_format), `transcriptions` table + copy in
+   Message.transcript, daily per-contact limit (50), fake provider, vocabulary prompt.
+   - M1 Transcriber interface + OpenAI-compatible provider (Groq/OpenAI) + fake + env
+     + ADR-010 — done (2026-09-24).
+   - Next: M2 transcription job (atomic enqueue on media stored), `transcriptions`
+     table, per-contact quota, onTranscribed hook, `wa:transcription:retry`,
+     `wa:simulate audio --transcript`.
 
 ## Known issues (out of scope)
 - **BLOCKER (external), 2026-09-24: Meta disabled the business portfolio and the
@@ -385,6 +406,11 @@ Each one gets an ADR in docs/adr/.
   messages yet (phase 7 coexistence).
 - Outbound network timeouts are retried: if Meta accepted the request but the response
   was lost, the contact may receive the message twice (WhatsApp has no idempotency key).
+- AAC / AMR voice audio cannot be transcribed without transcoding (ffmpeg); they are
+  skipped as unsupported_format (ADR-010). Revisit if real traffic shows them.
+- Demo mode: `fake` providers (Graph API, transcription, LLM in phase 5) are rejected
+  in production. The $0 public demo (phase 12) must decide how to run without a Meta
+  account (e.g. an explicit DEMO_MODE that allows fakes and shows a banner).
 - `media_blobs` has no retention yet (ADR-008): media is kept forever and grows the DB
   and its backups. Define a retention policy (e.g. delete blobs of processed media after
   N days, keep extracted data) before real traffic.

@@ -85,6 +85,29 @@ export const envSchema = z.object({
   // ─── Outbound messages ───
   /** Parallel outbound sends per worker (order per conversation is kept by the queue). */
   OUTBOUND_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(20).default(2),
+
+  // ─── Speech-to-text (ADR-005, ADR-010) ───
+  /** groq (default choice, free plan) | openai | fake (dev/tests/demo; forbidden in production). */
+  TRANSCRIPTION_PROVIDER: z.enum(["groq", "openai", "fake"]).default("fake"),
+  /** Required unless the provider is fake. */
+  TRANSCRIPTION_API_KEY: optionalString(z.string().min(10, "must be the provider API key")),
+  /** OpenAI-compatible base URL; defaults per provider (Groq: https://api.groq.com/openai/v1). */
+  TRANSCRIPTION_BASE_URL: optionalString(
+    z
+      .string()
+      .refine(isHttpUrl, { message: "must be an http(s) URL" })
+      .transform((url) => url.replace(/\/+$/, "")),
+  ),
+  /** Defaults per provider (Groq: whisper-large-v3). */
+  TRANSCRIPTION_MODEL: optionalString(z.string().min(1)),
+  /** ISO-639-1 language hint sent to Whisper. */
+  TRANSCRIPTION_LANGUAGE: z
+    .string()
+    .regex(/^[a-z]{2}$/, 'ISO-639-1 code, e.g. "es"')
+    .default("es"),
+  TRANSCRIPTION_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+  /** Fake provider: transcripts registered by `wa:simulate audio --transcript`. */
+  TRANSCRIPTION_FAKE_DIR: z.string().min(1).default(".sim/transcripts"),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -104,6 +127,13 @@ function crossFieldIssues(source: Record<string, string | undefined>): string[] 
     source.WHATSAPP_GRAPH_BASE_URL.replace(/\/+$/, "") !== META_GRAPH_BASE_URL
   ) {
     issues.push(`WHATSAPP_GRAPH_BASE_URL: must be ${META_GRAPH_BASE_URL} in production`);
+  }
+  const provider = source.TRANSCRIPTION_PROVIDER ?? "fake";
+  if (source.NODE_ENV === "production" && provider === "fake") {
+    issues.push("TRANSCRIPTION_PROVIDER: the fake provider is not allowed in production");
+  }
+  if (provider !== "fake" && !source.TRANSCRIPTION_API_KEY?.trim()) {
+    issues.push(`TRANSCRIPTION_API_KEY: is required when TRANSCRIPTION_PROVIDER=${provider}`);
   }
   return issues;
 }
@@ -166,4 +196,18 @@ function isOrigin(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** Optional env var where an empty value (`KEY=`) means "not set". */
+function optionalString<T extends z.ZodType>(schema: T) {
+  return z.preprocess((value) => (value === "" ? undefined : value), schema.optional());
 }

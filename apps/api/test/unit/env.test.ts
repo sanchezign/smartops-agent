@@ -6,6 +6,13 @@ const base: Record<string, string> = {
   DATABASE_URL: "postgresql://u:p@localhost:5432/db",
   ...TEST_WHATSAPP_ENV,
 };
+/** Production needs a real transcription provider; isolates the rule under test. */
+const prodBase: Record<string, string> = {
+  ...base,
+  NODE_ENV: "production",
+  TRANSCRIPTION_PROVIDER: "groq",
+  TRANSCRIPTION_API_KEY: "gsk_test_key_not_real",
+};
 const baseWithoutDb = Object.fromEntries(
   Object.entries(base).filter(([key]) => key !== "DATABASE_URL"),
 );
@@ -65,19 +72,17 @@ describe("parseEnv", () => {
   });
 
   it("requires CORS_ORIGINS in production", () => {
-    expect(issuesOf({ ...base, NODE_ENV: "production" })).toEqual([
-      "CORS_ORIGINS: is required in production",
-    ]);
+    expect(issuesOf(prodBase)).toEqual(["CORS_ORIGINS: is required in production"]);
   });
 
   it("treats a blank CORS_ORIGINS list as missing in production", () => {
-    expect(issuesOf({ ...base, NODE_ENV: "production", CORS_ORIGINS: " , " })).toEqual([
+    expect(issuesOf({ ...prodBase, CORS_ORIGINS: " , " })).toEqual([
       "CORS_ORIGINS: is required in production",
     ]);
   });
 
   it("reports cross-field problems together with field errors", () => {
-    const issues = issuesOf({ ...base, NODE_ENV: "production", LOG_LEVEL: "loud" });
+    const issues = issuesOf({ ...prodBase, LOG_LEVEL: "loud" });
     expect(issues).toEqual([
       expect.stringContaining("LOG_LEVEL"),
       "CORS_ORIGINS: is required in production",
@@ -142,7 +147,7 @@ describe("parseEnv", () => {
     });
 
     it("only allows Meta in production (the fake Graph API can never ship)", () => {
-      const prod = { ...base, NODE_ENV: "production", CORS_ORIGINS: "https://admin.example.com" };
+      const prod = { ...prodBase, CORS_ORIGINS: "https://admin.example.com" };
       expect(issuesOf({ ...prod, WHATSAPP_GRAPH_BASE_URL: "http://localhost:4010" })).toEqual([
         "WHATSAPP_GRAPH_BASE_URL: must be https://graph.facebook.com in production",
       ]);
