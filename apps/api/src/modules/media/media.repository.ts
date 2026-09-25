@@ -24,6 +24,13 @@ export type OnMediaStoredInTx = (
   media: { mediaFileId: string; kind: MediaKind; mimeType: string },
 ) => Promise<void>;
 
+/** Runs several media-stored hooks in order, inside the same transaction. */
+export function composeOnStoredInTx(...hooks: OnMediaStoredInTx[]): OnMediaStoredInTx {
+  return async (tx, media) => {
+    for (const hook of hooks) await hook(tx, media);
+  };
+}
+
 export interface MediaRepository {
   getForDownload(id: string): Promise<MediaFileForDownload | null>;
   incrementAttempts(id: string): Promise<void>;

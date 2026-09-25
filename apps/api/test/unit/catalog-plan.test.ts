@@ -356,6 +356,12 @@ describe("planner: price rules", () => {
     ).toMatchObject({ action: "review", kind: "uncertain_value" });
     const forced = ungated(plan({ catalog: [p], overrides: { forceReview: true } }));
     expect(forced.lines[0]).toMatchObject({ action: "review", reasons: ["suspicious_source"] });
+    const incomplete = ungated(plan({ catalog: [p], overrides: { documentIncomplete: true } }));
+    expect(incomplete.lines[0]).toMatchObject({
+      action: "review",
+      kind: "uncertain_value",
+      reasons: ["document_incomplete"],
+    });
   });
 
   it("price alerts at or above the alert %, low stock alerts with a threshold", () => {

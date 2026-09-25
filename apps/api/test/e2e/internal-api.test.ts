@@ -17,6 +17,13 @@ function app() {
           return { runId, status: "ingested", supplierId: null, pendingReviews: 0, warnings: [] };
         },
       },
+      ingestion: {
+        ...stubInternalDeps.ingestion,
+        getRun: async (runId) => {
+          if (runId !== RUN_ID) throw errors.notFound("Ingestion run not found");
+          return { runId, status: "extracting" } as never;
+        },
+      },
       settings: {
         getAll: async () => ({ "catalog.maxIncreasePct": 50 }) as never,
         getCatalogSettings: stubInternalDeps.settings.getCatalogSettings,
@@ -65,5 +72,21 @@ describe("internal API (/api/v1/internal)", () => {
     expect(rules.status).toBe(200);
     expect(rules.headers["cache-control"]).toBe("no-store");
     expect(rules.body).toEqual({ rules: { "catalog.maxIncreasePct": 50 } });
+  });
+
+  it("GET /runs/:id reports the run status (n8n polls it)", async () => {
+    const auth = { "X-Internal-Api-Key": TEST_INTERNAL_API_KEY };
+    const ok = await request(app()).get(`/api/v1/internal/runs/${RUN_ID}`).set(auth);
+    expect(ok.status).toBe(200);
+    expect(ok.body).toEqual({ runId: RUN_ID, status: "extracting" });
+    expect(ok.headers["cache-control"]).toBe("no-store");
+    const bad = await request(app()).get("/api/v1/internal/runs/not-a-uuid").set(auth);
+    expect(bad.status).toBe(400);
+    const missing = await request(app())
+      .get("/api/v1/internal/runs/0199a1b2-0000-7000-8000-000000000009")
+      .set(auth);
+    expect(missing.status).toBe(404);
+    const noKey = await request(app()).get(`/api/v1/internal/runs/${RUN_ID}`);
+    expect(noKey.status).toBe(401);
   });
 });

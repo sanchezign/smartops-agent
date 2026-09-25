@@ -238,6 +238,7 @@ export function createCatalogIngestService(deps: {
             overrides: {
               acceptTaxChange: ctx.approvedGates.includes("tax_basis_changed"),
               forceReview: ctx.approvedGates.includes("suspicious_instructions"),
+              documentIncomplete: stored.documentIncomplete === true,
             },
           });
 

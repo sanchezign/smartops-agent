@@ -8,6 +8,7 @@ import {
   QUEUES,
   type MediaDownloadJob,
   type OutboundMessageJob,
+  type DocumentConversionJob,
   type TranscriptionJob,
   type WebhookEventJob,
   type WebhookQueue,
@@ -109,6 +110,17 @@ export function createEnqueueTranscriptionInTx(
     const data: TranscriptionJob = { mediaFileId };
     const jobId = await boss.send(QUEUES.mediaTranscription, data, { db: fromPrisma(tx) });
     if (!jobId) throw new Error(`pg-boss did not create a transcription job for ${mediaFileId}`);
+  };
+}
+
+/** Enqueues a document conversion inside the caller's Prisma transaction (media stored). */
+export function createEnqueueDocumentConversionInTx(
+  boss: PgBoss,
+): (tx: Prisma.TransactionClient, mediaFileId: string) => Promise<void> {
+  return async (tx, mediaFileId) => {
+    const data: DocumentConversionJob = { mediaFileId };
+    const jobId = await boss.send(QUEUES.documentConversion, data, { db: fromPrisma(tx) });
+    if (!jobId) throw new Error(`pg-boss did not create a conversion job for ${mediaFileId}`);
   };
 }
 

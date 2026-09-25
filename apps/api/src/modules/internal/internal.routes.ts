@@ -14,6 +14,8 @@ import type { SettingsService } from "../settings/settings.service.js";
  *   POST /classify        { messageId } → ingestion run (classification)
  *   POST /extract         { runId }     → extraction (locked per run)
  *   POST /catalog/ingest  { runId }     → catalog ingest (locked per run) + review items
+ *   GET  /runs/:id                       → run status (poll it while "extracting";
+ *                                          chunked extraction answers 202 in phase 5 M3b)
  *   GET  /rules                          → no-code rules (settings) for the notifier
  * All POSTs are idempotent: repeating one returns the stored result.
  * Never exposed to the frontend (no CORS origin needs it; the key is server-side only).
@@ -27,6 +29,7 @@ export interface InternalDeps {
 
 const messageBody = z.object({ messageId: z.uuid() }).strict();
 const runBody = z.object({ runId: z.uuid() }).strict();
+const runParams = z.object({ id: z.uuid() });
 
 export function createInternalRouter(
   deps: InternalDeps & {
@@ -55,6 +58,12 @@ export function createInternalRouter(
   router.post("/catalog/ingest", validate({ body: runBody }), async (req, res) => {
     const { runId } = getValidated<typeof runBody>(res, "body");
     res.json(await deps.catalog.ingest(runId, log(req)));
+  });
+
+  router.get("/runs/:id", validate({ params: runParams }), async (req, res) => {
+    const { id } = getValidated<typeof runParams>(res, "params");
+    res.set("Cache-Control", "no-store");
+    res.json(await deps.ingestion.getRun(id));
   });
 
   router.get("/rules", async (req, res) => {

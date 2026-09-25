@@ -1,6 +1,7 @@
 import type { PrismaClient } from "../../common/db.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 import type {
+  DocumentConversionStatus,
   IngestionClassification,
   IngestionStatus,
   MediaStatus,
@@ -24,6 +25,43 @@ export interface MessageContext {
     mimeType: string;
     filename: string | null;
     transcriptionStatus: TranscriptionStatus | null;
+    /** Conversion of spreadsheets / CSV / text / Word (phase 5 M3a). */
+    conversion: DocumentConversionInfo | null;
+  } | null;
+}
+
+export interface DocumentConversionInfo {
+  status: DocumentConversionStatus;
+  reason: string | null;
+  format: string | null;
+  text: string | null;
+  dataRows: number | null;
+  truncated: boolean;
+  needsReview: boolean;
+  warnings: { code: string; message: string }[];
+}
+
+/** GET /api/v1/internal/runs/:id — everything n8n needs to follow a run. */
+export interface RunDetail {
+  id: string;
+  messageId: string;
+  status: IngestionStatus;
+  classification: IngestionClassification | null;
+  supplierId: string | null;
+  rawExtraction: unknown;
+  report: unknown;
+  errors: unknown;
+  costUsd: string | null;
+  createdAt: Date;
+  finishedAt: Date | null;
+  reviewItems: { id: string; scope: string; kind: string; status: string }[];
+  document: {
+    status: DocumentConversionStatus;
+    format: string | null;
+    reason: string | null;
+    dataRows: number | null;
+    truncated: boolean;
+    needsReview: boolean;
   } | null;
 }
 
@@ -45,6 +83,7 @@ export interface IngestionRepository {
   /** Latest run of the message that is not failed. */
   findActiveRun(messageId: string): Promise<IngestionRunRecord | null>;
   getRun(runId: string): Promise<IngestionRunRecord | null>;
+  getRunDetail(runId: string): Promise<RunDetail | null>;
   createRun(messageId: string, supplierId: string | null): Promise<IngestionRunRecord>;
   saveClassification(
     runId: string,
@@ -160,6 +199,18 @@ export function createIngestionRepository(prisma: PrismaClient): IngestionReposi
               mimeType: true,
               filename: true,
               transcription: { select: { status: true } },
+              documentConversion: {
+                select: {
+                  status: true,
+                  reason: true,
+                  format: true,
+                  text: true,
+                  dataRows: true,
+                  truncated: true,
+                  needsReview: true,
+                  warnings: true,
+                },
+              },
             },
           },
         },
@@ -186,6 +237,13 @@ export function createIngestionRepository(prisma: PrismaClient): IngestionReposi
               mimeType: m.mediaFile.mimeType,
               filename: m.mediaFile.filename,
               transcriptionStatus: m.mediaFile.transcription?.status ?? null,
+              conversion: m.mediaFile.documentConversion
+                ? {
+                    ...m.mediaFile.documentConversion,
+                    warnings: (m.mediaFile.documentConversion.warnings ??
+                      []) as DocumentConversionInfo["warnings"],
+                  }
+                : null,
             }
           : null,
       };
@@ -211,6 +269,46 @@ export function createIngestionRepository(prisma: PrismaClient): IngestionReposi
     async getRun(runId) {
       const row = await prisma.ingestionRun.findUnique({ where: { id: runId }, select: runSelect });
       return row ? toRecord(row) : null;
+    },
+
+    async getRunDetail(runId) {
+      const row = await prisma.ingestionRun.findUnique({
+        where: { id: runId },
+        select: {
+          ...runSelect,
+          createdAt: true,
+          finishedAt: true,
+          reviewItems: {
+            select: { id: true, scope: true, kind: true, status: true },
+            orderBy: { createdAt: "asc" },
+          },
+          message: {
+            select: {
+              mediaFile: {
+                select: {
+                  documentConversion: {
+                    select: {
+                      status: true,
+                      format: true,
+                      reason: true,
+                      dataRows: true,
+                      truncated: true,
+                      needsReview: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+      if (!row) return null;
+      const { message, costUsd, ...rest } = row;
+      return {
+        ...rest,
+        costUsd: costUsd ? costUsd.toString() : null,
+        document: message.mediaFile?.documentConversion ?? null,
+      };
     },
 
     async createRun(messageId, supplierId) {

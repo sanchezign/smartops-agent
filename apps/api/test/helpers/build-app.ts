@@ -91,7 +91,7 @@ const notConfigured = async (): Promise<never> => {
 
 /** Internal API stubs (tests that need them pass real services). */
 export const stubInternalDeps: InternalDeps = {
-  ingestion: { classify: notConfigured, extract: notConfigured },
+  ingestion: { classify: notConfigured, extract: notConfigured, getRun: notConfigured },
   catalog: { ingest: notConfigured },
   settings: { getAll: notConfigured, getCatalogSettings: notConfigured },
 };

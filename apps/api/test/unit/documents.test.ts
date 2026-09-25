@@ -15,6 +15,7 @@ import { capChars, markdownTable } from "../../src/modules/documents/markdown.js
 import { plainNumber } from "../../src/modules/documents/converters/spreadsheet.js";
 import { decodeText, sniffDelimiter } from "../../src/modules/documents/converters/text.js";
 import { assertSafeZip } from "../../src/modules/documents/zip-guard.js";
+import { applyDocumentRules } from "../../src/modules/extraction/document-rules.js";
 import { buildExtractionContent } from "../../src/modules/extraction/message-input.js";
 import {
   DOCX_MIME,
@@ -340,4 +341,46 @@ describe("isolated worker thread", () => {
     });
     expect(result).toMatchObject({ ok: false, reason: "out_of_memory" });
   }, 30_000);
+});
+
+describe("extraction rules for converted documents", () => {
+  const output = (listKind: "full_list" | "partial_update") => ({
+    isPriceList: true,
+    listKind,
+    fullListEvidence: listKind === "full_list" ? "Lista completa" : null,
+    supplierName: null,
+    currency: "UYU",
+    validFrom: null,
+    taxIncluded: null,
+    globalChangePct: null,
+    items: [],
+    warnings: ["aviso del modelo"],
+    suspiciousInstructions: false,
+  });
+  const doc = (over: Partial<{ truncated: boolean; needsReview: boolean }> = {}) => ({
+    truncated: false,
+    needsReview: false,
+    warnings: [{ code: "hidden_sheets_skipped", message: "Hojas ocultas ignoradas: 1." }],
+    ...over,
+  });
+
+  it("adds the conversion warnings and keeps a complete full list", () => {
+    const result = applyDocumentRules(output("full_list"), doc());
+    expect(result.listKind).toBe("full_list");
+    expect(result.warnings).toEqual(["Documento: Hojas ocultas ignoradas: 1.", "aviso del modelo"]);
+  });
+
+  it.each([{ truncated: true }, { needsReview: true }])(
+    "an incomplete document (%o) can never be a full list",
+    (over) => {
+      const result = applyDocumentRules(output("full_list"), doc(over));
+      expect(result).toMatchObject({ listKind: "partial_update", fullListEvidence: null });
+      expect(result.warnings.at(-1)).toMatch(/actualización parcial/);
+    },
+  );
+
+  it("messages that are not converted documents are untouched", () => {
+    const original = output("full_list");
+    expect(applyDocumentRules(original, null)).toBe(original);
+  });
 });

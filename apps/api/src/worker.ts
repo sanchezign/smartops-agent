@@ -2,18 +2,27 @@ import { createPrismaClient } from "./common/db.js";
 import { createLogger } from "./common/logger.js";
 import { loadEnv } from "./config/env.js";
 import {
+  createEnqueueDocumentConversionInTx,
   createEnqueueMediaInTx,
   createEnqueueOutboundInTx,
   createEnqueueTranscriptionInTx,
   createPgBossWebhookQueue,
   startBoss,
 } from "./jobs/boss.js";
+import { registerDocumentConversionWorkers } from "./jobs/document-conversion.job.js";
 import { registerMediaTranscriptionWorkers } from "./jobs/media-transcription.job.js";
 import { registerWhatsAppMediaWorkers } from "./jobs/whatsapp-media.job.js";
 import { registerWhatsAppOutboundWorkers } from "./jobs/whatsapp-outbound.job.js";
 import { registerWhatsAppWebhookWorkers } from "./jobs/whatsapp-webhook.job.js";
 import { createPostgresMediaStorage } from "./modules/media/media-storage.js";
-import { createMediaRepository } from "./modules/media/media.repository.js";
+import {
+  createDocumentConversionRepository,
+  createOnDocumentStoredInTx,
+} from "./modules/documents/document-conversion.repository.js";
+import { createDocumentConversionService } from "./modules/documents/document-conversion.service.js";
+import { createIsolatedDocumentConverter } from "./modules/documents/document-converter.js";
+import { DEFAULT_CONVERSION_LIMITS } from "./modules/documents/document-types.js";
+import { composeOnStoredInTx, createMediaRepository } from "./modules/media/media.repository.js";
 import { createMediaDownloadService } from "./modules/media/media.service.js";
 import { createOutboundRepository } from "./modules/messaging/outbound.repository.js";
 import { createOutboundService } from "./modules/messaging/outbound.service.js";
@@ -88,11 +97,15 @@ const graph = {
 };
 
 const mediaStorage = createPostgresMediaStorage(prisma);
-// Audio stored → pending transcription + job, in the same transaction (phase 4).
+// Media stored → in the same transaction: audio → pending transcription + job (phase 4);
+// spreadsheet/CSV/text/Word → pending conversion + job (phase 5 M3a).
 const mediaRepository = createMediaRepository(prisma, {
-  onStoredInTx: createOnAudioStoredInTx({
-    enqueueTranscriptionInTx: createEnqueueTranscriptionInTx(boss),
-  }),
+  onStoredInTx: composeOnStoredInTx(
+    createOnAudioStoredInTx({ enqueueTranscriptionInTx: createEnqueueTranscriptionInTx(boss) }),
+    createOnDocumentStoredInTx({
+      enqueueConversionInTx: createEnqueueDocumentConversionInTx(boss),
+    }),
+  ),
 });
 await registerWhatsAppMediaWorkers(boss, {
   service: createMediaDownloadService({
@@ -137,6 +150,26 @@ await registerMediaTranscriptionWorkers(boss, {
   repository: transcriptionRepository,
   logger,
   concurrency: env.TRANSCRIPTION_WORKER_CONCURRENCY,
+});
+
+const conversionRepository = createDocumentConversionRepository(prisma);
+await registerDocumentConversionWorkers(boss, {
+  service: createDocumentConversionService({
+    repository: conversionRepository,
+    storage: mediaStorage,
+    converter: createIsolatedDocumentConverter({
+      ...DEFAULT_CONVERSION_LIMITS,
+      maxBytes: env.DOC_CONVERT_MAX_BYTES,
+      maxSheets: env.DOC_CONVERT_MAX_SHEETS,
+      maxRowsPerSheet: env.DOC_CONVERT_MAX_ROWS,
+      maxColumns: env.DOC_CONVERT_MAX_COLUMNS,
+      maxChars: env.DOC_CONVERT_MAX_CHARS,
+      timeoutMs: env.DOC_CONVERT_TIMEOUT_MS,
+    }),
+  }),
+  repository: conversionRepository,
+  logger,
+  concurrency: env.DOC_CONVERT_WORKER_CONCURRENCY,
 });
 
 logger.info(

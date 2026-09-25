@@ -5,7 +5,9 @@ import { errors } from "../../common/errors/app-error.js";
 import type { Logger } from "../../common/logger.js";
 import type { IngestionClassification } from "../../generated/prisma/enums.js";
 import type { MediaStorage } from "../media/media-storage.js";
+import { documentFormat } from "../documents/document-types.js";
 import { buildCatalogContext } from "./catalog-context.js";
+import { applyDocumentRules } from "./document-rules.js";
 import {
   applyExtractionRules,
   classificationJsonSchema,
@@ -18,6 +20,7 @@ import type {
   IngestionRepository,
   IngestionRunRecord,
   MessageContext,
+  RunDetail,
 } from "./ingestion.repository.js";
 import {
   buildClassificationContent,
@@ -61,12 +64,38 @@ export interface StoredExtraction {
   byNormalizedName: Record<string, string>;
   catalogTruncated: boolean;
   promptVersion: string;
+  /** Converted document with possibly missing values (formula without value): every
+   *  line goes to review in the catalog ingest (phase 5 M3a). */
+  documentIncomplete?: boolean;
+}
+
+/** GET /api/v1/internal/runs/:id */
+export interface RunView {
+  runId: string;
+  messageId: string;
+  status: string;
+  classification: IngestionClassification | null;
+  supplierId: string | null;
+  itemCount: number | null;
+  listKind: string | null;
+  suspiciousInstructions: boolean | null;
+  errors: unknown;
+  ingest: { counts: unknown; pendingReviews: number; gate: unknown } | null;
+  reviewItems: { id: string; scope: string; kind: string; status: string }[];
+  document: RunDetail["document"];
+  costUsd: string | null;
+  createdAt: string;
+  finishedAt: string | null;
 }
 
 export interface IngestionService {
   classify(messageId: string, log: Logger): Promise<RunResult>;
   extract(runId: string, log: Logger): Promise<RunResult>;
+  getRun(runId: string): Promise<RunView>;
 }
+
+/** Converted documents with more product lines than this need chunked extraction (M3b). */
+export const MAX_SINGLE_CALL_ROWS = 30;
 
 const PRICE_CLASSES = new Set<IngestionClassification>(["price_list_full", "price_update_partial"]);
 const MEDIA_TYPES = new Set(["image", "document"]);
@@ -96,7 +125,10 @@ export function createIngestionService(deps: {
   ai: AiClient;
   prompts: { classifier: LoadedPrompt; extractor: LoadedPrompt };
   models: AiModels;
+  /** Converted documents above this many product lines go to review (M3b pending). */
+  maxSingleCallRows?: number;
 }): IngestionService {
+  const maxSingleCallRows = deps.maxSingleCallRows ?? MAX_SINGLE_CALL_ROWS;
   async function messageForAi(ctx: MessageContext, withMedia: boolean): Promise<MessageForAi> {
     const needsBytes = withMedia && ctx.media?.status === "stored";
     return {
@@ -106,6 +138,8 @@ export function createIngestionService(deps: {
       filename: ctx.media?.filename ?? null,
       mimeType: ctx.media?.mimeType ?? null,
       media: needsBytes && ctx.media ? await deps.storage.get(ctx.media.id) : null,
+      documentText:
+        ctx.media?.conversion?.status === "done" ? (ctx.media.conversion.text ?? null) : null,
       contactKind: ctx.contact.kind,
       supplierName: ctx.supplier?.name ?? null,
     };
@@ -123,6 +157,12 @@ export function createIngestionService(deps: {
     }
     if (ctx.messageType === "audio" && (ctx.media.transcriptionStatus ?? "pending") === "pending") {
       throw errors.notReady("Voice note is still being transcribed");
+    }
+    if (documentFormat(ctx.media.mimeType, ctx.media.filename) !== null) {
+      if (!ctx.media.conversion)
+        throw errors.conflict("Document has no conversion (stored before phase 5 M3a)");
+      if (ctx.media.conversion.status === "pending")
+        throw errors.notReady("Document is still being converted");
     }
   }
 
@@ -219,6 +259,26 @@ export function createIngestionService(deps: {
             ? await deps.repository.getSupplierCatalog(ctx.contact.supplierId)
             : [],
         );
+        // Converted documents: failed conversion or too many lines → human review, no LLM.
+        const conversion = ctx.media?.conversion ?? null;
+        const documentBlock =
+          conversion?.status === "failed"
+            ? { reason: `document_${conversion.reason ?? "failed"}`, detail: conversion.reason }
+            : conversion?.status === "done" && (conversion.dataRows ?? 0) > maxSingleCallRows
+              ? {
+                  reason: "requires_chunked_extraction",
+                  detail: `${conversion.dataRows} product lines > ${maxSingleCallRows}: requiere extracción por partes`,
+                }
+              : null;
+        if (documentBlock) {
+          await deps.repository.saveExtraction(run.id, {
+            status: "needs_review",
+            classification: run.classification,
+            errors: documentBlock,
+          });
+          log.warn({ runId: run.id, reason: documentBlock.reason }, "document not extracted");
+          return summary((await deps.repository.getRun(run.id)) ?? run);
+        }
         const content = buildExtractionContent(await messageForAi(ctx, true), catalog.text);
         if (!content.ok) {
           await deps.repository.saveExtraction(run.id, {
@@ -250,7 +310,10 @@ export function createIngestionService(deps: {
           },
         );
 
-        const output = applyExtractionRules(result.data, catalog.refNames);
+        const output = applyDocumentRules(
+          applyExtractionRules(result.data, catalog.refNames),
+          conversion?.status === "done" ? conversion : null,
+        );
         const classification: IngestionClassification = !output.isPriceList
           ? "other"
           : output.listKind === "full_list"
@@ -262,6 +325,7 @@ export function createIngestionService(deps: {
           byNormalizedName: Object.fromEntries(catalog.byNormalizedName),
           catalogTruncated: catalog.truncated,
           promptVersion: deps.prompts.extractor.version,
+          ...(conversion?.needsReview ? { documentIncomplete: true } : {}),
         };
         // Injected instructions → a human reviews the run before it touches the catalog.
         await deps.repository.saveExtraction(run.id, {
@@ -288,6 +352,41 @@ export function createIngestionService(deps: {
         await deps.repository.refreshUsageTotals(run.id);
       }
       return summary((await deps.repository.getRun(run.id)) ?? run);
+    },
+
+    async getRun(runId) {
+      const run = await deps.repository.getRunDetail(runId);
+      if (!run) throw errors.notFound("Ingestion run not found");
+      const stored = run.rawExtraction as StoredExtraction | null;
+      const report = run.report as {
+        counts?: unknown;
+        pendingReviews?: number;
+        gate?: unknown;
+      } | null;
+      const ingested = report && ("counts" in report || "gate" in report);
+      return {
+        runId: run.id,
+        messageId: run.messageId,
+        status: run.status,
+        classification: run.classification,
+        supplierId: run.supplierId,
+        itemCount: stored?.output ? stored.output.items.length : null,
+        listKind: stored?.output?.listKind ?? null,
+        suspiciousInstructions: stored?.output?.suspiciousInstructions ?? null,
+        errors: run.errors,
+        ingest: ingested
+          ? {
+              counts: report.counts ?? null,
+              pendingReviews: report.pendingReviews ?? 0,
+              gate: report.gate ?? null,
+            }
+          : null,
+        reviewItems: run.reviewItems,
+        document: run.document,
+        costUsd: run.costUsd,
+        createdAt: run.createdAt.toISOString(),
+        finishedAt: run.finishedAt ? run.finishedAt.toISOString() : null,
+      };
     },
   };
 

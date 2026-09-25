@@ -119,6 +119,21 @@ export const envSchema = z.object({
   /** Per-IP rate limit for /api/v1/internal (per RATE_LIMIT_WINDOW_MS). */
   INTERNAL_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(600),
 
+  // ─── Document conversion (xlsx/xls/csv/txt/docx → text, ADR-013) ───
+  DOC_CONVERT_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(10 * 1024 * 1024),
+  DOC_CONVERT_MAX_SHEETS: z.coerce.number().int().min(1).max(100).default(10),
+  DOC_CONVERT_MAX_ROWS: z.coerce.number().int().min(1).max(100_000).default(2_000),
+  DOC_CONVERT_MAX_COLUMNS: z.coerce.number().int().min(1).max(500).default(50),
+  /** Max characters of the converted text (controls LLM input cost). */
+  DOC_CONVERT_MAX_CHARS: z.coerce.number().int().min(1_000).default(40_000),
+  /** The conversion runs in a worker thread killed after this time. */
+  DOC_CONVERT_TIMEOUT_MS: z.coerce.number().int().min(1_000).default(20_000),
+  DOC_CONVERT_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(4).default(1),
+
   // ─── AI / LLM (ADR-011) ───
   /** anthropic | fake (default; dev/tests/CI/demo without a key; forbidden in production). */
   AI_PROVIDER: z.enum(["anthropic", "fake"]).default("fake"),

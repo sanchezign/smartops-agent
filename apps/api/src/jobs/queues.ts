@@ -14,6 +14,8 @@ export const QUEUES = {
   whatsappOutboundDlq: "whatsapp-outbound-dlq",
   mediaTranscription: "media-transcription",
   mediaTranscriptionDlq: "media-transcription-dlq",
+  documentConversion: "document-conversion",
+  documentConversionDlq: "document-conversion-dlq",
 } as const;
 
 export interface WebhookEventJob {
@@ -29,6 +31,10 @@ export interface OutboundMessageJob {
 }
 
 export interface TranscriptionJob {
+  mediaFileId: string;
+}
+
+export interface DocumentConversionJob {
   mediaFileId: string;
 }
 
@@ -105,6 +111,23 @@ export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
     // Storage read + provider call (TRANSCRIPTION_TIMEOUT_MS, 60 s by default).
     expireInSeconds: 180,
     deadLetter: QUEUES.mediaTranscriptionDlq,
+  },
+  {
+    name: QUEUES.documentConversionDlq,
+    retryLimit: 3,
+    retryDelay: 30,
+    deleteAfterSeconds: 30 * 24 * 3600,
+  },
+  {
+    name: QUEUES.documentConversion,
+    // Rejections are permanent (no retry); only storage/DB errors are retried.
+    retryLimit: 3,
+    retryDelay: 30,
+    retryBackoff: true,
+    retryDelayMax: 600,
+    // Conversion runs in a worker thread killed at DOC_CONVERT_TIMEOUT_MS (20 s).
+    expireInSeconds: 120,
+    deadLetter: QUEUES.documentConversionDlq,
   },
   {
     name: QUEUES.webhookSweeper,

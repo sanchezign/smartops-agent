@@ -198,6 +198,14 @@ enum AiUsageStatus {
   budget_blocked
 }
 
+/// Document conversion (phase 5 M3a, ADR-013): xlsx/xls/csv/txt/docx → text.
+enum DocumentConversionStatus {
+  pending
+  done
+  /// Permanent: rejected by a limit or unreadable (reason says why). Never retried.
+  failed
+}
+
 enum TranscriptionStatus {
   pending
   done
@@ -364,9 +372,10 @@ model MediaFile {
   createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  message       Message?
-  blob          MediaBlob?
-  transcription Transcription?
+  message            Message?
+  blob               MediaBlob?
+  transcription      Transcription?
+  documentConversion DocumentConversion?
 
   @@index([status, createdAt])
   @@map("media_files")
@@ -374,6 +383,41 @@ model MediaFile {
 
 /// Speech-to-text of an audio MediaFile (ADR-005, ADR-010). The text is also copied to
 /// Message.transcript. durationSeconds is what providers bill (cost tracking).
+/// Text version of a stored spreadsheet / CSV / text / Word document, used as
+/// <document_text> by the extraction. Created (pending) in the same transaction that marks
+/// the media stored; converted by the worker in an isolated thread (ADR-013).
+model DocumentConversion {
+  id               String                   @id @default(uuid(7)) @db.Uuid
+  mediaFileId      String                   @unique @map("media_file_id") @db.Uuid
+  status           DocumentConversionStatus @default(pending)
+  /// Machine-readable reason when failed (zip_bomb, encrypted, timeout, too_large, …).
+  reason           String?
+  format           String?
+  /// Markdown text (tables). Never logged.
+  text             String?
+  charCount        Int?                     @map("char_count")
+  /// Lines that can be a product (table data rows / text lines with digits).
+  dataRows         Int?                     @map("data_rows")
+  /// A limit cut the content: the extraction never treats it as a full list.
+  truncated        Boolean                  @default(false)
+  /// Values may be missing (formula without cached value): every line goes to review.
+  needsReview      Boolean                  @default(false) @map("needs_review")
+  sheets           Json?
+  warnings         Json?
+  error            String?
+  attempts         Int                      @default(0)
+  durationMs       Int?                     @map("duration_ms")
+  converterVersion String?                  @map("converter_version")
+  completedAt      DateTime?                @map("completed_at") @db.Timestamptz(3)
+  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  mediaFile MediaFile @relation(fields: [mediaFileId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("document_conversions")
+}
+
 model Transcription {
   id              String              @id @default(uuid(7)) @db.Uuid
   mediaFileId     String              @unique @map("media_file_id") @db.Uuid

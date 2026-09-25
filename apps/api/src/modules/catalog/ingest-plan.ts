@@ -61,7 +61,8 @@ export type LineReason =
   | "invalid_result"
   | "uncertain_value"
   | "stated_unavailable_new"
-  | "suspicious_source";
+  | "suspicious_source"
+  | "document_incomplete";
 
 /** Primary review kind of a line = kind of its highest-priority reason. */
 const KIND_BY_REASON: ReadonlyArray<readonly [LineReason, ReviewKind]> = [
@@ -80,6 +81,7 @@ const KIND_BY_REASON: ReadonlyArray<readonly [LineReason, ReviewKind]> = [
   ["uncertain_value", "uncertain_value"],
   ["stated_unavailable_new", "uncertain_value"],
   ["suspicious_source", "uncertain_value"],
+  ["document_incomplete", "uncertain_value"],
 ];
 
 export function primaryKind(reasons: readonly LineReason[]): ReviewKind | null {
@@ -119,6 +121,8 @@ export interface PlanInput {
     acceptTaxChange?: boolean;
     /** A human approved a run with suspicious instructions: nothing is automatic. */
     forceReview?: boolean;
+    /** The converted document may have missing values (formula without value). */
+    documentIncomplete?: boolean;
   };
 }
 
@@ -367,6 +371,7 @@ export function planIngestion(input: PlanInput): IngestionPlan {
 
     if (item.uncertain) reasons.push("uncertain_value");
     if (overrides.forceReview) reasons.push("suspicious_source");
+    if (overrides.documentIncomplete) reasons.push("document_incomplete");
 
     const unique = [...new Set(reasons)];
     const existing = resolution.target === "existing" ? resolution.product : null;
