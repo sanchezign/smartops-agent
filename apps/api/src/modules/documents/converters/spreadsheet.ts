@@ -4,7 +4,10 @@ import {
   type ConversionLimits,
   type ConversionResult,
   type ConversionWarning,
+  type SheetCell,
   type SheetSummary,
+  type SheetTable,
+  cellText,
 } from "../document-types.js";
 import { capChars, markdownTable } from "../markdown.js";
 import { assertSafeZip } from "../zip-guard.js";
@@ -38,11 +41,11 @@ interface CellStats {
   errorCells: number;
 }
 
-function cellText(cell: Cell, stats: CellStats): string {
-  if (!cell) return "";
+function cellValue(cell: Cell, stats: CellStats): SheetCell {
+  if (!cell) return null;
   if (cell.f !== undefined && cell.v === undefined) {
     stats.formulaWithoutValue += 1;
-    return "";
+    return null;
   }
   switch (cell.t) {
     case "n": {
@@ -54,7 +57,7 @@ function cellText(cell: Cell, stats: CellStats): string {
         if (d)
           return `${String(d.y).padStart(4, "0")}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}`;
       }
-      return typeof cell.v === "number" ? plainNumber(cell.v) : (cell.w ?? "");
+      return typeof cell.v === "number" ? { n: plainNumber(cell.v) } : (cell.w ?? null);
     }
     case "d":
       return isoDate(cell.v);
@@ -63,10 +66,12 @@ function cellText(cell: Cell, stats: CellStats): string {
     case "e":
       stats.errorCells += 1;
       return cell.w ?? "#ERROR";
-    case "s":
-      return String(cell.v ?? "");
+    case "s": {
+      const text = String(cell.v ?? "");
+      return text.trim() === "" ? null : text;
+    }
     default:
-      return "";
+      return null;
   }
 }
 
@@ -118,6 +123,7 @@ export function convertSpreadsheet(
   let colsTruncated = false;
   let emptySheets = 0;
   const sheets: SheetSummary[] = [];
+  const tables: SheetTable[] = [];
   const blocks: string[] = [];
 
   for (const name of visible.slice(0, limits.maxSheets)) {
@@ -145,12 +151,15 @@ export function convertSpreadsheet(
     const rowProps = sheet["!rows"] ?? [];
     const colProps = sheet["!cols"] ?? [];
     const rows: string[][] = [];
+    const typedRows: SheetCell[][] = [];
+    const sheetTruncated =
+      range.e.c > lastCol || Boolean(fullRef && XLSX.utils.decode_range(fullRef).e.r > range.e.r);
     for (let r = range.s.r; r <= range.e.r; r += 1) {
       if (rowProps[r]?.hidden) {
         hiddenRows += 1;
         continue;
       }
-      const row: string[] = [];
+      const row: SheetCell[] = [];
       for (let c = range.s.c; c <= lastCol; c += 1) {
         if (colProps[c]?.hidden) {
           if (r === range.s.r) hiddenCols += 1;
@@ -158,9 +167,10 @@ export function convertSpreadsheet(
         }
         const address = XLSX.utils.encode_cell({ r, c });
         const source = mergedFrom.get(address) ?? address;
-        row.push(cellText(sheet[source] as Cell, stats));
+        row.push(cellValue(sheet[source] as Cell, stats));
       }
-      rows.push(row);
+      rows.push(row.map(cellText));
+      if (row.some((c) => c !== null)) typedRows.push(row);
     }
     const table = markdownTable(rows);
     if (!table) {
@@ -168,6 +178,7 @@ export function convertSpreadsheet(
       continue;
     }
     sheets.push({ name, dataRows: table.rows, columns: table.columns });
+    tables.push({ name, rows: typedRows, truncated: sheetTruncated });
     blocks.push(`## Hoja: ${name.replace(/[\r\n]/g, " ")}\n\n${table.text}`);
   }
 
@@ -223,6 +234,7 @@ export function convertSpreadsheet(
       capped.truncated || rowsTruncated || colsTruncated || visible.length > limits.maxSheets,
     needsReview: stats.formulaWithoutValue > 0,
     sheets,
+    tables,
     warnings,
   };
 }

@@ -55,6 +55,27 @@ export interface ConversionWarning {
   message: string;
 }
 
+/**
+ * Typed cell of a converted table (phase 5 M3c): text as written, numbers from numeric
+ * cells as plain decimals ({ n: "310.5" }), null = empty. Keeping the type matters: the
+ * number 1.25 and the text "1.250" (thousands dot) mean different prices.
+ */
+export type SheetCell = string | { n: string } | null;
+
+/** One table (sheet or CSV) for the deterministic spreadsheet path (M3c). */
+export interface SheetTable {
+  name: string;
+  /** Visible rows, fully empty rows dropped, capped by the conversion limits. */
+  rows: SheetCell[][];
+  /** Rows or columns were cut by a limit: the list can never be treated as full. */
+  truncated: boolean;
+}
+
+export function cellText(cell: SheetCell | undefined): string {
+  if (cell === null || cell === undefined) return "";
+  return typeof cell === "string" ? cell : cell.n;
+}
+
 export interface SheetSummary {
   name: string;
   /** Data rows (excluding the header row). */
@@ -86,6 +107,8 @@ export type ConversionResult =
       /** Values may be missing (formula without cached value): the run goes to review. */
       needsReview: boolean;
       sheets: SheetSummary[];
+      /** Typed tables (spreadsheets and CSV only). */
+      tables: SheetTable[];
       warnings: ConversionWarning[];
     }
   | { ok: false; reason: ConversionFailureReason; detail?: string };

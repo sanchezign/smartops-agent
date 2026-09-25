@@ -130,6 +130,7 @@ export async function convertDocx(
     truncated: capped.truncated,
     needsReview: false,
     sheets: [],
+    tables: [],
     warnings,
   };
 }

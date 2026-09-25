@@ -111,6 +111,15 @@ export function convertCsv(bytes: Uint8Array, limits: ConversionLimits): Convers
     truncated: capped.truncated || rowsTruncated || colsTruncated,
     needsReview: false,
     sheets: [{ name: "csv", dataRows: table.rows, columns: table.columns }],
+    tables: [
+      {
+        name: "csv",
+        rows: rows
+          .map((r) => r.map((c) => (c.trim() === "" ? null : c)))
+          .filter((r) => r.some((c) => c !== null)),
+        truncated: rowsTruncated || colsTruncated,
+      },
+    ],
     warnings,
   };
 }
@@ -142,6 +151,7 @@ export function convertPlainText(bytes: Uint8Array, limits: ConversionLimits): C
     truncated: capped.truncated,
     needsReview: false,
     sheets: [],
+    tables: [],
     warnings,
   };
 }
