@@ -24,6 +24,8 @@ export interface CatalogContext {
   text: string | null;
   /** catalogRef → product id. */
   refs: Map<string, string>;
+  /** catalogRef → product name (post-extraction matching rules). */
+  refNames: Map<string, string>;
   /** normalized name → product id (exact matches, first wins). */
   byNormalizedName: Map<string, string>;
   truncated: boolean;
@@ -47,11 +49,13 @@ export function buildCatalogContext(products: CatalogProduct[]): CatalogContext 
   const included = sorted.slice(0, MAX_CATALOG_PRODUCTS);
 
   const refs = new Map<string, string>();
+  const refNames = new Map<string, string>();
   const byNormalizedName = new Map<string, string>();
   const lines: string[] = [];
   included.forEach((product, index) => {
     const ref = `P${index + 1}`;
     refs.set(ref, product.id);
+    refNames.set(ref, product.name);
     const normalized = normalizeProductName(product.name);
     if (!byNormalizedName.has(normalized)) byNormalizedName.set(normalized, product.id);
     const unavailable = product.available ? "" : " | no disponible";
@@ -68,6 +72,7 @@ export function buildCatalogContext(products: CatalogProduct[]): CatalogContext 
   return {
     text: lines.length > 0 ? lines.join("\n") : null,
     refs,
+    refNames,
     byNormalizedName,
     truncated,
   };

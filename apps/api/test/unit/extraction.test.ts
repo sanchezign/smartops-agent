@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { fakeContentKey } from "../../src/ai/providers/fake.js";
+import {
+  distinguishingAttributes,
+  missingAttributes,
+} from "../../src/modules/catalog/attributes.js";
 import { normalizeProductName } from "../../src/modules/catalog/normalize.js";
 import {
   buildCatalogContext,
@@ -31,11 +35,28 @@ const INJECTION = readFileSync(
   "utf8",
 );
 
+const EXPECTED = JSON.parse(
+  readFileSync(new URL("../fixtures/extraction/expected.json", import.meta.url), "utf8"),
+) as {
+  september: { products: { name: string; unit: string; price: string }[] };
+  photoAgainstSeptember: {
+    lines: {
+      line: string;
+      catalog: string;
+      match: "exact" | "model";
+      maxConfidence?: "high" | "medium";
+      newPrice: string;
+      outcome: "price_change" | "review";
+    }[];
+  };
+};
+
 const item = (overrides: Partial<ExtractionOutput["items"][number]> = {}) => ({
   name: "Tornillo 6mm",
   sku: null,
   unit: "unidad",
-  price: "12",
+  price: "12" as string | null,
+  priceChangePct: null as string | null,
   currency: null,
   available: null,
   stock: null,
@@ -53,6 +74,8 @@ const output = (overrides: Partial<ExtractionOutput> = {}): ExtractionOutput => 
   supplierName: null,
   currency: "UYU",
   validFrom: null,
+  taxIncluded: null,
+  globalChangePct: null,
   items: [item()],
   warnings: [],
   suspiciousInstructions: false,
@@ -112,7 +135,11 @@ describe("extraction output validation (Zod, authoritative)", () => {
 });
 
 describe("extraction business rules", () => {
-  const refs = new Set(["P1", "P2", "P3"]);
+  const refs = new Map([
+    ["P1", "Silicona transparente 280ml"],
+    ["P2", "Clavo 2 pulgadas"],
+    ["P3", "Rodillo lana 23cm"],
+  ]);
 
   it("full_list without explicit evidence is downgraded to partial_update", () => {
     const result = applyExtractionRules(
@@ -150,6 +177,25 @@ describe("extraction business rules", () => {
       refs,
     );
     expect(result.items.map((i) => i.matchConfidence)).toEqual(["medium", "medium"]);
+  });
+
+  it("empty catalog → every item is a new product (null ref, high), whatever the model said", () => {
+    const result = applyExtractionRules(
+      output({
+        items: [
+          item({ catalogRef: null, matchConfidence: "low" }),
+          item({ name: "Silicona 280ml", catalogRef: "P1", matchConfidence: "medium" }),
+          item({ name: "Clavo 2 pulgadas", catalogRef: null, matchConfidence: "high" }),
+        ],
+      }),
+      new Map(),
+    );
+    expect(result.items.map((i) => [i.catalogRef, i.matchConfidence])).toEqual([
+      [null, "high"],
+      [null, "high"],
+      [null, "high"],
+    ]);
+    expect(result.warnings).toEqual([]); // not an "unknown ref" case
   });
 
   it("not a price list → no items", () => {
@@ -354,5 +400,203 @@ describe("fake responders (keyless heuristics)", () => {
 
   it("flags injection attempts", () => {
     expect((fakeExtract(req(INJECTION)) as ExtractionOutput).suspiciousInstructions).toBe(true);
+  });
+});
+
+describe("percentage changes (schema)", () => {
+  const pctItem = (priceChangePct: string) => item({ price: null, priceChangePct });
+
+  it.each(["10", "8", "-5", "12.5", "-99.99", "150"])("accepts priceChangePct %s", (pct) => {
+    expect(extractionSchema.safeParse(output({ items: [pctItem(pct)] })).success).toBe(true);
+  });
+
+  it.each(["0", "0.00", "-100", "-150", "+10", "10%", "1000", "10,5", "12.345", "diez", ""])(
+    "rejects priceChangePct %j",
+    (pct) => {
+      expect(extractionSchema.safeParse(output({ items: [pctItem(pct)] })).success).toBe(false);
+    },
+  );
+
+  it("an item carries exactly one of price or priceChangePct (never an invented price)", () => {
+    expect(
+      extractionSchema.safeParse(output({ items: [item({ price: "14", priceChangePct: "10" })] }))
+        .success,
+    ).toBe(false);
+    expect(
+      extractionSchema.safeParse(output({ items: [item({ price: null, priceChangePct: null })] }))
+        .success,
+    ).toBe(false);
+  });
+
+  it("validates the list-level percentage (todo +8%)", () => {
+    expect(
+      extractionSchema.parse(output({ globalChangePct: "8", items: [] })).globalChangePct,
+    ).toBe("8");
+    expect(extractionSchema.safeParse(output({ globalChangePct: "0" })).success).toBe(false);
+    expect(extractionSchema.safeParse(output({ globalChangePct: "-100" })).success).toBe(false);
+  });
+
+  it("drops the global percentage when the content is not a price list", () => {
+    const result = applyExtractionRules(
+      output({ isPriceList: false, globalChangePct: "8" }),
+      new Map(),
+    );
+    expect(result).toMatchObject({ items: [], globalChangePct: null });
+  });
+});
+
+describe("taxIncluded (schema)", () => {
+  it.each([true, false, null])("accepts %j and keeps it in the output", (taxIncluded) => {
+    expect(extractionSchema.parse(output({ taxIncluded })).taxIncluded).toBe(taxIncluded);
+  });
+
+  it("is required and must be a boolean or null", () => {
+    const withoutTax: Record<string, unknown> = { ...output() };
+    delete withoutTax.taxIncluded;
+    expect(extractionSchema.safeParse(withoutTax).success).toBe(false);
+    expect(extractionSchema.safeParse({ ...output(), taxIncluded: "IVA incluido" }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("distinguishing attributes (size, measure, capacity)", () => {
+  it("extracts canonical attributes", () => {
+    expect([...distinguishingAttributes("Disco de corte 115 mm")]).toEqual(["115mm"]);
+    expect([...distinguishingAttributes("Pintura blanca 4 litros")]).toEqual(["4l"]);
+    expect([...distinguishingAttributes("Pintura blanca 4 lts.")]).toEqual(["4l"]);
+    expect([...distinguishingAttributes('Manguera 1/2"')]).toEqual(["1/2in"]);
+    expect([...distinguishingAttributes("Manguera 1/2 pulg.")]).toEqual(["1/2in"]);
+    expect([...distinguishingAttributes("Taladro 750W 220V")]).toEqual(["750w", "220v"]);
+    expect([...distinguishingAttributes("Hilo 2,5 mm")]).toEqual(["2.5mm"]);
+    expect([...distinguishingAttributes("Silicona (metro)")]).toEqual([]);
+    expect([...distinguishingAttributes("Rodillo lana")]).toEqual([]);
+  });
+
+  it("reports attributes of the catalog product missing from the line", () => {
+    expect(missingAttributes("Rodillo lana 23cm", "Rodillo")).toEqual(["23cm"]);
+    expect(missingAttributes("Clavo 2 pulgadas", "Clavo 3 pulgadas")).toEqual(["2in"]);
+    expect(missingAttributes("Silicona transparente 280ml", "Silicona 280 cc")).toEqual([]);
+    expect(missingAttributes("Sellador", "Sellador 280ml")).toEqual([]); // extra detail is fine
+  });
+});
+
+describe("matching rule: a missing distinguishing attribute caps the confidence at medium", () => {
+  const catalog = new Map([
+    ["P1", "Silicona transparente 280ml"],
+    ["P2", "Clavo 2 pulgadas"],
+    ["P3", "Rodillo lana 23cm"],
+  ]);
+
+  it("caps high → medium with a warning and a note for the reviewer", () => {
+    const result = applyExtractionRules(
+      output({ items: [item({ name: "Rodillo", catalogRef: "P3", matchConfidence: "high" })] }),
+      catalog,
+    );
+    expect(result.items[0]).toMatchObject({ catalogRef: "P3", matchConfidence: "medium" });
+    expect(result.items[0]?.note).toMatch(/23cm/);
+    expect(result.warnings.join(" ")).toMatch(/Rodillo.*23cm.*revisión/);
+  });
+
+  it("a different size is not the same product: capped too", () => {
+    const result = applyExtractionRules(
+      output({
+        items: [item({ name: "Clavo 3 pulgadas", catalogRef: "P2", matchConfidence: "high" })],
+      }),
+      catalog,
+    );
+    expect(result.items[0]?.matchConfidence).toBe("medium");
+  });
+
+  it("keeps high when the attribute is stated (in the name or in the unit), in any spelling", () => {
+    const result = applyExtractionRules(
+      output({
+        items: [
+          item({ name: "Silicona transp. 280 cc", catalogRef: "P1" }),
+          item({ name: "Rodillo lana", unit: "unidad 23 cm", catalogRef: "P3" }),
+        ],
+      }),
+      catalog,
+    );
+    expect(result.items.map((i) => i.matchConfidence)).toEqual(["high", "high"]);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("never raises a confidence the model lowered", () => {
+    const result = applyExtractionRules(
+      output({ items: [item({ name: "Rodillo", catalogRef: "P3", matchConfidence: "low" })] }),
+      catalog,
+    );
+    expect(result.items[0]?.matchConfidence).toBe("low");
+  });
+
+  it("October photo vs September catalog (fixtures): the washer without its size goes to review", () => {
+    const ctx = buildCatalogContext(
+      EXPECTED.september.products.map((p, i) => ({
+        id: `sep-${i}`,
+        name: p.name,
+        unit: p.unit,
+        price: p.price,
+        currency: "UYU",
+        available: true,
+      })),
+    );
+    const refOf = (catalogName: string) =>
+      [...ctx.refNames].find(([, name]) => name === catalogName)?.[0] ?? null;
+    // Worst case: the model claims "high" for every line.
+    const lines = EXPECTED.photoAgainstSeptember.lines;
+    const result = applyExtractionRules(
+      output({
+        items: lines.map((l) =>
+          item({
+            name: l.line,
+            price: l.newPrice,
+            catalogRef: refOf(l.catalog),
+            matchConfidence: "high",
+          }),
+        ),
+      }),
+      ctx.refNames,
+    );
+    for (const [i, line] of lines.entries()) {
+      const got = result.items[i];
+      expect(got?.catalogRef, line.line).toBe(refOf(line.catalog));
+      const exact = ctx.byNormalizedName.has(normalizeProductName(line.line));
+      expect(exact, line.line).toBe(line.match === "exact");
+      expect(got?.matchConfidence, line.line).toBe(line.outcome === "review" ? "medium" : "high");
+    }
+    expect(lines.filter((l) => l.outcome === "price_change")).toHaveLength(5);
+    expect(lines.filter((l) => l.outcome === "review").map((l) => l.line)).toEqual(["Arandela"]);
+  });
+});
+
+describe("fake extractor: percentages and tax (keyless demo)", () => {
+  const req = (text: string) =>
+    ({
+      content: [{ type: "text" as const, text: `<message_text>\n${text}\n</message_text>` }],
+    }) as never;
+
+  it("reports percentages, never a computed price", () => {
+    const out = fakeExtract(req("Silicona sube 10%\nClavos baja 5 %")) as ExtractionOutput;
+    expect(out.items.map((i) => [i.name, i.price, i.priceChangePct])).toEqual([
+      ["Silicona", null, "10"],
+      ["Clavos", null, "-5"],
+    ]);
+    expect(extractionSchema.safeParse(out).success).toBe(true);
+  });
+
+  it("a percentage for everything is list-level", () => {
+    const out = fakeExtract(req("todo +8%")) as ExtractionOutput;
+    expect(out).toMatchObject({ isPriceList: true, globalChangePct: "8", items: [] });
+    expect(fakeClassify(req("todo +8%"))).toMatchObject({
+      classification: "price_update_partial",
+    });
+  });
+
+  it("detects the tax statement", () => {
+    const tax = (text: string) => (fakeExtract(req(text)) as ExtractionOutput).taxIncluded;
+    expect(tax("Precios con IVA incluido\nSilicona 280ml 310 UYU")).toBe(true);
+    expect(tax("Precios + IVA\nSilicona 280ml 310 UYU")).toBe(false);
+    expect(tax("Silicona 280ml 310 UYU")).toBeNull();
   });
 });

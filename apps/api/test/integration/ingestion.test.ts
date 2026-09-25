@@ -201,6 +201,20 @@ describe.skipIf(!testDatabaseUrl)("ingestion: classify + extract (Postgres, fake
     expect(await extractCalls()).toBe(1);
   });
 
+  it("stores the tax statement and percentage changes with the extraction (no invented prices)", async () => {
+    const message = await inbound({
+      type: "text",
+      text: "Precios con IVA incluido\nSilicona sube 10%",
+    });
+    const svc = service();
+    const { runId } = await svc.classify(message.id, log);
+    expect(await svc.extract(runId, log)).toMatchObject({ status: "extracted", itemCount: 1 });
+    const run = await prisma.ingestionRun.findUniqueOrThrow({ where: { id: runId } });
+    const stored = run.rawExtraction as unknown as StoredExtraction;
+    expect(stored.output.taxIncluded).toBe(true);
+    expect(stored.output.items[0]).toMatchObject({ price: null, priceChangePct: "10" });
+  });
+
   it("locks the run: concurrent extracts call the LLM once (others get IN_PROGRESS or the result)", async () => {
     const message = await inbound({ type: "text", text: "Tornillo 6mm 12 UYU" });
     const slow = createFakeLlmProvider({ responders: FAKE_RESPONDERS, latencyMs: 300 });
@@ -249,12 +263,15 @@ describe.skipIf(!testDatabaseUrl)("ingestion: classify + extract (Postgres, fake
       supplierName: null,
       currency: "UYU",
       validFrom: null,
+      taxIncluded: null,
+      globalChangePct: null,
       items: [
         {
           name: "Tornillo 6mm",
           sku: null,
           unit: null,
           price: "0",
+          priceChangePct: null,
           currency: null,
           available: null,
           stock: null,

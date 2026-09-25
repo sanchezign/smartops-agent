@@ -250,7 +250,7 @@ export function createIngestionService(deps: {
           },
         );
 
-        const output = applyExtractionRules(result.data, new Set(catalog.refs.keys()));
+        const output = applyExtractionRules(result.data, catalog.refNames);
         const classification: IngestionClassification = !output.isPriceList
           ? "other"
           : output.listKind === "full_list"

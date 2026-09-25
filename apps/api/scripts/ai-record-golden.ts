@@ -74,14 +74,20 @@ const extractor = loadPrompt("extractor");
 
 /** Products as the catalog ingest (M4) creates them from an extraction. */
 function catalogFrom(output: ExtractionOutput): CatalogProduct[] {
-  return output.items.map((item, i) => ({
-    id: `golden-${String(i + 1).padStart(3, "0")}`,
-    name: item.name,
-    unit: item.unit,
-    price: item.price,
-    currency: item.currency ?? output.currency ?? "UYU",
-    available: item.available ?? true,
-  }));
+  return output.items.flatMap((item, i) =>
+    item.price === null
+      ? [] // a percentage change creates no product
+      : [
+          {
+            id: `golden-${String(i + 1).padStart(3, "0")}`,
+            name: item.name,
+            unit: item.unit,
+            price: item.price,
+            currency: item.currency ?? output.currency ?? "UYU",
+            available: item.available ?? true,
+          },
+        ],
+  );
 }
 
 /** Estimate used by --dry-run before the PDF output exists (its 7 lines). */

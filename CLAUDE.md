@@ -50,8 +50,8 @@ required
   directly.
 - `apps/admin` — Next.js 15 admin panel (noindex).
 - Claude API (Anthropic) for classification and extraction. Model ids in env
-  vars: classifier `claude-haiku-4-5` (fast/cheap), extractor
-  `claude-sonnet-5` (PDF + image input, structured output). Verify ids and
+  vars: classifier and extractor both `claude-sonnet-5` (ADR-011: at our volume it costs
+  about the same as Haiku 4.5 for classification; PDF + image input, structured output). Verify ids and
   PDF/image input format in the official docs before implementing.
 - Speech-to-text: Whisper-compatible API behind `Transcriber` (provider chosen
   in the phase 4 plan, e.g. OpenAI or Groq). Claude does NOT take audio input,
@@ -108,6 +108,9 @@ Week 2
    the backend as tools. Deliver workflow JSON drafts + node-by-node
    instructions; the user builds/tests them in the n8n UI and exports the
    final JSON to `n8n/workflows/` (no credentials).
+   The router must decide full vs partial with the EXTRACTION's `listKind` (explicit
+   evidence rule), never with the classifier's label (user decision 2026-09-25: the
+   classifier labeled a short text as `price_list_full`).
 
 Week 3
 7. coexistence human + bot — same number via WhatsApp Business app
@@ -443,43 +446,83 @@ Each one gets an ADR in docs/adr/.
    - M1 `ai/` module: LlmProvider (anthropic via @anthropic-ai/sdk 0.128, fake), AiClient
      with spend guard, `ai_usages` ledger, IngestionRun cost fields, pricing table,
      versioned prompt loader, AI_* env, ADR-011 — done (2026-09-25). Migration `ai_usage`.
-   - M2 classification + extraction — IN PROGRESS (WIP commit 2026-09-25, nothing
-     spent). Done: prompts `src/ai/prompts/classifier.md` (classifier@3514089108be) and
-     `extractor.md` (extractor@445ad782d62f); classification/extraction JSON schemas +
-     Zod (`src/modules/extraction/extraction.schemas.ts`) and post-rules (full_list
-     needs quoted evidence, unknown refs dropped, duplicate refs → medium); catalog
-     context with stable refs P1..Pn (`catalog-context.ts`); message input with
-     neutralized tags (`message-input.ts`); fake responders; ingestion repository +
-     service (classify; extract locked via status `extracting`; NOT_READY / IN_PROGRESS;
-     budget → needs_review; injection → needs_review); migration
-     `ingestion_extracting`; `ai:record-golden` script (`--dry-run` uses the FREE
-     count_tokens endpoint; `--confirm-spend` records); fixtures
-     `voice-transcript.txt`, `injection-message.txt`; 468 tests green.
-     Golden outputs NOT recorded. Golden keys = message content only (`fakeKeyText`),
-     not catalog/sender context.
-   - PENDING user changes to the extractor prompt (do them BEFORE recording goldens):
-     1. Matching examples must NOT use the test-fixture products (today they quote
-        "Cemento 25kg"/"Cable 2mm (metro)"/"Arandela" = the e2e answers → overfitting).
-        Use neutral examples + a unit test that fails if any fixture product name
-        (from test/fixtures/extraction) appears in the prompts.
-     2. A missing distinguishing attribute (size, measure, capacity, e.g. a name without
-        the size the catalog has) caps matchConfidence at "medium" (→ human review).
-        Reconcile the PDF → photo e2e expectations with this (e.g. "Arandela" vs
-        "Arandela 6mm" becomes a review item, not an automatic match).
-     3. Percentage increases ("sube 10%", "todo +8%") must be supported: the extractor
-        reports the percentage (not an invented price); the catalog applies it to the
-        current price with Decimal arithmetic and it is reviewed/validated like any change.
-     4. `taxIncluded` (e.g. "IVA incluido") at list level (boolean | null) in the schema,
-        stored with the extraction.
-   - Spend authorization for `ai:record-golden --confirm-spend` is CONDITIONAL: only if
-     a fresh `--dry-run` after the prompt changes shows expected ≤ $0.15 AND worst
-     case ≤ $0.35; otherwise ask the user again. Last dry-run (before the changes):
-     expected $0.1101, worst $0.3099 (7 calls; exact input tokens from count_tokens).
-   - Facts from the test data: September PDF (7 products) → October photo: 6 products
-     match (3 exact, 3 need the model), 5 price changes (Arandela stays at 3), Pintura
-     absent (partial update → untouched).
+   - M2 classification + extraction — DONE (2026-09-25). First part (WIP
+     commit a755713): classification/extraction JSON schemas + Zod
+     (`src/modules/extraction/extraction.schemas.ts`) and post-rules (full_list needs
+     quoted evidence, unknown refs dropped, duplicate refs → medium); catalog context with
+     stable refs P1..Pn (`catalog-context.ts`); message input with neutralized tags
+     (`message-input.ts`); fake responders; ingestion repository + service (classify;
+     extract locked via status `extracting`; NOT_READY / IN_PROGRESS; budget →
+     needs_review; injection → needs_review); migration `ingestion_extracting`;
+     `ai:record-golden` script (`--dry-run` uses the FREE count_tokens endpoint;
+     `--confirm-spend` records); fixtures `voice-transcript.txt`, `injection-message.txt`.
+     Golden keys = message content only (`fakeKeyText`), not catalog/sender context.
+   - M2 user changes — done (2026-09-25), prompts now classifier@5814260d7fc5 and
+     extractor@32d8d0e8e78d:
+     1. Neutral examples (silicona, clavo, manguera, disco de corte, rodillo, taladro) in
+        BOTH prompts; `test/unit/prompts.test.ts` fails if a product of
+        `test/fixtures/extraction/expected.json` (`productNames`) appears in
+        `src/ai/prompts/*.md` — full name or head noun, singular/plural (verified to fail
+        on the old prompts). The Whisper vocabulary prompt is out of scope on purpose.
+     2. Missing distinguishing attribute → max "medium": prompt rule + code safety net
+        (`src/modules/catalog/attributes.ts`: sizes/measures/capacities canonicalized,
+        "4 litros" = "4L"; applied in `applyExtractionRules`, which now receives
+        catalogRef → product name, `CatalogContext.refNames`). A different size is also
+        capped. PDF → photo expectations reconciled in `expected.json`
+        (`photoAgainstSeptember`): 5 automatic price changes, "Arandela" vs
+        "Arandela 6mm" = review item, Pintura untouched.
+     3. Percentages: item `price` XOR `priceChangePct` (signed plain decimal, ≠ 0,
+        > -100, ≤ 2 decimals; enforced by Zod) + list-level `globalChangePct`
+        ("todo +8%", nulled when not a price list). The prompt forbids computing prices
+        from the catalog; changes by an amount ("sube 20 pesos") → no item + warning;
+        group percentages → one item per catalog product, max "medium".
+     4. `taxIncluded` (boolean | null) at list level, stored in
+        `ingestion_runs.raw_extraction` (no migration).
+   - Goldens v1 (`test/fixtures/extraction/golden/`, 3 classify + 4 extract): dry-run expected
+     $0.1196 / worst $0.3193 (within the authorized caps) → recorded, REAL COST $0.0554
+     (ledger: 7 `ok` rows, $0.055409; extractor prompt cached: 4,384 tokens written once
+     and read 3 times). `test/unit/golden-outputs.test.ts` checks them against
+     `expected.json`. Reviewed by the user: all 7 correct (prices, units, catalogRefs).
+   - Round 2 (user, 2026-09-25) — done except the re-recording: Security and ASR examples
+     neutralized in both prompts (no paraphrase of `injection-message.txt`, no "de lunas";
+     prompts now classifier@6261a4d6a9e6, extractor@e5fecb026a39); `prompts.test.ts` also
+     fails on any 3-word sequence of the text fixtures or a curated phrase/paraphrase
+     (`expected.json` → `fixturePhrases`); deterministic rule in `applyExtractionRules`:
+     empty catalog → every item `catalogRef=null, high`. 516 tests green.
+     Goldens v2: dry-run expected $0.1198 / worst $0.3195, recorded with the user's
+     explicit OK → REAL COST $0.0557 (M2 total real spend: $0.1111). Diff vs v1: same
+     prices, catalogRefs, Arandela medium, injection detected; PDF items now `high`
+     (matches the empty-catalog rule); the short text is now `price_update_partial`
+     (0.55); the voice note no longer reads "de lunas" as "desde el lunes" (price 14
+     kept, validity lost, still uncertain); the photo lost its "Octubre" warning.
+   - Plan M4 (catalog ingest) — additions agreed so far (to be detailed in the M4 plan):
+     - taxIncluded (user, 2026-09-25): compared with the previous list of the same supplier
+       that stated it. true ↔ false → warning + the run goes to review (avoids false 22 %
+       increases caused by IVA). New list silent (null) and previous stated → warning only,
+       no review. Needs the last known value per supplier (e.g. a column on ingestion_runs
+       or Supplier).
+     - Percentages: new price = current price × (1 + pct/100) with Decimal, rounded to 4
+       decimals, then the same validations as any change (outliers, currency). An item with
+       `priceChangePct` needs a high-confidence catalog match (no product → review).
+       `globalChangePct` → ALWAYS review in the MVP (user, 2026-09-25).
+     - Empty catalog: already normalized in M2 (`applyExtractionRules` → new products,
+       high). `uncertain=true` items (e.g. corrected ASR) → review.
+   - Facts from the test data: September PDF (7 products, UYU, IVA incluido) → October
+     photo (UYU, tax not stated): 6 products match (3 exact, 3 need the model; the model
+     writes "Cable 2mm" + unit "metro", which is then an exact name match), 5 automatic
+     price changes, Arandela → review (price 3 unchanged), Pintura absent (partial update
+     → untouched).
 
 ## Known issues (out of scope)
+- **Phase 5 golden review (2026-09-25):** the classifier labeled the short text "Lista
+  septiembre: tornillo 6mm 12 UYU, tuerca 6mm 5 UYU" as `price_list_full` (0.65) although
+  the prompt requires an explicit signal. Handled in phase 6: the router uses the
+  extraction's `listKind` (see Phase order).
+- Minor improvement: `ai:record-golden --dry-run` overestimates (fixed ~2,200 output tokens
+  per extraction, no cache discount: $0.12 estimated vs $0.056 real). Estimate the output
+  with observed tokens (+ margin) and discount prompt caching ("option B", 2026-09-25).
+- Price changes by an AMOUNT ("sube 20 pesos") are not supported: the extractor leaves the
+  line out and adds a warning (never computes a price).
 - **Phase 5 (extraction):** Claude reads PDF and images natively, but NOT xlsx / xls /
   csv / docx. Those documents are stored in M3 but must be converted to text (e.g. sheet →
   CSV/Markdown table) before extraction. Evaluate the parsing library and record an ADR

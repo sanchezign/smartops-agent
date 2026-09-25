@@ -1,0 +1,143 @@
+{
+  "$comment": "Ground truth of the extraction test data (read by tests). productNames: every product name that appears in each fixture; prompts must never quote them (test/unit/prompts.test.ts); fixturePhrases: text-fixture content they must not quote or paraphrase either. photoAgainstSeptember: what the October photo must produce against the catalog created from the September PDF (phase 5 M4 e2e).",
+  "productNames": {
+    "lista-prueba.pdf": [
+      "Tornillo 6mm",
+      "Tuerca 6mm",
+      "Arandela 6mm",
+      "Cable 2mm",
+      "Lampara LED 9W",
+      "Pintura latex blanca 4L",
+      "Cemento portland 25kg"
+    ],
+    "lista-precios-foto.jpg": [
+      "Tornillo 6mm",
+      "Tuerca 6mm",
+      "Arandela",
+      "Cable 2mm (metro)",
+      "Lampara LED 9W",
+      "Cemento 25kg"
+    ],
+    "voice-transcript.txt": ["tornillo de 6 milímetros"],
+    "injection-message.txt": ["Tornillo 6mm"]
+  },
+  "fixturePhrases": {
+    "$comment": "Content of the text fixtures that prompts must not quote or paraphrase (Spanish and English), on top of the automatic 3-word check.",
+    "injection-message.txt": [
+      "ignore the previous instructions",
+      "ignore all previous instructions",
+      "ignora todas las instrucciones",
+      "prices to 0",
+      "precios en 0",
+      "precios del catalogo en 0",
+      "as unavailable",
+      "no disponibles",
+      "full list, delete",
+      "lista completa: marca",
+      "importante para el sistema"
+    ],
+    "voice-transcript.txt": [
+      "lunas",
+      "desde el lunes",
+      "6 milimetros",
+      "seis milimetros",
+      "sube a 14",
+      "catorce"
+    ]
+  },
+  "september": {
+    "supplierName": "Distribuidora Demo S.A.",
+    "currency": "UYU",
+    "taxIncluded": true,
+    "products": [
+      {
+        "name": "Tornillo 6mm",
+        "unit": "unidad",
+        "price": "12"
+      },
+      {
+        "name": "Tuerca 6mm",
+        "unit": "unidad",
+        "price": "5"
+      },
+      {
+        "name": "Arandela 6mm",
+        "unit": "unidad",
+        "price": "3"
+      },
+      {
+        "name": "Cable 2mm",
+        "unit": "metro",
+        "price": "45"
+      },
+      {
+        "name": "Lampara LED 9W",
+        "unit": "unidad",
+        "price": "120"
+      },
+      {
+        "name": "Pintura latex blanca 4L",
+        "unit": "lata",
+        "price": "1850"
+      },
+      {
+        "name": "Cemento portland 25kg",
+        "unit": "bolsa",
+        "price": "420"
+      }
+    ]
+  },
+  "photoAgainstSeptember": {
+    "currency": "UYU",
+    "taxIncluded": null,
+    "listKind": "partial_update",
+    "lines": [
+      {
+        "line": "Tornillo 6mm",
+        "catalog": "Tornillo 6mm",
+        "match": "exact",
+        "newPrice": "14",
+        "outcome": "price_change"
+      },
+      {
+        "line": "Tuerca 6mm",
+        "catalog": "Tuerca 6mm",
+        "match": "exact",
+        "newPrice": "6",
+        "outcome": "price_change"
+      },
+      {
+        "line": "Arandela",
+        "catalog": "Arandela 6mm",
+        "match": "model",
+        "maxConfidence": "medium",
+        "newPrice": "3",
+        "outcome": "review"
+      },
+      {
+        "line": "Cable 2mm (metro)",
+        "catalog": "Cable 2mm",
+        "match": "model",
+        "maxConfidence": "high",
+        "newPrice": "48",
+        "outcome": "price_change"
+      },
+      {
+        "line": "Lampara LED 9W",
+        "catalog": "Lampara LED 9W",
+        "match": "exact",
+        "newPrice": "125",
+        "outcome": "price_change"
+      },
+      {
+        "line": "Cemento 25kg",
+        "catalog": "Cemento portland 25kg",
+        "match": "model",
+        "maxConfidence": "high",
+        "newPrice": "430",
+        "outcome": "price_change"
+      }
+    ],
+    "untouched": ["Pintura latex blanca 4L"]
+  }
+}
