@@ -12,6 +12,8 @@ export const QUEUES = {
   whatsappMediaDlq: "whatsapp-media-dlq",
   whatsappOutbound: "whatsapp-outbound",
   whatsappOutboundDlq: "whatsapp-outbound-dlq",
+  mediaTranscription: "media-transcription",
+  mediaTranscriptionDlq: "media-transcription-dlq",
 } as const;
 
 export interface WebhookEventJob {
@@ -24,6 +26,10 @@ export interface MediaDownloadJob {
 
 export interface OutboundMessageJob {
   messageId: string;
+}
+
+export interface TranscriptionJob {
+  mediaFileId: string;
 }
 
 type QueueDefinition = Omit<Queue, "name"> & { name: string };
@@ -82,6 +88,23 @@ export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
     retryDelayMax: 600,
     expireInSeconds: 60,
     deadLetter: QUEUES.whatsappOutboundDlq,
+  },
+  {
+    name: QUEUES.mediaTranscriptionDlq,
+    retryLimit: 3,
+    retryDelay: 30,
+    deleteAfterSeconds: 30 * 24 * 3600,
+  },
+  {
+    name: QUEUES.mediaTranscription,
+    // Groq free plan: 20 req/min → 429s are expected under bursts; back off 30 s → 15 min.
+    retryLimit: 5,
+    retryDelay: 30,
+    retryBackoff: true,
+    retryDelayMax: 900,
+    // Storage read + provider call (TRANSCRIPTION_TIMEOUT_MS, 60 s by default).
+    expireInSeconds: 180,
+    deadLetter: QUEUES.mediaTranscriptionDlq,
   },
   {
     name: QUEUES.webhookSweeper,

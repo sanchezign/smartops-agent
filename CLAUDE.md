@@ -340,6 +340,16 @@ Each one gets an ADR in docs/adr/.
 - Versioned prompt files are runtime assets: `scripts/copy-assets.mjs` copies every
   `src/**/prompts/` directory into `dist/` after tsc (build script). The vocabulary
   prompt is validated at load (≤ 800 chars ≈ Whisper's 224-token limit).
+- 2026-09-24 (phase 4, M2) Transcription pipeline: `MediaRepository.markStored` runs in a
+  transaction and calls `onStoredInTx` only on the pending → stored transition; for
+  audio, `createOnAudioStoredInTx` creates the pending `transcriptions` row + enqueues
+  `media-transcription` with `fromPrisma(tx)` (a failed enqueue rolls back "stored").
+  Service: already done → skip; provider does not accept the format → skipped
+  unsupported_format; rolling 24h per-contact quota → skipped quota_exceeded; bytes
+  from MediaStorage; invalid_audio → failed; retryable errors throw (queue backoff
+  30 s → 15 min, 6 attempts, DLQ → failed retries_exhausted). `markDone` copies the text
+  to `Message.transcript` in the same transaction; empty text = done +
+  reason empty_transcript. Transcript text is never logged (only its length).
 - Local tunnel: cloudflared quick tunnel (`cloudflared tunnel --url
   http://localhost:4000`); URL changes on every restart → update it in Meta.
 
@@ -371,9 +381,12 @@ Each one gets an ADR in docs/adr/.
    Message.transcript, daily per-contact limit (50), fake provider, vocabulary prompt.
    - M1 Transcriber interface + OpenAI-compatible provider (Groq/OpenAI) + fake + env
      + ADR-010 — done (2026-09-24).
-   - Next: M2 transcription job (atomic enqueue on media stored), `transcriptions`
-     table, per-contact quota, onTranscribed hook, `wa:transcription:retry`,
-     `wa:simulate audio --transcript`.
+   - M2 transcription job (atomic enqueue on media stored), `transcriptions` table,
+     per-contact quota, onTranscribed hook, `wa:transcription:retry`,
+     `wa:simulate audio --transcript` — done (2026-09-24), tested with the simulator +
+     fake transcriber. Migration `transcriptions`.
+   - Next: real test with Groq (free plan) on a real OGG voice note, then close phase 4
+     (ff-merge to main).
 
 ## Known issues (out of scope)
 - **BLOCKER (external), 2026-09-24: Meta disabled the business portfolio and the

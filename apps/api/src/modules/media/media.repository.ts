@@ -1,5 +1,7 @@
 import type { PrismaClient } from "../../common/db.js";
+import type { Prisma } from "../../generated/prisma/client.js";
 import type { MediaStatus, MediaStorageKind } from "../../generated/prisma/enums.js";
+import type { MediaKind } from "./media-policy.js";
 
 /** Media download state. The only place in the media flow that touches Prisma. */
 
@@ -13,6 +15,15 @@ export interface MediaFileForDownload {
   messageType: string | null;
 }
 
+/**
+ * Runs INSIDE the transaction that marks the media stored (e.g. phase 4: create the
+ * pending transcription + enqueue its job for audio). Throwing rolls everything back.
+ */
+export type OnMediaStoredInTx = (
+  tx: Prisma.TransactionClient,
+  media: { mediaFileId: string; kind: MediaKind; mimeType: string },
+) => Promise<void>;
+
 export interface MediaRepository {
   getForDownload(id: string): Promise<MediaFileForDownload | null>;
   incrementAttempts(id: string): Promise<void>;
@@ -25,6 +36,7 @@ export interface MediaRepository {
       sha256: string | null;
       contentSha256: string;
       storage: MediaStorageKind;
+      kind: MediaKind;
     },
   ): Promise<void>;
   /** pending → rejected | skipped | failed (no-op if no longer pending). */
@@ -43,7 +55,10 @@ const MAX_ERROR_LENGTH = 2_000;
 const truncate = (value: string) =>
   value.length > MAX_ERROR_LENGTH ? `${value.slice(0, MAX_ERROR_LENGTH)}…` : value;
 
-export function createMediaRepository(prisma: PrismaClient): MediaRepository {
+export function createMediaRepository(
+  prisma: PrismaClient,
+  deps: { onStoredInTx: OnMediaStoredInTx },
+): MediaRepository {
   return {
     async getForDownload(id) {
       const row = await prisma.mediaFile.findUnique({
@@ -67,19 +82,29 @@ export function createMediaRepository(prisma: PrismaClient): MediaRepository {
     },
 
     async markStored(id, input) {
-      await prisma.mediaFile.updateMany({
-        where: { id, status: "pending" },
-        data: {
-          status: "stored",
-          mimeType: input.mimeType,
-          sizeBytes: input.sizeBytes,
-          sha256: input.sha256,
-          contentSha256: input.contentSha256,
-          storage: input.storage,
-          downloadedAt: new Date(),
-          rejectReason: null,
-          error: null,
-        },
+      await prisma.$transaction(async (tx) => {
+        const updated = await tx.mediaFile.updateMany({
+          where: { id, status: "pending" },
+          data: {
+            status: "stored",
+            mimeType: input.mimeType,
+            sizeBytes: input.sizeBytes,
+            sha256: input.sha256,
+            contentSha256: input.contentSha256,
+            storage: input.storage,
+            downloadedAt: new Date(),
+            rejectReason: null,
+            error: null,
+          },
+        });
+        // Only the transition pending → stored triggers follow-up work (idempotent).
+        if (updated.count === 1) {
+          await deps.onStoredInTx(tx, {
+            mediaFileId: id,
+            kind: input.kind,
+            mimeType: input.mimeType,
+          });
+        }
       });
     },
 

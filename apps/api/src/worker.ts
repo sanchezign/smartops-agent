@@ -4,9 +4,11 @@ import { loadEnv } from "./config/env.js";
 import {
   createEnqueueMediaInTx,
   createEnqueueOutboundInTx,
+  createEnqueueTranscriptionInTx,
   createPgBossWebhookQueue,
   startBoss,
 } from "./jobs/boss.js";
+import { registerMediaTranscriptionWorkers } from "./jobs/media-transcription.job.js";
 import { registerWhatsAppMediaWorkers } from "./jobs/whatsapp-media.job.js";
 import { registerWhatsAppOutboundWorkers } from "./jobs/whatsapp-outbound.job.js";
 import { registerWhatsAppWebhookWorkers } from "./jobs/whatsapp-webhook.job.js";
@@ -15,6 +17,15 @@ import { createMediaRepository } from "./modules/media/media.repository.js";
 import { createMediaDownloadService } from "./modules/media/media.service.js";
 import { createOutboundRepository } from "./modules/messaging/outbound.repository.js";
 import { createOutboundService } from "./modules/messaging/outbound.service.js";
+import {
+  createTranscriber,
+  loadVocabularyPrompt,
+} from "./modules/transcription/transcriber.factory.js";
+import {
+  createOnAudioStoredInTx,
+  createTranscriptionRepository,
+} from "./modules/transcription/transcription.repository.js";
+import { createTranscriptionService } from "./modules/transcription/transcription.service.js";
 import { createWebhookSweeper } from "./modules/whatsapp/webhook-sweeper.js";
 import { createWhatsAppMediaClient } from "./modules/whatsapp/whatsapp-media.client.js";
 import { createWhatsAppSendClient } from "./modules/whatsapp/whatsapp-send.client.js";
@@ -24,7 +35,7 @@ import { createWhatsAppWebhookRepository } from "./modules/whatsapp/whatsapp-web
 
 /**
  * Worker process: consumes pg-boss queues (webhook processing, media downloads,
- * outbound sends, dead letters, sweeper).
+ * outbound sends, voice-note transcription, dead letters, sweeper).
  * Separate from the HTTP server so slow jobs never delay webhook acks.
  */
 
@@ -76,11 +87,17 @@ const graph = {
   timeoutMs: env.WHATSAPP_API_TIMEOUT_MS,
 };
 
-const mediaRepository = createMediaRepository(prisma);
+const mediaStorage = createPostgresMediaStorage(prisma);
+// Audio stored → pending transcription + job, in the same transaction (phase 4).
+const mediaRepository = createMediaRepository(prisma, {
+  onStoredInTx: createOnAudioStoredInTx({
+    enqueueTranscriptionInTx: createEnqueueTranscriptionInTx(boss),
+  }),
+});
 await registerWhatsAppMediaWorkers(boss, {
   service: createMediaDownloadService({
     repository: mediaRepository,
-    storage: createPostgresMediaStorage(prisma),
+    storage: mediaStorage,
     client: createWhatsAppMediaClient({
       graph,
       phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID,
@@ -106,8 +123,26 @@ await registerWhatsAppOutboundWorkers(boss, {
   concurrency: env.OUTBOUND_WORKER_CONCURRENCY,
 });
 
+const transcriber = createTranscriber(env);
+const transcriptionRepository = createTranscriptionRepository(prisma);
+await registerMediaTranscriptionWorkers(boss, {
+  service: createTranscriptionService({
+    repository: transcriptionRepository,
+    storage: mediaStorage,
+    transcriber,
+    language: env.TRANSCRIPTION_LANGUAGE,
+    prompt: loadVocabularyPrompt(),
+    dailyLimitPerContact: env.TRANSCRIPTION_DAILY_LIMIT_PER_CONTACT,
+  }),
+  repository: transcriptionRepository,
+  logger,
+  concurrency: env.TRANSCRIPTION_WORKER_CONCURRENCY,
+});
+
 logger.info(
   {
+    transcriptionProvider: transcriber.provider,
+    transcriptionModel: transcriber.model,
     concurrency: env.WORKER_CONCURRENCY,
     mediaConcurrency: env.MEDIA_WORKER_CONCURRENCY,
     outboundConcurrency: env.OUTBOUND_WORKER_CONCURRENCY,

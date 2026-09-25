@@ -91,7 +91,7 @@ describe.skipIf(!testDatabaseUrl)("media download against Postgres + fake Graph 
 
   function mediaService(baseUrl: string, options: { token?: string; maxBytes?: number } = {}) {
     return createMediaDownloadService({
-      repository: createMediaRepository(prisma),
+      repository: createMediaRepository(prisma, { onStoredInTx: async () => {} }),
       storage: createPostgresMediaStorage(prisma),
       client: createWhatsAppMediaClient({
         graph: { baseUrl, version: "v26.0", accessToken: options.token ?? TOKEN, timeoutMs: 5_000 },
@@ -250,7 +250,11 @@ describe.skipIf(!testDatabaseUrl)("media download against Postgres + fake Graph 
     const id = await receiveMedia("document", SAMPLES.pdf, "application/pdf");
     await service.processMediaFile(id, log);
 
-    expect(await createMediaRepository(prisma).resetFailed({ limit: 10 })).toEqual([id]);
+    expect(
+      await createMediaRepository(prisma, { onStoredInTx: async () => {} }).resetFailed({
+        limit: 10,
+      }),
+    ).toEqual([id]);
     expect(await mediaFile(id)).toMatchObject({
       status: "pending",
       attempts: 0,

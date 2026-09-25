@@ -154,6 +154,7 @@ export function createMediaDownloadService(deps: {
         sha256: declaredSha,
         contentSha256: sha256Hex,
         storage: deps.storage.kind,
+        kind: actual.kind,
       });
       log.info(
         {

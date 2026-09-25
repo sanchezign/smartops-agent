@@ -108,6 +108,10 @@ export const envSchema = z.object({
   TRANSCRIPTION_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
   /** Fake provider: transcripts registered by `wa:simulate audio --transcript`. */
   TRANSCRIPTION_FAKE_DIR: z.string().min(1).default(".sim/transcripts"),
+  /** Parallel transcriptions per worker (Groq free plan: 20 req/min). */
+  TRANSCRIPTION_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(10).default(2),
+  /** Max transcriptions per contact in a rolling 24h window (protects the free quota). */
+  TRANSCRIPTION_DAILY_LIMIT_PER_CONTACT: z.coerce.number().int().min(1).default(50),
 });
 
 export type Env = z.infer<typeof envSchema>;

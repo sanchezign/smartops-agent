@@ -137,6 +137,15 @@ enum MediaStatus {
   failed
 }
 
+enum TranscriptionStatus {
+  pending
+  done
+  /// Not transcribed by design: unsupported_format (aac/amr), quota_exceeded.
+  skipped
+  /// Invalid audio for the provider, media missing, or retries exhausted.
+  failed
+}
+
 enum MediaStorageKind {
   postgres
 }
@@ -287,11 +296,39 @@ model MediaFile {
   createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  message Message?
-  blob    MediaBlob?
+  message       Message?
+  blob          MediaBlob?
+  transcription Transcription?
 
   @@index([status, createdAt])
   @@map("media_files")
+}
+
+/// Speech-to-text of an audio MediaFile (ADR-005, ADR-010). The text is also copied to
+/// Message.transcript. durationSeconds is what providers bill (cost tracking).
+model Transcription {
+  id              String              @id @default(uuid(7)) @db.Uuid
+  mediaFileId     String              @unique @map("media_file_id") @db.Uuid
+  status          TranscriptionStatus @default(pending)
+  provider        String?
+  model           String?
+  /// Language requested (hint) or detected by the provider.
+  language        String?
+  text            String?
+  durationSeconds Decimal?            @map("duration_seconds") @db.Decimal(10, 2)
+  latencyMs       Int?                @map("latency_ms")
+  attempts        Int                 @default(0)
+  /// Machine-readable reason when skipped/failed (unsupported_format, quota_exceeded, …).
+  reason          String?
+  error           String?
+  completedAt     DateTime?           @map("completed_at") @db.Timestamptz(3)
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  mediaFile MediaFile @relation(fields: [mediaFileId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("transcriptions")
 }
 
 /// Media bytes (ADR-008: Postgres bytea behind the MediaStorage interface). Separate

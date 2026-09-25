@@ -32,7 +32,8 @@ if (values.id.length === 0 && !values["all-failed"]) {
 const prisma = createPrismaClient(env.DATABASE_URL, logger);
 const boss = await startBoss({ databaseUrl: env.DATABASE_URL, logger, role: "api" });
 try {
-  const ids = await createMediaRepository(prisma).resetFailed({
+  // resetFailed does not store media, so the onStoredInTx hook is never called here.
+  const ids = await createMediaRepository(prisma, { onStoredInTx: async () => {} }).resetFailed({
     ...(values.id.length > 0 ? { ids: values.id } : {}),
     limit: Number(values.limit),
   });

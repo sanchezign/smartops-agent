@@ -3,7 +3,7 @@
  *
  *   pnpm --filter @smartops/api wa:simulate text --text "Lista: tornillo 6mm $12"
  *   pnpm --filter @smartops/api wa:simulate document --file ./lista.pdf --caption "Lista"
- *   pnpm --filter @smartops/api wa:simulate audio --file ./nota.ogg
+ *   pnpm --filter @smartops/api wa:simulate audio --file ./nota.ogg --transcript "texto esperado"
  *   pnpm --filter @smartops/api wa:simulate status --wamid <wamid> --status failed --code 131030
  *   pnpm --filter @smartops/api wa:simulate fixture message-image
  *   pnpm --filter @smartops/api wa:simulate help
@@ -13,8 +13,8 @@
  * Reads apps/api/.env (App Secret, phone number id, WABA id). Media files are stored in
  * apps/api/.sim/media so `wa:fake-graph` can serve them to the API.
  */
-import { readFileSync } from "node:fs";
-import { basename } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { pino } from "pino";
 import { maskPhone } from "../../src/common/phone.js";
@@ -53,6 +53,7 @@ Options:
   --duplicate          send the same body twice (dedupe check)
   --target <url>       webhook URL (default http://localhost:$PORT/api/v1/webhooks/whatsapp)
   --sha-format hex|base64   media sha256 format in the webhook (default hex)
+  --transcript <text>  audio: expected transcript for the fake transcriber
   --raw                fixture: do not rewrite phone_number_id to yours
 `;
 
@@ -80,6 +81,7 @@ const { positionals, values } = parseArgs({
     target: { type: "string" },
     "sha-format": { type: "string", default: "hex" },
     raw: { type: "boolean", default: false },
+    transcript: { type: "string" },
   },
 });
 
@@ -123,6 +125,19 @@ function buildMedia(type: string): SimMessage {
     { mediaFileSize: stored.size, mimeType, type: mediaType },
     "media registered for wa:fake-graph",
   );
+  if (values.transcript !== undefined) {
+    if (mediaType !== "audio") fail("--transcript only applies to audio");
+    // The fake transcriber (TRANSCRIPTION_PROVIDER=fake) looks it up by the audio sha256.
+    const dir = resolve(env.TRANSCRIPTION_FAKE_DIR);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, `${stored.sha256Hex}.txt`), `${values.transcript}\n`);
+    logger.info(
+      { chars: values.transcript.length, provider: env.TRANSCRIPTION_PROVIDER },
+      env.TRANSCRIPTION_PROVIDER === "fake"
+        ? "expected transcript registered for the fake transcriber"
+        : "transcript registered, but TRANSCRIPTION_PROVIDER is not fake: the real provider will be used",
+    );
+  }
   return {
     type: mediaType as "image" | "document" | "audio" | "video" | "sticker",
     media: {

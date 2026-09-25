@@ -1,5 +1,6 @@
 import { fromPrisma, PgBoss } from "pg-boss";
 import type { Logger } from "../common/logger.js";
+import type { Prisma } from "../generated/prisma/client.js";
 import type { EnqueueOutboundInTx } from "../modules/messaging/outbound.repository.js";
 import type { EnqueueMediaInTx } from "../modules/whatsapp/whatsapp-ingest.repository.js";
 import {
@@ -7,6 +8,7 @@ import {
   QUEUES,
   type MediaDownloadJob,
   type OutboundMessageJob,
+  type TranscriptionJob,
   type WebhookEventJob,
   type WebhookQueue,
 } from "./queues.js";
@@ -97,4 +99,22 @@ export function createEnqueueOutboundInTx(boss: PgBoss): EnqueueOutboundInTx {
     });
     if (!jobId) throw new Error(`pg-boss did not create an outbound job for ${messageId}`);
   };
+}
+
+/** Enqueues a transcription inside the caller's Prisma transaction (atomic with media stored). */
+export function createEnqueueTranscriptionInTx(
+  boss: PgBoss,
+): (tx: Prisma.TransactionClient, mediaFileId: string) => Promise<void> {
+  return async (tx, mediaFileId) => {
+    const data: TranscriptionJob = { mediaFileId };
+    const jobId = await boss.send(QUEUES.mediaTranscription, data, { db: fromPrisma(tx) });
+    if (!jobId) throw new Error(`pg-boss did not create a transcription job for ${mediaFileId}`);
+  };
+}
+
+/** Enqueues a transcription outside a transaction (manual retries). */
+export async function enqueueTranscription(boss: PgBoss, mediaFileId: string): Promise<void> {
+  const data: TranscriptionJob = { mediaFileId };
+  const jobId = await boss.send(QUEUES.mediaTranscription, data);
+  if (!jobId) throw new Error(`pg-boss did not create a transcription job for ${mediaFileId}`);
 }

@@ -88,6 +88,7 @@ production code does not change: it is only pointed at another URL.
 | `wa:fake-graph` (`:4010`) | API → Meta (Graph API)                                                                                           | Serves media (metadata + short-lived download URL), accepts outbound messages and sends back signed `sent → delivered → read` (or `failed`) status webhooks                  |
 | `wa:media:retry`          | Re-enqueues `failed` media downloads (`--all-failed` or `--id <mediaFileId>`)                                    |
 | `wa:send`                 | Queues an outbound message: `text` (24h window) or `template` (opt-in; `--opt-in-confirmed` for tests), `--wait` |
+| `wa:transcription:retry`  | Re-enqueues `failed` transcriptions (`--all-failed` or `--id <mediaFileId>`)                                     |
 
 Setup (once), in `apps/api/.env`:
 
@@ -134,6 +135,11 @@ verifies SHA-256 and magic bytes → stores the bytes in `media_blobs` (ADR-008)
 in Prisma Studio (`media_files.status = stored`). Add `--fault download:corrupt`,
 `--fault media-info:404` or `--fault download:500` to `wa:fake-graph` to see the
 retry / failure paths; `wa:media:retry --all-failed` re-enqueues failed downloads.
+
+Voice notes: `wa:simulate audio --file ./nota.ogg --transcript "El tornillo de 6mm sube a
+14 pesos"` → media stored → transcription job → `messages.transcript`. With
+`TRANSCRIPTION_PROVIDER=fake` the expected text is returned; with `groq` the real audio is
+transcribed (free plan). AAC/AMR audio is skipped (`unsupported_format`).
 
 Outbound flow: `wa:simulate text` (the contact writes → 24h window + implicit opt-in) →
 `wa:send text --to 59899000111 --text "Recibimos tu lista" --wait` → the worker sends
@@ -229,6 +235,8 @@ Database (API, run with `pnpm --filter @smartops/api <script>`):
 | `TRANSCRIPTION_API_KEY`                 | `apps/api`   | Provider key (Groq free plan); required unless `fake` |
 | `TRANSCRIPTION_BASE_URL/MODEL`          | `apps/api`   | Optional overrides (Groq: whisper-large-v3)           |
 | `TRANSCRIPTION_LANGUAGE`, `_TIMEOUT_MS` | `apps/api`   | Language hint (`es`) and request timeout              |
+| `TRANSCRIPTION_WORKER_CONCURRENCY`      | `apps/api`   | Parallel transcriptions (Groq free: 20 req/min)       |
+| `TRANSCRIPTION_DAILY_LIMIT_PER_CONTACT` | `apps/api`   | Max transcriptions per contact per 24h (50)           |
 | `TEST_DATABASE_URL`                     | `apps/api`   | Optional; enables integration tests (`*_test` DB)     |
 | `NEXT_PUBLIC_API_URL`                   | `apps/admin` | Base URL of the API                                   |
 
