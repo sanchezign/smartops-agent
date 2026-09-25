@@ -1,0 +1,18 @@
+{
+  "entry": [
+    {
+      "id": "200000000000002",
+      "time": 1790299358,
+      "changes": [
+        {
+          "field": "security",
+          "value": {
+            "event": "PIN_RESET_SUCCESS",
+            "display_phone_number": "15550000000"
+          }
+        }
+      ]
+    }
+  ],
+  "object": "whatsapp_business_account"
+}

@@ -125,11 +125,11 @@ describe.skipIf(!testDatabaseUrl)("WhatsApp ingestion against Postgres", () => {
         mediaPlan: { status: "pending" },
       });
       const stored = await prisma.message.findFirstOrThrow({ include: { mediaFile: true } });
-      expect(stored.text).toBe("Lista septiembre");
+      expect(stored.text).toBeNull(); // the real document had no caption
       expect(stored.mediaFile).toMatchObject({
-        waMediaId: "900000000000002",
+        waMediaId: "9000000000000002",
         mimeType: "application/pdf",
-        filename: "lista-precios.pdf",
+        filename: "lista-prueba.pdf",
         status: "pending",
       });
       expect(enqueuedMedia).toEqual([stored.mediaFile?.id]);

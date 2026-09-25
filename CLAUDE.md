@@ -352,6 +352,24 @@ Each one gets an ADR in docs/adr/.
   30 s → 15 min, 6 attempts, DLQ → failed retries_exhausted). `markDone` copies the text
   to `Message.transcript` in the same transaction; empty text = done +
   reason empty_transcript. Transcript text is never logged (only its length).
+- 2026-09-24 → 2026-09-25 Meta account history: Meta disabled the business portfolio and
+  the WABA for "Acceptable Use Policy" (a false positive on a new account); the user
+  requested a review, development continued with the local simulator (M2.5) and the
+  review was resolved in the user's favor. The test number was re-registered
+  (POST /register → CONNECTED, CLOUD_API, AVAILABLE_WITHOUT_REVIEW, quality GREEN), the
+  app stayed subscribed to the WABA, and `WHATSAPP_GRAPH_BASE_URL` was removed from the
+  local `.env` (real Graph API again). Lesson: keep the simulator as the default dev
+  path; real Meta for validation and fixtures only.
+- 2026-09-25 (phase 3, M5) What real Meta payloads look like (fixtures README): media
+  objects carry a signed `url` (lookaside.fbsbx.com); the WEBHOOK `sha256` is base64
+  while the media API (`GET /{media-id}`) returns hex — `sha256Matches` accepts both
+  and the simulator mirrors it (`wa:simulate` base64, `wa:fake-graph` hex); statuses
+  include `contacts` and `pricing.type`; BSUIDs look like `UY.<16 digits>`; photos
+  arrive as image/jpeg without caption unless typed; Meta also sends the `security`
+  field (PIN_RESET_SUCCESS) — ignored. Two apps are subscribed to the WABA: ours and
+  Meta's "WA DevX Webhook Events 1P App" (dashboard tooling). `wa:fixtures:capture`
+  (scripts/fixtures/anonymize-webhook.ts) anonymizes with deterministic fakes and
+  refuses to write if any original identifier survives.
 - Local tunnel: cloudflared quick tunnel (`cloudflared tunnel --url
   http://localhost:4000`); URL changes on every restart → update it in Meta.
 
@@ -359,24 +377,25 @@ Each one gets an ADR in docs/adr/.
 1. scaffold — done (2026-09-24).
 2. config/env/logging + initial Prisma schema — done (2026-09-24). Migrations:
    `init`, `price_change_rules`.
-3. core integration (WhatsApp Cloud API) — DONE (2026-09-24), merged to `main`, except
-   M5 (blocked by Meta). Branch `feat/phase-3-whatsapp`.
+3. core integration (WhatsApp Cloud API) — DONE (M1–M4 2026-09-24, M5 2026-09-25).
+   Branches `feat/phase-3-whatsapp` (M1–M4) and `feat/phase-3-m5-real-fixtures` (M5).
    - M1 webhook verify + signed capture + status diagnostics — done. Checkpoint: real
      Meta webhook verified (signed test event stored once; wa:subscribe subscribed the
-     app to the WABA). Meta then disabled the portfolio + WABA (review requested, see
-     Known issues) → development continued against a local simulator.
+     app to the WABA). Meta then disabled the portfolio + WABA (resolved, see
+     Architecture decisions) → M2–M4 were developed against a local simulator.
    - M2 pg-boss queue + worker + idempotent persistence — done. Migration `whatsapp_worker`.
    - M2.5 local WhatsApp simulator (`wa:simulate` + `wa:fake-graph`) — done.
    - M3 media download + storage (ADR-008) — done. Migration `media_storage`.
    - M4 outbound messages + 24h window + opt-in (ADR-009) — done. Migration
      `outbound_messages`.
-   - **PENDING — M5, BLOCKED BY META:** replace the doc-based fixtures in
-     `apps/api/test/fixtures/whatsapp/` with real anonymized payloads (text, image,
-     document, audio, statuses sent/delivered/read/failed, BSUID) captured from
-     `webhook_events`; get the real failed-status error code of the M1 checkpoint;
-     validate M1–M4 end to end with real Meta traffic (remove
-     `WHATSAPP_GRAPH_BASE_URL` from `apps/api/.env` first). Resume as soon as Meta
-     restores the account, before phase 12 (deploy).
+   - M5 real traffic + real anonymized fixtures — done (2026-09-25). Real test number
+     via cloudflared: text, photo, PDF and voice note from the user's phone + hello_world
+     from the Meta panel → all processed on the 1st attempt (media stored, voice note
+     transcribed by Groq: 6.82 s audio, 459 ms), template statuses sent → delivered →
+     read. Retried/old deliveries: none arrived twice. Fixtures replaced with anonymized
+     captures (`wa:fixtures:capture`); extraction test data for phase 5 in
+     `apps/api/test/fixtures/extraction/`. The M1 "failed status" code never appeared
+     (after the account was restored the template was delivered).
 4. media normalization (Whisper for voice notes) — DONE (2026-09-24), merged to `main`. Branch
    `feat/phase-4-media-normalization`. Approved plan: Groq whisper-large-v3 free plan
    (ADR-010), AAC/AMR skipped (unsupported_format), `transcriptions` table + copy in
@@ -393,21 +412,9 @@ Each one gets an ADR in docs/adr/.
      1 attempt, language Spanish, text copied to Message.transcript. Local
      `apps/api/.env` now uses `TRANSCRIPTION_PROVIDER=groq` (simulated audio also hits
      Groq's free quota; switch back to `fake` for heavy local testing).
-   - Next: phase 3 M5 with real Meta traffic (see phase 3), then phase 5.
+   - Next: phase 5 (extraction + catalog).
 
 ## Known issues (out of scope)
-- **BLOCKER (external), 2026-09-24: Meta disabled the business portfolio and the
-  WABA** for "Acceptable Use Policy" (likely a false positive on a new account).
-  The user requested a review. Until it is restored there are no real webhooks,
-  outbound sends, media downloads or templates, and the real failed-status error
-  code (M1 checkpoint) cannot be obtained. Development continues against a local
-  simulator. When the account is back: re-run `wa:subscribe`, re-check the webhook
-  config in the App Dashboard, and validate M1–M3 end to end with real traffic.
-  If the review is rejected, a new portfolio/WABA (new ids in `.env`) is needed.
-- **Local `apps/api/.env` points at the simulator**: `WHATSAPP_GRAPH_BASE_URL=http://localhost:4010`
-  (added 2026-09-24 while Meta is blocked). When Meta restores the account, REMOVE that
-  line (default = `https://graph.facebook.com`) to use the real Graph API again, restart
-  API + worker, then run `wa:subscribe`.
 - **Phase 5 (extraction):** Claude reads PDF and images natively, but NOT xlsx / xls /
   csv / docx. Those documents are stored in M3 but must be converted to text (e.g. sheet →
   CSV/Markdown table) before extraction. Evaluate the parsing library and record an ADR
@@ -416,8 +423,15 @@ Each one gets an ADR in docs/adr/.
   throws, the job retries but the message is then a duplicate and the hook is NOT
   called again. Phase 6 must make the hand-off durable (enqueue its own job /
   outbox) instead of calling n8n inline from the hook.
-- Real WhatsApp payloads are pending: fixtures are doc-based. Phase 3 M5 (blocked by
-  Meta, see Current phase) replaces them with anonymized real captures.
+- Fixtures still doc-based (no real capture yet): failed status, BSUID-only sender,
+  interactive, unsupported (see test/fixtures/whatsapp/README.md). Capture them with
+  `wa:fixtures:capture` when they show up in real traffic.
+- Transcription accuracy (real WhatsApp voice note, 2026-09-25): "sube a 14 pesos desde el
+  lunes" came back as "… de lunas". Consider extending the vocabulary prompt (weekdays,
+  "desde el") and a confidence/review flag in phase 5; extraction must tolerate ASR errors.
+- The WhatsApp webhook stores a signed media URL (`lookaside.fbsbx.com`, short-lived) in
+  `webhook_events.payload` and `messages.raw`. It expires and needs the access token, but
+  it is one more reason to define retention for those tables.
 - Opt-in (ADR-009): opt-out ("STOP", "BAJA") is not implemented yet — it is a
   REQUIRED part of phase 7 (see Phase order). A manual opt-in does not record who
   confirmed it (needed before the panel, phase 9).

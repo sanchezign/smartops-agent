@@ -150,6 +150,7 @@ describe("fake Graph API — media", () => {
     expect(info).toMatchObject({
       id: stored.id,
       mime_type: "application/pdf",
+      // Like Meta: the media API returns the sha256 in hex (the webhook uses base64).
       sha256: stored.sha256Hex,
       file_size: bytes.length,
     });
@@ -214,11 +215,13 @@ describe("fake Graph API — outbound messages", () => {
 
     await waitForWebhooks(3);
     expect(received.every((w) => w.validSignature)).toBe(true);
-    expect(statusesOf(received).map((s) => [s?.waMessageId, s?.status])).toEqual([
-      [wamid, "sent"],
-      [wamid, "delivered"],
-      [wamid, "read"],
-    ]);
+    // Delivery order is not guaranteed (neither by Meta): compare the set of statuses.
+    // The API applies them forward-only regardless of arrival order.
+    expect(
+      statusesOf(received)
+        .map((s) => `${s?.waMessageId}:${s?.status}`)
+        .sort(),
+    ).toEqual([`${wamid}:delivered`, `${wamid}:read`, `${wamid}:sent`]);
   });
 
   it("templates are accepted with message_status and billed as utility", async () => {

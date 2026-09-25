@@ -89,6 +89,7 @@ production code does not change: it is only pointed at another URL.
 | `wa:media:retry`          | Re-enqueues `failed` media downloads (`--all-failed` or `--id <mediaFileId>`)                                    |
 | `wa:send`                 | Queues an outbound message: `text` (24h window) or `template` (opt-in; `--opt-in-confirmed` for tests), `--wait` |
 | `wa:transcription:retry`  | Re-enqueues `failed` transcriptions (`--all-failed` or `--id <mediaFileId>`)                                     |
+| `wa:fixtures:capture`     | Turns stored real webhooks into anonymized fixtures (`--event <webhookEventId>=<name>`)                          |
 
 Setup (once), in `apps/api/.env`:
 

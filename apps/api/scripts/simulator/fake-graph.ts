@@ -49,6 +49,7 @@ export interface FakeGraphOptions {
   /** Forced HTTP errors per endpoint. */
   faults?: Partial<Record<FaultTarget, FaultSpec>>;
   latencyMs?: number;
+  /** sha256 format of the media API response. Real Meta: hex (the WEBHOOK uses base64). */
   shaFormat?: "hex" | "base64";
   /** Download URL lifetime (Meta: 5 minutes). */
   urlTtlMs?: number;

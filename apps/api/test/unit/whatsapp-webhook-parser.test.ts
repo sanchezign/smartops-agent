@@ -16,29 +16,33 @@ function firstChange(fixture: string): ParsedChange {
 }
 
 describe("parseWhatsAppWebhook — inbound messages", () => {
-  it("parses a text message with phone, BSUID and profile name", () => {
+  it("parses a real text message with phone, BSUID and profile name", () => {
     const change = firstChange("message-text");
     expect(change).toMatchObject({ field: "messages", phoneNumberId: "100000000000001" });
     expect(change.messages[0]).toMatchObject({
-      waMessageId: "wamid.TEST_TEXT_0001",
+      waMessageId: "wamid.ANON_TEXT_0001",
       fromWaId: "59899000111",
+      fromUserId: "UY.1000000000000001",
       contactName: "Test Supplier",
       type: "text",
-      text: "Lista de precios: tornillo 6mm $12",
+      text: "Lista septiembre: tornillo 6mm 12 UYU, tuerca 6mm 5 UYU",
       media: null,
-      timestamp: new Date(1_790_000_000 * 1000),
+      timestamp: new Date(1_790_307_685 * 1000),
     });
   });
 
   it.each([
-    ["message-image", "image", "image/jpeg", null, "Precios nuevos"],
-    ["message-document", "document", "application/pdf", "lista-precios.pdf", "Lista septiembre"],
-    ["message-audio", "audio", "audio/ogg; codecs=opus", null, null],
-  ])("parses %s media metadata", (fixture, type, mimeType, filename, text) => {
+    // Real payloads: WhatsApp converts photos to JPEG; no caption was sent with them.
+    ["message-image", "image", "image/jpeg", null],
+    ["message-document", "document", "application/pdf", "lista-prueba.pdf"],
+    ["message-audio", "audio", "audio/ogg; codecs=opus", null],
+  ])("parses real %s media metadata", (fixture, type, mimeType, filename) => {
     const message = firstChange(fixture).messages[0];
-    expect(message).toMatchObject({ type, text, fromUserId: "UY.1A2B3C4D5E6F7G8H9I0J" });
+    expect(message).toMatchObject({ type, text: null, fromUserId: "UY.1000000000000001" });
     expect(message?.media).toMatchObject({ mimeType, filename });
     expect(message?.media?.waMediaId).toMatch(/^9000/);
+    // Meta sends the media sha256 in base64 (not hex).
+    expect(message?.media?.sha256).toMatch(/^[A-Za-z0-9+/]{43}=$/);
   });
 
   it("uses the button title as text for interactive replies", () => {

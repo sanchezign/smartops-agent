@@ -141,12 +141,12 @@ describe("WhatsAppIngestService.processEvent", () => {
 
     const logs = lines.join("");
     expect(logs).toContain("598*****111");
-    expect(logs).toContain("UY.1A2…I0J");
+    expect(logs).toContain("UY.100…001");
     for (const secret of [
       "59899000111",
-      "UY.1A2B3C4D5E6F7G8H9I0J",
+      "UY.1000000000000001",
       "Test Supplier",
-      "Precios nuevos",
+      "lookaside.fbsbx.com", // signed media URL from the webhook
     ]) {
       expect(logs).not.toContain(secret);
     }

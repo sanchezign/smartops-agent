@@ -41,9 +41,10 @@ describe("summarizeWhatsAppWebhook", () => {
       {
         kind: "message",
         field: "messages",
-        wamid: "wamid.TEST_TEXT_0001",
+        wamid: "wamid.ANON_TEXT_0001",
         type: "text",
         from: "598*****111",
+        fromUserId: "UY.100…001",
       },
     ]);
     const serialized = JSON.stringify(summary);

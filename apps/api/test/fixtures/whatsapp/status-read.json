@@ -9,28 +9,28 @@
             "contacts": [
               {
                 "wa_id": "59899000111",
-                "profile": {
-                  "name": "Test Supplier"
-                },
                 "user_id": "UY.1000000000000001"
-              }
-            ],
-            "messages": [
-              {
-                "id": "wamid.ANON_TEXT_0001",
-                "from": "59899000111",
-                "text": {
-                  "body": "Lista septiembre: tornillo 6mm 12 UYU, tuerca 6mm 5 UYU"
-                },
-                "type": "text",
-                "timestamp": "1790307685",
-                "from_user_id": "UY.1000000000000001"
               }
             ],
             "metadata": {
               "phone_number_id": "100000000000001",
               "display_phone_number": "15550000000"
             },
+            "statuses": [
+              {
+                "id": "wamid.ANON_SENT_0005",
+                "status": "read",
+                "pricing": {
+                  "type": "free_customer_service",
+                  "billable": false,
+                  "category": "utility",
+                  "pricing_model": "PMP"
+                },
+                "timestamp": "1790307989",
+                "recipient_id": "59899000111",
+                "recipient_user_id": "UY.1000000000000001"
+              }
+            ],
             "messaging_product": "whatsapp"
           }
         }

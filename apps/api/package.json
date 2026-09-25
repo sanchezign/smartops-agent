@@ -23,7 +23,8 @@
     "wa:fake-graph": "tsx --env-file-if-exists=.env scripts/simulator/fake-graph-cli.ts",
     "wa:media:retry": "tsx --env-file-if-exists=.env scripts/media-retry.ts",
     "wa:send": "tsx --env-file-if-exists=.env scripts/whatsapp-send.ts",
-    "wa:transcription:retry": "tsx --env-file-if-exists=.env scripts/transcription-retry.ts"
+    "wa:transcription:retry": "tsx --env-file-if-exists=.env scripts/transcription-retry.ts",
+    "wa:fixtures:capture": "tsx --env-file-if-exists=.env scripts/capture-whatsapp-fixtures.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",

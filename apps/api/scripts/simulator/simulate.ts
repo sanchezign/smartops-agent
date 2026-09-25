@@ -52,7 +52,7 @@ Options:
   --bsuid-only         omit the phone number (user with a username)
   --duplicate          send the same body twice (dedupe check)
   --target <url>       webhook URL (default http://localhost:$PORT/api/v1/webhooks/whatsapp)
-  --sha-format hex|base64   media sha256 format in the webhook (default hex)
+  --sha-format hex|base64   sha256 format in the webhook (default base64, like Meta; the media API uses hex)
   --transcript <text>  audio: expected transcript for the fake transcriber
   --raw                fixture: do not rewrite phone_number_id to yours
 `;
@@ -79,7 +79,7 @@ const { positionals, values } = parseArgs({
     "bsuid-only": { type: "boolean", default: false },
     duplicate: { type: "boolean", default: false },
     target: { type: "string" },
-    "sha-format": { type: "string", default: "hex" },
+    "sha-format": { type: "string", default: "base64" },
     raw: { type: "boolean", default: false },
     transcript: { type: "string" },
   },
@@ -119,7 +119,7 @@ function buildMedia(type: string): SimMessage {
   const mimeType = values.mime ?? mimeFromFilename(filename);
   if (!mimeType) fail(`unknown extension for ${filename}: pass --mime`);
   const mediaType = type === "media" ? messageTypeForMime(mimeType) : type;
-  const shaFormat = values["sha-format"] === "base64" ? "base64" : "hex";
+  const shaFormat = values["sha-format"] === "hex" ? "hex" : "base64";
   const stored = createMediaStore().register(bytes, { mimeType, filename });
   logger.info(
     { mediaFileSize: stored.size, mimeType, type: mediaType },

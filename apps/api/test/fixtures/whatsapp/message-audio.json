@@ -1,44 +1,45 @@
 {
-  "object": "whatsapp_business_account",
   "entry": [
     {
       "id": "200000000000002",
       "changes": [
         {
+          "field": "messages",
           "value": {
-            "messaging_product": "whatsapp",
-            "metadata": {
-              "display_phone_number": "15550000000",
-              "phone_number_id": "100000000000001"
-            },
             "contacts": [
               {
                 "wa_id": "59899000111",
-                "user_id": "UY.1A2B3C4D5E6F7G8H9I0J",
                 "profile": {
                   "name": "Test Supplier"
-                }
+                },
+                "user_id": "UY.1000000000000001"
               }
             ],
             "messages": [
               {
+                "id": "wamid.ANON_AUDIO_0004",
                 "from": "59899000111",
-                "from_user_id": "UY.1A2B3C4D5E6F7G8H9I0J",
-                "timestamp": "1790000100",
-                "id": "wamid.TEST_AUDIO_0001",
                 "type": "audio",
                 "audio": {
-                  "mime_type": "audio/ogg; codecs=opus",
-                  "sha256": "c5f3e2f07d4a6b9c1e0f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d",
-                  "id": "900000000000003",
-                  "voice": true
-                }
+                  "id": "9000000000000003",
+                  "url": "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=9000000000000003&source=webhook&ext=1790308101&hash=ANONYMIZED",
+                  "voice": true,
+                  "sha256": "48P+wV3SACCUpE2xRe2YFgC2UwE8lzVtntpS80sYVLs=",
+                  "mime_type": "audio/ogg; codecs=opus"
+                },
+                "timestamp": "1790307800",
+                "from_user_id": "UY.1000000000000001"
               }
-            ]
-          },
-          "field": "messages"
+            ],
+            "metadata": {
+              "phone_number_id": "100000000000001",
+              "display_phone_number": "15550000000"
+            },
+            "messaging_product": "whatsapp"
+          }
         }
       ]
     }
-  ]
+  ],
+  "object": "whatsapp_business_account"
 }
