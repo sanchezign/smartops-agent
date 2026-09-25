@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../../common/db.js";
+import type { EmitMessageReadyInTx } from "../integration/message-ready.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 import type { DocumentConversionStatus, MediaStatus } from "../../generated/prisma/enums.js";
 import type { OnMediaStoredInTx } from "../media/media.repository.js";
@@ -61,7 +62,22 @@ const truncate = (value: string) => (value.length > 2_000 ? `${value.slice(0, 2_
 
 export function createDocumentConversionRepository(
   prisma: PrismaClient,
+  deps: { emitMessageReadyInTx?: EmitMessageReadyInTx } = {},
 ): DocumentConversionRepository {
+  /** pending → final state + "message.ready" (phase 6) in one transaction. */
+  const finish = async (
+    mediaFileId: string,
+    data: Prisma.DocumentConversionUpdateManyMutationInput,
+  ) =>
+    prisma.$transaction(async (tx) => {
+      const updated = await tx.documentConversion.updateMany({
+        where: { mediaFileId, status: "pending" },
+        data,
+      });
+      if (updated.count === 1 && deps.emitMessageReadyInTx) {
+        await deps.emitMessageReadyInTx(tx, { mediaFileId });
+      }
+    });
   return {
     async getForProcessing(mediaFileId) {
       const row = await prisma.documentConversion.findUnique({
@@ -90,38 +106,32 @@ export function createDocumentConversionRepository(
     },
 
     async markDone(mediaFileId, result, meta) {
-      await prisma.documentConversion.updateMany({
-        where: { mediaFileId, status: "pending" },
-        data: {
-          status: "done",
-          format: result.format,
-          text: result.text,
-          charCount: result.charCount,
-          dataRows: result.dataRows,
-          truncated: result.truncated,
-          needsReview: result.needsReview,
-          sheets: result.sheets as unknown as Prisma.InputJsonValue,
-          tables: result.tables as unknown as Prisma.InputJsonValue,
-          warnings: result.warnings as unknown as Prisma.InputJsonValue,
-          durationMs: meta.durationMs,
-          converterVersion: meta.converterVersion,
-          completedAt: new Date(),
-          reason: null,
-          error: null,
-        },
+      await finish(mediaFileId, {
+        status: "done",
+        format: result.format,
+        text: result.text,
+        charCount: result.charCount,
+        dataRows: result.dataRows,
+        truncated: result.truncated,
+        needsReview: result.needsReview,
+        sheets: result.sheets as unknown as Prisma.InputJsonValue,
+        tables: result.tables as unknown as Prisma.InputJsonValue,
+        warnings: result.warnings as unknown as Prisma.InputJsonValue,
+        durationMs: meta.durationMs,
+        converterVersion: meta.converterVersion,
+        completedAt: new Date(),
+        reason: null,
+        error: null,
       });
     },
 
     async markFailed(mediaFileId, input) {
-      await prisma.documentConversion.updateMany({
-        where: { mediaFileId, status: "pending" },
-        data: {
-          status: "failed",
-          reason: input.reason,
-          error: input.detail ? truncate(input.detail) : null,
-          durationMs: input.durationMs,
-          completedAt: new Date(),
-        },
+      await finish(mediaFileId, {
+        status: "failed",
+        reason: input.reason,
+        error: input.detail ? truncate(input.detail) : null,
+        durationMs: input.durationMs,
+        completedAt: new Date(),
       });
     },
 

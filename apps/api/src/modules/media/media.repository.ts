@@ -1,4 +1,6 @@
 import type { PrismaClient } from "../../common/db.js";
+import type { EmitMessageReadyInTx } from "../integration/message-ready.js";
+import { documentFormat } from "../documents/document-types.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 import type { MediaStatus, MediaStorageKind } from "../../generated/prisma/enums.js";
 import type { MediaKind } from "./media-policy.js";
@@ -23,6 +25,19 @@ export type OnMediaStoredInTx = (
   tx: Prisma.TransactionClient,
   media: { mediaFileId: string; kind: MediaKind; mimeType: string },
 ) => Promise<void>;
+
+/**
+ * Stored media that needs no more work (images, PDFs) makes its message ready. Audio waits
+ * for the transcription, convertible documents for the conversion (their own hooks).
+ */
+export function createOnReadyMediaStoredInTx(emit: EmitMessageReadyInTx): OnMediaStoredInTx {
+  return async (tx, media) => {
+    const needsMoreWork =
+      media.kind === "audio" ||
+      (media.kind === "document" && documentFormat(media.mimeType, null) !== null);
+    if (!needsMoreWork) await emit(tx, { mediaFileId: media.mediaFileId });
+  };
+}
 
 /** Runs several media-stored hooks in order, inside the same transaction. */
 export function composeOnStoredInTx(...hooks: OnMediaStoredInTx[]): OnMediaStoredInTx {
@@ -64,7 +79,11 @@ const truncate = (value: string) =>
 
 export function createMediaRepository(
   prisma: PrismaClient,
-  deps: { onStoredInTx: OnMediaStoredInTx },
+  deps: {
+    onStoredInTx: OnMediaStoredInTx;
+    /** Outbox "message.ready" (phase 6): media rejected / failed / skipped for good. */
+    emitMessageReadyInTx?: EmitMessageReadyInTx;
+  },
 ): MediaRepository {
   return {
     async getForDownload(id) {
@@ -116,9 +135,14 @@ export function createMediaRepository(
     },
 
     async markFinal(id, status, reason, error) {
-      await prisma.mediaFile.updateMany({
-        where: { id, status: "pending" },
-        data: { status, rejectReason: reason, ...(error ? { error: truncate(error) } : {}) },
+      await prisma.$transaction(async (tx) => {
+        const updated = await tx.mediaFile.updateMany({
+          where: { id, status: "pending" },
+          data: { status, rejectReason: reason, ...(error ? { error: truncate(error) } : {}) },
+        });
+        if (updated.count === 1 && deps.emitMessageReadyInTx) {
+          await deps.emitMessageReadyInTx(tx, { mediaFileId: id });
+        }
       });
     },
 

@@ -107,6 +107,16 @@ enum AlertType {
   ingestion_error
   /// Something a person must look at by hand (e.g. a voice note too long to transcribe).
   manual_attention
+  /// n8n unreachable, workflow errors (phase 6).
+  integration_error
+}
+
+/// Outbox towards n8n (phase 6, ADR-015).
+enum IntegrationEventStatus {
+  pending
+  delivered
+  /// Retries exhausted (~24 h): an alert is raised; `n8n:replay` sends it again.
+  failed
 }
 
 enum AlertSeverity {
@@ -351,13 +361,14 @@ model Message {
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  conversation  Conversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  authorUser    User?                @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
-  mediaFile     MediaFile?           @relation(fields: [mediaFileId], references: [id], onDelete: SetNull)
-  webhookEvent  WebhookEvent?        @relation(fields: [webhookEventId], references: [id], onDelete: SetNull)
-  ingestionRuns IngestionRun[]
-  priceChanges  PriceChange[]
-  statusEvents  MessageStatusEvent[]
+  conversation      Conversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  authorUser        User?                @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+  mediaFile         MediaFile?           @relation(fields: [mediaFileId], references: [id], onDelete: SetNull)
+  webhookEvent      WebhookEvent?        @relation(fields: [webhookEventId], references: [id], onDelete: SetNull)
+  ingestionRuns     IngestionRun[]
+  priceChanges      PriceChange[]
+  statusEvents      MessageStatusEvent[]
+  integrationEvents IntegrationEvent[]
 
   @@index([conversationId, createdAt])
   @@index([authorUserId])
@@ -748,6 +759,33 @@ model SupplierSheetFormat {
 
   @@index([supplierId, fingerprint])
   @@map("supplier_sheet_formats")
+}
+
+/// Outbox towards n8n (phase 6, ADR-015): created in the SAME transaction that makes a
+/// message ready (text ingested, media stored/failed, transcription or conversion finished);
+/// delivered by the pg-boss queue n8n-delivery with retries. dedupeKey is unique: at most
+/// one "message.ready" per message. The payload carries ids only (no message content).
+model IntegrationEvent {
+  id           String                 @id @default(uuid(7)) @db.Uuid
+  type         String
+  messageId    String?                @map("message_id") @db.Uuid
+  payload      Json
+  status       IntegrationEventStatus @default(pending)
+  dedupeKey    String                 @unique @map("dedupe_key")
+  attempts     Int                    @default(0)
+  /// Times the watchdog sent it again after delivery (n8n accepted but never processed it).
+  redeliveries Int                    @default(0)
+  lastError    String?                @map("last_error")
+  deliveredAt  DateTime?              @map("delivered_at") @db.Timestamptz(3)
+  failedAt     DateTime?              @map("failed_at") @db.Timestamptz(3)
+  createdAt    DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  message Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([status, updatedAt])
+  @@index([messageId])
+  @@map("integration_events")
 }
 
 model Alert {

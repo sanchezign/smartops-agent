@@ -9,6 +9,7 @@ import {
   type MediaDownloadJob,
   type OutboundMessageJob,
   type DocumentConversionJob,
+  type N8nDeliveryJob,
   type TranscriptionJob,
   type WebhookEventJob,
   type WebhookQueue,
@@ -122,6 +123,24 @@ export function createEnqueueDocumentConversionInTx(
     const jobId = await boss.send(QUEUES.documentConversion, data, { db: fromPrisma(tx) });
     if (!jobId) throw new Error(`pg-boss did not create a conversion job for ${mediaFileId}`);
   };
+}
+
+/** Enqueues an n8n delivery inside the caller's transaction (atomic with the outbox row). */
+export function createEnqueueN8nDeliveryInTx(
+  boss: PgBoss,
+): (tx: Prisma.TransactionClient, eventId: string) => Promise<void> {
+  return async (tx, eventId) => {
+    const data: N8nDeliveryJob = { eventId };
+    const jobId = await boss.send(QUEUES.n8nDelivery, data, { db: fromPrisma(tx) });
+    if (!jobId) throw new Error(`pg-boss did not create an n8n delivery job for ${eventId}`);
+  };
+}
+
+/** Enqueues an n8n delivery outside a transaction (watchdog, replay). */
+export async function enqueueN8nDelivery(boss: PgBoss, eventId: string): Promise<void> {
+  const data: N8nDeliveryJob = { eventId };
+  const jobId = await boss.send(QUEUES.n8nDelivery, data);
+  if (!jobId) throw new Error(`pg-boss did not create an n8n delivery job for ${eventId}`);
 }
 
 /** Enqueues a transcription outside a transaction (manual retries). */

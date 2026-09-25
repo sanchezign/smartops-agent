@@ -16,6 +16,9 @@ export const QUEUES = {
   mediaTranscriptionDlq: "media-transcription-dlq",
   documentConversion: "document-conversion",
   documentConversionDlq: "document-conversion-dlq",
+  n8nDelivery: "n8n-delivery",
+  n8nDeliveryDlq: "n8n-delivery-dlq",
+  n8nWatchdog: "n8n-watchdog",
 } as const;
 
 export interface WebhookEventJob {
@@ -36,6 +39,10 @@ export interface TranscriptionJob {
 
 export interface DocumentConversionJob {
   mediaFileId: string;
+}
+
+export interface N8nDeliveryJob {
+  eventId: string;
 }
 
 type QueueDefinition = Omit<Queue, "name"> & { name: string };
@@ -128,6 +135,29 @@ export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
     // Conversion runs in a worker thread killed at DOC_CONVERT_TIMEOUT_MS (20 s).
     expireInSeconds: 120,
     deadLetter: QUEUES.documentConversionDlq,
+  },
+  {
+    name: QUEUES.n8nDeliveryDlq,
+    retryLimit: 3,
+    retryDelay: 30,
+    deleteAfterSeconds: 30 * 24 * 3600,
+  },
+  {
+    name: QUEUES.n8nDelivery,
+    // ~24 h to survive a night-long n8n outage (user rule): 30 s doubling up to 1 h, then
+    // hourly → 30 retries ≈ 24 h. Then the DLQ marks the event failed + alert (n8n:replay).
+    retryLimit: 30,
+    retryDelay: 30,
+    retryBackoff: true,
+    retryDelayMax: 3600,
+    expireInSeconds: 60,
+    deadLetter: QUEUES.n8nDeliveryDlq,
+  },
+  {
+    name: QUEUES.n8nWatchdog,
+    retryLimit: 0,
+    expireInSeconds: 120,
+    deleteAfterSeconds: 3600,
   },
   {
     name: QUEUES.webhookSweeper,

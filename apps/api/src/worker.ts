@@ -3,6 +3,8 @@ import { createLogger } from "./common/logger.js";
 import { loadEnv } from "./config/env.js";
 import {
   createEnqueueDocumentConversionInTx,
+  createEnqueueN8nDeliveryInTx,
+  enqueueN8nDelivery,
   createEnqueueMediaInTx,
   createEnqueueOutboundInTx,
   createEnqueueTranscriptionInTx,
@@ -11,6 +13,14 @@ import {
 } from "./jobs/boss.js";
 import { registerDocumentConversionWorkers } from "./jobs/document-conversion.job.js";
 import { registerMediaTranscriptionWorkers } from "./jobs/media-transcription.job.js";
+import { registerN8nDeliveryWorkers } from "./jobs/n8n-delivery.job.js";
+import { createIntegrationEventRepository } from "./modules/integration/integration-event.repository.js";
+import { createEmitMessageReadyInTx } from "./modules/integration/message-ready.js";
+import {
+  createN8nClient,
+  createN8nDeliveryService,
+  createN8nWatchdog,
+} from "./modules/integration/n8n-delivery.js";
 import { registerWhatsAppMediaWorkers } from "./jobs/whatsapp-media.job.js";
 import { registerWhatsAppOutboundWorkers } from "./jobs/whatsapp-outbound.job.js";
 import { registerWhatsAppWebhookWorkers } from "./jobs/whatsapp-webhook.job.js";
@@ -22,7 +32,11 @@ import {
 import { createDocumentConversionService } from "./modules/documents/document-conversion.service.js";
 import { createIsolatedDocumentConverter } from "./modules/documents/document-converter.js";
 import { DEFAULT_CONVERSION_LIMITS } from "./modules/documents/document-types.js";
-import { composeOnStoredInTx, createMediaRepository } from "./modules/media/media.repository.js";
+import {
+  composeOnStoredInTx,
+  createMediaRepository,
+  createOnReadyMediaStoredInTx,
+} from "./modules/media/media.repository.js";
 import {
   createSettingsRepository,
   createSettingsService,
@@ -77,8 +91,13 @@ try {
   process.exit(1);
 }
 
+// Outbox towards n8n (phase 6): "message.ready" + its delivery job, in the transaction
+// that makes each message ready (5 places: ingest, media stored/final, transcription,
+// conversion).
+const emitMessageReadyInTx = createEmitMessageReadyInTx(createEnqueueN8nDeliveryInTx(boss));
 const ingestRepository = createWhatsAppIngestRepository(prisma, {
   enqueueMediaInTx: createEnqueueMediaInTx(boss),
+  emitMessageReadyInTx,
 });
 await registerWhatsAppWebhookWorkers(boss, {
   ingest: createWhatsAppIngestService({
@@ -104,7 +123,9 @@ const mediaStorage = createPostgresMediaStorage(prisma);
 // Media stored → in the same transaction: audio → pending transcription + job (phase 4);
 // spreadsheet/CSV/text/Word → pending conversion + job (phase 5 M3a).
 const mediaRepository = createMediaRepository(prisma, {
+  emitMessageReadyInTx,
   onStoredInTx: composeOnStoredInTx(
+    createOnReadyMediaStoredInTx(emitMessageReadyInTx),
     createOnAudioStoredInTx({ enqueueTranscriptionInTx: createEnqueueTranscriptionInTx(boss) }),
     createOnDocumentStoredInTx({
       enqueueConversionInTx: createEnqueueDocumentConversionInTx(boss),
@@ -142,7 +163,7 @@ await registerWhatsAppOutboundWorkers(boss, {
 
 const settings = createSettingsService({ repository: createSettingsRepository(prisma) });
 const transcriber = createTranscriber(env);
-const transcriptionRepository = createTranscriptionRepository(prisma);
+const transcriptionRepository = createTranscriptionRepository(prisma, { emitMessageReadyInTx });
 await registerMediaTranscriptionWorkers(boss, {
   service: createTranscriptionService({
     repository: transcriptionRepository,
@@ -159,7 +180,7 @@ await registerMediaTranscriptionWorkers(boss, {
   concurrency: env.TRANSCRIPTION_WORKER_CONCURRENCY,
 });
 
-const conversionRepository = createDocumentConversionRepository(prisma);
+const conversionRepository = createDocumentConversionRepository(prisma, { emitMessageReadyInTx });
 await registerDocumentConversionWorkers(boss, {
   service: createDocumentConversionService({
     repository: conversionRepository,
@@ -179,8 +200,29 @@ await registerDocumentConversionWorkers(boss, {
   concurrency: env.DOC_CONVERT_WORKER_CONCURRENCY,
 });
 
+// Delivery to n8n (off → events accumulate and go out once enabled).
+if (env.N8N_DELIVERY_ENABLED) {
+  const integrationRepository = createIntegrationEventRepository(prisma);
+  await registerN8nDeliveryWorkers(boss, {
+    service: createN8nDeliveryService({
+      repository: integrationRepository,
+      client: createN8nClient({
+        url: env.N8N_RECEIVER_WEBHOOK_URL,
+        secret: env.N8N_WEBHOOK_SECRET ?? "",
+      }),
+    }),
+    repository: integrationRepository,
+    watchdog: createN8nWatchdog({
+      repository: integrationRepository,
+      enqueue: (eventId) => enqueueN8nDelivery(boss, eventId),
+    }),
+    logger,
+  });
+}
+
 logger.info(
   {
+    n8nDelivery: env.N8N_DELIVERY_ENABLED,
     transcriptionProvider: transcriber.provider,
     transcriptionModel: transcriber.model,
     concurrency: env.WORKER_CONCURRENCY,

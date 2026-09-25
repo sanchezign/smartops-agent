@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../../common/db.js";
+import type { EmitMessageReadyInTx } from "../integration/message-ready.js";
 import { Prisma } from "../../generated/prisma/client.js";
 import type { WebhookEventStatus } from "../../generated/prisma/enums.js";
 import { planContactUpsert, type ContactPlanResult } from "./contact-identity.js";
@@ -80,7 +81,11 @@ function truncate(value: string): string {
 
 export function createWhatsAppIngestRepository(
   prisma: PrismaClient,
-  deps: { enqueueMediaInTx: EnqueueMediaInTx },
+  deps: {
+    enqueueMediaInTx: EnqueueMediaInTx;
+    /** Outbox "message.ready" (phase 6): here for messages without pending media. */
+    emitMessageReadyInTx?: EmitMessageReadyInTx;
+  },
 ): WhatsAppIngestRepository {
   async function ingestOnce(
     message: ParsedInboundMessage,
@@ -183,6 +188,9 @@ export function createWhatsAppIngestRepository(
         },
         select: { id: true },
       });
+      if (deps.emitMessageReadyInTx && (!mediaFile || media.status !== "pending")) {
+        await deps.emitMessageReadyInTx(tx, { messageId: created.id });
+      }
 
       return {
         outcome: "created" as const,

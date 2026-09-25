@@ -504,6 +504,19 @@ Each one gets an ADR in docs/adr/.
      (180), duration read from the file (`media/audio-duration.ts`: OGG/Opus last granule −
      pre-skip at 48 kHz; MP4 mvhd; unknown → > 3 MB is long) → transcription skipped
      `too_long` + Alert `manual_attention` (new AlertType) in one transaction.
+   - M2 outbox + delivery to n8n — DONE (2026-09-26). Closes the phase 3 known issue.
+     `integration_events` (migration `integration_events`, dedupeKey unique
+     "message.ready:<messageId>", payload = ids/routing only, never content) written by
+     `createEmitMessageReadyInTx` in the transaction of each readiness point: ingest (no
+     pending media), media stored image/PDF (`createOnReadyMediaStoredInTx`), media final
+     (rejected/failed/skipped), transcription done/final/too_long, conversion done/failed;
+     its pg-boss job `n8n-delivery` is enqueued in the same transaction. Delivery: POST to
+     `N8N_RECEIVER_WEBHOOK_URL` with header X-SmartOps-Secret (`N8N_WEBHOOK_SECRET`), 2xx →
+     delivered; else retry 30 s doubling to 1 h, retryLimit 30 (≈ 24 h), DLQ → failed +
+     critical `integration_error` alert (new AlertType); `pnpm n8n:replay` re-sends failed.
+     Watchdog cron */5: pending untouched > 2 h → re-enqueue; delivered > 15 min without an
+     ingestion run → redeliver (max 2). `N8N_DELIVERY_ENABLED` (default false: events
+     accumulate). The old post-commit onInboundMessage hook is now log-only.
 
 1. scaffold — done (2026-09-24).
 2. config/env/logging + initial Prisma schema — done (2026-09-24). Migrations:
@@ -688,10 +701,6 @@ Each one gets an ADR in docs/adr/.
 - SheetJS comes from its CDN tarball: upgrades are manual (check cdn.sheetjs.com/advisories).
   The SheetJS BIFF8 writer used by the tests does not keep hidden rows / date formats (a
   test-data limitation, not the reader).
-- `onInboundMessage` hook (phases 6/7) runs after the message is committed: if it
-  throws, the job retries but the message is then a duplicate and the hook is NOT
-  called again. Phase 6 must make the hand-off durable (enqueue its own job /
-  outbox) instead of calling n8n inline from the hook.
 - Fixtures still doc-based (no real capture yet): failed status, BSUID-only sender,
   interactive, unsupported (see test/fixtures/whatsapp/README.md). Capture them with
   `wa:fixtures:capture` when they show up in real traffic.

@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../../common/db.js";
+import type { EmitMessageReadyInTx } from "../integration/message-ready.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 import type { MediaStatus, TranscriptionStatus } from "../../generated/prisma/enums.js";
 import type { MediaKind } from "../media/media-policy.js";
@@ -80,7 +81,13 @@ export function createOnAudioStoredInTx(deps: {
   };
 }
 
-export function createTranscriptionRepository(prisma: PrismaClient): TranscriptionRepository {
+export function createTranscriptionRepository(
+  prisma: PrismaClient,
+  deps: { emitMessageReadyInTx?: EmitMessageReadyInTx } = {},
+): TranscriptionRepository {
+  const emit = async (tx: Prisma.TransactionClient, mediaFileId: string) => {
+    if (deps.emitMessageReadyInTx) await deps.emitMessageReadyInTx(tx, { mediaFileId });
+  };
   return {
     async getForProcessing(mediaFileId) {
       const row = await prisma.transcription.findUnique({
@@ -149,6 +156,7 @@ export function createTranscriptionRepository(prisma: PrismaClient): Transcripti
             where: { mediaFileId },
             data: { transcript: input.text },
           });
+          await emit(tx, mediaFileId);
         }
       });
     },
@@ -165,6 +173,7 @@ export function createTranscriptionRepository(prisma: PrismaClient): Transcripti
           },
         });
         if (updated.count !== 1) return;
+        await emit(tx, mediaFileId);
         const message = await tx.message.findFirst({
           where: { mediaFileId },
           select: { id: true },
@@ -191,14 +200,17 @@ export function createTranscriptionRepository(prisma: PrismaClient): Transcripti
     },
 
     async markFinal(mediaFileId, status, reason, error) {
-      await prisma.transcription.updateMany({
-        where: { mediaFileId, status: "pending" },
-        data: {
-          status,
-          reason,
-          completedAt: new Date(),
-          ...(error ? { error: truncate(error) } : {}),
-        },
+      await prisma.$transaction(async (tx) => {
+        const updated = await tx.transcription.updateMany({
+          where: { mediaFileId, status: "pending" },
+          data: {
+            status,
+            reason,
+            completedAt: new Date(),
+            ...(error ? { error: truncate(error) } : {}),
+          },
+        });
+        if (updated.count === 1) await emit(tx, mediaFileId);
       });
     },
 

@@ -119,6 +119,22 @@ export const envSchema = z.object({
   /** Per-IP rate limit for /api/v1/internal (per RATE_LIMIT_WINDOW_MS). */
   INTERNAL_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(600),
 
+  // ─── n8n (phase 6, ADR-015) ───
+  /** Deliver "message.ready" events to n8n. Off: events accumulate and go out when enabled. */
+  N8N_DELIVERY_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+  /** n8n receiver webhook (production URL: the workflow must be published). */
+  N8N_RECEIVER_WEBHOOK_URL: z
+    .string()
+    .url()
+    .default("http://localhost:5678/webhook/smartops-message-ready"),
+  /** Shared secret checked by the n8n Webhook node (Header Auth, X-SmartOps-Secret). */
+  N8N_WEBHOOK_SECRET: optionalString(
+    z.string().min(32, "must be a random secret of at least 32 characters"),
+  ),
+
   // ─── Document conversion (xlsx/xls/csv/txt/docx → text, ADR-013) ───
   DOC_CONVERT_MAX_BYTES: z.coerce
     .number()
@@ -180,6 +196,9 @@ function crossFieldIssues(source: Record<string, string | undefined>): string[] 
   const provider = source.TRANSCRIPTION_PROVIDER ?? "fake";
   if (source.NODE_ENV === "production" && provider === "fake") {
     issues.push("TRANSCRIPTION_PROVIDER: the fake provider is not allowed in production");
+  }
+  if (source.N8N_DELIVERY_ENABLED === "true" && !source.N8N_WEBHOOK_SECRET?.trim()) {
+    issues.push("N8N_WEBHOOK_SECRET: is required when N8N_DELIVERY_ENABLED=true");
   }
   const aiProvider = source.AI_PROVIDER ?? "fake";
   if (source.NODE_ENV === "production" && aiProvider === "fake") {

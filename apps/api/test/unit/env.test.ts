@@ -203,3 +203,22 @@ describe("internal API key", () => {
     expect(parseEnv(base)).toMatchObject({ INTERNAL_RATE_LIMIT_MAX: 600 });
   });
 });
+
+describe("n8n delivery", () => {
+  it("is off by default; enabling it requires the webhook secret", () => {
+    expect(parseEnv(base)).toMatchObject({
+      N8N_DELIVERY_ENABLED: false,
+      N8N_RECEIVER_WEBHOOK_URL: "http://localhost:5678/webhook/smartops-message-ready",
+    });
+    expect(issuesOf({ ...base, N8N_DELIVERY_ENABLED: "true" }).join(" ")).toMatch(
+      /N8N_WEBHOOK_SECRET: is required/,
+    );
+    expect(
+      parseEnv({
+        ...base,
+        N8N_DELIVERY_ENABLED: "true",
+        N8N_WEBHOOK_SECRET: "a-very-long-random-secret-0123456789",
+      }).N8N_DELIVERY_ENABLED,
+    ).toBe(true);
+  });
+});
