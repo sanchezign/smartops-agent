@@ -179,6 +179,9 @@ Week 4
     release. Also document the paid deploy for a real client (e.g. Render paid
     instances + managed Postgres) with a monthly cost estimate. Ask before anything
     that could generate charges.
+    SECURITY (user, 2026-09-26): the n8n editor must NEVER be publicly exposed — reachable only
+    through a tunnel/VPN or an allow-listed IP, on top of the n8n login. Only the webhook paths
+    the backend calls may be reachable (and in the single-VM compose they stay internal).
 13. docs — README: problem, architecture diagram, flow, setup with Meta test
     number, env var table, demo GIF, cost estimate, ADR list.
 
@@ -478,9 +481,29 @@ Each one gets an ADR in docs/adr/.
   http://localhost:4000`); URL changes on every restart → update it in Meta.
 
 ## Current phase
-**Phase 5 complete (2026-09-26), merged to `main`. Next: phase 6 (n8n multi-agent) on branch
-`feat/phase-6-n8n` — plan pending (requirements in Phase order: router uses the extraction's
-listKind, no-AI pre-filter, audio duration cap). M3b remains required before production.**
+**Phase 5 complete (2026-09-26), merged to `main`. Phase 6 (n8n multi-agent) IN PROGRESS on
+`feat/phase-6-n8n`. M3b remains required before production.**
+
+6. n8n multi-agent — IN PROGRESS. Approved plan (2026-09-26) + user answers: customer contacts →
+   deterministic `customer_query` (no LLM); demo notifications = panel + WhatsApp to the
+   user's own number via the test number (no new accounts); supplier acknowledgement
+   implemented but OFF by default (Setting; ON in demo mode); delivery to n8n retried for
+   ~24 h (intervals up to 1 h) → failed + alert + manual replay. ANTI-SPAM (user): notify
+   only actionable events (increases over the threshold, low stock, pending reviews,
+   customer queries, integration errors); a run without news does not notify (panel only);
+   per-recipient digest window (default 10 min) → one message; per-recipient hourly cap
+   (Setting), excess goes to the next digest; critical errors may skip the digest with
+   their own cap. Stop at M4 so the user imports and tests the workflows.
+   - M1 pre-filter + audio cap — DONE (2026-09-26). `src/modules/extraction/prefilter.ts`
+     runs INSIDE classify() (after the pending checks, before the LLM); rules
+     customer_contact (→ customer_query), non_content_type, media_unavailable,
+     audio_too_long, audio_not_transcribed, no_price_signal (text/transcript without digits,
+     currency or price/stock words); stored in `ingestion_runs.prefilter_rule` (indexed,
+     migration `prefilter`) for the dashboard; extract refuses pre-filtered runs and
+     customer contacts (409). Audio cap: Setting `transcription.maxAutoDurationSeconds`
+     (180), duration read from the file (`media/audio-duration.ts`: OGG/Opus last granule −
+     pre-skip at 48 kHz; MP4 mvhd; unknown → > 3 MB is long) → transcription skipped
+     `too_long` + Alert `manual_attention` (new AlertType) in one transaction.
 
 1. scaffold — done (2026-09-24).
 2. config/env/logging + initial Prisma schema — done (2026-09-24). Migrations:

@@ -21,6 +21,7 @@ function setup(options: {
   bytes?: Uint8Array | null;
   transcribe?: () => Promise<Awaited<ReturnType<Transcriber["transcribe"]>>>;
   supports?: boolean;
+  maxSeconds?: number;
 }) {
   const final: { status: string; reason: string }[] = [];
   const done: { text: string }[] = [];
@@ -48,6 +49,7 @@ function setup(options: {
     }),
     recordError: vi.fn(async () => {}),
     resetFailed: vi.fn(async () => []),
+    markTooLong: vi.fn(async () => {}),
   };
   const storage: MediaStorage = {
     kind: "postgres",
@@ -79,6 +81,9 @@ function setup(options: {
     prompt: "lista de precios",
     dailyLimitPerContact: 3,
     onTranscribed,
+    ...(options.maxSeconds !== undefined
+      ? { maxAutoDurationSeconds: async () => options.maxSeconds! }
+      : {}),
   });
   return { service, repository, transcriber, final, done, onTranscribed };
 }

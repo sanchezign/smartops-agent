@@ -23,6 +23,11 @@ export const SETTING_DEFINITIONS = {
   "catalog.autoCreateProducts": { schema: z.boolean(), default: true },
   /** A product marked unavailable that appears quoted again is reactivated (with a warning). */
   "catalog.reactivateOnQuote": { schema: z.boolean(), default: true },
+  /** Voice notes longer than this are NOT transcribed automatically (listen by hand). */
+  "transcription.maxAutoDurationSeconds": {
+    schema: z.number().int().min(10).max(3_600),
+    default: 180,
+  },
 } as const;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

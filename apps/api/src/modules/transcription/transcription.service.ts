@@ -1,4 +1,5 @@
 import type { Logger } from "../../common/logger.js";
+import { audioDurationSeconds, UNKNOWN_DURATION_LONG_BYTES } from "../media/audio-duration.js";
 import { normalizeMime } from "../media/media-policy.js";
 import type { MediaStorage } from "../media/media-storage.js";
 import type { TranscriptionRepository } from "./transcription.repository.js";
@@ -39,6 +40,8 @@ export function createTranscriptionService(deps: {
   /** Max transcriptions per contact in a rolling 24h window (quota protection). */
   dailyLimitPerContact: number;
   onTranscribed?: TranscribedHook;
+  /** Setting transcription.maxAutoDurationSeconds (read per job: editable from the panel). */
+  maxAutoDurationSeconds?: () => Promise<number>;
   now?: () => Date;
 }): TranscriptionService {
   const now = deps.now ?? (() => new Date());
@@ -80,6 +83,28 @@ export function createTranscriptionService(deps: {
 
       const bytes = await deps.storage.get(mediaFileId);
       if (!bytes) return finish("failed", "media_missing", "audio bytes not found in storage");
+
+      // Long voice notes are not transcribed automatically (phase 6): listen by hand.
+      if (deps.maxAutoDurationSeconds) {
+        const maxSeconds = await deps.maxAutoDurationSeconds();
+        const durationSeconds = audioDurationSeconds(bytes, item.mimeType);
+        const tooLong =
+          durationSeconds === null
+            ? bytes.byteLength > UNKNOWN_DURATION_LONG_BYTES
+            : durationSeconds > maxSeconds;
+        if (tooLong) {
+          await deps.repository.markTooLong(mediaFileId, {
+            durationSeconds,
+            sizeBytes: bytes.byteLength,
+            maxSeconds,
+          });
+          log.info(
+            { mediaFileId, durationSeconds, sizeBytes: bytes.byteLength, maxSeconds },
+            "voice note too long: not transcribed (manual attention)",
+          );
+          return { outcome: "skipped", reason: "too_long" };
+        }
+      }
 
       let result;
       try {

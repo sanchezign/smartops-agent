@@ -105,6 +105,8 @@ enum AlertType {
   low_stock
   missing_data
   ingestion_error
+  /// Something a person must look at by hand (e.g. a voice note too long to transcribe).
+  manual_attention
 }
 
 enum AlertSeverity {
@@ -638,6 +640,8 @@ model IngestionRun {
   supplierId       String?                  @map("supplier_id") @db.Uuid
   classification   IngestionClassification?
   status           IngestionStatus          @default(pending)
+  /// Deterministic pre-filter rule that classified the message WITHOUT the LLM (phase 6).
+  prefilterRule    String?                  @map("prefilter_rule")
   /// Raw structured output from the extractor (validated before ingestion).
   rawExtraction    Json?                    @map("raw_extraction")
   /// Ingestion report: created/updated/unchanged/unavailable products, warnings.
@@ -668,6 +672,7 @@ model IngestionRun {
   @@index([status, createdAt])
   @@index([messageId])
   @@index([supplierId])
+  @@index([prefilterRule, createdAt])
   @@map("ingestion_runs")
 }
 

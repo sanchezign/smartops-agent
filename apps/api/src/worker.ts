@@ -23,6 +23,10 @@ import { createDocumentConversionService } from "./modules/documents/document-co
 import { createIsolatedDocumentConverter } from "./modules/documents/document-converter.js";
 import { DEFAULT_CONVERSION_LIMITS } from "./modules/documents/document-types.js";
 import { composeOnStoredInTx, createMediaRepository } from "./modules/media/media.repository.js";
+import {
+  createSettingsRepository,
+  createSettingsService,
+} from "./modules/settings/settings.service.js";
 import { createMediaDownloadService } from "./modules/media/media.service.js";
 import { createOutboundRepository } from "./modules/messaging/outbound.repository.js";
 import { createOutboundService } from "./modules/messaging/outbound.service.js";
@@ -136,6 +140,7 @@ await registerWhatsAppOutboundWorkers(boss, {
   concurrency: env.OUTBOUND_WORKER_CONCURRENCY,
 });
 
+const settings = createSettingsService({ repository: createSettingsRepository(prisma) });
 const transcriber = createTranscriber(env);
 const transcriptionRepository = createTranscriptionRepository(prisma);
 await registerMediaTranscriptionWorkers(boss, {
@@ -146,6 +151,8 @@ await registerMediaTranscriptionWorkers(boss, {
     language: env.TRANSCRIPTION_LANGUAGE,
     prompt: loadVocabularyPrompt(),
     dailyLimitPerContact: env.TRANSCRIPTION_DAILY_LIMIT_PER_CONTACT,
+    maxAutoDurationSeconds: async () =>
+      (await settings.getAll(logger))["transcription.maxAutoDurationSeconds"] as number,
   }),
   repository: transcriptionRepository,
   logger,

@@ -9,6 +9,7 @@ import { documentFormat } from "../documents/document-types.js";
 import { buildCatalogContext } from "./catalog-context.js";
 import type { SheetExtraction } from "../sheets/sheet-extraction.js";
 import { applyDocumentRules } from "./document-rules.js";
+import { prefilter } from "./prefilter.js";
 import {
   applyExtractionRules,
   classificationJsonSchema,
@@ -50,6 +51,8 @@ export interface RunResult {
   status: string;
   classification: IngestionClassification | null;
   reason?: string;
+  /** Classified by the deterministic pre-filter (no LLM call). */
+  prefilterRule?: string;
   itemCount?: number;
   listKind?: string;
   suspiciousInstructions?: boolean;
@@ -79,6 +82,7 @@ export interface RunView {
   status: string;
   classification: IngestionClassification | null;
   supplierId: string | null;
+  prefilterRule: string | null;
   itemCount: number | null;
   listKind: string | null;
   suspiciousInstructions: boolean | null;
@@ -113,6 +117,7 @@ function summary(run: IngestionRunRecord): RunResult {
     status: run.status,
     classification: run.classification,
     ...(report?.reason ? { reason: report.reason } : {}),
+    ...(run.prefilterRule ? { prefilterRule: run.prefilterRule } : {}),
     ...(stored?.output
       ? {
           itemCount: stored.output.items.length,
@@ -152,6 +157,24 @@ export function createIngestionService(deps: {
     };
   }
 
+  /** Waiting states only (download, transcription, conversion still running). */
+  function assertNotPending(ctx: MessageContext): void {
+    if (ctx.direction !== "inbound")
+      throw errors.badRequest("Only inbound messages can be ingested");
+    if (!ctx.media) return;
+    if (ctx.media.status === "pending") throw errors.notReady("Media is still being downloaded");
+    if (ctx.media.status !== "stored") return; // the pre-filter handles unavailable media
+    if (ctx.messageType === "audio" && (ctx.media.transcriptionStatus ?? "pending") === "pending") {
+      throw errors.notReady("Voice note is still being transcribed");
+    }
+    if (
+      documentFormat(ctx.media.mimeType, ctx.media.filename) !== null &&
+      ctx.media.conversion?.status === "pending"
+    ) {
+      throw errors.notReady("Document is still being converted");
+    }
+  }
+
   function assertReady(ctx: MessageContext): void {
     if (ctx.direction !== "inbound")
       throw errors.badRequest("Only inbound messages can be ingested");
@@ -179,9 +202,31 @@ export function createIngestionService(deps: {
       if (!ctx) throw errors.notFound("Message not found");
       const existing = await deps.repository.findActiveRun(messageId);
       if (existing && existing.status !== "pending") return summary(existing);
-      assertReady(ctx);
+      assertNotPending(ctx);
 
       const run = existing ?? (await deps.repository.createRun(messageId, ctx.contact.supplierId));
+
+      // Deterministic pre-filter (phase 6): obvious messages never reach the LLM.
+      const decision = prefilter({
+        messageType: ctx.messageType,
+        contactKind: ctx.contact.kind,
+        text: ctx.text,
+        transcript: ctx.transcript,
+        mediaStatus: ctx.media?.status ?? null,
+        transcriptionStatus: ctx.media?.transcriptionStatus ?? null,
+        transcriptionReason: ctx.media?.transcriptionReason ?? null,
+      });
+      if (decision) {
+        await deps.repository.saveClassification(run.id, {
+          status: "classified",
+          classification: decision.classification,
+          report: { reason: decision.reason, prefilter: decision.rule },
+          prefilterRule: decision.rule,
+        });
+        log.info({ runId: run.id, rule: decision.rule }, "message pre-filtered (no LLM)");
+        return summary((await deps.repository.getRun(run.id)) ?? run);
+      }
+      assertReady(ctx);
 
       if (MEDIA_TYPES.has(ctx.messageType)) {
         await deps.repository.saveClassification(run.id, {
@@ -243,6 +288,11 @@ export function createIngestionService(deps: {
         throw errors.inProgress("Extraction already running for this run");
       if (run.status === "pending") throw errors.notReady("Classify the message first");
       if (run.status !== "classified") return summary(run); // idempotent: already done
+      if (run.prefilterRule) {
+        throw errors.conflict(`Message pre-filtered (${run.prefilterRule}): nothing to extract`, {
+          prefilterRule: run.prefilterRule,
+        });
+      }
 
       if (run.classification && !PRICE_CLASSES.has(run.classification)) {
         throw errors.conflict(`Message classified as ${run.classification}: nothing to extract`);
@@ -250,6 +300,9 @@ export function createIngestionService(deps: {
 
       const ctx = await deps.repository.getMessageContext(run.messageId);
       if (!ctx) throw errors.notFound("Message not found");
+      if (ctx.contact.kind === "customer") {
+        throw errors.conflict("Customer messages never go to price extraction");
+      }
       assertReady(ctx);
 
       if (!(await deps.repository.claimForExtraction(run.id))) {
@@ -445,6 +498,7 @@ export function createIngestionService(deps: {
         status: run.status,
         classification: run.classification,
         supplierId: run.supplierId,
+        prefilterRule: run.prefilterRule,
         itemCount: stored?.output ? stored.output.items.length : null,
         listKind: stored?.output?.listKind ?? null,
         suspiciousInstructions: stored?.output?.suspiciousInstructions ?? null,

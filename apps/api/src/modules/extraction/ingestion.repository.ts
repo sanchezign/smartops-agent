@@ -26,6 +26,7 @@ export interface MessageContext {
     mimeType: string;
     filename: string | null;
     transcriptionStatus: TranscriptionStatus | null;
+    transcriptionReason: string | null;
     /** Conversion of spreadsheets / CSV / text / Word (phase 5 M3a). */
     conversion: DocumentConversionInfo | null;
   } | null;
@@ -62,6 +63,7 @@ export interface RunDetail {
   report: unknown;
   errors: unknown;
   costUsd: string | null;
+  prefilterRule: string | null;
   createdAt: Date;
   finishedAt: Date | null;
   reviewItems: { id: string; scope: string; kind: string; status: string }[];
@@ -85,6 +87,7 @@ export interface IngestionRunRecord {
   report: unknown;
   errors: unknown;
   costUsd: string | null;
+  prefilterRule: string | null;
 }
 
 export interface IngestionRepository {
@@ -102,6 +105,8 @@ export interface IngestionRepository {
       classification: IngestionClassification | null;
       report: Prisma.InputJsonValue;
       errors?: Prisma.InputJsonValue;
+      /** Deterministic pre-filter rule (phase 6): classified without the LLM. */
+      prefilterRule?: string;
     },
   ): Promise<void>;
   /** Atomic classified → extracting. False when another request holds it or the state differs. */
@@ -133,6 +138,7 @@ const runSelect = {
   report: true,
   errors: true,
   costUsd: true,
+  prefilterRule: true,
 } as const;
 
 function toRecord(row: {
@@ -145,6 +151,7 @@ function toRecord(row: {
   report: unknown;
   errors: unknown;
   costUsd: { toString(): string } | null;
+  prefilterRule: string | null;
 }): IngestionRunRecord {
   return { ...row, costUsd: row.costUsd ? row.costUsd.toString() : null };
 }
@@ -228,7 +235,7 @@ export function createIngestionRepository(prisma: PrismaClient): IngestionReposi
               status: true,
               mimeType: true,
               filename: true,
-              transcription: { select: { status: true } },
+              transcription: { select: { status: true, reason: true } },
               documentConversion: {
                 select: {
                   status: true,
@@ -268,6 +275,7 @@ export function createIngestionRepository(prisma: PrismaClient): IngestionReposi
               mimeType: m.mediaFile.mimeType,
               filename: m.mediaFile.filename,
               transcriptionStatus: m.mediaFile.transcription?.status ?? null,
+              transcriptionReason: m.mediaFile.transcription?.reason ?? null,
               conversion: m.mediaFile.documentConversion
                 ? {
                     ...m.mediaFile.documentConversion,
@@ -360,6 +368,7 @@ export function createIngestionRepository(prisma: PrismaClient): IngestionReposi
             classification: input.classification,
             report: input.report,
             ...(input.errors ? { errors: input.errors } : {}),
+            ...(input.prefilterRule ? { prefilterRule: input.prefilterRule } : {}),
             ...(input.status === "needs_review" ? { finishedAt: new Date() } : {}),
           },
           select: { supplierId: true },

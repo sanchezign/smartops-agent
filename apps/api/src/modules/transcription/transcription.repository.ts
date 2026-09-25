@@ -33,6 +33,14 @@ export interface TranscriptionRepository {
     },
   ): Promise<void>;
   /** pending → skipped | failed (no-op otherwise). */
+  /**
+   * pending → skipped (too_long) + a manual_attention Alert, in one transaction: the voice
+   * note stays as media to listen to by hand and the team is told.
+   */
+  markTooLong(
+    mediaFileId: string,
+    input: { durationSeconds: number | null; sizeBytes: number; maxSeconds: number },
+  ): Promise<void>;
   markFinal(
     mediaFileId: string,
     status: "skipped" | "failed",
@@ -142,6 +150,43 @@ export function createTranscriptionRepository(prisma: PrismaClient): Transcripti
             data: { transcript: input.text },
           });
         }
+      });
+    },
+
+    async markTooLong(mediaFileId, input) {
+      await prisma.$transaction(async (tx) => {
+        const updated = await tx.transcription.updateMany({
+          where: { mediaFileId, status: "pending" },
+          data: {
+            status: "skipped",
+            reason: "too_long",
+            durationSeconds: input.durationSeconds,
+            completedAt: new Date(),
+          },
+        });
+        if (updated.count !== 1) return;
+        const message = await tx.message.findFirst({
+          where: { mediaFileId },
+          select: { id: true },
+        });
+        const length =
+          input.durationSeconds === null
+            ? `${(input.sizeBytes / 1024 / 1024).toFixed(1)} MB`
+            : `${Math.floor(input.durationSeconds / 60)}:${String(Math.round(input.durationSeconds % 60)).padStart(2, "0")}`;
+        await tx.alert.create({
+          data: {
+            type: "manual_attention",
+            severity: "info",
+            title: `Audio de ${length} sin transcribir (límite ${Math.round(input.maxSeconds / 60)} min): escuchar manualmente`,
+            payload: {
+              reason: "audio_too_long",
+              mediaFileId,
+              messageId: message?.id ?? null,
+              durationSeconds: input.durationSeconds,
+              sizeBytes: input.sizeBytes,
+            },
+          },
+        });
       });
     },
 
