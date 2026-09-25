@@ -214,6 +214,10 @@ Database (API, run with `pnpm --filter @smartops/api <script>`):
   poll), `GET /api/v1/internal/rules`.
 - Spreadsheets, CSV, text and Word files are converted to text by the worker before
   extraction (ADR-013); PDFs and images go to Claude as-is.
+- Spreadsheets (xlsx/xls/csv) are read row by row by CODE with the supplier's remembered
+  format (ADR-014). A new format gets one small LLM mapping call and a `column_mapping`
+  review (a human picks the price column when there are several); the next lists in that
+  format cost $0.
 - Decisions the system must not take alone become **review items** (`review_items`, ADR-012):
   uncertain matches, outliers, currency changes, unavailable products, global percentages,
   tax-basis changes and suspicious messages. The admin panel (phase 9) resolves them.
@@ -285,3 +289,4 @@ demo and any real client) must enable ZDR in the Groq console → Settings → D
 - [ADR-011](docs/adr/ADR-011-llm-provider-models-budget.md) — LLM provider, Claude models, spend guard and prompt-injection policy
 - [ADR-012](docs/adr/ADR-012-human-review.md) — Catalog ingest rules and human review items
 - [ADR-013](docs/adr/ADR-013-document-conversion.md) — Document conversion (xlsx/xls/csv/txt/docx) with isolation and limits
+- [ADR-014](docs/adr/ADR-014-spreadsheet-formats.md) — Spreadsheets read deterministically with remembered formats per supplier

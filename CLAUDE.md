@@ -157,6 +157,11 @@ Week 3
      signed webhook + fake Graph API + fake LLM serving the golden outputs), so a visitor
      watches the flow live (SSE) up to the catalog and the review queue, without WhatsApp
      and at $0. Rate limited; demo data resettable.
+     The demo's sample supplier is SEEDED with its spreadsheet format already approved
+     (`supplier_sheet_formats`, user 2026-09-26): new formats always go to review
+     (column_mapping), so without the seed the "Enviar planilla" demo would stop at the
+     first spreadsheet. The seed shows the fast $0 path; the review flow is shown with a
+     second, unseeded format.
 
 Week 4
 10. tests — unit: signature check, idempotency, catalog rules, coexistence
@@ -458,6 +463,17 @@ Each one gets an ADR in docs/adr/.
 - Supply chain: pnpm `minimumReleaseAge` is respected. `pnpm add` auto-added a
   `minimumReleaseAgeExclude` for csv-parse 7.0.3 (published the same day): reverted, pinned
   7.0.2 instead. Never commit a release-age exclusion without asking.
+- 2026-09-26 (phase 5, M3c) Spreadsheets (ADR-014): `src/modules/sheets/` — `sheet-values.ts`
+  (fingerprint, prices: numeric cells exact; decimal_comma → dots only as thousands groups,
+  decimal_dot → commas only as thousands groups, anything else null = never guessed),
+  `sheet-reader.ts`, `list-rules.ts`, `sheet-input.ts` (tags `sheet_sample` / `product_names`
+  added to the neutralization list), `sheet-extraction.ts`, `sheet-format.repository.ts`.
+  `deterministicExtractionSchema` allows 20,000 items (LLM outputs stay capped at 500).
+  AiTask `map_columns` / `match`; `LlmContent.cache` = extra cache breakpoint (catalog);
+  `AiClient.preflight/estimateUsd` check a whole batch before the first call.
+  Supplier resolution shared by ingest and format approval (`supplier-resolution.ts`,
+  `CatalogRepository.resolveContactSupplier`). Approving column_mapping never calls the
+  LLM: it saves formats and moves the run back to `classified` (`next: "extract"`).
 - Local tunnel: cloudflared quick tunnel (`cloudflared tunnel --url
   http://localhost:4000`); URL changes on every restart → update it in Meta.
 
@@ -501,7 +517,7 @@ Each one gets an ADR in docs/adr/.
      `apps/api/.env` now uses `TRANSCRIPTION_PROVIDER=groq` (simulated audio also hits
      Groq's free quota; switch back to `fake` for heavy local testing).
    - Next: phase 5 (extraction + catalog).
-5. extraction + catalog — IN PROGRESS (M1, M2, M4, M3a done; next M3c, then M3b). Branch `feat/phase-5-extraction-catalog`.
+5. extraction + catalog — IN PROGRESS (M1, M2, M4, M3a, M3c done; M3b required before production). Branch `feat/phase-5-extraction-catalog`.
    Approved plan (2026-09-25) + user changes: catalog matching (exact normalized match →
    Claude `matchedProductId` + confidence → ambiguous = needs_review, never a silent
    duplicate; the PDF → photo e2e test must detect all 6 price changes); `full_list`
@@ -571,10 +587,21 @@ Each one gets an ADR in docs/adr/.
      timeout 20 s) + ZIP guard; `GET /api/v1/internal/runs/:id`; `AI_MAX_RUN_USD` ($0.30).
      Converted documents with > 30 product lines → review `requires_chunked_extraction`
      (never half a list). 609 tests green. $0 spent.
-   - M3c NEXT — spreadsheets without per-row LLM output: the LLM maps the columns from the
-     header + ~10 rows, the code reads every row deterministically; per-supplier format
-     memory (column mapping + header fingerprint; same fingerprint → reuse, $0; new or
-     low-confidence mapping → review). Plan to be presented before code.
+   - M3c spreadsheet formats — DONE (2026-09-26), ADR-014. Typed tables in
+     `document_conversions.tables`; `supplier_sheet_formats` (migration `sheet_formats`,
+     partial unique index: one ACTIVE per supplier + header fingerprint; formats coexist;
+     failing > 20 % of rows → retired, never deleted, re-mapped); mapper prompt
+     `column-mapper.md` (1 call per new format, always → review `column_mapping`; several
+     price columns → ambiguous, the reviewer must choose; the chosen column sets
+     taxIncluded); compact matcher `matcher.md` (only non-exact names, batches of 150,
+     cached catalog block, untrusted `<product_names>`, output row/ref/confidence validated
+     against the rows and refs sent; all batches preflighted against the budgets);
+     deterministic list signals (tax, currency, quoted full-list evidence, injection);
+     batched catalog writes (2,000 rows read + ingested in ~1.5 s). Fixtures
+     `test/fixtures/sheets/precios-multiples*.xlsx` (script `scripts/fixtures/build-sheet-fixtures.ts`,
+     products registered in expected.json so prompts never quote them). 654+ tests green.
+     Goldens for the sheet scenarios NOT recorded yet: `ai:record-golden --dry-run --only sheets`
+     = expected $0.0143 / worst $0.0990 → waiting for the user's authorization.
    - M3b chunked extraction — REQUIRED BEFORE PRODUCTION / a real client (user,
      2026-09-25): split long PDFs and docx (and any text document not covered by M3c) into
      blocks with the catalog as context; merge before the ingest; full_list and missing
@@ -601,6 +628,10 @@ Each one gets an ADR in docs/adr/.
      → untouched).
 
 ## Known issues (out of scope)
+- **Phase 5 M3c:** rows with an unreadable price are listed only as a warning (not as review
+  items); below the 20 % threshold they are simply not applied. Mapper and matcher reuse
+  `AI_EXTRACTOR_MODEL` (no separate env). The fake matcher answers "low" for everything
+  (dev/demo without golden → those rows go to review).
 - **Phase 5 M4:** a supplier auto-created from the WhatsApp profile name (list without
   supplierName) is never renamed when a later list states the company name: the ingest only
   adds a `supplier_name_mismatch` warning. Renaming/merging suppliers belongs to the panel.

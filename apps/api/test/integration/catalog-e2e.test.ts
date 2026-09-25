@@ -14,7 +14,13 @@ import { createCatalogRepository } from "../../src/modules/catalog/catalog.repos
 import { FAKE_RESPONDERS } from "../../src/modules/extraction/fake-responders.js";
 import { createIngestionRepository } from "../../src/modules/extraction/ingestion.repository.js";
 import { createIngestionService } from "../../src/modules/extraction/ingestion.service.js";
+import { convertDocument } from "../../src/modules/documents/convert.js";
+import { createDocumentConversionRepository } from "../../src/modules/documents/document-conversion.repository.js";
+import { DEFAULT_CONVERSION_LIMITS } from "../../src/modules/documents/document-types.js";
 import { createPostgresMediaStorage } from "../../src/modules/media/media-storage.js";
+import { createSheetExtraction } from "../../src/modules/sheets/sheet-extraction.js";
+import { createSheetFormatRepository } from "../../src/modules/sheets/sheet-format.repository.js";
+import { XLSX_MIME } from "../helpers/documents.js";
 import { createReviewRepository } from "../../src/modules/reviews/review.repository.js";
 import { createReviewService } from "../../src/modules/reviews/review.service.js";
 import {
@@ -62,13 +68,24 @@ describe.skipIf(!testDatabaseUrl)("e2e: internal API → catalog (Postgres + gol
     prisma = createTestPrisma();
     const env = parseEnv({ ...TEST_ENV_SOURCE });
     const settings = createSettingsService({ repository: createSettingsRepository(prisma) });
+    const ai = createAiClient({
+      provider: createLlmProvider(env, FAKE_RESPONDERS),
+      usage: createAiUsageRepository(prisma),
+      limits: { totalUsd: 4, dailyUsd: 0.5, dailyExtractionsPerContact: 20, runUsd: 0.3 },
+    });
     const ingestion = createIngestionService({
       repository: createIngestionRepository(prisma),
       storage: createPostgresMediaStorage(prisma),
-      ai: createAiClient({
-        provider: createLlmProvider(env, FAKE_RESPONDERS),
-        usage: createAiUsageRepository(prisma),
-        limits: { totalUsd: 4, dailyUsd: 0.5, dailyExtractionsPerContact: 20 },
+      ai,
+      sheets: createSheetExtraction({
+        ai,
+        formats: createSheetFormatRepository(prisma),
+        prompts: { mapper: loadPrompt("column-mapper"), matcher: loadPrompt("matcher") },
+        models: {
+          mapper: env.AI_EXTRACTOR_MODEL,
+          matcher: env.AI_EXTRACTOR_MODEL,
+          cacheSystemPrompts: env.AI_PROMPT_CACHE,
+        },
       }),
       prompts: { classifier: loadPrompt("classifier"), extractor: loadPrompt("extractor") },
       models: {
@@ -102,7 +119,7 @@ describe.skipIf(!testDatabaseUrl)("e2e: internal API → catalog (Postgres + gol
   beforeEach(async () => {
     await resetWhatsAppTables(prisma);
     await prisma.$executeRawUnsafe(
-      "TRUNCATE TABLE review_items, alerts, price_changes, ai_usages, ingestion_runs, products, suppliers, settings, audit_logs, media_blobs, transcriptions CASCADE",
+      "TRUNCATE TABLE review_items, alerts, price_changes, ai_usages, ingestion_runs, products, supplier_sheet_formats, suppliers, settings, audit_logs, media_blobs, transcriptions, document_conversions CASCADE",
     );
   });
 
@@ -335,6 +352,70 @@ describe.skipIf(!testDatabaseUrl)("e2e: internal API → catalog (Postgres + gol
     expect(
       (await prisma.product.findFirstOrThrow({ where: { name: "Tornillo 6mm" } })).price.toFixed(),
     ).toBe("12");
+  });
+
+  it("spreadsheet over HTTP: first list → column_mapping review → approved → ingested; next list at $0", async () => {
+    const { conversation } = await supplierContact();
+    const store = async (name: string) => {
+      const bytes = readFileSync(new URL(`../fixtures/sheets/${name}`, import.meta.url));
+      const message = await inbound(conversation.id, {
+        type: "document",
+        media: { mime: XLSX_MIME, bytes, filename: name },
+      });
+      const media = await prisma.message.findUniqueOrThrow({
+        where: { id: message.id },
+        select: { mediaFileId: true },
+      });
+      const result = await convertDocument(
+        { bytes, mimeType: XLSX_MIME, filename: name },
+        DEFAULT_CONVERSION_LIMITS,
+      );
+      if (!result.ok) throw new Error(result.reason);
+      await prisma.documentConversion.create({ data: { mediaFileId: media.mediaFileId! } });
+      await createDocumentConversionRepository(prisma).markDone(media.mediaFileId!, result, {
+        durationMs: 1,
+        converterVersion: "test",
+      });
+      return message;
+    };
+
+    const november = await pipeline((await store("precios-multiples.xlsx")).id);
+    expect(november.extracted).toMatchObject({ status: "needs_review" });
+    const status = await request(app)
+      .get(`/api/v1/internal/runs/${november.runId}`)
+      .set("X-Internal-Api-Key", TEST_INTERNAL_API_KEY)
+      .expect(200);
+    expect(status.body).toMatchObject({
+      status: "needs_review",
+      document: { status: "done", format: "xlsx" },
+      reviewItems: [{ kind: "column_mapping", scope: "run", status: "pending" }],
+    });
+
+    await reviews.approve(
+      status.body.reviewItems[0].id,
+      { tables: [{ table: "T1", priceColumn: 4 }] },
+      { type: "system" },
+      log,
+    );
+    expect((await api("/extract", { runId: november.runId }).expect(200)).body).toMatchObject({
+      status: "extracted",
+      itemCount: 7,
+    });
+    expect(
+      (await api("/catalog/ingest", { runId: november.runId }).expect(200)).body,
+    ).toMatchObject({
+      status: "ingested",
+      counts: { created: 7 },
+    });
+
+    const aiCallsBefore = await prisma.aiUsage.count({ where: { task: "map_columns" } });
+    const december = await pipeline((await store("precios-multiples-diciembre.xlsx")).id);
+    expect(december.extracted).toMatchObject({ status: "extracted", itemCount: 8 });
+    expect(await prisma.aiUsage.count({ where: { task: "map_columns" } })).toBe(aiCallsBefore);
+    expect(december.ingested?.body).toMatchObject({
+      status: "ingested",
+      counts: { updated: 2, unchanged: 5 },
+    });
   });
 
   it("the internal API requires the key, validates input and serves the rules", async () => {

@@ -24,6 +24,16 @@ import {
 } from "../src/ai/providers/anthropic.js";
 import { fakeContentKey } from "../src/ai/providers/fake.js";
 import { createAiUsageRepository } from "../src/ai/usage.repository.js";
+import { convertSpreadsheet } from "../src/modules/documents/converters/spreadsheet.js";
+import { DEFAULT_CONVERSION_LIMITS } from "../src/modules/documents/document-types.js";
+import { headerCandidates } from "../src/modules/sheets/sheet-extraction.js";
+import { buildMapperContent, buildMatcherContent } from "../src/modules/sheets/sheet-input.js";
+import {
+  mapperJsonSchema,
+  mapperOutputSchema,
+  matcherJsonSchema,
+  matcherOutputSchema,
+} from "../src/modules/sheets/sheet-mapping.js";
 import { createPrismaClient } from "../src/common/db.js";
 import { createLogger } from "../src/common/logger.js";
 import { loadEnv } from "../src/config/env.js";
@@ -48,6 +58,8 @@ const { values } = parseArgs({
   options: {
     "dry-run": { type: "boolean", default: false },
     "confirm-spend": { type: "boolean", default: false },
+    /** Only scenarios whose label starts with this prefix (e.g. "sheets"). */
+    only: { type: "string" },
   },
 });
 const env = loadEnv();
@@ -173,6 +185,36 @@ const september = (prev: Map<string, ExtractionOutput>) => {
   };
 };
 
+// ─── Spreadsheet path (phase 5 M3c) ───
+const SHEETS = new URL("../test/fixtures/sheets/", import.meta.url);
+const sheetTables = (name: string) => {
+  const result = convertSpreadsheet(
+    readFileSync(new URL(name, SHEETS)),
+    "xlsx",
+    DEFAULT_CONVERSION_LIMITS,
+  );
+  if (!result.ok) throw new Error(`cannot convert ${name}: ${result.reason}`);
+  return result.tables;
+};
+const mapper = loadPrompt("column-mapper");
+const matcher = loadPrompt("matcher");
+const NOVEMBER_CATALOG: CatalogProduct[] = [
+  ["Candado bronce 40mm", "unidad", "310.5"],
+  ["Cerradura de embutir", "unidad", "245"],
+  ["Bisagra 3 pulgadas", "unidad", "455"],
+  ["Tarugo 8mm x100", "caja", "144"],
+  ["Pegamento de contacto 250ml", "lata", "44"],
+  ["Cinta aisladora 20m", "rollo", "100"],
+  ["Guante de nitrilo talle M", "par", "115"],
+].map(([name, unit, price], i) => ({
+  id: `nov-${i}`,
+  name: name!,
+  unit: unit!,
+  price: price!,
+  currency: "UYU",
+  available: true,
+}));
+
 const scenarios: Scenario[] = [
   {
     label: "classify: WhatsApp text with prices",
@@ -234,16 +276,66 @@ const scenarios: Scenario[] = [
       return extractReq(msg({ messageType: "text", text: INJECTION, ...s.supplier }), s.catalog);
     },
   },
+  {
+    label: "sheets: map_columns precios-multiples.xlsx (4 price columns)",
+    expectedOutputTokens: 450,
+    build: () => {
+      const tables = sheetTables("precios-multiples.xlsx");
+      const indexes = tables
+        .map((table, index) => ({ table, index }))
+        .filter(({ table }) => headerCandidates(table).length > 0);
+      return {
+        task: "map_columns",
+        model: env.AI_EXTRACTOR_MODEL,
+        system: mapper.text,
+        cacheSystem: env.AI_PROMPT_CACHE,
+        content: buildMapperContent(indexes),
+        jsonSchema: mapperJsonSchema as unknown as Record<string, unknown>,
+        schema: mapperOutputSchema,
+        effort: "low",
+        maxTokens: 3000,
+      };
+    },
+  },
+  {
+    label: "sheets: match december's new rows vs november catalog",
+    expectedOutputTokens: 80,
+    build: () => {
+      const catalog = buildCatalogContext(NOVEMBER_CATALOG);
+      return {
+        task: "match",
+        model: env.AI_EXTRACTOR_MODEL,
+        system: matcher.text,
+        cacheSystem: env.AI_PROMPT_CACHE,
+        content: buildMatcherContent(
+          [{ id: "R8", name: "Tanza para bordeadora 2mm", unit: "rollo" }],
+          catalog.text ?? "",
+        ),
+        jsonSchema: matcherJsonSchema as unknown as Record<string, unknown>,
+        schema: matcherOutputSchema,
+        effort: "low",
+        maxTokens: 6000,
+      };
+    },
+  },
 ];
 
-const fmt = (usd: number) => `$${usd.toFixed(4)}`;
+const selected = values.only
+  ? scenarios.filter((sc) => sc.label.startsWith(values.only ?? ""))
+  : scenarios;
+if (selected.length === 0) {
+  logger.error({ only: values.only }, "no scenario matches --only");
+  process.exit(1);
+}
+
+const fmt = (usd: number) => `${usd.toFixed(4)}`;
 
 if (values["dry-run"]) {
   const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 30_000 });
   let totalExpected = 0;
   let totalWorst = 0;
   const rows: string[] = [];
-  for (const scenario of scenarios) {
+  for (const scenario of selected) {
     const request = scenario.build(new Map());
     const full = buildAnthropicMessageParams(request);
     // count_tokens takes the same parameters minus max_tokens.
@@ -294,10 +386,15 @@ const goldenDir = resolve(env.AI_FAKE_GOLDEN_DIR);
 const prev = new Map<string, ExtractionOutput>();
 let total = 0;
 try {
-  for (const scenario of scenarios) {
+  for (const scenario of selected) {
     const request = scenario.build(prev);
     const result = await ai.generateStructured(request, {
-      promptVersion: request.task === "classify" ? classifier.version : extractor.version,
+      promptVersion: {
+        classify: classifier.version,
+        extract: extractor.version,
+        map_columns: mapper.version,
+        match: matcher.version,
+      }[request.task],
       log: logger,
     });
     total += result.costUsd;
