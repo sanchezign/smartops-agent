@@ -210,7 +210,10 @@ Database (API, run with `pnpm --filter @smartops/api <script>`):
 - Money (Prisma `Decimal`) is always serialized as a **string** (`"1234.5"`), never a JSON number.
 - Internal API for n8n (`X-Internal-Api-Key`, never used by the frontend), all idempotent:
   `POST /api/v1/internal/classify {messageId}`, `POST /api/v1/internal/extract {runId}`,
-  `POST /api/v1/internal/catalog/ingest {runId}`, `GET /api/v1/internal/rules`.
+  `POST /api/v1/internal/catalog/ingest {runId}`, `GET /api/v1/internal/runs/:id` (status to
+  poll), `GET /api/v1/internal/rules`.
+- Spreadsheets, CSV, text and Word files are converted to text by the worker before
+  extraction (ADR-013); PDFs and images go to Claude as-is.
 - Decisions the system must not take alone become **review items** (`review_items`, ADR-012):
   uncertain matches, outliers, currency changes, unavailable products, global percentages,
   tax-basis changes and suspicious messages. The admin panel (phase 9) resolves them.
@@ -249,6 +252,9 @@ Database (API, run with `pnpm --filter @smartops/api <script>`):
 | `AI_CLASSIFIER_MODEL`, `AI_EXTRACTOR_MODEL`              | `apps/api`   | Model ids (default `claude-sonnet-5`)                      |
 | `AI_TOTAL_BUDGET_USD`, `AI_DAILY_BUDGET_USD`             | `apps/api`   | Own spend caps checked before every call ($4 / $0.50)      |
 | `AI_DAILY_LIMIT_PER_CONTACT`                             | `apps/api`   | Max extractions per contact per UTC day (20)               |
+| `AI_MAX_RUN_USD`                                         | `apps/api`   | Cap for all AI calls of one message/run ($0.30)            |
+| `DOC_CONVERT_MAX_BYTES/_SHEETS/_ROWS/_COLUMNS/_CHARS`    | `apps/api`   | Document conversion limits (10 MB, 10, 2000, 50, 40k)      |
+| `DOC_CONVERT_TIMEOUT_MS`, `_WORKER_CONCURRENCY`          | `apps/api`   | Isolated conversion timeout (20 s) and parallelism (1)     |
 | `AI_TIMEOUT_MS`, `AI_PROMPT_CACHE`, `AI_FAKE_GOLDEN_DIR` | `apps/api`   | Call timeout, prompt caching, fake golden outputs          |
 | `INTERNAL_API_KEY`                                       | `apps/api`   | Secret for `/api/v1/internal/*` (n8n); min 32 chars        |
 | `INTERNAL_RATE_LIMIT_MAX`                                | `apps/api`   | Per-IP limit for the internal API (600 / window)           |
@@ -278,3 +284,4 @@ demo and any real client) must enable ZDR in the Groq console → Settings → D
 - [ADR-010](docs/adr/ADR-010-transcription-provider.md) — Groq whisper-large-v3 (free plan) for speech-to-text
 - [ADR-011](docs/adr/ADR-011-llm-provider-models-budget.md) — LLM provider, Claude models, spend guard and prompt-injection policy
 - [ADR-012](docs/adr/ADR-012-human-review.md) — Catalog ingest rules and human review items
+- [ADR-013](docs/adr/ADR-013-document-conversion.md) — Document conversion (xlsx/xls/csv/txt/docx) with isolation and limits

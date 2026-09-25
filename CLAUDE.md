@@ -444,6 +444,20 @@ Each one gets an ADR in docs/adr/.
   own limiter `INTERNAL_RATE_LIMIT_MAX` (global limiter skips `/internal/` prefix), strict Zod
   bodies. `INTERNAL_API_KEY` is REQUIRED at startup (min 32) — a random one was generated
   into the local `apps/api/.env` on 2026-09-25.
+- 2026-09-25 (phase 5, M3a) Document conversion (ADR-013): `src/modules/documents/`
+  (converters, `zip-guard.ts`, `document-converter.ts` worker thread — the .ts worker runs
+  through `--import tsx` in dev/tests, the built .js in production). Conversion rejections
+  are permanent (no retry); only storage/DB errors are retried. `assertReady` → NOT_READY
+  while converting (classify too, like transcription). Failed conversion → run
+  `extraction_failed` gate with reason `document_<reason>`, no LLM call. `truncated` or
+  `needsReview` (formula without cached value) → forced `partial_update`
+  (`applyDocumentRules`); `needsReview` → `StoredExtraction.documentIncomplete` → the
+  planner sends every line to review (reason `document_incomplete`).
+- Budget: `AI_MAX_RUN_USD` (default 0.30) = per ingestion run (`ai_usages.ingestion_run_id`
+  sum), checked with total ($4) and daily ($0.50) caps; reason `run_budget_exceeded`.
+- Supply chain: pnpm `minimumReleaseAge` is respected. `pnpm add` auto-added a
+  `minimumReleaseAgeExclude` for csv-parse 7.0.3 (published the same day): reverted, pinned
+  7.0.2 instead. Never commit a release-age exclusion without asking.
 - Local tunnel: cloudflared quick tunnel (`cloudflared tunnel --url
   http://localhost:4000`); URL changes on every restart → update it in Meta.
 
@@ -487,7 +501,7 @@ Each one gets an ADR in docs/adr/.
      `apps/api/.env` now uses `TRANSCRIPTION_PROVIDER=groq` (simulated audio also hits
      Groq's free quota; switch back to `fake` for heavy local testing).
    - Next: phase 5 (extraction + catalog).
-5. extraction + catalog — IN PROGRESS (M1, M2, M4 done; M3 postponed). Branch `feat/phase-5-extraction-catalog`.
+5. extraction + catalog — IN PROGRESS (M1, M2, M4, M3a done; next M3c, then M3b). Branch `feat/phase-5-extraction-catalog`.
    Approved plan (2026-09-25) + user changes: catalog matching (exact normalized match →
    Claude `matchedProductId` + confidence → ambiguous = needs_review, never a silent
    duplicate; the PDF → photo e2e test must detect all 6 price changes); `full_list`
@@ -549,7 +563,27 @@ Each one gets an ADR in docs/adr/.
      (matches the empty-catalog rule); the short text is now `price_update_partial`
      (0.55); the voice note no longer reads "de lunas" as "desde el lunes" (price 14
      kept, validity lost, still uncertain); the photo lost its "Octubre" warning.
-   - M3 document conversion (xlsx/csv/docx → text + ADR) — POSTPONED by the user (M4 first).
+   - Order decided by the user (2026-09-25): M3a → M3c → M3b.
+   - M3a document conversion — DONE (2026-09-25), ADR-013. xlsx/xls (SheetJS 0.20.3 from
+     the CDN), csv/txt (csv-parse 7.0.2), docx (mammoth 1.12.3 + htmlparser2) → Markdown in
+     `document_conversions` (migration `document_conversions`), job `document-conversion`
+     enqueued with the media-stored transaction, isolated worker thread (heap 256 MB,
+     timeout 20 s) + ZIP guard; `GET /api/v1/internal/runs/:id`; `AI_MAX_RUN_USD` ($0.30).
+     Converted documents with > 30 product lines → review `requires_chunked_extraction`
+     (never half a list). 609 tests green. $0 spent.
+   - M3c NEXT — spreadsheets without per-row LLM output: the LLM maps the columns from the
+     header + ~10 rows, the code reads every row deterministically; per-supplier format
+     memory (column mapping + header fingerprint; same fingerprint → reuse, $0; new or
+     low-confidence mapping → review). Plan to be presented before code.
+   - M3b chunked extraction — REQUIRED BEFORE PRODUCTION / a real client (user,
+     2026-09-25): split long PDFs and docx (and any text document not covered by M3c) into
+     blocks with the catalog as context; merge before the ingest; full_list and missing
+     products decided only after merging; one failed block → the whole run to review;
+     spend cap checks ALL blocks before the first call (+ AI_MAX_RUN_USD); dedupe items
+     across blocks; async (202 + GET /internal/runs/:id). Open for its plan: PDF page
+     splitting with @cantoo/pdf-lib vs cached whole PDF + page ranges, and max_tokens
+     12,000 for 1-page PDF blocks. Measured: ~95 output tokens per typical item, 132 with a
+     note, 169 worst → safe block = 25 rows with max_tokens 6,000; ~$0.001 per product.
    - M4 catalog ingest + human review — DONE (2026-09-25), ADR-012. Commits: step 1 pure
      planner (`ingest-plan.ts`, `price-math.ts`, `supplier-name.ts`, settings schemas),
      step 2 migration `catalog_ingest` + `catalog.repository.ts`, `catalog-ingest.service.ts`,
@@ -583,10 +617,14 @@ Each one gets an ADR in docs/adr/.
   with observed tokens (+ margin) and discount prompt caching ("option B", 2026-09-25).
 - Price changes by an AMOUNT ("sube 20 pesos") are not supported: the extractor leaves the
   line out and adds a warning (never computes a price).
-- **Phase 5 (extraction):** Claude reads PDF and images natively, but NOT xlsx / xls /
-  csv / docx. Those documents are stored in M3 but must be converted to text (e.g. sheet →
-  CSV/Markdown table) before extraction. Evaluate the parsing library and record an ADR
-  in phase 5.
+- **Phase 5 M3a:** multi-page PDFs are still sent in ONE extraction call (no page count
+  check until M3b): a dense PDF overflows max_tokens → invalid_output → review. Images
+  cannot be split either.
+- Documents stored before M3a have no conversion row: extraction answers CONFLICT for them
+  (no backfill script).
+- SheetJS comes from its CDN tarball: upgrades are manual (check cdn.sheetjs.com/advisories).
+  The SheetJS BIFF8 writer used by the tests does not keep hidden rows / date formats (a
+  test-data limitation, not the reader).
 - `onInboundMessage` hook (phases 6/7) runs after the message is committed: if it
   throws, the job retries but the message is then a duplicate and the hook is NOT
   called again. Phase 6 must make the hand-off durable (enqueue its own job /
