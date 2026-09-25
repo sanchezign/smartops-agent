@@ -478,6 +478,10 @@ Each one gets an ADR in docs/adr/.
   http://localhost:4000`); URL changes on every restart → update it in Meta.
 
 ## Current phase
+**Phase 5 complete (2026-09-26), merged to `main`. Next: phase 6 (n8n multi-agent) on branch
+`feat/phase-6-n8n` — plan pending (requirements in Phase order: router uses the extraction's
+listKind, no-AI pre-filter, audio duration cap). M3b remains required before production.**
+
 1. scaffold — done (2026-09-24).
 2. config/env/logging + initial Prisma schema — done (2026-09-24). Migrations:
    `init`, `price_change_rules`.
@@ -517,7 +521,8 @@ Each one gets an ADR in docs/adr/.
      `apps/api/.env` now uses `TRANSCRIPTION_PROVIDER=groq` (simulated audio also hits
      Groq's free quota; switch back to `fake` for heavy local testing).
    - Next: phase 5 (extraction + catalog).
-5. extraction + catalog — IN PROGRESS (M1, M2, M4, M3a, M3c done; M3b required before production). Branch `feat/phase-5-extraction-catalog`.
+5. extraction + catalog — DONE (2026-09-26): M1, M2, M4, M3a, M3c. M3b (chunked extraction of
+   long PDFs/docx) stays as a REQUIREMENT BEFORE PRODUCTION (see below). Merged to `main`. Branch `feat/phase-5-extraction-catalog`.
    Approved plan (2026-09-25) + user changes: catalog matching (exact normalized match →
    Claude `matchedProductId` + confidence → ambiguous = needs_review, never a silent
    duplicate; the PDF → photo e2e test must detect all 6 price changes); `full_list`
@@ -600,8 +605,12 @@ Each one gets an ADR in docs/adr/.
      batched catalog writes (2,000 rows read + ingested in ~1.5 s). Fixtures
      `test/fixtures/sheets/precios-multiples*.xlsx` (script `scripts/fixtures/build-sheet-fixtures.ts`,
      products registered in expected.json so prompts never quote them). 654+ tests green.
-     Goldens for the sheet scenarios NOT recorded yet: `ai:record-golden --dry-run --only sheets`
-     = expected $0.0143 / worst $0.0990 → waiting for the user's authorization.
+     Sheet goldens recorded with the user OK (dry-run $0.0143 / worst $0.0990) → REAL COST
+     $0.0141: mapper found header R2, name C1, SKU C0, unit C2 and the 4 price columns
+     (s/IVA false, c/IVA true, Mayorista, Contado → ambiguous; recommended C4; UYU;
+     supplier "DISTRIBUIDORA EJEMPLO S.R.L."); matcher: "Tanza para bordeadora 2mm" → new
+     product (ref null, high). Checked in golden-outputs.test.ts. Total real AI spend so far:
+     $0.1111 (M2) + $0.0141 (M3c) = $0.1252.
    - M3b chunked extraction — REQUIRED BEFORE PRODUCTION / a real client (user,
      2026-09-25): split long PDFs and docx (and any text document not covered by M3c) into
      blocks with the catalog as context; merge before the ingest; full_list and missing

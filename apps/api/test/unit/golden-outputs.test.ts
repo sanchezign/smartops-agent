@@ -12,6 +12,15 @@ import {
   buildExtractionContent,
   type MessageForAi,
 } from "../../src/modules/extraction/message-input.js";
+import { convertSpreadsheet } from "../../src/modules/documents/converters/spreadsheet.js";
+import { DEFAULT_CONVERSION_LIMITS } from "../../src/modules/documents/document-types.js";
+import { headerCandidates } from "../../src/modules/sheets/sheet-extraction.js";
+import { buildMapperContent, buildMatcherContent } from "../../src/modules/sheets/sheet-input.js";
+import {
+  mapperOutputSchema,
+  matcherOutputSchema,
+  normalizeMapperTable,
+} from "../../src/modules/sheets/sheet-mapping.js";
 
 /**
  * Golden outputs (real Claude responses recorded by `ai:record-golden`, reviewed before
@@ -145,5 +154,51 @@ describe("golden outputs (recorded from Claude)", () => {
     expect(out.items).toHaveLength(EXPECTED.photoAgainstSeptember.lines.length);
     for (const name of EXPECTED.photoAgainstSeptember.untouched)
       expect(byCatalogName.has(name), name).toBe(false);
+  });
+});
+
+describe("golden outputs of the spreadsheet path (M3c)", () => {
+  const SHEETS = new URL("../fixtures/sheets/", import.meta.url);
+  const goldenOf = (task: string, content: Parameters<typeof fakeContentKey>[1]) =>
+    JSON.parse(
+      readFileSync(
+        new URL(`${task}/${fakeContentKey(task as never, content)}.json`, GOLDEN),
+        "utf8",
+      ),
+    ) as unknown;
+
+  it("mapper: the 4 price columns are found, the mapping is ambiguous, name/header are right", () => {
+    const result = convertSpreadsheet(
+      readFileSync(new URL("precios-multiples.xlsx", SHEETS)),
+      "xlsx",
+      DEFAULT_CONVERSION_LIMITS,
+    );
+    if (!result.ok) throw new Error(result.reason);
+    const indexes = result.tables
+      .map((table, index) => ({ table, index }))
+      .filter(({ table }) => headerCandidates(table).length > 0);
+    const output = mapperOutputSchema.parse(goldenOf("map_columns", buildMapperContent(indexes)));
+    const [t1] = output.tables;
+    expect(t1).toMatchObject({ table: "T1", isPriceTable: true, headerRow: 2, nameColumn: 1 });
+    const normalized = normalizeMapperTable(t1!, 7);
+    expect(normalized.ambiguous).toBe(true);
+    expect(normalized.mapping.priceColumn).toBeNull();
+    expect(normalized.mapping.priceColumns.map((p) => [p.header, p.taxIncluded])).toEqual([
+      ["Precio s/IVA", false],
+      ["Precio c/IVA", true],
+      ["Mayorista", null],
+      ["Contado", null],
+    ]);
+    expect(output.suspiciousInstructions).toBe(false);
+  });
+
+  it("matcher: December's new product is a confident NEW product (no ref)", () => {
+    const content = buildMatcherContent(
+      [{ id: "R8", name: "Tanza para bordeadora 2mm", unit: "rollo" }],
+      "(catalog is not part of the golden key)",
+    );
+    expect(matcherOutputSchema.parse(goldenOf("match", content))).toEqual({
+      matches: [{ row: "R8", ref: null, confidence: "high" }],
+    });
   });
 });
