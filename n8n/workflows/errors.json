@@ -1,0 +1,99 @@
+{
+  "name": "SmartOps · Errores",
+  "nodes": [
+    {
+      "id": "00000000-0000-4000-8000-000000000021",
+      "name": "Error en un workflow",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "cfg00000-0000-4000-8000-000000000001",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-api-base",
+              "name": "apiBaseUrl",
+              "value": "http://host.docker.internal:4000/api/v1",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000022",
+      "name": "Avisar al backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "SmartOps API"
+        }
+      },
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.apiBaseUrl }}/internal/n8n/errors",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workflow: $('Error en un workflow').first().json.workflow.name, executionId: String($('Error en un workflow').first().json.execution.id ?? ''), node: $('Error en un workflow').first().json.execution.lastNodeExecuted ?? undefined, message: $('Error en un workflow').first().json.execution.error?.message ?? 'unknown error' }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Error en un workflow": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Avisar al backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

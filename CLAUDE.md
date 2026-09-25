@@ -535,3 +535,17 @@ Each one gets an ADR in docs/adr/.
      body param) with opt-in, else panel_only. Contract test with a fake n8n orchestrator
      (`test/integration/n8n-contract.test.ts`): outbox → secret-checked webhook → classify →
      extract → ingest → runs/:id → notifications → ack over HTTP; duplicates harmless.
+   - M4 workflows — DRAFTS DELIVERED (2026-09-26), WAITING FOR THE USER to import, test,
+     publish and export them (docs/n8n-setup.md). `n8n/workflows/{receiver,processor,notifier,errors}.json`
+     (webhook v2 Header Auth "SmartOps webhook secret", respond immediately; HTTP Request v4.2
+     with Header Auth "SmartOps API", retry 3×5 s; Config Set node with apiBaseUrl — no $env;
+     sub-workflows via Execute Workflow chosen after import; processor polls runs/:id while
+     "extracting" (max 30); error workflow → /internal/n8n/errors). Node typeVersions come
+     from the n8n docs (the local /types endpoint needs login) — adjust on import if needed.
+     `pnpm --filter @smartops/api n8n:export` = export inside the container + sanitizer
+     (`scripts/n8n/sanitize.ts`: drops pinData/staticData/meta, credentials as references,
+     fails on anything secret-like or a literal auth header). Static tests
+     `test/unit/n8n-workflows.test.ts` (routes exist, credentials by name, no secrets, no
+     pinData, no classification-based full/partial in processor/notifier). docker-compose:
+     n8n `extra_hosts host.docker.internal:host-gateway`. Local .env: N8N_WEBHOOK_SECRET
+     generated, N8N_DELIVERY_ENABLED=false until the receiver is published.

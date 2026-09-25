@@ -50,6 +50,9 @@ services:
       GENERIC_TIMEZONE: ${TIMEZONE:-America/Montevideo}
       TZ: ${TIMEZONE:-America/Montevideo}
       N8N_DIAGNOSTICS_ENABLED: "false"
+    # n8n → API running on the host (Docker Desktop has it; Linux needs host-gateway).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:5678:5678"
     volumes:
