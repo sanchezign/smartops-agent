@@ -111,6 +111,21 @@ Week 2
    The router must decide full vs partial with the EXTRACTION's `listKind` (explicit
    evidence rule), never with the classifier's label (user decision 2026-09-25: the
    classifier labeled a short text as `price_list_full`).
+   REQUIRED (user, 2026-09-25): a deterministic pre-filter WITHOUT AI before the
+   classifier, so no tokens are spent on obvious messages:
+   - contacts of kind `customer` never go to price extraction;
+   - stickers, reactions, locations and short messages without numbers or media
+     ("hola", "gracias", "ok", emojis only) are classified `other` without calling Claude;
+   - only what can be a price list (numbers, currency, or a PDF / image / audio from a
+     supplier) goes through the classifier.
+   Record how many messages were filtered without AI (in the run report or in
+   `ai_usages`) so the dashboard (phase 9) can show the savings.
+   Also in the pre-filter (user, 2026-09-25): voice notes longer than 3 minutes are NOT
+   transcribed automatically (they stay as media to listen to by hand, with a warning /
+   review item); the limit is a Setting (e.g. `transcription.maxAutoDurationSeconds` =
+   180). Today the transcription job runs as soon as the audio is stored (phase 4), so the
+   check goes there. Verify whether Meta's webhook gives the audio duration; otherwise
+   read it from the file (OGG/Opus header) without ffmpeg.
 
 Week 3
 7. coexistence human + bot — same number via WhatsApp Business app
@@ -135,6 +150,13 @@ Week 3
      pause/activate bot per chat, reply as human
    - Rules (no-code config): price-change alert %, low-stock threshold,
      human-takeover timeout, alert recipients, bot on/off, business hours
+   - "Probar el sistema" page (user, 2026-09-25), ONLY in demo mode (the DEMO_MODE of
+     phase 12; hidden and its endpoint disabled otherwise): buttons "Enviar foto de lista
+     de precios", "Enviar PDF de proveedor", "Enviar audio de proveedor", "Enviar mensaje
+     con prompt injection" inject the sample messages into the REAL pipeline (simulated
+     signed webhook + fake Graph API + fake LLM serving the golden outputs), so a visitor
+     watches the flow live (SSE) up to the catalog and the review queue, without WhatsApp
+     and at $0. Rate limited; demo data resettable.
 
 Week 4
 10. tests — unit: signature check, idempotency, catalog rules, coexistence
@@ -401,7 +423,7 @@ Each one gets an ADR in docs/adr/.
   supplier (supplierName, else WhatsApp profile name, else "Proveedor <masked phone>")
   linked to the contact (kind unknown → supplier), informative warning. >1 match →
   `unknown_supplier` gate. `Supplier.normalizedName` (indexed, not unique).
-- Percentage rounding (user rule + tests): decimals of the current price, min 2; if the
+- Percentage rounding (confirmed by the user 2026-09-25): decimals of the current price, min 2; if the
   effective change deviates > 0.1 pp from the stated %, more decimals up to 4
   (12.5 +7.5 % → 13.44; 0.035 +10 % → 0.0385). `price-math.ts`.
 - Settings (confirmed defaults): catalog.maxIncreasePct 50, maxDecreasePct 30,
