@@ -50,7 +50,7 @@ function positiveDecimal(plain: string): string | null {
 export function parsePrice(cell: SheetCell | undefined, format: PriceFormat): string | null {
   if (cell === null || cell === undefined) return null;
   if (typeof cell !== "string") return positiveDecimal(cell.n);
-  const text = cell.replace(CURRENCY_TOKENS, "").replace(/[\s ]+/g, "");
+  const text = cell.replace(CURRENCY_TOKENS, "").replace(/\s+/g, ""); // \s covers NBSP too
   if (text === "") return null;
   if (format === "decimal_comma") {
     if (!/^\d{1,3}(\.\d{3})*(,\d+)?$|^\d+(,\d+)?$/.test(text)) return null;
