@@ -6,6 +6,10 @@ export type ErrorCode =
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
+  /** The resource exists but is not ready yet (e.g. media still downloading). Retry later. */
+  | "NOT_READY"
+  /** Another request is processing the same resource right now (lock held). */
+  | "IN_PROGRESS"
   /** WhatsApp: free-form message outside the 24h customer service window (send a template). */
   | "WINDOW_CLOSED"
   /** WhatsApp: business-initiated message to a contact without opt-in (ADR-009). */
@@ -49,6 +53,10 @@ export const errors = {
   notFound: (message = "Resource not found") => new AppError(404, "NOT_FOUND", message),
   conflict: (message = "Resource already exists", details?: unknown) =>
     new AppError(409, "CONFLICT", message, details),
+  notReady: (message: string, details?: unknown) =>
+    new AppError(409, "NOT_READY", message, details),
+  inProgress: (message: string, details?: unknown) =>
+    new AppError(409, "IN_PROGRESS", message, details),
   windowClosed: (
     details: unknown,
     message = "Outside the 24h customer service window: send an approved template",

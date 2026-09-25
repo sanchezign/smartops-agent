@@ -443,8 +443,41 @@ Each one gets an ADR in docs/adr/.
    - M1 `ai/` module: LlmProvider (anthropic via @anthropic-ai/sdk 0.128, fake), AiClient
      with spend guard, `ai_usages` ledger, IngestionRun cost fields, pricing table,
      versioned prompt loader, AI_* env, ADR-011 — done (2026-09-25). Migration `ai_usage`.
-   - Next: M2 classification + extraction (prompts, schemas, catalog context for
-     matching, ASR tolerance, prompt-injection fixture) + golden recording (ask first).
+   - M2 classification + extraction — IN PROGRESS (WIP commit 2026-09-25, nothing
+     spent). Done: prompts `src/ai/prompts/classifier.md` (classifier@3514089108be) and
+     `extractor.md` (extractor@445ad782d62f); classification/extraction JSON schemas +
+     Zod (`src/modules/extraction/extraction.schemas.ts`) and post-rules (full_list
+     needs quoted evidence, unknown refs dropped, duplicate refs → medium); catalog
+     context with stable refs P1..Pn (`catalog-context.ts`); message input with
+     neutralized tags (`message-input.ts`); fake responders; ingestion repository +
+     service (classify; extract locked via status `extracting`; NOT_READY / IN_PROGRESS;
+     budget → needs_review; injection → needs_review); migration
+     `ingestion_extracting`; `ai:record-golden` script (`--dry-run` uses the FREE
+     count_tokens endpoint; `--confirm-spend` records); fixtures
+     `voice-transcript.txt`, `injection-message.txt`; 468 tests green.
+     Golden outputs NOT recorded. Golden keys = message content only (`fakeKeyText`),
+     not catalog/sender context.
+   - PENDING user changes to the extractor prompt (do them BEFORE recording goldens):
+     1. Matching examples must NOT use the test-fixture products (today they quote
+        "Cemento 25kg"/"Cable 2mm (metro)"/"Arandela" = the e2e answers → overfitting).
+        Use neutral examples + a unit test that fails if any fixture product name
+        (from test/fixtures/extraction) appears in the prompts.
+     2. A missing distinguishing attribute (size, measure, capacity, e.g. a name without
+        the size the catalog has) caps matchConfidence at "medium" (→ human review).
+        Reconcile the PDF → photo e2e expectations with this (e.g. "Arandela" vs
+        "Arandela 6mm" becomes a review item, not an automatic match).
+     3. Percentage increases ("sube 10%", "todo +8%") must be supported: the extractor
+        reports the percentage (not an invented price); the catalog applies it to the
+        current price with Decimal arithmetic and it is reviewed/validated like any change.
+     4. `taxIncluded` (e.g. "IVA incluido") at list level (boolean | null) in the schema,
+        stored with the extraction.
+   - Spend authorization for `ai:record-golden --confirm-spend` is CONDITIONAL: only if
+     a fresh `--dry-run` after the prompt changes shows expected ≤ $0.15 AND worst
+     case ≤ $0.35; otherwise ask the user again. Last dry-run (before the changes):
+     expected $0.1101, worst $0.3099 (7 calls; exact input tokens from count_tokens).
+   - Facts from the test data: September PDF (7 products) → October photo: 6 products
+     match (3 exact, 3 need the model), 5 price changes (Arandela stays at 3), Pintura
+     absent (partial update → untouched).
 
 ## Known issues (out of scope)
 - **Phase 5 (extraction):** Claude reads PDF and images natively, but NOT xlsx / xls /

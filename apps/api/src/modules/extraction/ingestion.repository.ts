@@ -1,0 +1,267 @@
+import type { PrismaClient } from "../../common/db.js";
+import type { Prisma } from "../../generated/prisma/client.js";
+import type {
+  IngestionClassification,
+  IngestionStatus,
+  MediaStatus,
+  TranscriptionStatus,
+} from "../../generated/prisma/enums.js";
+import type { CatalogProduct } from "./catalog-context.js";
+
+/** Ingestion runs (classification + extraction). The only place in the flow touching Prisma. */
+
+export interface MessageContext {
+  messageId: string;
+  messageType: string;
+  direction: string;
+  text: string | null;
+  transcript: string | null;
+  contact: { id: string; kind: string; name: string | null; supplierId: string | null };
+  supplier: { id: string; name: string } | null;
+  media: {
+    id: string;
+    status: MediaStatus;
+    mimeType: string;
+    filename: string | null;
+    transcriptionStatus: TranscriptionStatus | null;
+  } | null;
+}
+
+export interface IngestionRunRecord {
+  id: string;
+  messageId: string;
+  supplierId: string | null;
+  status: IngestionStatus;
+  classification: IngestionClassification | null;
+  rawExtraction: unknown;
+  report: unknown;
+  errors: unknown;
+  costUsd: string | null;
+}
+
+export interface IngestionRepository {
+  getMessageContext(messageId: string): Promise<MessageContext | null>;
+  getSupplierCatalog(supplierId: string): Promise<CatalogProduct[]>;
+  /** Latest run of the message that is not failed. */
+  findActiveRun(messageId: string): Promise<IngestionRunRecord | null>;
+  getRun(runId: string): Promise<IngestionRunRecord | null>;
+  createRun(messageId: string, supplierId: string | null): Promise<IngestionRunRecord>;
+  saveClassification(
+    runId: string,
+    input: {
+      status: "classified" | "needs_review";
+      classification: IngestionClassification | null;
+      report: Prisma.InputJsonValue;
+      errors?: Prisma.InputJsonValue;
+    },
+  ): Promise<void>;
+  /** Atomic classified → extracting. False when another request holds it or the state differs. */
+  claimForExtraction(runId: string): Promise<boolean>;
+  /** extracting → classified (after a retryable failure, so it can be retried). */
+  releaseClaim(runId: string): Promise<void>;
+  saveExtraction(
+    runId: string,
+    input: {
+      status: "extracted" | "needs_review";
+      classification: IngestionClassification | null;
+      rawExtraction?: Prisma.InputJsonValue;
+      errors?: Prisma.InputJsonValue;
+    },
+  ): Promise<void>;
+  /** Recomputes tokens / cost / latency / model / prompt version from ai_usages. */
+  refreshUsageTotals(runId: string): Promise<void>;
+}
+
+const runSelect = {
+  id: true,
+  messageId: true,
+  supplierId: true,
+  status: true,
+  classification: true,
+  rawExtraction: true,
+  report: true,
+  errors: true,
+  costUsd: true,
+} as const;
+
+function toRecord(row: {
+  id: string;
+  messageId: string;
+  supplierId: string | null;
+  status: IngestionStatus;
+  classification: IngestionClassification | null;
+  rawExtraction: unknown;
+  report: unknown;
+  errors: unknown;
+  costUsd: { toString(): string } | null;
+}): IngestionRunRecord {
+  return { ...row, costUsd: row.costUsd ? row.costUsd.toString() : null };
+}
+
+export function createIngestionRepository(prisma: PrismaClient): IngestionRepository {
+  return {
+    async getMessageContext(messageId) {
+      const m = await prisma.message.findUnique({
+        where: { id: messageId },
+        select: {
+          id: true,
+          type: true,
+          direction: true,
+          text: true,
+          transcript: true,
+          conversation: {
+            select: {
+              contact: {
+                select: {
+                  id: true,
+                  kind: true,
+                  name: true,
+                  supplierId: true,
+                  supplier: { select: { id: true, name: true } },
+                },
+              },
+            },
+          },
+          mediaFile: {
+            select: {
+              id: true,
+              status: true,
+              mimeType: true,
+              filename: true,
+              transcription: { select: { status: true } },
+            },
+          },
+        },
+      });
+      if (!m) return null;
+      const contact = m.conversation.contact;
+      return {
+        messageId: m.id,
+        messageType: m.type,
+        direction: m.direction,
+        text: m.text,
+        transcript: m.transcript,
+        contact: {
+          id: contact.id,
+          kind: contact.kind,
+          name: contact.name,
+          supplierId: contact.supplierId,
+        },
+        supplier: contact.supplier,
+        media: m.mediaFile
+          ? {
+              id: m.mediaFile.id,
+              status: m.mediaFile.status,
+              mimeType: m.mediaFile.mimeType,
+              filename: m.mediaFile.filename,
+              transcriptionStatus: m.mediaFile.transcription?.status ?? null,
+            }
+          : null,
+      };
+    },
+
+    async getSupplierCatalog(supplierId) {
+      const rows = await prisma.product.findMany({
+        where: { supplierId },
+        select: { id: true, name: true, unit: true, price: true, currency: true, available: true },
+      });
+      return rows.map((r) => ({ ...r, price: r.price.toString() }));
+    },
+
+    async findActiveRun(messageId) {
+      const row = await prisma.ingestionRun.findFirst({
+        where: { messageId, status: { not: "failed" } },
+        orderBy: { createdAt: "desc" },
+        select: runSelect,
+      });
+      return row ? toRecord(row) : null;
+    },
+
+    async getRun(runId) {
+      const row = await prisma.ingestionRun.findUnique({ where: { id: runId }, select: runSelect });
+      return row ? toRecord(row) : null;
+    },
+
+    async createRun(messageId, supplierId) {
+      const row = await prisma.ingestionRun.create({
+        data: { messageId, supplierId, status: "pending" },
+        select: runSelect,
+      });
+      return toRecord(row);
+    },
+
+    async saveClassification(runId, input) {
+      await prisma.ingestionRun.update({
+        where: { id: runId },
+        data: {
+          status: input.status,
+          classification: input.classification,
+          report: input.report,
+          ...(input.errors ? { errors: input.errors } : {}),
+          ...(input.status === "needs_review" ? { finishedAt: new Date() } : {}),
+        },
+      });
+    },
+
+    async claimForExtraction(runId) {
+      const claimed = await prisma.ingestionRun.updateMany({
+        where: { id: runId, status: "classified" },
+        data: { status: "extracting" },
+      });
+      return claimed.count === 1;
+    },
+
+    async releaseClaim(runId) {
+      await prisma.ingestionRun.updateMany({
+        where: { id: runId, status: "extracting" },
+        data: { status: "classified" },
+      });
+    },
+
+    async saveExtraction(runId, input) {
+      await prisma.ingestionRun.updateMany({
+        where: { id: runId, status: "extracting" },
+        data: {
+          status: input.status,
+          classification: input.classification,
+          ...(input.rawExtraction ? { rawExtraction: input.rawExtraction } : {}),
+          ...(input.errors ? { errors: input.errors } : {}),
+          ...(input.status === "needs_review" ? { finishedAt: new Date() } : {}),
+        },
+      });
+    },
+
+    async refreshUsageTotals(runId) {
+      const [sums, last] = await Promise.all([
+        prisma.aiUsage.aggregate({
+          where: { ingestionRunId: runId },
+          _sum: {
+            inputTokens: true,
+            outputTokens: true,
+            cacheReadTokens: true,
+            cacheWriteTokens: true,
+            costUsd: true,
+            latencyMs: true,
+          },
+        }),
+        prisma.aiUsage.findFirst({
+          where: { ingestionRunId: runId, status: "ok" },
+          orderBy: { createdAt: "desc" },
+          select: { model: true, promptVersion: true },
+        }),
+      ]);
+      await prisma.ingestionRun.update({
+        where: { id: runId },
+        data: {
+          inputTokens: sums._sum.inputTokens ?? 0,
+          outputTokens: sums._sum.outputTokens ?? 0,
+          cacheReadTokens: sums._sum.cacheReadTokens ?? 0,
+          cacheWriteTokens: sums._sum.cacheWriteTokens ?? 0,
+          costUsd: sums._sum.costUsd ?? 0,
+          latencyMs: sums._sum.latencyMs ?? null,
+          ...(last ? { model: last.model, promptVersion: last.promptVersion } : {}),
+        },
+      });
+    },
+  };
+}

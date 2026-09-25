@@ -25,7 +25,7 @@ export function fakeContentKey(task: AiTaskName, content: LlmContent[]): string 
   const hash = createHash("sha256").update(task);
   for (const block of content) {
     hash.update(`\u0000${block.type}\u0000`);
-    hash.update(block.type === "text" ? block.text : block.data);
+    hash.update(block.type === "text" ? (block.fakeKeyText ?? block.text) : block.data);
   }
   return hash.digest("hex");
 }

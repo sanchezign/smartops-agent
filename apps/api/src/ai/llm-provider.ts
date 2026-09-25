@@ -11,7 +11,16 @@ export type Effort = "low" | "medium" | "high";
 
 /** Content sent to the model. Documents and images are DATA, never instructions. */
 export type LlmContent =
-  | { type: "text"; text: string }
+  | {
+      type: "text";
+      text: string;
+      /**
+       * What the fake provider hashes for golden-output keys instead of `text`: only
+       * the message's own content, not trusted context (catalog, sender), so golden
+       * outputs survive changes in how that context is rendered.
+       */
+      fakeKeyText?: string;
+    }
   | {
       type: "image";
       mediaType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";

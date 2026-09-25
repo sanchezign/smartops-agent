@@ -41,61 +41,14 @@ export function createAnthropicProvider(config: {
   });
   const now = config.now ?? (() => Date.now());
 
-  function toBlock(block: LlmContent): ContentBlockParam {
-    switch (block.type) {
-      case "text":
-        return { type: "text", text: block.text };
-      case "image":
-        return {
-          type: "image",
-          source: {
-            type: "base64",
-            media_type: block.mediaType,
-            data: Buffer.from(block.data).toString("base64"),
-          },
-        };
-      case "pdf":
-        return {
-          type: "document",
-          source: {
-            type: "base64",
-            media_type: "application/pdf",
-            data: Buffer.from(block.data).toString("base64"),
-          },
-          ...(block.title ? { title: block.title } : {}),
-        };
-    }
-  }
-
   return {
     name: "anthropic",
 
     async generateStructured<T>(request: StructuredRequest<T>) {
-      // Cache only when the system prompt can be cached (min 1,024 tokens on Sonnet 5,
-      // 4,096 on Haiku 4.5); below that cache_control would be ignored anyway.
-      const cacheable =
-        request.cacheSystem &&
-        Math.ceil(request.system.length / 3.5) >= modelPrice(request.model).minCacheableTokens;
-
       const started = now();
       let response: Anthropic.Messages.Message;
       try {
-        response = await client.messages.create({
-          model: request.model,
-          max_tokens: request.maxTokens,
-          system: [
-            {
-              type: "text",
-              text: request.system,
-              ...(cacheable ? { cache_control: { type: "ephemeral" as const } } : {}),
-            },
-          ],
-          messages: [{ role: "user", content: request.content.map(toBlock) }],
-          output_config: {
-            effort: request.effort,
-            format: { type: "json_schema", schema: request.jsonSchema },
-          },
-        });
+        response = await client.messages.create(buildAnthropicMessageParams(request));
       } catch (err) {
         throw mapError(err);
       }
@@ -144,6 +97,61 @@ export function createAnthropicProvider(config: {
         latencyMs,
         stopReason: response.stop_reason,
       };
+    },
+  };
+}
+
+function toBlock(block: LlmContent): ContentBlockParam {
+  switch (block.type) {
+    case "text":
+      return { type: "text", text: block.text };
+    case "image":
+      return {
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: block.mediaType,
+          data: Buffer.from(block.data).toString("base64"),
+        },
+      };
+    case "pdf":
+      return {
+        type: "document",
+        source: {
+          type: "base64",
+          media_type: "application/pdf",
+          data: Buffer.from(block.data).toString("base64"),
+        },
+        ...(block.title ? { title: block.title } : {}),
+      };
+  }
+}
+
+/**
+ * The exact Messages API parameters for a structured request. Shared by the provider
+ * and the golden-recording script (which also sends them to the free count_tokens
+ * endpoint to price a run before spending).
+ */
+export function buildAnthropicMessageParams<T>(request: StructuredRequest<T>) {
+  // Cache only when the system prompt can be cached (min 1,024 tokens on Sonnet 5,
+  // 4,096 on Haiku 4.5); below that cache_control would be ignored anyway.
+  const cacheable =
+    request.cacheSystem &&
+    Math.ceil(request.system.length / 3.5) >= modelPrice(request.model).minCacheableTokens;
+  return {
+    model: request.model,
+    max_tokens: request.maxTokens,
+    system: [
+      {
+        type: "text" as const,
+        text: request.system,
+        ...(cacheable ? { cache_control: { type: "ephemeral" as const } } : {}),
+      },
+    ],
+    messages: [{ role: "user" as const, content: request.content.map(toBlock) }],
+    output_config: {
+      effort: request.effort,
+      format: { type: "json_schema" as const, schema: request.jsonSchema },
     },
   };
 }

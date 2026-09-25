@@ -88,6 +88,8 @@ enum IngestionClassification {
 enum IngestionStatus {
   pending
   classified
+  /// Claimed by one extraction (lock): concurrent requests never call the LLM twice.
+  extracting
   extracted
   ingested
   needs_review

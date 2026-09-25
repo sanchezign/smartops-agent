@@ -24,7 +24,8 @@
     "wa:media:retry": "tsx --env-file-if-exists=.env scripts/media-retry.ts",
     "wa:send": "tsx --env-file-if-exists=.env scripts/whatsapp-send.ts",
     "wa:transcription:retry": "tsx --env-file-if-exists=.env scripts/transcription-retry.ts",
-    "wa:fixtures:capture": "tsx --env-file-if-exists=.env scripts/capture-whatsapp-fixtures.ts"
+    "wa:fixtures:capture": "tsx --env-file-if-exists=.env scripts/capture-whatsapp-fixtures.ts",
+    "ai:record-golden": "tsx --env-file-if-exists=.env scripts/ai-record-golden.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
