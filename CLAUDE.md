@@ -370,6 +370,23 @@ Each one gets an ADR in docs/adr/.
   Meta's "WA DevX Webhook Events 1P App" (dashboard tooling). `wa:fixtures:capture`
   (scripts/fixtures/anonymize-webhook.ts) anonymizes with deterministic fakes and
   refuses to write if any original identifier survives.
+- 2026-09-25 (phase 5, M1) AI module (`src/ai/`, ADR-011): features call `AiClient`
+  only. Claude via `@anthropic-ai/sdk` 0.128: `output_config.format` json_schema
+  (structured outputs, GA) + `output_config.effort` (low classify / medium extract;
+  thinking tokens bill as output); system prompt `cache_control: ephemeral` only when it
+  reaches the model minimum (Sonnet 5: 1,024 tokens; Haiku 4.5: 4,096); PDF as base64
+  `document` block, images as base64 `image` blocks; `maxRetries: 1`; timeout
+  `AI_TIMEOUT_MS`. Outputs are always re-validated with Zod (refusal / max_tokens / bad
+  JSON / Zod failure → LlmError invalid_output, keeping the billed usage).
+  Spend guard: worst-case estimate (text chars/3; image ceil(w/28)*ceil(h/28), max 4784;
+  PDF page 4,600) + max_tokens, checked against total / daily (UTC) / per-contact limits
+  BEFORE the call; every attempt is an `ai_usages` row (ok | error | budget_blocked).
+  Prices in `src/ai/pricing.ts` (verified 2026-09-25: Sonnet 5 $2/$10, Haiku 4.5 $1/$5 per
+  MTok; cache write 1.25x, read 0.1x); unpriced models fail at startup. The fake provider
+  costs $0, skips the budget check and resolves golden outputs by
+  `fakeContentKey(task, content)` (sha256 of the exact content). `AI_PROVIDER` defaults to
+  fake; fake is rejected in production. Prompts: `src/ai/prompts/*.md`, version =
+  name@sha12. Tests inject `fetch` into the Anthropic SDK: no real calls, no spend.
 - Local tunnel: cloudflared quick tunnel (`cloudflared tunnel --url
   http://localhost:4000`); URL changes on every restart → update it in Meta.
 
@@ -413,6 +430,21 @@ Each one gets an ADR in docs/adr/.
      `apps/api/.env` now uses `TRANSCRIPTION_PROVIDER=groq` (simulated audio also hits
      Groq's free quota; switch back to `fake` for heavy local testing).
    - Next: phase 5 (extraction + catalog).
+5. extraction + catalog — IN PROGRESS. Branch `feat/phase-5-extraction-catalog`.
+   Approved plan (2026-09-25) + user changes: catalog matching (exact normalized match →
+   Claude `matchedProductId` + confidence → ambiguous = needs_review, never a silent
+   duplicate; the PDF → photo e2e test must detect all 6 price changes); `full_list`
+   only with an explicit signal in the document (default `partial_update`); marking
+   products unavailable = alertCandidate for review (never applied automatically in the
+   MVP); `/internal/extract` locked per run (status `extracting`; a concurrent request
+   gets the existing result or 409 IN_PROGRESS; concurrency test); prompt injection
+   (documents are data; malicious fixture + test; ADR-011). Ask the user (with the
+   estimated cost) before ANY real Claude spend (golden recording, manual run).
+   - M1 `ai/` module: LlmProvider (anthropic via @anthropic-ai/sdk 0.128, fake), AiClient
+     with spend guard, `ai_usages` ledger, IngestionRun cost fields, pricing table,
+     versioned prompt loader, AI_* env, ADR-011 — done (2026-09-25). Migration `ai_usage`.
+   - Next: M2 classification + extraction (prompts, schemas, catalog context for
+     matching, ASR tolerance, prompt-injection fixture) + golden recording (ask first).
 
 ## Known issues (out of scope)
 - **Phase 5 (extraction):** Claude reads PDF and images natively, but NOT xlsx / xls /

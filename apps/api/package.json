@@ -27,6 +27,7 @@
     "wa:fixtures:capture": "tsx --env-file-if-exists=.env scripts/capture-whatsapp-fixtures.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
     "cors": "^2.8.6",

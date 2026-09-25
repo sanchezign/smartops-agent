@@ -12,6 +12,8 @@ const prodBase: Record<string, string> = {
   NODE_ENV: "production",
   TRANSCRIPTION_PROVIDER: "groq",
   TRANSCRIPTION_API_KEY: "gsk_test_key_not_real",
+  AI_PROVIDER: "anthropic",
+  ANTHROPIC_API_KEY: "sk-ant-test-key-not-real-0000",
 };
 const baseWithoutDb = Object.fromEntries(
   Object.entries(base).filter(([key]) => key !== "DATABASE_URL"),
@@ -155,6 +157,35 @@ describe("parseEnv", () => {
         parseEnv({ ...prod, WHATSAPP_GRAPH_BASE_URL: "https://graph.facebook.com/" }),
       ).toBeTruthy();
       expect(parseEnv(prod).WHATSAPP_GRAPH_BASE_URL).toBe("https://graph.facebook.com");
+    });
+  });
+
+  describe("AI (ADR-011)", () => {
+    it("defaults to the fake provider, Sonnet 5 and the $4 / $0.50 caps", () => {
+      expect(parseEnv(base)).toMatchObject({
+        AI_PROVIDER: "fake",
+        AI_CLASSIFIER_MODEL: "claude-sonnet-5",
+        AI_EXTRACTOR_MODEL: "claude-sonnet-5",
+        AI_TOTAL_BUDGET_USD: 4,
+        AI_DAILY_BUDGET_USD: 0.5,
+        AI_DAILY_LIMIT_PER_CONTACT: 20,
+        AI_PROMPT_CACHE: true,
+      });
+    });
+
+    it("requires a key for anthropic and forbids fake in production", () => {
+      expect(issuesOf({ ...base, AI_PROVIDER: "anthropic" })).toEqual([
+        "ANTHROPIC_API_KEY: is required when AI_PROVIDER=anthropic",
+      ]);
+      expect(
+        issuesOf({ ...prodBase, AI_PROVIDER: "fake", CORS_ORIGINS: "https://a.example.com" }),
+      ).toEqual(["AI_PROVIDER: the fake provider is not allowed in production"]);
+    });
+
+    it("the daily budget cannot exceed the total budget", () => {
+      expect(issuesOf({ ...base, AI_TOTAL_BUDGET_USD: "1", AI_DAILY_BUDGET_USD: "2" })).toEqual([
+        "AI_DAILY_BUDGET_USD: must not exceed AI_TOTAL_BUDGET_USD",
+      ]);
     });
   });
 });

@@ -211,35 +211,41 @@ Database (API, run with `pnpm --filter @smartops/api <script>`):
 
 ## Environment variables
 
-| Variable                                | Where        | Purpose                                               |
-| --------------------------------------- | ------------ | ----------------------------------------------------- |
-| `POSTGRES_USER/PASSWORD/DB`             | root `.env`  | Postgres superuser and app database                   |
-| `N8N_DB_NAME/USER/PASSWORD`             | root `.env`  | n8n database and role (created on first volume init)  |
-| `N8N_ENCRYPTION_KEY`                    | root `.env`  | Encrypts n8n credentials — never change it            |
-| `N8N_WEBHOOK_URL`                       | root `.env`  | Public base URL n8n uses for webhook URLs             |
-| `TIMEZONE`                              | root `.env`  | n8n timezone (default `America/Montevideo`)           |
-| `NODE_ENV`, `PORT`                      | `apps/api`   | Runtime mode and HTTP port (default 4000)             |
-| `LOG_LEVEL`                             | `apps/api`   | Pino level (default `info`)                           |
-| `DATABASE_URL`                          | `apps/api`   | Postgres connection string                            |
-| `CORS_ORIGINS`                          | `apps/api`   | Comma-separated allowed origins (required in prod)    |
-| `RATE_LIMIT_WINDOW_MS/MAX`              | `apps/api`   | Global /api/v1 rate limit per IP (300 / 60 s)         |
-| `TRUST_PROXY`                           | `apps/api`   | Proxy hops in front of the API (0 local, 1 Render)    |
-| `WHATSAPP_*`                            | `apps/api`   | Meta app / WABA credentials — see `.env.example`      |
-| `WHATSAPP_GRAPH_BASE_URL`               | `apps/api`   | Graph API host; `http://localhost:4010` = simulator   |
-| `WEBHOOK_RATE_LIMIT_MAX`                | `apps/api`   | Per-IP limit for the WhatsApp webhook                 |
-| `WORKER_CONCURRENCY`                    | `apps/api`   | Parallel webhook jobs per worker process              |
-| `MEDIA_MAX_BYTES`                       | `apps/api`   | Own media size cap (25 MB), on top of Meta limits     |
-| `MEDIA_DOWNLOAD_TIMEOUT_MS`             | `apps/api`   | Timeout per media download (60 s)                     |
-| `MEDIA_WORKER_CONCURRENCY`              | `apps/api`   | Parallel media downloads per worker process           |
-| `OUTBOUND_WORKER_CONCURRENCY`           | `apps/api`   | Parallel outbound sends (order kept per conversation) |
-| `TRANSCRIPTION_PROVIDER`                | `apps/api`   | `groq`                                                | `openai` | `fake` (default; not allowed in production) |
-| `TRANSCRIPTION_API_KEY`                 | `apps/api`   | Provider key (Groq free plan); required unless `fake` |
-| `TRANSCRIPTION_BASE_URL/MODEL`          | `apps/api`   | Optional overrides (Groq: whisper-large-v3)           |
-| `TRANSCRIPTION_LANGUAGE`, `_TIMEOUT_MS` | `apps/api`   | Language hint (`es`) and request timeout              |
-| `TRANSCRIPTION_WORKER_CONCURRENCY`      | `apps/api`   | Parallel transcriptions (Groq free: 20 req/min)       |
-| `TRANSCRIPTION_DAILY_LIMIT_PER_CONTACT` | `apps/api`   | Max transcriptions per contact per 24h (50)           |
-| `TEST_DATABASE_URL`                     | `apps/api`   | Optional; enables integration tests (`*_test` DB)     |
-| `NEXT_PUBLIC_API_URL`                   | `apps/admin` | Base URL of the API                                   |
+| Variable                                                 | Where        | Purpose                                                    |
+| -------------------------------------------------------- | ------------ | ---------------------------------------------------------- |
+| `POSTGRES_USER/PASSWORD/DB`                              | root `.env`  | Postgres superuser and app database                        |
+| `N8N_DB_NAME/USER/PASSWORD`                              | root `.env`  | n8n database and role (created on first volume init)       |
+| `N8N_ENCRYPTION_KEY`                                     | root `.env`  | Encrypts n8n credentials — never change it                 |
+| `N8N_WEBHOOK_URL`                                        | root `.env`  | Public base URL n8n uses for webhook URLs                  |
+| `TIMEZONE`                                               | root `.env`  | n8n timezone (default `America/Montevideo`)                |
+| `NODE_ENV`, `PORT`                                       | `apps/api`   | Runtime mode and HTTP port (default 4000)                  |
+| `LOG_LEVEL`                                              | `apps/api`   | Pino level (default `info`)                                |
+| `DATABASE_URL`                                           | `apps/api`   | Postgres connection string                                 |
+| `CORS_ORIGINS`                                           | `apps/api`   | Comma-separated allowed origins (required in prod)         |
+| `RATE_LIMIT_WINDOW_MS/MAX`                               | `apps/api`   | Global /api/v1 rate limit per IP (300 / 60 s)              |
+| `TRUST_PROXY`                                            | `apps/api`   | Proxy hops in front of the API (0 local, 1 Render)         |
+| `WHATSAPP_*`                                             | `apps/api`   | Meta app / WABA credentials — see `.env.example`           |
+| `WHATSAPP_GRAPH_BASE_URL`                                | `apps/api`   | Graph API host; `http://localhost:4010` = simulator        |
+| `WEBHOOK_RATE_LIMIT_MAX`                                 | `apps/api`   | Per-IP limit for the WhatsApp webhook                      |
+| `WORKER_CONCURRENCY`                                     | `apps/api`   | Parallel webhook jobs per worker process                   |
+| `MEDIA_MAX_BYTES`                                        | `apps/api`   | Own media size cap (25 MB), on top of Meta limits          |
+| `MEDIA_DOWNLOAD_TIMEOUT_MS`                              | `apps/api`   | Timeout per media download (60 s)                          |
+| `MEDIA_WORKER_CONCURRENCY`                               | `apps/api`   | Parallel media downloads per worker process                |
+| `OUTBOUND_WORKER_CONCURRENCY`                            | `apps/api`   | Parallel outbound sends (order kept per conversation)      |
+| `TRANSCRIPTION_PROVIDER`                                 | `apps/api`   | `groq`                                                     | `openai` | `fake` (default; not allowed in production) |
+| `TRANSCRIPTION_API_KEY`                                  | `apps/api`   | Provider key (Groq free plan); required unless `fake`      |
+| `TRANSCRIPTION_BASE_URL/MODEL`                           | `apps/api`   | Optional overrides (Groq: whisper-large-v3)                |
+| `TRANSCRIPTION_LANGUAGE`, `_TIMEOUT_MS`                  | `apps/api`   | Language hint (`es`) and request timeout                   |
+| `TRANSCRIPTION_WORKER_CONCURRENCY`                       | `apps/api`   | Parallel transcriptions (Groq free: 20 req/min)            |
+| `TRANSCRIPTION_DAILY_LIMIT_PER_CONTACT`                  | `apps/api`   | Max transcriptions per contact per 24h (50)                |
+| `AI_PROVIDER`                                            | `apps/api`   | `anthropic` \| `fake` (default; not allowed in production) |
+| `ANTHROPIC_API_KEY`                                      | `apps/api`   | Claude API key; required when `AI_PROVIDER=anthropic`      |
+| `AI_CLASSIFIER_MODEL`, `AI_EXTRACTOR_MODEL`              | `apps/api`   | Model ids (default `claude-sonnet-5`)                      |
+| `AI_TOTAL_BUDGET_USD`, `AI_DAILY_BUDGET_USD`             | `apps/api`   | Own spend caps checked before every call ($4 / $0.50)      |
+| `AI_DAILY_LIMIT_PER_CONTACT`                             | `apps/api`   | Max extractions per contact per UTC day (20)               |
+| `AI_TIMEOUT_MS`, `AI_PROMPT_CACHE`, `AI_FAKE_GOLDEN_DIR` | `apps/api`   | Call timeout, prompt caching, fake golden outputs          |
+| `TEST_DATABASE_URL`                                      | `apps/api`   | Optional; enables integration tests (`*_test` DB)          |
+| `NEXT_PUBLIC_API_URL`                                    | `apps/admin` | Base URL of the API                                        |
 
 ## Privacy: speech-to-text (Groq)
 
@@ -262,3 +268,4 @@ demo and any real client) must enable ZDR in the Groq console → Settings → D
 - [ADR-008](docs/adr/ADR-008-media-storage.md) — Media stored in Postgres (bytea) behind `MediaStorage`
 - [ADR-009](docs/adr/ADR-009-whatsapp-opt-in.md) — Opt-in required for business-initiated WhatsApp messages
 - [ADR-010](docs/adr/ADR-010-transcription-provider.md) — Groq whisper-large-v3 (free plan) for speech-to-text
+- [ADR-011](docs/adr/ADR-011-llm-provider-models-budget.md) — LLM provider, Claude models, spend guard and prompt-injection policy

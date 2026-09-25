@@ -137,6 +137,19 @@ enum MediaStatus {
   failed
 }
 
+enum AiTask {
+  classify
+  extract
+}
+
+enum AiUsageStatus {
+  ok
+  /// Provider/validation error (tokens may still have been billed).
+  error
+  /// Refused before calling the provider: a budget or per-contact limit would be exceeded.
+  budget_blocked
+}
+
 enum TranscriptionStatus {
   pending
   done
@@ -331,6 +344,38 @@ model Transcription {
   @@map("transcriptions")
 }
 
+/// One row per LLM call (or blocked attempt): the ledger behind the AI budget
+/// (ADR-011). Never stores prompts or document content.
+model AiUsage {
+  id               String        @id @default(uuid(7)) @db.Uuid
+  task             AiTask
+  status           AiUsageStatus
+  provider         String
+  model            String
+  inputTokens      Int           @default(0) @map("input_tokens")
+  outputTokens     Int           @default(0) @map("output_tokens")
+  cacheReadTokens  Int           @default(0) @map("cache_read_tokens")
+  cacheWriteTokens Int           @default(0) @map("cache_write_tokens")
+  /// Estimated cost in USD from the pricing table (0 for fake / blocked calls).
+  costUsd          Decimal       @default(0) @map("cost_usd") @db.Decimal(12, 6)
+  latencyMs        Int?          @map("latency_ms")
+  promptVersion    String?       @map("prompt_version")
+  /// Machine-readable reason for error / budget_blocked.
+  reason           String?
+  error            String?
+  ingestionRunId   String?       @map("ingestion_run_id") @db.Uuid
+  messageId        String?       @map("message_id") @db.Uuid
+  contactId        String?       @map("contact_id") @db.Uuid
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  ingestionRun IngestionRun? @relation(fields: [ingestionRunId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([contactId, task, createdAt])
+  @@index([ingestionRunId])
+  @@map("ai_usages")
+}
+
 /// Media bytes (ADR-008: Postgres bytea behind the MediaStorage interface). Separate
 /// table so selecting media_files never loads the bytes. Column storage is EXTERNAL
 /// (no TOAST compression: PDF/JPEG/OGG are already compressed) — set in migration
@@ -462,28 +507,36 @@ model PriceChange {
 
 /// One classification + extraction + ingestion attempt for a message.
 model IngestionRun {
-  id             String                   @id @default(uuid(7)) @db.Uuid
-  messageId      String                   @map("message_id") @db.Uuid
-  supplierId     String?                  @map("supplier_id") @db.Uuid
-  classification IngestionClassification?
-  status         IngestionStatus          @default(pending)
+  id               String                   @id @default(uuid(7)) @db.Uuid
+  messageId        String                   @map("message_id") @db.Uuid
+  supplierId       String?                  @map("supplier_id") @db.Uuid
+  classification   IngestionClassification?
+  status           IngestionStatus          @default(pending)
   /// Raw structured output from the extractor (validated before ingestion).
-  rawExtraction  Json?                    @map("raw_extraction")
+  rawExtraction    Json?                    @map("raw_extraction")
   /// Ingestion report: created/updated/unchanged/unavailable products, warnings.
-  report         Json?
-  errors         Json?
-  model          String?
-  inputTokens    Int?                     @map("input_tokens")
-  outputTokens   Int?                     @map("output_tokens")
-  latencyMs      Int?                     @map("latency_ms")
-  finishedAt     DateTime?                @map("finished_at") @db.Timestamptz(3)
-  createdAt      DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+  report           Json?
+  errors           Json?
+  model            String?
+  inputTokens      Int?                     @map("input_tokens")
+  outputTokens     Int?                     @map("output_tokens")
+  /// Prompt-cache tokens (reads 0.1x, writes 1.25x of the input price).
+  cacheReadTokens  Int?                     @map("cache_read_tokens")
+  cacheWriteTokens Int?                     @map("cache_write_tokens")
+  /// Estimated cost of every LLM call of this run (sum of ai_usages.cost_usd).
+  costUsd          Decimal?                 @map("cost_usd") @db.Decimal(12, 6)
+  /// Hash of the prompt files used (classifier/extractor), for traceability.
+  promptVersion    String?                  @map("prompt_version")
+  latencyMs        Int?                     @map("latency_ms")
+  finishedAt       DateTime?                @map("finished_at") @db.Timestamptz(3)
+  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   message      Message       @relation(fields: [messageId], references: [id], onDelete: Cascade)
   supplier     Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   priceChanges PriceChange[]
   alerts       Alert[]
+  aiUsages     AiUsage[]
 
   @@index([status, createdAt])
   @@index([messageId])

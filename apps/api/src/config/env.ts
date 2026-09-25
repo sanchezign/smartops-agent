@@ -112,6 +112,28 @@ export const envSchema = z.object({
   TRANSCRIPTION_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(10).default(2),
   /** Max transcriptions per contact in a rolling 24h window (protects the free quota). */
   TRANSCRIPTION_DAILY_LIMIT_PER_CONTACT: z.coerce.number().int().min(1).default(50),
+
+  // ─── AI / LLM (ADR-011) ───
+  /** anthropic | fake (default; dev/tests/CI/demo without a key; forbidden in production). */
+  AI_PROVIDER: z.enum(["anthropic", "fake"]).default("fake"),
+  /** Required when AI_PROVIDER=anthropic. */
+  ANTHROPIC_API_KEY: optionalString(z.string().min(20, "must be an Anthropic API key")),
+  AI_CLASSIFIER_MODEL: z.string().min(1).default("claude-sonnet-5"),
+  AI_EXTRACTOR_MODEL: z.string().min(1).default("claude-sonnet-5"),
+  AI_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+  /** Hard cap on total estimated AI spend (USD). The project has ~5 USD of credits. */
+  AI_TOTAL_BUDGET_USD: z.coerce.number().positive().default(4),
+  /** Hard cap per UTC day (USD). */
+  AI_DAILY_BUDGET_USD: z.coerce.number().positive().default(0.5),
+  /** Max extractions per contact per UTC day. */
+  AI_DAILY_LIMIT_PER_CONTACT: z.coerce.number().int().min(1).default(20),
+  /** Prompt caching of system prompts (reads 0.1x, writes 1.25x of the input price). */
+  AI_PROMPT_CACHE: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((v) => v === "true"),
+  /** Fake provider: recorded golden outputs (<dir>/<task>/<contentKey>.json). */
+  AI_FAKE_GOLDEN_DIR: z.string().min(1).default("test/fixtures/extraction/golden"),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -135,6 +157,18 @@ function crossFieldIssues(source: Record<string, string | undefined>): string[] 
   const provider = source.TRANSCRIPTION_PROVIDER ?? "fake";
   if (source.NODE_ENV === "production" && provider === "fake") {
     issues.push("TRANSCRIPTION_PROVIDER: the fake provider is not allowed in production");
+  }
+  const aiProvider = source.AI_PROVIDER ?? "fake";
+  if (source.NODE_ENV === "production" && aiProvider === "fake") {
+    issues.push("AI_PROVIDER: the fake provider is not allowed in production");
+  }
+  if (aiProvider === "anthropic" && !source.ANTHROPIC_API_KEY?.trim()) {
+    issues.push("ANTHROPIC_API_KEY: is required when AI_PROVIDER=anthropic");
+  }
+  const daily = Number(source.AI_DAILY_BUDGET_USD ?? 0.5);
+  const total = Number(source.AI_TOTAL_BUDGET_USD ?? 4);
+  if (Number.isFinite(daily) && Number.isFinite(total) && daily > total) {
+    issues.push("AI_DAILY_BUDGET_USD: must not exceed AI_TOTAL_BUDGET_USD");
   }
   if (provider !== "fake" && !source.TRANSCRIPTION_API_KEY?.trim()) {
     issues.push(`TRANSCRIPTION_API_KEY: is required when TRANSCRIPTION_PROVIDER=${provider}`);
