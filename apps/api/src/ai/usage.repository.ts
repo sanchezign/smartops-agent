@@ -24,16 +24,15 @@ export interface AiUsageRepository {
   record(input: RecordUsageInput): Promise<void>;
   spentTotalUsd(): Promise<number>;
   spentSinceUsd(since: Date): Promise<number>;
+  /** Spend of one ingestion run (every call of one message). */
+  spentForRunUsd(ingestionRunId: string): Promise<number>;
   /** Successful extraction calls for a contact since `since`. */
   extractionsForContactSince(contactId: string, since: Date): Promise<number>;
 }
 
 export function createAiUsageRepository(prisma: PrismaClient): AiUsageRepository {
-  const sum = async (since?: Date) => {
-    const result = await prisma.aiUsage.aggregate({
-      _sum: { costUsd: true },
-      ...(since ? { where: { createdAt: { gte: since } } } : {}),
-    });
+  const sum = async (where: { createdAt?: { gte: Date }; ingestionRunId?: string } = {}) => {
+    const result = await prisma.aiUsage.aggregate({ _sum: { costUsd: true }, where });
     return Number(result._sum.costUsd ?? 0);
   };
 
@@ -62,7 +61,8 @@ export function createAiUsageRepository(prisma: PrismaClient): AiUsageRepository
     },
 
     spentTotalUsd: () => sum(),
-    spentSinceUsd: (since) => sum(since),
+    spentSinceUsd: (since) => sum({ createdAt: { gte: since } }),
+    spentForRunUsd: (ingestionRunId) => sum({ ingestionRunId }),
 
     async extractionsForContactSince(contactId, since) {
       return prisma.aiUsage.count({

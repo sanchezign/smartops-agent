@@ -59,6 +59,7 @@ const ingestion = createIngestionService({
       totalUsd: env.AI_TOTAL_BUDGET_USD,
       dailyUsd: env.AI_DAILY_BUDGET_USD,
       dailyExtractionsPerContact: env.AI_DAILY_LIMIT_PER_CONTACT,
+      runUsd: env.AI_MAX_RUN_USD,
     },
   }),
   prompts: { classifier: loadPrompt("classifier"), extractor: loadPrompt("extractor") },

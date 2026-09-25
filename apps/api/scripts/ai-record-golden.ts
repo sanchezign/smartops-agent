@@ -287,6 +287,7 @@ const ai = createAiClient({
     totalUsd: env.AI_TOTAL_BUDGET_USD,
     dailyUsd: env.AI_DAILY_BUDGET_USD,
     dailyExtractionsPerContact: env.AI_DAILY_LIMIT_PER_CONTACT,
+    runUsd: env.AI_MAX_RUN_USD,
   },
 });
 const goldenDir = resolve(env.AI_FAKE_GOLDEN_DIR);

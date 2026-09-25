@@ -21,7 +21,10 @@ import type { AiUsageRepository } from "./usage.repository.js";
 export class BudgetExceededError extends Error {
   constructor(
     public readonly reason:
-      "total_budget_exceeded" | "daily_budget_exceeded" | "contact_daily_limit",
+      | "total_budget_exceeded"
+      | "daily_budget_exceeded"
+      | "run_budget_exceeded"
+      | "contact_daily_limit",
     message: string,
   ) {
     super(message);
@@ -87,16 +90,20 @@ export function createAiClient(deps: {
           estimatedInput,
           request.maxTokens,
         );
-        const [spentTotalUsd, spentTodayUsd, contactExtractionsToday] = await Promise.all([
-          deps.usage.spentTotalUsd(),
-          deps.usage.spentSinceUsd(startOfUtcDay(now())),
-          ctx.contactId && request.task === "extract"
-            ? deps.usage.extractionsForContactSince(ctx.contactId, startOfUtcDay(now()))
-            : Promise.resolve(null),
-        ]);
+        const [spentTotalUsd, spentTodayUsd, contactExtractionsToday, spentRunUsd] =
+          await Promise.all([
+            deps.usage.spentTotalUsd(),
+            deps.usage.spentSinceUsd(startOfUtcDay(now())),
+            ctx.contactId && request.task === "extract"
+              ? deps.usage.extractionsForContactSince(ctx.contactId, startOfUtcDay(now()))
+              : Promise.resolve(null),
+            ctx.ingestionRunId
+              ? deps.usage.spentForRunUsd(ctx.ingestionRunId)
+              : Promise.resolve(null),
+          ]);
         const decision = checkBudget(
           deps.limits,
-          { spentTotalUsd, spentTodayUsd, contactExtractionsToday },
+          { spentTotalUsd, spentTodayUsd, contactExtractionsToday, spentRunUsd },
           { estimatedCostUsd, isExtraction: request.task === "extract" },
         );
         if (!decision.allowed) {

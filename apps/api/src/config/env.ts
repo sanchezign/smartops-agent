@@ -131,6 +131,8 @@ export const envSchema = z.object({
   AI_TOTAL_BUDGET_USD: z.coerce.number().positive().default(4),
   /** Hard cap per UTC day (USD). */
   AI_DAILY_BUDGET_USD: z.coerce.number().positive().default(0.5),
+  /** Hard cap per ingestion run = all AI calls for one message (USD). */
+  AI_MAX_RUN_USD: z.coerce.number().positive().default(0.3),
   /** Max extractions per contact per UTC day. */
   AI_DAILY_LIMIT_PER_CONTACT: z.coerce.number().int().min(1).default(20),
   /** Prompt caching of system prompts (reads 0.1x, writes 1.25x of the input price). */

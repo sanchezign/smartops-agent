@@ -125,6 +125,40 @@ describe("budget guard", () => {
     ).toMatchObject({ allowed: false, reason });
   });
 
+  it("blocks when the run (one message) would exceed AI_MAX_RUN_USD", () => {
+    const withRun = { ...limits, runUsd: 0.3 };
+    const spend = { spentTotalUsd: 1, spentTodayUsd: 0.1, contactExtractionsToday: 0 };
+    expect(
+      checkBudget(
+        withRun,
+        { ...spend, spentRunUsd: 0.28 },
+        { estimatedCostUsd: 0.05, isExtraction: true },
+      ),
+    ).toMatchObject({ allowed: false, reason: "run_budget_exceeded" });
+    expect(
+      checkBudget(
+        withRun,
+        { ...spend, spentRunUsd: 0.2 },
+        { estimatedCostUsd: 0.05, isExtraction: true },
+      ),
+    ).toEqual({ allowed: true });
+    // Calls without a run, or clients without a per-run cap, are not affected.
+    expect(
+      checkBudget(
+        withRun,
+        { ...spend, spentRunUsd: null },
+        { estimatedCostUsd: 0.05, isExtraction: true },
+      ),
+    ).toEqual({ allowed: true });
+    expect(
+      checkBudget(
+        limits,
+        { ...spend, spentRunUsd: 9 },
+        { estimatedCostUsd: 0.05, isExtraction: true },
+      ),
+    ).toEqual({ allowed: true });
+  });
+
   it("the per-contact limit applies to extractions only", () => {
     expect(
       checkBudget(
@@ -156,7 +190,9 @@ describe("AI client", () => {
     maxTokens: 4000,
   };
 
-  function usageRepo(spent: { total?: number; today?: number; contact?: number } = {}) {
+  function usageRepo(
+    spent: { total?: number; today?: number; contact?: number; run?: number } = {},
+  ) {
     const rows: RecordUsageInput[] = [];
     const repo: AiUsageRepository = {
       record: vi.fn(async (row) => {
@@ -165,6 +201,7 @@ describe("AI client", () => {
       spentTotalUsd: vi.fn(async () => spent.total ?? 0),
       spentSinceUsd: vi.fn(async () => spent.today ?? 0),
       extractionsForContactSince: vi.fn(async () => spent.contact ?? 0),
+      spentForRunUsd: vi.fn(async () => spent.run ?? 0),
     };
     return { repo, rows };
   }
@@ -229,6 +266,21 @@ describe("AI client", () => {
       reason: "total_budget_exceeded",
       costUsd: 0,
     });
+  });
+
+  it("blocks a call that would push its ingestion run over AI_MAX_RUN_USD", async () => {
+    const { repo, rows } = usageRepo({ run: 0.29 });
+    const provider = vi.fn();
+    const client = createAiClient({
+      provider: anthropicLike(provider),
+      usage: repo,
+      limits: { ...limits, runUsd: 0.3 },
+    });
+    const err = await client.generateStructured(req, ctx).catch((e: unknown) => e);
+    expect(err).toMatchObject({ reason: "run_budget_exceeded" });
+    expect(provider).not.toHaveBeenCalled();
+    expect(repo.spentForRunUsd).toHaveBeenCalledWith("r1");
+    expect(rows[0]).toMatchObject({ status: "budget_blocked", reason: "run_budget_exceeded" });
   });
 
   it("records failed calls, including tokens billed for an invalid output", async () => {

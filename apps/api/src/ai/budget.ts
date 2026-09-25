@@ -1,13 +1,16 @@
 /**
  * AI spend guard (pure). The project runs on ~5 USD of Claude credits: every call is
- * checked BEFORE it is made against the total budget, the daily budget and a per-contact
- * daily extraction limit (ADR-011).
+ * checked BEFORE it is made against the total budget, the daily budget, the budget of its
+ * ingestion run (AI_MAX_RUN_USD, all calls of one message) and a per-contact daily
+ * extraction limit (ADR-011).
  */
 
 export interface BudgetLimits {
   totalUsd: number;
   dailyUsd: number;
   dailyExtractionsPerContact: number;
+  /** Max spend of one ingestion run (classification + extraction of one message). */
+  runUsd?: number;
 }
 
 export interface SpendSnapshot {
@@ -15,13 +18,19 @@ export interface SpendSnapshot {
   spentTodayUsd: number;
   /** Extractions already made today for this contact (null when no contact). */
   contactExtractionsToday: number | null;
+  /** Already spent by the call's ingestion run (null when the call has no run). */
+  spentRunUsd?: number | null;
 }
 
 export type BudgetDecision =
   | { allowed: true }
   | {
       allowed: false;
-      reason: "total_budget_exceeded" | "daily_budget_exceeded" | "contact_daily_limit";
+      reason:
+        | "total_budget_exceeded"
+        | "daily_budget_exceeded"
+        | "run_budget_exceeded"
+        | "contact_daily_limit";
       detail: string;
     };
 
@@ -43,6 +52,18 @@ export function checkBudget(
       allowed: false,
       reason: "daily_budget_exceeded",
       detail: `spent today ${fmt(spend.spentTodayUsd)} + estimated ${fmt(call.estimatedCostUsd)} > daily ${fmt(limits.dailyUsd)}`,
+    };
+  }
+  if (
+    limits.runUsd !== undefined &&
+    spend.spentRunUsd !== undefined &&
+    spend.spentRunUsd !== null &&
+    spend.spentRunUsd + call.estimatedCostUsd > limits.runUsd
+  ) {
+    return {
+      allowed: false,
+      reason: "run_budget_exceeded",
+      detail: `run spent ${fmt(spend.spentRunUsd)} + estimated ${fmt(call.estimatedCostUsd)} > per-run ${fmt(limits.runUsd)}`,
     };
   }
   if (
