@@ -19,6 +19,8 @@ export const QUEUES = {
   n8nDelivery: "n8n-delivery",
   n8nDeliveryDlq: "n8n-delivery-dlq",
   n8nWatchdog: "n8n-watchdog",
+  notificationDigest: "notification-digest",
+  notificationDigestDlq: "notification-digest-dlq",
 } as const;
 
 export interface WebhookEventJob {
@@ -43,6 +45,10 @@ export interface DocumentConversionJob {
 
 export interface N8nDeliveryJob {
   eventId: string;
+}
+
+export interface NotificationDigestJob {
+  digestId: string;
 }
 
 type QueueDefinition = Omit<Queue, "name"> & { name: string };
@@ -152,6 +158,22 @@ export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
     retryDelayMax: 3600,
     expireInSeconds: 60,
     deadLetter: QUEUES.n8nDeliveryDlq,
+  },
+  {
+    name: QUEUES.notificationDigestDlq,
+    retryLimit: 3,
+    retryDelay: 30,
+    deleteAfterSeconds: 30 * 24 * 3600,
+  },
+  {
+    name: QUEUES.notificationDigest,
+    // Sent at the end of the digest window (startAfter); Meta/network errors retried.
+    retryLimit: 5,
+    retryDelay: 30,
+    retryBackoff: true,
+    retryDelayMax: 900,
+    expireInSeconds: 60,
+    deadLetter: QUEUES.notificationDigestDlq,
   },
   {
     name: QUEUES.n8nWatchdog,

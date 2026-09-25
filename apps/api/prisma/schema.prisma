@@ -111,6 +111,23 @@ enum AlertType {
   integration_error
 }
 
+/// Notifications (phase 6): only actionable events, grouped per recipient.
+enum NotificationCategory {
+  run_summary
+  customer_query
+  integration_error
+  manual_attention
+}
+
+enum NotificationDigestStatus {
+  /// Collecting items until windowEndsAt (or until the hourly cap allows sending).
+  open
+  sent
+  /// WhatsApp not possible (window closed and no template / no opt-in): panel only.
+  panel_only
+  failed
+}
+
 /// Outbox towards n8n (phase 6, ADR-015).
 enum IntegrationEventStatus {
   pending
@@ -786,6 +803,51 @@ model IntegrationEvent {
   @@index([status, updatedAt])
   @@index([messageId])
   @@map("integration_events")
+}
+
+/// One actionable event for one recipient ("panel" or a team member waId). dedupeKey makes
+/// repeated n8n calls harmless. WhatsApp recipients get it through a digest.
+model NotificationItem {
+  id        String               @id @default(uuid(7)) @db.Uuid
+  recipient String
+  category  NotificationCategory
+  severity  AlertSeverity        @default(info)
+  dedupeKey String               @map("dedupe_key")
+  title     String
+  data      Json
+  digestId  String?              @map("digest_id") @db.Uuid
+  createdAt DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  digest NotificationDigest? @relation(fields: [digestId], references: [id], onDelete: SetNull)
+
+  @@unique([recipient, dedupeKey])
+  @@index([recipient, createdAt])
+  @@index([digestId])
+  @@map("notification_items")
+}
+
+/// One WhatsApp message to one team member grouping several items (anti-spam, phase 6).
+model NotificationDigest {
+  id                String                   @id @default(uuid(7)) @db.Uuid
+  recipient         String
+  status            NotificationDigestStatus @default(open)
+  /// Critical digests skip the grouping window (own hourly cap).
+  critical          Boolean                  @default(false)
+  windowEndsAt      DateTime                 @map("window_ends_at") @db.Timestamptz(3)
+  sentAt            DateTime?                @map("sent_at") @db.Timestamptz(3)
+  text              String?
+  /// text | template | panel_only
+  channel           String?
+  outboundMessageId String?                  @map("outbound_message_id") @db.Uuid
+  error             String?
+  createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  items NotificationItem[]
+
+  @@index([recipient, status])
+  @@index([recipient, sentAt])
+  @@map("notification_digests")
 }
 
 model Alert {

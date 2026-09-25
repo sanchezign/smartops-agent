@@ -31,6 +31,7 @@ import {
   createFakeWebhookQueue,
   createInMemoryWebhookRepository,
   healthyDb,
+  stubInternalDeps,
   TEST_ENV_SOURCE,
   TEST_INTERNAL_API_KEY,
 } from "../helpers/build-app.js";
@@ -110,7 +111,13 @@ describe.skipIf(!testDatabaseUrl)("e2e: internal API → catalog (Postgres + gol
       healthRepository: healthyDb,
       whatsappWebhookRepository: createInMemoryWebhookRepository(),
       webhookQueue: createFakeWebhookQueue(),
-      internal: { ingestion, catalog, settings },
+      internal: {
+        ingestion,
+        catalog,
+        settings,
+        notifications: stubInternalDeps.notifications,
+        supplierAck: stubInternalDeps.supplierAck,
+      },
     });
   });
   afterAll(async () => {

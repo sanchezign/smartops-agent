@@ -28,6 +28,33 @@ export const SETTING_DEFINITIONS = {
     schema: z.number().int().min(10).max(3_600),
     default: 180,
   },
+  /** Team members notified by WhatsApp (waId, digits only; they need an opt-in). */
+  "notifications.whatsappRecipients": {
+    schema: z.array(z.string().regex(/^\d{8,15}$/)).max(10),
+    default: [] as string[],
+  },
+  /** Actionable events of this many minutes are grouped in ONE message per recipient. */
+  "notifications.digestWindowMinutes": { schema: z.number().int().min(1).max(240), default: 10 },
+  /** Max WhatsApp digests per recipient per hour; the excess waits for the next digest. */
+  "notifications.maxPerHour": { schema: z.number().int().min(1).max(60), default: 4 },
+  /** Critical errors skip the digest window, with their own hourly cap. */
+  "notifications.criticalMaxPerHour": { schema: z.number().int().min(0).max(20), default: 3 },
+  /**
+   * Approved template for digests outside the 24 h window (null → panel only then).
+   * bodyParam: the template has ONE body variable that receives the digest text.
+   */
+  "notifications.template": {
+    schema: z
+      .object({
+        name: z.string().regex(/^[a-z0-9_]{1,512}$/),
+        languageCode: z.string().regex(/^[a-z]{2,3}(_[A-Z]{2})?$/),
+        bodyParam: z.boolean(),
+      })
+      .nullable(),
+    default: null as { name: string; languageCode: string; bodyParam: boolean } | null,
+  },
+  /** Acknowledge supplier lists by WhatsApp ("Recibimos tu lista…"). OFF by default, ON in demo mode. */
+  "bot.supplierAck": { schema: z.boolean(), default: false },
 } as const;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

@@ -94,6 +94,8 @@ export const stubInternalDeps: InternalDeps = {
   ingestion: { classify: notConfigured, extract: notConfigured, getRun: notConfigured },
   catalog: { ingest: notConfigured },
   settings: { getAll: notConfigured, getCatalogSettings: notConfigured },
+  notifications: { notify: notConfigured, recordN8nError: notConfigured },
+  supplierAck: { ack: notConfigured },
 };
 
 /** App with stubbed repositories — no Postgres needed. */

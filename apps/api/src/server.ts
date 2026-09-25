@@ -6,7 +6,18 @@ import { createApp } from "./app.js";
 import { createPrismaClient } from "./common/db.js";
 import { createLogger } from "./common/logger.js";
 import { loadEnv } from "./config/env.js";
-import { createPgBossWebhookQueue, startBoss } from "./jobs/boss.js";
+import {
+  createEnqueueOutboundInTx,
+  createPgBossWebhookQueue,
+  createScheduleDigestInTx,
+  startBoss,
+} from "./jobs/boss.js";
+import { createOutboundRepository } from "./modules/messaging/outbound.repository.js";
+import { createOutboundService } from "./modules/messaging/outbound.service.js";
+import { createNotificationRepository } from "./modules/notifications/notification.repository.js";
+import { createNotificationService } from "./modules/notifications/notification.service.js";
+import { createSupplierAckService } from "./modules/notifications/supplier-ack.js";
+import { createWhatsAppSendClient } from "./modules/whatsapp/whatsapp-send.client.js";
 import { createCatalogIngestService } from "./modules/catalog/catalog-ingest.service.js";
 import { createCatalogRepository } from "./modules/catalog/catalog.repository.js";
 import { FAKE_RESPONDERS } from "./modules/extraction/fake-responders.js";
@@ -88,13 +99,38 @@ const catalog = createCatalogIngestService({
   settings,
 });
 
+// Notifications (phase 6): the API records items and schedules digests; the worker sends.
+const notificationRepository = createNotificationRepository(prisma, {
+  scheduleDigestInTx: createScheduleDigestInTx(boss),
+});
+const notifications = createNotificationService({ repository: notificationRepository, settings });
+const outbound = createOutboundService({
+  repository: createOutboundRepository(prisma, {
+    enqueueOutboundInTx: createEnqueueOutboundInTx(boss),
+  }),
+  client: createWhatsAppSendClient({
+    graph: {
+      baseUrl: env.WHATSAPP_GRAPH_BASE_URL,
+      version: env.WHATSAPP_GRAPH_API_VERSION,
+      accessToken: env.WHATSAPP_ACCESS_TOKEN,
+      timeoutMs: env.WHATSAPP_API_TIMEOUT_MS,
+    },
+    phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID,
+  }),
+});
+const supplierAck = createSupplierAckService({
+  repository: notificationRepository,
+  settings,
+  outbound,
+});
+
 const app = createApp({
   env,
   logger,
   healthRepository,
   whatsappWebhookRepository: createWhatsAppWebhookRepository(prisma),
   webhookQueue: createPgBossWebhookQueue(boss),
-  internal: { ingestion, catalog, settings },
+  internal: { ingestion, catalog, settings, notifications, supplierAck },
 });
 const server = app.listen(env.PORT, () => {
   logger.info(

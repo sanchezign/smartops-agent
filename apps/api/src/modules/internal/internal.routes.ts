@@ -6,6 +6,9 @@ import { createRateLimiter } from "../../common/middleware/security.js";
 import { getValidated, validate } from "../../common/middleware/validate.js";
 import type { CatalogIngestService } from "../catalog/catalog-ingest.service.js";
 import type { IngestionService } from "../extraction/ingestion.service.js";
+import type { NotificationService } from "../notifications/notification.service.js";
+import { ackSchema, n8nErrorSchema, notifySchema } from "../notifications/notification.schemas.js";
+import type { SupplierAckService } from "../notifications/supplier-ack.js";
 import type { SettingsService } from "../settings/settings.service.js";
 
 /**
@@ -16,6 +19,9 @@ import type { SettingsService } from "../settings/settings.service.js";
  *   POST /catalog/ingest  { runId }     → catalog ingest (locked per run) + review items
  *   GET  /runs/:id                       → run status (poll it while "extracting";
  *                                          chunked extraction answers 202 in phase 5 M3b)
+ *   POST /notifications  { kind, … }     → actionable? → panel + WhatsApp digests
+ *   POST /n8n/errors                     → error workflow → alert + critical notification
+ *   POST /messages/ack   { runId }       → supplier acknowledgement (Setting bot.supplierAck)
  *   GET  /rules                          → no-code rules (settings) for the notifier
  * All POSTs are idempotent: repeating one returns the stored result.
  * Never exposed to the frontend (no CORS origin needs it; the key is server-side only).
@@ -25,6 +31,8 @@ export interface InternalDeps {
   ingestion: IngestionService;
   catalog: CatalogIngestService;
   settings: SettingsService;
+  notifications: Pick<NotificationService, "notify" | "recordN8nError">;
+  supplierAck: Pick<SupplierAckService, "ack">;
 }
 
 const messageBody = z.object({ messageId: z.uuid() }).strict();
@@ -64,6 +72,26 @@ export function createInternalRouter(
     const { id } = getValidated<typeof runParams>(res, "params");
     res.set("Cache-Control", "no-store");
     res.json(await deps.ingestion.getRun(id));
+  });
+
+  router.post("/notifications", validate({ body: notifySchema }), async (req, res) => {
+    res.json(
+      await deps.notifications.notify(getValidated<typeof notifySchema>(res, "body"), log(req)),
+    );
+  });
+
+  router.post("/n8n/errors", validate({ body: n8nErrorSchema }), async (req, res) => {
+    res.json(
+      await deps.notifications.recordN8nError(
+        getValidated<typeof n8nErrorSchema>(res, "body"),
+        log(req),
+      ),
+    );
+  });
+
+  router.post("/messages/ack", validate({ body: ackSchema }), async (req, res) => {
+    const { runId } = getValidated<typeof ackSchema>(res, "body");
+    res.json(await deps.supplierAck.ack(runId, log(req)));
   });
 
   router.get("/rules", async (req, res) => {

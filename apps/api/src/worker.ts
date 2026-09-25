@@ -4,6 +4,7 @@ import { loadEnv } from "./config/env.js";
 import {
   createEnqueueDocumentConversionInTx,
   createEnqueueN8nDeliveryInTx,
+  createScheduleDigestInTx,
   enqueueN8nDelivery,
   createEnqueueMediaInTx,
   createEnqueueOutboundInTx,
@@ -14,6 +15,9 @@ import {
 import { registerDocumentConversionWorkers } from "./jobs/document-conversion.job.js";
 import { registerMediaTranscriptionWorkers } from "./jobs/media-transcription.job.js";
 import { registerN8nDeliveryWorkers } from "./jobs/n8n-delivery.job.js";
+import { registerNotificationDigestWorkers } from "./jobs/notification-digest.job.js";
+import { createNotificationRepository } from "./modules/notifications/notification.repository.js";
+import { createNotificationService } from "./modules/notifications/notification.service.js";
 import { createIntegrationEventRepository } from "./modules/integration/integration-event.repository.js";
 import { createEmitMessageReadyInTx } from "./modules/integration/message-ready.js";
 import {
@@ -151,11 +155,12 @@ await registerWhatsAppMediaWorkers(boss, {
 const outboundRepository = createOutboundRepository(prisma, {
   enqueueOutboundInTx: createEnqueueOutboundInTx(boss),
 });
+const outboundService = createOutboundService({
+  repository: outboundRepository,
+  client: createWhatsAppSendClient({ graph, phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID }),
+});
 await registerWhatsAppOutboundWorkers(boss, {
-  service: createOutboundService({
-    repository: outboundRepository,
-    client: createWhatsAppSendClient({ graph, phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID }),
-  }),
+  service: outboundService,
   repository: outboundRepository,
   logger,
   concurrency: env.OUTBOUND_WORKER_CONCURRENCY,
@@ -198,6 +203,18 @@ await registerDocumentConversionWorkers(boss, {
   repository: conversionRepository,
   logger,
   concurrency: env.DOC_CONVERT_WORKER_CONCURRENCY,
+});
+
+// Notification digests (phase 6): sent at the end of their window, anti-spam rules.
+await registerNotificationDigestWorkers(boss, {
+  service: createNotificationService({
+    repository: createNotificationRepository(prisma, {
+      scheduleDigestInTx: createScheduleDigestInTx(boss),
+    }),
+    settings,
+    outbound: outboundService,
+  }),
+  logger,
 });
 
 // Delivery to n8n (off → events accumulate and go out once enabled).

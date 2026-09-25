@@ -10,6 +10,7 @@ import {
   type OutboundMessageJob,
   type DocumentConversionJob,
   type N8nDeliveryJob,
+  type NotificationDigestJob,
   type TranscriptionJob,
   type WebhookEventJob,
   type WebhookQueue,
@@ -133,6 +134,20 @@ export function createEnqueueN8nDeliveryInTx(
     const data: N8nDeliveryJob = { eventId };
     const jobId = await boss.send(QUEUES.n8nDelivery, data, { db: fromPrisma(tx) });
     if (!jobId) throw new Error(`pg-boss did not create an n8n delivery job for ${eventId}`);
+  };
+}
+
+/** Schedules a notification digest at the end of its window, inside the caller's transaction. */
+export function createScheduleDigestInTx(
+  boss: PgBoss,
+): (tx: Prisma.TransactionClient, digestId: string, startAfter: Date) => Promise<void> {
+  return async (tx, digestId, startAfter) => {
+    const data: NotificationDigestJob = { digestId };
+    const jobId = await boss.send(QUEUES.notificationDigest, data, {
+      db: fromPrisma(tx),
+      startAfter,
+    });
+    if (!jobId) throw new Error(`pg-boss did not create a digest job for ${digestId}`);
   };
 }
 

@@ -90,3 +90,58 @@ describe("internal API (/api/v1/internal)", () => {
     expect(noKey.status).toBe(401);
   });
 });
+
+describe("internal API: notifier endpoints (phase 6)", () => {
+  const auth = { "X-Internal-Api-Key": TEST_INTERNAL_API_KEY };
+  const calls: unknown[] = [];
+  const phase6 = () =>
+    buildTestApp({
+      internal: {
+        ...stubInternalDeps,
+        notifications: {
+          notify: async (input) => {
+            calls.push(input);
+            return { notified: false, reason: "nothing_actionable", items: 0 };
+          },
+          recordN8nError: async (input) => {
+            calls.push(input);
+            return { notified: true, items: 1, alertId: RUN_ID };
+          },
+        },
+        supplierAck: { ack: async () => ({ sent: false, reason: "disabled" }) },
+      },
+    });
+
+  it("validates bodies strictly and delegates", async () => {
+    const bad = await request(phase6())
+      .post("/api/v1/internal/notifications")
+      .set(auth)
+      .send({ kind: "run" });
+    expect(bad.status).toBe(400);
+    const unknownKind = await request(phase6())
+      .post("/api/v1/internal/notifications")
+      .set(auth)
+      .send({ kind: "spam", runId: RUN_ID });
+    expect(unknownKind.status).toBe(400);
+    const ok = await request(phase6())
+      .post("/api/v1/internal/notifications")
+      .set(auth)
+      .send({ kind: "run", runId: RUN_ID });
+    expect(ok.body).toEqual({ notified: false, reason: "nothing_actionable", items: 0 });
+    const error = await request(phase6())
+      .post("/api/v1/internal/n8n/errors")
+      .set(auth)
+      .send({ workflow: "procesador", executionId: "12", message: "timeout" });
+    expect(error.status).toBe(200);
+    const ack = await request(phase6())
+      .post("/api/v1/internal/messages/ack")
+      .set(auth)
+      .send({ runId: RUN_ID });
+    expect(ack.body).toEqual({ sent: false, reason: "disabled" });
+    const noKey = await request(phase6())
+      .post("/api/v1/internal/n8n/errors")
+      .send({ workflow: "x", message: "y" });
+    expect(noKey.status).toBe(401);
+    expect(calls).toHaveLength(2);
+  });
+});
