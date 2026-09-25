@@ -30,11 +30,19 @@ OpenAI-compatible client (`POST {baseUrl}/audio/transcriptions`, multipart) behi
   also low ($0.111/audio hour, 10 s minimum billed).
 - **Accuracy:** whisper-large-v3 has a lower WER than the turbo variant (10.3% vs 12%);
   Spanish price lists need accurate numbers.
-- **Data:** Groq does not retain audio by default, does not train on customer data
-  by contract, and offers Zero Data Retention (enable it: voice notes are personal data).
+- **Data:** Groq does not train on customer data by contract and offers Zero Data
+  Retention (ZDR). Correction (2026-09-24, from the Groq console and
+  console.groq.com/docs/your-data): since 2025-10-15 Groq MAY retain inference inputs and
+  outputs — including `/openai/v1/audio/transcriptions` — for up to 30 days for system
+  reliability and abuse monitoring, unless ZDR is enabled ("Inference APIs ZDR" or
+  "Global ZDR" in Settings → Data Controls). With ZDR enabled nothing is retained.
 
 ## Consequences
 
+- **REQUIREMENT:** every Groq account used by this project — development, demo and any
+  real client — must have ZDR enabled (Settings → Data Controls → Global ZDR, or at
+  least Inference APIs ZDR) before sending audio. Voice notes are personal data. This
+  is part of the deploy checklist.
 - AAC and AMR audio (also possible on WhatsApp) are not accepted by Groq or OpenAI
   without transcoding: they are skipped (`unsupported_format`) until an ffmpeg step is
   added (Known issues).

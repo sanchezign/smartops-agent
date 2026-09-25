@@ -28,7 +28,9 @@ credits). **Nothing that generates charges without asking the user first** (paid
 plans, paid APIs beyond the Claude credits, domains, credit-card-only trials).
 - Phase 4: Groq FREE plan only (whisper-large-v3: 20 req/min, 2,000 req/day,
   7,200 audio s/hour, 28,800 audio s/day, 25 MB files; 429 + retry-after when
-  exceeded). Enable Zero Data Retention.
+  exceeded). ZDR REQUIRED on every Groq account (dev, demo, client): without it Groq may
+  retain inputs/outputs, audio included, for up to 30 days (since 2025-10-15; ADR-010).
+  The user enabled Global ZDR on the project account (2026-09-24).
 - Phase 5: Claude API with a spend limit set in the Anthropic Console (≤ ~5 USD) +
   a "fake" LLM provider for development, tests and a demo without a key.
 - Phase 12: $0 deploy (see Deploy target). NOT Neon for Postgres: pg-boss and n8n poll
@@ -375,7 +377,7 @@ Each one gets an ADR in docs/adr/.
      validate M1–M4 end to end with real Meta traffic (remove
      `WHATSAPP_GRAPH_BASE_URL` from `apps/api/.env` first). Resume as soon as Meta
      restores the account, before phase 12 (deploy).
-4. media normalization (Whisper for voice notes) — IN PROGRESS. Branch
+4. media normalization (Whisper for voice notes) — DONE (2026-09-24), merged to `main`. Branch
    `feat/phase-4-media-normalization`. Approved plan: Groq whisper-large-v3 free plan
    (ADR-010), AAC/AMR skipped (unsupported_format), `transcriptions` table + copy in
    Message.transcript, daily per-contact limit (50), fake provider, vocabulary prompt.
@@ -385,8 +387,13 @@ Each one gets an ADR in docs/adr/.
      per-contact quota, onTranscribed hook, `wa:transcription:retry`,
      `wa:simulate audio --transcript` — done (2026-09-24), tested with the simulator +
      fake transcriber. Migration `transcriptions`.
-   - Next: real test with Groq (free plan) on a real OGG voice note, then close phase 4
-     (ff-merge to main).
+   - Real test with Groq (free plan, Global ZDR enabled) — done (2026-09-24): a real
+     7.42 s OGG/Opus voice note went through the full pipeline (simulated webhook →
+     fake Graph download → transcription job → Groq whisper-large-v3) → done in 665 ms,
+     1 attempt, language Spanish, text copied to Message.transcript. Local
+     `apps/api/.env` now uses `TRANSCRIPTION_PROVIDER=groq` (simulated audio also hits
+     Groq's free quota; switch back to `fake` for heavy local testing).
+   - Next: phase 3 M5 with real Meta traffic (see phase 3), then phase 5.
 
 ## Known issues (out of scope)
 - **BLOCKER (external), 2026-09-24: Meta disabled the business portfolio and the

@@ -240,6 +240,15 @@ Database (API, run with `pnpm --filter @smartops/api <script>`):
 | `TEST_DATABASE_URL`                     | `apps/api`   | Optional; enables integration tests (`*_test` DB)     |
 | `NEXT_PUBLIC_API_URL`                   | `apps/admin` | Base URL of the API                                   |
 
+## Privacy: speech-to-text (Groq)
+
+Voice notes are personal data and are sent to Groq for transcription (ADR-010). Since
+2025-10-15 Groq may retain inference inputs and outputs — audio transcriptions included —
+for up to 30 days for reliability and abuse monitoring **unless Zero Data Retention is
+enabled**. **Requirement:** every Groq account used with this project (development,
+demo and any real client) must enable ZDR in the Groq console → Settings → Data Controls
+(Global ZDR, or at least Inference APIs ZDR) before `TRANSCRIPTION_PROVIDER=groq` is used.
+
 ## Architecture decisions
 
 - [ADR-001](docs/adr/ADR-001-pnpm-monorepo.md) — pnpm workspaces monorepo
