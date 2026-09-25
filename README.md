@@ -208,6 +208,12 @@ Database (API, run with `pnpm --filter @smartops/api <script>`):
 - Every error uses one JSON shape: `{ "error": { "code", "message", "details?", "requestId" } }`.
 - Every response carries `X-Request-Id` (a safe incoming value is reused); it is on every log line.
 - Money (Prisma `Decimal`) is always serialized as a **string** (`"1234.5"`), never a JSON number.
+- Internal API for n8n (`X-Internal-Api-Key`, never used by the frontend), all idempotent:
+  `POST /api/v1/internal/classify {messageId}`, `POST /api/v1/internal/extract {runId}`,
+  `POST /api/v1/internal/catalog/ingest {runId}`, `GET /api/v1/internal/rules`.
+- Decisions the system must not take alone become **review items** (`review_items`, ADR-012):
+  uncertain matches, outliers, currency changes, unavailable products, global percentages,
+  tax-basis changes and suspicious messages. The admin panel (phase 9) resolves them.
 
 ## Environment variables
 
@@ -244,6 +250,8 @@ Database (API, run with `pnpm --filter @smartops/api <script>`):
 | `AI_TOTAL_BUDGET_USD`, `AI_DAILY_BUDGET_USD`             | `apps/api`   | Own spend caps checked before every call ($4 / $0.50)      |
 | `AI_DAILY_LIMIT_PER_CONTACT`                             | `apps/api`   | Max extractions per contact per UTC day (20)               |
 | `AI_TIMEOUT_MS`, `AI_PROMPT_CACHE`, `AI_FAKE_GOLDEN_DIR` | `apps/api`   | Call timeout, prompt caching, fake golden outputs          |
+| `INTERNAL_API_KEY`                                       | `apps/api`   | Secret for `/api/v1/internal/*` (n8n); min 32 chars        |
+| `INTERNAL_RATE_LIMIT_MAX`                                | `apps/api`   | Per-IP limit for the internal API (600 / window)           |
 | `TEST_DATABASE_URL`                                      | `apps/api`   | Optional; enables integration tests (`*_test` DB)          |
 | `NEXT_PUBLIC_API_URL`                                    | `apps/admin` | Base URL of the API                                        |
 
@@ -269,3 +277,4 @@ demo and any real client) must enable ZDR in the Groq console → Settings → D
 - [ADR-009](docs/adr/ADR-009-whatsapp-opt-in.md) — Opt-in required for business-initiated WhatsApp messages
 - [ADR-010](docs/adr/ADR-010-transcription-provider.md) — Groq whisper-large-v3 (free plan) for speech-to-text
 - [ADR-011](docs/adr/ADR-011-llm-provider-models-budget.md) — LLM provider, Claude models, spend guard and prompt-injection policy
+- [ADR-012](docs/adr/ADR-012-human-review.md) — Catalog ingest rules and human review items

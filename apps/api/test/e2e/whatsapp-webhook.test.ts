@@ -11,6 +11,7 @@ import {
   createFakeWebhookQueue,
   createInMemoryWebhookRepository,
   healthyDb,
+  stubInternalDeps,
   TEST_ENV_SOURCE,
   TEST_WHATSAPP_APP_SECRET,
   TEST_WHATSAPP_VERIFY_TOKEN,
@@ -214,6 +215,7 @@ describe("POST /api/v1/webhooks/whatsapp", () => {
       healthRepository: healthyDb,
       whatsappWebhookRepository: createInMemoryWebhookRepository(),
       webhookQueue: createFakeWebhookQueue(),
+      internal: stubInternalDeps,
     });
     const body = whatsappFixture("message-text");
 

@@ -390,6 +390,38 @@ Each one gets an ADR in docs/adr/.
   `fakeContentKey(task, content)` (sha256 of the exact content). `AI_PROVIDER` defaults to
   fake; fake is rejected in production. Prompts: `src/ai/prompts/*.md`, version =
   name@sha12. Tests inject `fetch` into the Anthropic SDK: no real calls, no spend.
+- 2026-09-25 (phase 5, M4) Catalog ingest + human review (ADR-012). Pure planner
+  `planIngestion` decides; `catalog.repository.ts` applies in ONE transaction under advisory
+  locks (`catalog:contact:<id>`, `catalog:supplier:<id>`; approvals take the same supplier
+  lock). Run lock `extracted → ingesting`; finished runs return the stored report.
+  Partial unique index `price_changes_run_product_auto_key` (run, product) WHERE
+  source='auto' — hand-written in migration `catalog_ingest`, keep it.
+- Supplier resolution (user rule): contact's supplier → else document supplierName matched
+  with `normalizeSupplierName` (accents/case/punctuation/legal forms ignored) → else a new
+  supplier (supplierName, else WhatsApp profile name, else "Proveedor <masked phone>")
+  linked to the contact (kind unknown → supplier), informative warning. >1 match →
+  `unknown_supplier` gate. `Supplier.normalizedName` (indexed, not unique).
+- Percentage rounding (user rule + tests): decimals of the current price, min 2; if the
+  effective change deviates > 0.1 pp from the stated %, more decimals up to 4
+  (12.5 +7.5 % → 13.44; 0.035 +10 % → 0.0385). `price-math.ts`.
+- Settings (confirmed defaults): catalog.maxIncreasePct 50, maxDecreasePct 30,
+  priceAlertPct 10 (≥ creates an Alert), lowStockThreshold null, autoCreateProducts true,
+  reactivateOnQuote true. Code defaults + DB rows validated per key; invalid stored value →
+  default + warn log. Read-only for n8n at `GET /api/v1/internal/rules`.
+- Currency missing on a line: assumed only when every product of the supplier has that
+  currency (warning currency_assumed); new products without currency → review.
+- `Product.priceSourceAt` = WhatsApp timestamp of the message that set the price; an older
+  message → `stale_source` review. `Supplier.taxIncluded/taxIncludedAt` = last stated basis.
+- Review items (`review_items`): run gates are created by the extraction too
+  (`suspicious_instructions`, `extraction_failed` with numbered dedupe keys) and by the
+  ingest (`tax_basis_changed`, `unknown_supplier`). Approving tax/suspicious/supplier gates
+  re-runs the ingest; extraction_failed only moves the run back (pending/classified) — the
+  review never calls the LLM. Stale proposal → superseded + 409 `STALE_REVIEW`. Every
+  resolution → AuditLog. Panel routes come in phase 9 (service ready: `review.service.ts`).
+- Internal API (`src/modules/internal/`): `X-Internal-Api-Key` (sha256 + timingSafeEqual),
+  own limiter `INTERNAL_RATE_LIMIT_MAX` (global limiter skips `/internal/` prefix), strict Zod
+  bodies. `INTERNAL_API_KEY` is REQUIRED at startup (min 32) — a random one was generated
+  into the local `apps/api/.env` on 2026-09-25.
 - Local tunnel: cloudflared quick tunnel (`cloudflared tunnel --url
   http://localhost:4000`); URL changes on every restart → update it in Meta.
 
@@ -433,7 +465,7 @@ Each one gets an ADR in docs/adr/.
      `apps/api/.env` now uses `TRANSCRIPTION_PROVIDER=groq` (simulated audio also hits
      Groq's free quota; switch back to `fake` for heavy local testing).
    - Next: phase 5 (extraction + catalog).
-5. extraction + catalog — IN PROGRESS. Branch `feat/phase-5-extraction-catalog`.
+5. extraction + catalog — IN PROGRESS (M1, M2, M4 done; M3 postponed). Branch `feat/phase-5-extraction-catalog`.
    Approved plan (2026-09-25) + user changes: catalog matching (exact normalized match →
    Claude `matchedProductId` + confidence → ambiguous = needs_review, never a silent
    duplicate; the PDF → photo e2e test must detect all 6 price changes); `full_list`
@@ -495,18 +527,17 @@ Each one gets an ADR in docs/adr/.
      (matches the empty-catalog rule); the short text is now `price_update_partial`
      (0.55); the voice note no longer reads "de lunas" as "desde el lunes" (price 14
      kept, validity lost, still uncertain); the photo lost its "Octubre" warning.
-   - Plan M4 (catalog ingest) — additions agreed so far (to be detailed in the M4 plan):
-     - taxIncluded (user, 2026-09-25): compared with the previous list of the same supplier
-       that stated it. true ↔ false → warning + the run goes to review (avoids false 22 %
-       increases caused by IVA). New list silent (null) and previous stated → warning only,
-       no review. Needs the last known value per supplier (e.g. a column on ingestion_runs
-       or Supplier).
-     - Percentages: new price = current price × (1 + pct/100) with Decimal, rounded to 4
-       decimals, then the same validations as any change (outliers, currency). An item with
-       `priceChangePct` needs a high-confidence catalog match (no product → review).
-       `globalChangePct` → ALWAYS review in the MVP (user, 2026-09-25).
-     - Empty catalog: already normalized in M2 (`applyExtractionRules` → new products,
-       high). `uncertain=true` items (e.g. corrected ASR) → review.
+   - M3 document conversion (xlsx/csv/docx → text + ADR) — POSTPONED by the user (M4 first).
+   - M4 catalog ingest + human review — DONE (2026-09-25), ADR-012. Commits: step 1 pure
+     planner (`ingest-plan.ts`, `price-math.ts`, `supplier-name.ts`, settings schemas),
+     step 2 migration `catalog_ingest` + `catalog.repository.ts`, `catalog-ingest.service.ts`,
+     `src/modules/reviews/`, `src/modules/settings/`, step 3 internal API
+     (`src/modules/internal/`, `INTERNAL_API_KEY`) + e2e. 576 tests green. $0 spent.
+     E2E over HTTP with the goldens (`test/integration/catalog-e2e.test.ts`): September PDF
+     creates the supplier "Distribuidora Demo S.A." (taxIncluded true) + 7 products; the
+     October photo → 5 automatic changes (16.6667 / 20 / 6.6667 / 4.1667 / 2.381 %), 2
+     alerts (Tornillo, Tuerca), Arandela → product_match review, Pintura untouched,
+     warning tax_not_stated; voice note → uncertain_value; injection → suspicious gate.
    - Facts from the test data: September PDF (7 products, UYU, IVA incluido) → October
      photo (UYU, tax not stated): 6 products match (3 exact, 3 need the model; the model
      writes "Cable 2mm" + unit "metro", which is then an exact name match), 5 automatic
@@ -514,6 +545,13 @@ Each one gets an ADR in docs/adr/.
      → untouched).
 
 ## Known issues (out of scope)
+- **Phase 5 M4:** a supplier auto-created from the WhatsApp profile name (list without
+  supplierName) is never renamed when a later list states the company name: the ingest only
+  adds a `supplier_name_mismatch` warning. Renaming/merging suppliers belongs to the panel.
+- Review items have no expiry: old pending items stay until superseded or resolved (stale
+  ones are caught at approval time with 409 STALE_REVIEW).
+- The worker process also requires `INTERNAL_API_KEY` (single env module), although only
+  the API uses it.
 - **Phase 5 golden review (2026-09-25):** the classifier labeled the short text "Lista
   septiembre: tornillo 6mm 12 UYU, tuerca 6mm 5 UYU" as `price_list_full` (0.65) although
   the prompt requires an explicit signal. Handled in phase 6: the router uses the

@@ -24,14 +24,17 @@ export function createRateLimiter(options: {
   windowMs: number;
   limit: number;
   skipPaths?: readonly string[];
+  /** Path prefixes with their own limiter (e.g. "/internal/"). */
+  skipPrefixes?: readonly string[];
 }): RequestHandler {
   const skip = new Set(options.skipPaths ?? []);
+  const prefixes = options.skipPrefixes ?? [];
   return rateLimit({
     windowMs: options.windowMs,
     limit: options.limit,
     standardHeaders: "draft-8",
     legacyHeaders: false,
-    skip: (req) => skip.has(req.path),
+    skip: (req) => skip.has(req.path) || prefixes.some((prefix) => req.path.startsWith(prefix)),
     handler: (_req, _res, next) => next(errors.rateLimited()),
   });
 }

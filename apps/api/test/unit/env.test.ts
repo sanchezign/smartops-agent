@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { EnvValidationError, parseEnv } from "../../src/config/env.js";
-import { TEST_WHATSAPP_ENV } from "../helpers/build-app.js";
+import { TEST_INTERNAL_API_KEY, TEST_WHATSAPP_ENV } from "../helpers/build-app.js";
 
 const base: Record<string, string> = {
   DATABASE_URL: "postgresql://u:p@localhost:5432/db",
+  INTERNAL_API_KEY: TEST_INTERNAL_API_KEY,
   ...TEST_WHATSAPP_ENV,
 };
 /** Production needs a real transcription provider; isolates the rule under test. */
@@ -187,5 +188,18 @@ describe("parseEnv", () => {
         "AI_DAILY_BUDGET_USD: must not exceed AI_TOTAL_BUDGET_USD",
       ]);
     });
+  });
+});
+
+describe("internal API key", () => {
+  it("is required and must be at least 32 characters", () => {
+    const without = Object.fromEntries(
+      Object.entries(base).filter(([key]) => key !== "INTERNAL_API_KEY"),
+    );
+    expect(issuesOf(without).join(" ")).toMatch(/INTERNAL_API_KEY/);
+    expect(issuesOf({ ...base, INTERNAL_API_KEY: "short" }).join(" ")).toMatch(
+      /INTERNAL_API_KEY: must be a random secret/,
+    );
+    expect(parseEnv(base)).toMatchObject({ INTERNAL_RATE_LIMIT_MAX: 600 });
   });
 });

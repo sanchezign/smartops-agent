@@ -3,6 +3,7 @@ import { createLogger } from "../../src/common/logger.js";
 import { parseEnv } from "../../src/config/env.js";
 import type { WebhookQueue } from "../../src/jobs/queues.js";
 import type { HealthRepository } from "../../src/modules/health/health.repository.js";
+import type { InternalDeps } from "../../src/modules/internal/internal.routes.js";
 import type {
   SaveWebhookEventInput,
   WhatsAppWebhookRepository,
@@ -10,6 +11,7 @@ import type {
 
 export const TEST_WHATSAPP_APP_SECRET = "test-app-secret-0123456789abcdef";
 export const TEST_WHATSAPP_VERIFY_TOKEN = "test-verify-token-0123456789";
+export const TEST_INTERNAL_API_KEY = "test-internal-api-key-0123456789abcdef";
 
 /** Fake but schema-valid WhatsApp values (no real credentials). */
 export const TEST_WHATSAPP_ENV = {
@@ -25,6 +27,7 @@ export const TEST_ENV_SOURCE = {
   LOG_LEVEL: "silent",
   DATABASE_URL: "postgresql://user:pass@localhost:5432/smartops_test",
   CORS_ORIGINS: "http://localhost:3000",
+  INTERNAL_API_KEY: TEST_INTERNAL_API_KEY,
   ...TEST_WHATSAPP_ENV,
 } as const;
 
@@ -82,6 +85,17 @@ export function createFakeWebhookQueue(
   };
 }
 
+const notConfigured = async (): Promise<never> => {
+  throw new Error("internal API services are not configured in this test app");
+};
+
+/** Internal API stubs (tests that need them pass real services). */
+export const stubInternalDeps: InternalDeps = {
+  ingestion: { classify: notConfigured, extract: notConfigured },
+  catalog: { ingest: notConfigured },
+  settings: { getAll: notConfigured, getCatalogSettings: notConfigured },
+};
+
 /** App with stubbed repositories — no Postgres needed. */
 export function buildTestApp(
   options: {
@@ -89,6 +103,7 @@ export function buildTestApp(
     healthRepository?: HealthRepository;
     whatsappWebhookRepository?: WhatsAppWebhookRepository;
     webhookQueue?: WebhookQueue;
+    internal?: InternalDeps;
   } = {},
 ) {
   const env = parseEnv({ ...TEST_ENV_SOURCE, ...options.env });
@@ -99,5 +114,6 @@ export function buildTestApp(
     whatsappWebhookRepository:
       options.whatsappWebhookRepository ?? createInMemoryWebhookRepository(),
     webhookQueue: options.webhookQueue ?? createFakeWebhookQueue(),
+    internal: options.internal ?? stubInternalDeps,
   });
 }

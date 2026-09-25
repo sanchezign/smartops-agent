@@ -9,6 +9,7 @@ import type { Env } from "./config/env.js";
 import type { WebhookQueue } from "./jobs/queues.js";
 import type { HealthRepository } from "./modules/health/health.repository.js";
 import { createHealthRouter } from "./modules/health/health.routes.js";
+import { createInternalRouter, type InternalDeps } from "./modules/internal/internal.routes.js";
 import type { WhatsAppWebhookRepository } from "./modules/whatsapp/whatsapp-webhook.repository.js";
 import { createWhatsAppWebhookRouter } from "./modules/whatsapp/whatsapp-webhook.routes.js";
 
@@ -18,6 +19,8 @@ export interface AppDeps {
   healthRepository: HealthRepository;
   whatsappWebhookRepository: WhatsAppWebhookRepository;
   webhookQueue: WebhookQueue;
+  /** Services behind the internal API for n8n (/api/v1/internal/*). */
+  internal: InternalDeps;
 }
 
 /** Builds the Express app without listening (server.ts listens; Supertest uses it directly). */
@@ -27,6 +30,7 @@ export function createApp({
   healthRepository,
   whatsappWebhookRepository,
   webhookQueue,
+  internal,
 }: AppDeps): Express {
   const app = express();
 
@@ -44,8 +48,9 @@ export function createApp({
     createRateLimiter({
       windowMs: env.RATE_LIMIT_WINDOW_MS,
       limit: env.RATE_LIMIT_MAX,
-      // Webhooks have their own limiter (see the webhook router).
+      // Webhooks and the internal API have their own limiters (see their routers).
       skipPaths: ["/health", "/webhooks/whatsapp"],
+      skipPrefixes: ["/internal/"],
     }),
   );
 
@@ -64,6 +69,15 @@ export function createApp({
 
   const v1 = express.Router();
   v1.use(createHealthRouter({ repository: healthRepository, logger }));
+  v1.use(
+    "/internal",
+    createInternalRouter({
+      ...internal,
+      apiKey: env.INTERNAL_API_KEY,
+      logger,
+      rateLimit: { windowMs: env.RATE_LIMIT_WINDOW_MS, limit: env.INTERNAL_RATE_LIMIT_MAX },
+    }),
+  );
   app.use("/api/v1", v1);
 
   app.use(notFoundHandler);

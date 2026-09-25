@@ -113,6 +113,12 @@ export const envSchema = z.object({
   /** Max transcriptions per contact in a rolling 24h window (protects the free quota). */
   TRANSCRIPTION_DAILY_LIMIT_PER_CONTACT: z.coerce.number().int().min(1).default(50),
 
+  // ─── Internal API for n8n (/api/v1/internal/*) ───
+  /** Shared secret sent by n8n in X-Internal-Api-Key. Never exposed to the frontend. */
+  INTERNAL_API_KEY: z.string().min(32, "must be a random secret of at least 32 characters"),
+  /** Per-IP rate limit for /api/v1/internal (per RATE_LIMIT_WINDOW_MS). */
+  INTERNAL_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(600),
+
   // ─── AI / LLM (ADR-011) ───
   /** anthropic | fake (default; dev/tests/CI/demo without a key; forbidden in production). */
   AI_PROVIDER: z.enum(["anthropic", "fake"]).default("fake"),
