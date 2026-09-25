@@ -2,13 +2,14 @@ import type { Logger } from "../common/logger.js";
 import { checkBudget, startOfUtcDay, type BudgetLimits } from "./budget.js";
 import {
   LlmError,
+  type AiTaskName,
   type LlmProvider,
   type StructuredRequest,
   type StructuredResult,
   type TokenUsage,
 } from "./llm-provider.js";
 import { costUsd, estimateInputTokens, estimateMaxCostUsd } from "./pricing.js";
-import type { AiUsageRepository } from "./usage.repository.js";
+import type { AiUsageRepository, RecordUsageInput } from "./usage.repository.js";
 
 /**
  * The only entry point features use to call an LLM (ADR-011):
@@ -46,6 +47,17 @@ export interface AiCallResult<T> extends StructuredResult<T> {
 
 export interface AiClient {
   readonly provider: string;
+  /** Worst-case cost of one request (input estimate + max_tokens). $0 for the fake provider. */
+  estimateUsd<T>(request: StructuredRequest<T>): number;
+  /**
+   * Checks a whole batch of calls (e.g. every matching batch of one document) against the
+   * budgets BEFORE the first one: a batch that cannot finish is refused up front
+   * (BudgetExceededError, recorded as budget_blocked) instead of spending half of it.
+   */
+  preflight(
+    input: { task: AiTaskName; model: string; estimatedUsd: number; isExtraction: boolean },
+    ctx: AiCallContext,
+  ): Promise<void>;
   generateStructured<T>(
     request: StructuredRequest<T>,
     ctx: AiCallContext,
@@ -69,64 +81,96 @@ export function createAiClient(deps: {
   const isFake = deps.provider.name === "fake";
   const cost = (model: string, usage: TokenUsage) => (isFake ? 0 : costUsd(model, usage));
 
+  async function assertWithinBudget(
+    call: { task: AiTaskName; model: string; estimatedCostUsd: number; isExtraction: boolean },
+    ctx: AiCallContext,
+    base: Omit<RecordUsageInput, "status" | "usage" | "costUsd" | "latencyMs">,
+  ): Promise<void> {
+    const [spentTotalUsd, spentTodayUsd, contactExtractionsToday, spentRunUsd] = await Promise.all([
+      deps.usage.spentTotalUsd(),
+      deps.usage.spentSinceUsd(startOfUtcDay(now())),
+      ctx.contactId && call.isExtraction
+        ? deps.usage.extractionsForContactSince(ctx.contactId, startOfUtcDay(now()))
+        : Promise.resolve(null),
+      ctx.ingestionRunId ? deps.usage.spentForRunUsd(ctx.ingestionRunId) : Promise.resolve(null),
+    ]);
+    const decision = checkBudget(
+      deps.limits,
+      { spentTotalUsd, spentTodayUsd, contactExtractionsToday, spentRunUsd },
+      { estimatedCostUsd: call.estimatedCostUsd, isExtraction: call.isExtraction },
+    );
+    if (decision.allowed) return;
+    await deps.usage.record({
+      ...base,
+      status: "budget_blocked",
+      usage: ZERO,
+      costUsd: 0,
+      latencyMs: null,
+      reason: decision.reason,
+      error: decision.detail,
+    });
+    ctx.log.error(
+      { task: call.task, model: call.model, reason: decision.reason, detail: decision.detail },
+      "AI call blocked by budget",
+    );
+    throw new BudgetExceededError(decision.reason, decision.detail);
+  }
+
+  const baseOf = (task: AiTaskName, model: string, ctx: AiCallContext) => ({
+    task,
+    provider: deps.provider.name,
+    model,
+    promptVersion: ctx.promptVersion,
+    ...(ctx.ingestionRunId ? { ingestionRunId: ctx.ingestionRunId } : {}),
+    ...(ctx.messageId ? { messageId: ctx.messageId } : {}),
+    ...(ctx.contactId ? { contactId: ctx.contactId } : {}),
+  });
+
   return {
     provider: deps.provider.name,
 
+    estimateUsd(request) {
+      if (isFake) return 0;
+      return estimateMaxCostUsd(
+        request.model,
+        estimateInputTokens(request.system, request.content),
+        request.maxTokens,
+      );
+    },
+
+    async preflight(input, ctx) {
+      if (isFake) return;
+      await assertWithinBudget(
+        {
+          task: input.task,
+          model: input.model,
+          estimatedCostUsd: input.estimatedUsd,
+          isExtraction: input.isExtraction,
+        },
+        ctx,
+        baseOf(input.task, input.model, ctx),
+      );
+    },
+
     async generateStructured(request, ctx) {
-      const base = {
-        task: request.task,
-        provider: deps.provider.name,
-        model: request.model,
-        promptVersion: ctx.promptVersion,
-        ...(ctx.ingestionRunId ? { ingestionRunId: ctx.ingestionRunId } : {}),
-        ...(ctx.messageId ? { messageId: ctx.messageId } : {}),
-        ...(ctx.contactId ? { contactId: ctx.contactId } : {}),
-      };
+      const base = baseOf(request.task, request.model, ctx);
 
       if (!isFake) {
-        const estimatedInput = estimateInputTokens(request.system, request.content);
         const estimatedCostUsd = estimateMaxCostUsd(
           request.model,
-          estimatedInput,
+          estimateInputTokens(request.system, request.content),
           request.maxTokens,
         );
-        const [spentTotalUsd, spentTodayUsd, contactExtractionsToday, spentRunUsd] =
-          await Promise.all([
-            deps.usage.spentTotalUsd(),
-            deps.usage.spentSinceUsd(startOfUtcDay(now())),
-            ctx.contactId && request.task === "extract"
-              ? deps.usage.extractionsForContactSince(ctx.contactId, startOfUtcDay(now()))
-              : Promise.resolve(null),
-            ctx.ingestionRunId
-              ? deps.usage.spentForRunUsd(ctx.ingestionRunId)
-              : Promise.resolve(null),
-          ]);
-        const decision = checkBudget(
-          deps.limits,
-          { spentTotalUsd, spentTodayUsd, contactExtractionsToday, spentRunUsd },
-          { estimatedCostUsd, isExtraction: request.task === "extract" },
+        await assertWithinBudget(
+          {
+            task: request.task,
+            model: request.model,
+            estimatedCostUsd,
+            isExtraction: request.task === "extract",
+          },
+          ctx,
+          base,
         );
-        if (!decision.allowed) {
-          await deps.usage.record({
-            ...base,
-            status: "budget_blocked",
-            usage: ZERO,
-            costUsd: 0,
-            latencyMs: null,
-            reason: decision.reason,
-            error: decision.detail,
-          });
-          ctx.log.error(
-            {
-              task: request.task,
-              model: request.model,
-              reason: decision.reason,
-              detail: decision.detail,
-            },
-            "AI call blocked by budget",
-          );
-          throw new BudgetExceededError(decision.reason, decision.detail);
-        }
       }
 
       const started = now().getTime();

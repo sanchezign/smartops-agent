@@ -1,5 +1,6 @@
 import type { StructuredRequest } from "../../ai/llm-provider.js";
 import type { FakeResponder } from "../../ai/providers/fake.js";
+import { fakeMapColumns, fakeMatch } from "../sheets/fake-responders.js";
 import type { ClassificationOutput, ExtractionOutput } from "./extraction.schemas.js";
 
 /**
@@ -129,4 +130,9 @@ export const fakeExtract: FakeResponder = (request) => {
   return out;
 };
 
-export const FAKE_RESPONDERS = { classify: fakeClassify, extract: fakeExtract } as const;
+export const FAKE_RESPONDERS = {
+  classify: fakeClassify,
+  extract: fakeExtract,
+  map_columns: fakeMapColumns,
+  match: fakeMatch,
+} as const;

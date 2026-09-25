@@ -101,6 +101,7 @@ export function createDocumentConversionRepository(
           truncated: result.truncated,
           needsReview: result.needsReview,
           sheets: result.sheets as unknown as Prisma.InputJsonValue,
+          tables: result.tables as unknown as Prisma.InputJsonValue,
           warnings: result.warnings as unknown as Prisma.InputJsonValue,
           durationMs: meta.durationMs,
           converterVersion: meta.converterVersion,

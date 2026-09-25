@@ -6,6 +6,13 @@ import { toPlain } from "../catalog/catalog.repository.js";
 import { normalizeProductName } from "../catalog/normalize.js";
 import { applyPercentage } from "../catalog/price-math.js";
 import type { SettingsService } from "../settings/settings.service.js";
+import type { CatalogRepository } from "../catalog/catalog.repository.js";
+import type { ColumnMappingProposal } from "../sheets/sheet-extraction.js";
+import {
+  choosePriceColumn,
+  sheetMappingSchema,
+  type SheetMapping,
+} from "../sheets/sheet-mapping.js";
 import type {
   ReviewItemRecord,
   ReviewListFilter,
@@ -65,6 +72,8 @@ export function createReviewService(deps: {
   repository: ReviewRepository;
   ingest: CatalogIngestService;
   settings: SettingsService;
+  /** Supplier of a contact (link/create), for approving a spreadsheet format (M3c). */
+  catalog: Pick<CatalogRepository, "resolveContactSupplier">;
   now?: () => Date;
 }): ReviewService {
   const now = deps.now ?? (() => new Date());
@@ -222,6 +231,82 @@ export function createReviewService(deps: {
     return { stale: false, reingest: false, resolution: { pct: proposal.pct, applied, skipped } };
   }
 
+  /**
+   * column_mapping (M3c): every table that is not remembered yet is saved as an ACTIVE
+   * format of the supplier (one per header fingerprint). A table with several price columns
+   * needs the reviewer's priceColumn (taxIncluded follows the chosen column). The run goes
+   * back to "classified": the next extract reads the whole file deterministically.
+   */
+  async function approveColumnMapping(
+    tx: ReviewTx,
+    item: ReviewItemRecord,
+    input: ApproveReviewInput,
+    supplierId: string,
+    actor: ReviewActor,
+  ): Promise<Outcome> {
+    const proposal = item.proposal as ColumnMappingProposal;
+    const saved: Record<string, unknown>[] = [];
+    for (const table of proposal.tables) {
+      if (table.remembered) continue;
+      const choice = input.tables?.find((t) => t.table === table.table);
+      const isPriceTable = choice?.isPriceTable ?? table.isPriceTable;
+      const headerRow = choice?.headerRow ?? table.headerRow;
+      const header = table.headerCandidates.find((c) => c.row === headerRow);
+      if (!header) {
+        if (!isPriceTable) continue; // notes without a header: nothing to remember
+        throw errors.badRequest(`${table.table}: row R${headerRow} is not a header row`);
+      }
+      let mapping: SheetMapping | null = null;
+      if (isPriceTable) {
+        const base = {
+          ...table.mapping,
+          ...(choice?.nameColumn !== undefined ? { nameColumn: choice.nameColumn } : {}),
+          ...(choice?.unitColumn !== undefined ? { unitColumn: choice.unitColumn } : {}),
+          ...(choice?.skuColumn !== undefined ? { skuColumn: choice.skuColumn } : {}),
+          ...(choice?.priceFormat ? { priceFormat: choice.priceFormat } : {}),
+          ...(choice?.currency !== undefined ? { currency: choice.currency } : {}),
+        };
+        const priceColumn = choice?.priceColumn ?? base.priceColumn;
+        if (priceColumn === null && base.pctColumn === null) {
+          throw errors.badRequest(
+            `${table.table} has several price columns (${base.priceColumns
+              .map((p) => `C${p.column} "${p.header}"`)
+              .join(", ")}): choose priceColumn`,
+            { table: table.table, priceColumns: base.priceColumns },
+          );
+        }
+        const parsed = sheetMappingSchema.safeParse(
+          priceColumn === null ? base : choosePriceColumn(base, priceColumn),
+        );
+        if (!parsed.success) throw errors.validation(parsed.error.issues);
+        mapping = parsed.data;
+      }
+      const formatId = await tx.saveSheetFormat({
+        supplierId,
+        fingerprint: header.fingerprint,
+        headerCells: header.cells,
+        sheetName: table.sheet,
+        format: mapping ? { isPriceTable: true, mapping } : { isPriceTable: false, mapping: null },
+        approvedById: actor.type === "user" ? (actor.userId ?? null) : null,
+        reviewItemId: item.id,
+      });
+      saved.push({
+        table: table.table,
+        formatId,
+        isPriceTable,
+        priceColumn: mapping?.priceColumn ?? null,
+        taxIncluded: mapping?.taxIncluded ?? null,
+      });
+    }
+    if (!(await tx.moveRun(item.ingestionRunId, "needs_review", "classified")))
+      throw errors.conflict(`Run is ${item.run.status}, expected needs_review`);
+    return {
+      stale: false,
+      reingest: false,
+      resolution: { supplierId, formats: saved, next: "extract" },
+    };
+  }
+
   async function approveGate(
     tx: ReviewTx,
     item: ReviewItemRecord,
@@ -268,15 +353,43 @@ export function createReviewService(deps: {
       const preview = await deps.repository.getItem(id);
       if (!preview) throw errors.notFound("Review item not found");
 
+      // column_mapping: the format belongs to a supplier → resolve it first (M4 rule).
+      let mappingSupplierId: string | null = null;
+      if (preview.kind === "column_mapping" && preview.status === "pending") {
+        if (input.supplierId) {
+          mappingSupplierId = input.supplierId;
+        } else {
+          const resolution = await deps.catalog.resolveContactSupplier(
+            preview.run.contactId,
+            (preview.proposal as ColumnMappingProposal).supplierName,
+          );
+          if (resolution.status === "ambiguous") {
+            throw errors.conflict("Several suppliers match: approve with supplierId", {
+              candidates: resolution.candidates,
+            });
+          }
+          mappingSupplierId = resolution.supplierId;
+        }
+      }
+
       const outcome = await deps.repository.transaction(async (tx) => {
-        if (preview.supplierId) await tx.lockSupplier(preview.supplierId);
+        const lockId = mappingSupplierId ?? preview.supplierId;
+        if (lockId) await tx.lockSupplier(lockId);
         const item = await pendingItem(tx, id);
+        if (item.kind === "column_mapping" && input.supplierId) {
+          if (!(await tx.supplierExists(input.supplierId)))
+            throw errors.badRequest("supplierId not found");
+          await tx.lockContact(item.run.contactId);
+          await tx.linkContactToSupplier(item.run.contactId, input.supplierId);
+        }
         const result =
-          item.scope === "line"
-            ? await approveLine(tx, item, input, log)
-            : item.scope === "catalog"
-              ? await approveCatalog(tx, item)
-              : await approveGate(tx, item, input);
+          item.kind === "column_mapping"
+            ? await approveColumnMapping(tx, item, input, mappingSupplierId!, actor)
+            : item.scope === "line"
+              ? await approveLine(tx, item, input, log)
+              : item.scope === "catalog"
+                ? await approveCatalog(tx, item)
+                : await approveGate(tx, item, input);
         if (result.stale) {
           await tx.resolve(id, "superseded", { reason: result.reason }, actor);
           await tx.audit({

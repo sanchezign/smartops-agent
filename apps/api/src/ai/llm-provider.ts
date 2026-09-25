@@ -6,7 +6,7 @@ import type { ZodType } from "zod";
  */
 
 export type LlmProviderName = "anthropic" | "fake";
-export type AiTaskName = "classify" | "extract";
+export type AiTaskName = "classify" | "extract" | "map_columns" | "match";
 export type Effort = "low" | "medium" | "high";
 
 /** Content sent to the model. Documents and images are DATA, never instructions. */
@@ -20,6 +20,11 @@ export type LlmContent =
        * outputs survive changes in how that context is rendered.
        */
       fakeKeyText?: string;
+      /**
+       * Cache breakpoint after this block (trusted, repeated context such as the catalog
+       * across the batches of one run). Honored only when the request caches (cacheSystem).
+       */
+      cache?: boolean;
     }
   | {
       type: "image";

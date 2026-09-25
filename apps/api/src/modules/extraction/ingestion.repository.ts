@@ -7,6 +7,7 @@ import type {
   MediaStatus,
   TranscriptionStatus,
 } from "../../generated/prisma/enums.js";
+import type { SheetTable } from "../documents/document-types.js";
 import type { CatalogProduct } from "./catalog-context.js";
 
 /** Ingestion runs (classification + extraction). The only place in the flow touching Prisma. */
@@ -39,6 +40,15 @@ export interface DocumentConversionInfo {
   truncated: boolean;
   needsReview: boolean;
   warnings: { code: string; message: string }[];
+  /** Typed tables (spreadsheets / CSV), for the deterministic path (M3c). */
+  tables: SheetTable[] | null;
+}
+
+/** A run gate with its own proposal (e.g. column_mapping, phase 5 M3c). */
+export interface ExplicitGate {
+  kind: "column_mapping";
+  reasons: string[];
+  proposal: Prisma.InputJsonValue;
 }
 
 /** GET /api/v1/internal/runs/:id — everything n8n needs to follow a run. */
@@ -105,6 +115,8 @@ export interface IngestionRepository {
       classification: IngestionClassification | null;
       rawExtraction?: Prisma.InputJsonValue;
       errors?: Prisma.InputJsonValue;
+      /** Review gate to create instead of the one derived from errors.reason. */
+      gate?: ExplicitGate;
     },
   ): Promise<void>;
   /** Recomputes tokens / cost / latency / model / prompt version from ai_usages. */
@@ -149,7 +161,25 @@ async function createReviewGate(
   supplierId: string | null,
   task: "classify" | "extract",
   runErrors: Prisma.InputJsonValue | undefined,
+  explicit?: ExplicitGate,
 ): Promise<void> {
+  if (explicit) {
+    const previous = await tx.reviewItem.count({
+      where: { ingestionRunId: runId, kind: explicit.kind },
+    });
+    await tx.reviewItem.create({
+      data: {
+        ingestionRunId: runId,
+        supplierId,
+        scope: "run",
+        kind: explicit.kind,
+        dedupeKey: `gate:${explicit.kind}:${previous + 1}`,
+        reasons: explicit.reasons,
+        proposal: explicit.proposal,
+      },
+    });
+    return;
+  }
   const errorInfo = (runErrors ?? {}) as { reason?: string; detail?: string };
   const reason = errorInfo.reason ?? "unknown";
   const kind =
@@ -209,6 +239,7 @@ export function createIngestionRepository(prisma: PrismaClient): IngestionReposi
                   truncated: true,
                   needsReview: true,
                   warnings: true,
+                  tables: true,
                 },
               },
             },
@@ -242,6 +273,7 @@ export function createIngestionRepository(prisma: PrismaClient): IngestionReposi
                     ...m.mediaFile.documentConversion,
                     warnings: (m.mediaFile.documentConversion.warnings ??
                       []) as DocumentConversionInfo["warnings"],
+                    tables: m.mediaFile.documentConversion.tables as SheetTable[] | null,
                   }
                 : null,
             }
@@ -369,7 +401,7 @@ export function createIngestionRepository(prisma: PrismaClient): IngestionReposi
             where: { id: runId },
             select: { supplierId: true },
           });
-          await createReviewGate(tx, runId, run.supplierId, "extract", input.errors);
+          await createReviewGate(tx, runId, run.supplierId, "extract", input.errors, input.gate);
         }
       });
     },

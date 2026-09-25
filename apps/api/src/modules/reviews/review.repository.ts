@@ -16,6 +16,10 @@ import {
   type ProductCreate,
 } from "../catalog/catalog.repository.js";
 import { normalizeSupplierName } from "../catalog/supplier-name.js";
+import {
+  saveSheetFormatInTx,
+  type SaveSheetFormatInput,
+} from "../sheets/sheet-format.repository.js";
 import type { ReviewActor } from "./review.schemas.js";
 
 type Tx = Prisma.TransactionClient;
@@ -83,6 +87,7 @@ export interface ReviewTx {
   linkContactToSupplier(contactId: string, supplierId: string): Promise<void>;
   /** Conditional run transition (from → to). */
   moveRun(runId: string, from: IngestionStatus, to: IngestionStatus): Promise<boolean>;
+  saveSheetFormat(input: SaveSheetFormatInput): Promise<string>;
   resolve(
     id: string,
     status: "approved" | "rejected" | "superseded",
@@ -211,6 +216,8 @@ function createReviewTx(tx: Tx): ReviewTx {
         data: { supplierId, ...(contact.kind === "unknown" ? { kind: "supplier" } : {}) },
       });
     },
+
+    saveSheetFormat: (input) => saveSheetFormatInTx(tx, input),
 
     async moveRun(runId, from, to) {
       const moved = await tx.ingestionRun.updateMany({

@@ -101,6 +101,7 @@ describe.skipIf(!testDatabaseUrl)("catalog ingest + human review (Postgres)", ()
       repository: createReviewRepository(prisma),
       ingest,
       settings,
+      catalog: createCatalogRepository(prisma),
     });
     const extraction = createIngestionService({
       repository: createIngestionRepository(prisma),

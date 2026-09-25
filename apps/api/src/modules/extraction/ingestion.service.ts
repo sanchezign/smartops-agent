@@ -7,6 +7,7 @@ import type { IngestionClassification } from "../../generated/prisma/enums.js";
 import type { MediaStorage } from "../media/media-storage.js";
 import { documentFormat } from "../documents/document-types.js";
 import { buildCatalogContext } from "./catalog-context.js";
+import type { SheetExtraction } from "../sheets/sheet-extraction.js";
 import { applyDocumentRules } from "./document-rules.js";
 import {
   applyExtractionRules,
@@ -67,6 +68,8 @@ export interface StoredExtraction {
   /** Converted document with possibly missing values (formula without value): every
    *  line goes to review in the catalog ingest (phase 5 M3a). */
   documentIncomplete?: boolean;
+  /** Remembered spreadsheet formats used (deterministic path, M3c). */
+  sheetFormatIds?: string[];
 }
 
 /** GET /api/v1/internal/runs/:id */
@@ -96,6 +99,8 @@ export interface IngestionService {
 
 /** Converted documents with more product lines than this need chunked extraction (M3b). */
 export const MAX_SINGLE_CALL_ROWS = 30;
+
+const TABULAR_FORMATS = new Set(["xlsx", "xls", "csv"]);
 
 const PRICE_CLASSES = new Set<IngestionClassification>(["price_list_full", "price_update_partial"]);
 const MEDIA_TYPES = new Set(["image", "document"]);
@@ -127,6 +132,8 @@ export function createIngestionService(deps: {
   models: AiModels;
   /** Converted documents above this many product lines go to review (M3b pending). */
   maxSingleCallRows?: number;
+  /** Spreadsheet path (M3c): remembered formats + deterministic read + compact matching. */
+  sheets?: SheetExtraction;
 }): IngestionService {
   const maxSingleCallRows = deps.maxSingleCallRows ?? MAX_SINGLE_CALL_ROWS;
   async function messageForAi(ctx: MessageContext, withMedia: boolean): Promise<MessageForAi> {
@@ -261,10 +268,20 @@ export function createIngestionService(deps: {
         );
         // Converted documents: failed conversion or too many lines → human review, no LLM.
         const conversion = ctx.media?.conversion ?? null;
+        const tables =
+          deps.sheets &&
+          conversion?.status === "done" &&
+          conversion.tables &&
+          conversion.tables.length > 0 &&
+          TABULAR_FORMATS.has(conversion.format ?? "")
+            ? conversion.tables
+            : null;
         const documentBlock =
           conversion?.status === "failed"
             ? { reason: `document_${conversion.reason ?? "failed"}`, detail: conversion.reason }
-            : conversion?.status === "done" && (conversion.dataRows ?? 0) > maxSingleCallRows
+            : !tables &&
+                conversion?.status === "done" &&
+                (conversion.dataRows ?? 0) > maxSingleCallRows
               ? {
                   reason: "requires_chunked_extraction",
                   detail: `${conversion.dataRows} product lines > ${maxSingleCallRows}: requiere extracción por partes`,
@@ -277,6 +294,64 @@ export function createIngestionService(deps: {
             errors: documentBlock,
           });
           log.warn({ runId: run.id, reason: documentBlock.reason }, "document not extracted");
+          return summary((await deps.repository.getRun(run.id)) ?? run);
+        }
+        if (tables && deps.sheets) {
+          const sheetResult = await deps.sheets.extract(
+            {
+              runId: run.id,
+              messageId: run.messageId,
+              contactId: ctx.contact.id,
+              supplierId: ctx.contact.supplierId,
+              tables,
+              catalog,
+              log,
+            },
+            { ingestionRunId: run.id, messageId: run.messageId, contactId: ctx.contact.id, log },
+          );
+          if (sheetResult.kind === "mapping_required") {
+            const reason =
+              sheetResult.proposal.reason === "format_changed"
+                ? "sheet_format_changed"
+                : "column_mapping_required";
+            await deps.repository.saveExtraction(run.id, {
+              status: "needs_review",
+              classification: run.classification,
+              errors: { reason },
+              gate: {
+                kind: "column_mapping",
+                reasons: [reason],
+                proposal: sheetResult.proposal as unknown as never,
+              },
+            });
+            log.info({ runId: run.id, reason }, "spreadsheet format needs a reviewed mapping");
+            return summary((await deps.repository.getRun(run.id)) ?? run);
+          }
+          const sheetOutput = applyDocumentRules(
+            applyExtractionRules(sheetResult.output, catalog.refNames),
+            conversion,
+          );
+          const stored: StoredExtraction = {
+            output: sheetOutput,
+            refs: Object.fromEntries(catalog.refs),
+            byNormalizedName: Object.fromEntries(catalog.byNormalizedName),
+            catalogTruncated: catalog.truncated,
+            promptVersion: `sheet-formats:${sheetResult.formatIds.join(",")}`,
+            sheetFormatIds: sheetResult.formatIds,
+            ...(conversion?.needsReview ? { documentIncomplete: true } : {}),
+          };
+          await deps.repository.saveExtraction(run.id, {
+            status: sheetOutput.suspiciousInstructions ? "needs_review" : "extracted",
+            classification: !sheetOutput.isPriceList
+              ? "other"
+              : sheetOutput.listKind === "full_list"
+                ? "price_list_full"
+                : "price_update_partial",
+            rawExtraction: stored as unknown as never,
+            ...(sheetOutput.suspiciousInstructions
+              ? { errors: { reason: "suspicious_instructions" } }
+              : {}),
+          });
           return summary((await deps.repository.getRun(run.id)) ?? run);
         }
         const content = buildExtractionContent(await messageForAi(ctx, true), catalog.text);

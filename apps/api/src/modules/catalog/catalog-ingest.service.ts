@@ -1,11 +1,9 @@
 import { errors } from "../../common/errors/app-error.js";
 import type { Logger } from "../../common/logger.js";
-import { maskPhone, maskUserId } from "../../common/phone.js";
 import type { StoredExtraction } from "../extraction/ingestion.service.js";
 import type { SettingsService } from "../settings/settings.service.js";
 import type { CatalogSettings } from "../settings/settings.schemas.js";
 import {
-  contactLockKey,
   supplierLockKey,
   toPlain,
   type CatalogRepository,
@@ -13,6 +11,7 @@ import {
 } from "./catalog.repository.js";
 import { planIngestion, type PlannedLine, type PlanWarning } from "./ingest-plan.js";
 import { normalizeSupplierName } from "./supplier-name.js";
+import { resolveSupplierInTx } from "./supplier-resolution.js";
 
 /**
  * Catalog ingest (phase 5 M4): applies an extracted run to the supplier's catalog.
@@ -91,12 +90,6 @@ function resultFromReport(ctx: IngestContext): IngestResult {
   };
 }
 
-function fallbackSupplierName(contact: IngestContext["contact"]): string {
-  if (contact.name?.trim()) return contact.name.trim();
-  if (contact.waId) return `Proveedor ${maskPhone(contact.waId)}`;
-  return `Proveedor ${maskUserId(contact.bsuid)}`;
-}
-
 function lineReport(line: PlannedLine, productId: string | null) {
   return {
     index: line.index,
@@ -159,57 +152,30 @@ export function createCatalogIngestService(deps: {
           const at = now();
 
           // ─── Supplier ───
-          await tx.lock(contactLockKey(ctx.contact.id));
-          let supplierId = await tx.contactSupplierId(ctx.contact.id);
-          let created = false;
-          let linked = false;
-          if (!supplierId) {
-            if (output.supplierName) {
-              const matches = await tx.suppliersByNormalizedName(
-                normalizeSupplierName(output.supplierName),
-              );
-              if (matches.length > 1) {
-                await tx.createGate({
-                  runId,
-                  supplierId: null,
-                  kind: "unknown_supplier",
-                  reasons: ["ambiguous_supplier_name"],
-                  proposal: { supplierName: output.supplierName, candidates: matches },
-                });
-                const report: IngestReport = {
-                  version: 1,
-                  gate: { kind: "unknown_supplier", supplierName: output.supplierName },
-                  pendingReviews: 1,
-                  warnings,
-                };
-                await tx.finishRun(runId, {
-                  status: "needs_review",
-                  supplierId: null,
-                  report: report as never,
-                });
-                return { status: "needs_review", supplierId: null, report };
-              }
-              if (matches.length === 1) {
-                supplierId = matches[0]!.id;
-                warnings.push({
-                  code: "supplier_linked",
-                  message: `Contacto vinculado al proveedor existente "${matches[0]!.name}".`,
-                });
-              }
-            }
-            if (!supplierId) {
-              const name = output.supplierName ?? fallbackSupplierName(ctx.contact);
-              const supplier = await tx.createSupplier(name);
-              supplierId = supplier.id;
-              created = true;
-              warnings.push({
-                code: "supplier_created",
-                message: `Proveedor nuevo "${supplier.name}" creado y vinculado al contacto.`,
-              });
-            }
-            linked = true;
-            await tx.linkContact(ctx.contact.id, supplierId, ctx.contact.kind);
+          const resolution = await resolveSupplierInTx(tx, ctx.contact, output.supplierName);
+          if (resolution.status === "ambiguous") {
+            await tx.createGate({
+              runId,
+              supplierId: null,
+              kind: "unknown_supplier",
+              reasons: ["ambiguous_supplier_name"],
+              proposal: { supplierName: output.supplierName, candidates: resolution.candidates },
+            });
+            const report: IngestReport = {
+              version: 1,
+              gate: { kind: "unknown_supplier", supplierName: output.supplierName },
+              pendingReviews: 1,
+              warnings,
+            };
+            await tx.finishRun(runId, {
+              status: "needs_review",
+              supplierId: null,
+              report: report as never,
+            });
+            return { status: "needs_review", supplierId: null, report };
           }
+          const { supplierId, created, linked } = resolution;
+          warnings.push(...resolution.warnings);
 
           await tx.lock(supplierLockKey(supplierId));
           const supplier = (await tx.getSupplier(supplierId))!;

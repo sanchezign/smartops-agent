@@ -1,5 +1,5 @@
 import type { PrismaClient } from "../../common/db.js";
-import type { Prisma } from "../../generated/prisma/client.js";
+import { Prisma } from "../../generated/prisma/client.js";
 import type {
   ContactKind,
   IngestionClassification,
@@ -16,6 +16,7 @@ import type {
 import { normalizeProductName } from "./normalize.js";
 import { computePriceChange } from "./price-change.js";
 import { normalizeSupplierName } from "./supplier-name.js";
+import { resolveSupplierInTx, type SupplierResolution } from "./supplier-resolution.js";
 
 type Tx = Prisma.TransactionClient;
 type Decimal = Prisma.Decimal;
@@ -252,6 +253,11 @@ export interface CatalogRepository {
   /** ingesting → extracted (after an unexpected failure, so it can be retried). */
   releaseIngest(runId: string): Promise<void>;
   transaction<T>(fn: (tx: CatalogTx) => Promise<T>): Promise<T>;
+  /** Supplier of a contact, linking or creating it (spreadsheet format approval, M3c). */
+  resolveContactSupplier(
+    contactId: string,
+    supplierName: string | null,
+  ): Promise<SupplierResolution>;
 }
 
 const LINE_SCOPE: ReviewScope = "line";
@@ -280,6 +286,119 @@ function lineProposal(
     currency: line.currency,
     changePct: toPlain(line.changePct),
   };
+}
+
+const WRITE_CHUNK = 500;
+
+type WriteBase = {
+  ingestionRunId: string;
+  sourceMessageId: string;
+  messageAt: Date;
+  source: "auto";
+  now: Date;
+};
+
+/** Creates every "create" line (products + first PriceChange) in batches. line → id. */
+async function createProductsBatch(
+  tx: Tx,
+  input: ApplyPlanInput,
+  base: WriteBase,
+): Promise<Map<number, string>> {
+  const lines = input.lines.filter((l) => l.action === "create");
+  const ids = new Map<number, string>();
+  for (let i = 0; i < lines.length; i += WRITE_CHUNK) {
+    const chunk = lines.slice(i, i + WRITE_CHUNK);
+    const rows = await tx.product.createManyAndReturn({
+      data: chunk.map((line) => ({
+        supplierId: input.supplierId,
+        name: line.item.name,
+        normalizedName: normalizeProductName(line.item.name),
+        sku: line.item.sku,
+        unit: line.item.unit,
+        price: line.newPrice!,
+        currency: line.currency!,
+        stock: line.stock,
+        available: true,
+        lastSeenAt: base.now,
+        priceSourceAt: base.messageAt,
+      })),
+      select: { id: true, normalizedName: true },
+    });
+    const byName = new Map(rows.map((r) => [r.normalizedName, r.id]));
+    for (const line of chunk) {
+      const id = byName.get(normalizeProductName(line.item.name));
+      if (id) ids.set(line.index, id);
+    }
+    await tx.priceChange.createMany({
+      data: chunk.flatMap((line) => {
+        const productId = ids.get(line.index);
+        return productId
+          ? [
+              {
+                productId,
+                ...computePriceChange(null, { price: line.newPrice!, currency: line.currency! }),
+                source: base.source,
+                ingestionRunId: base.ingestionRunId,
+                sourceMessageId: base.sourceMessageId,
+              },
+            ]
+          : [];
+      }),
+    });
+  }
+  return ids;
+}
+
+/**
+ * Applies every "update"/"unchanged" line with one UPDATE … FROM (VALUES …) per chunk plus
+ * createMany of the PriceChanges. line → changePct (null when unchanged / no percentage).
+ */
+async function updateProductsBatch(
+  tx: Tx,
+  input: ApplyPlanInput,
+  byId: Map<string, CatalogProductState>,
+  base: WriteBase,
+): Promise<Map<number, Decimal | null>> {
+  const lines = input.lines.filter((l) => l.action === "update" || l.action === "unchanged");
+  const changes = new Map<number, Decimal | null>();
+  for (let i = 0; i < lines.length; i += WRITE_CHUNK) {
+    const chunk = lines.slice(i, i + WRITE_CHUNK);
+    const priceRows: Prisma.PriceChangeCreateManyInput[] = [];
+    const values = chunk.map((line) => {
+      const previous = byId.get(line.productId!)!;
+      const changed = !previous.price.eq(line.newPrice!) || previous.currency !== line.currency!;
+      if (changed) {
+        const values = computePriceChange(
+          { price: previous.price, currency: previous.currency },
+          { price: line.newPrice!, currency: line.currency! },
+        );
+        changes.set(line.index, values.changePct);
+        priceRows.push({
+          productId: previous.id,
+          ...values,
+          source: base.source,
+          ingestionRunId: base.ingestionRunId,
+          sourceMessageId: base.sourceMessageId,
+        });
+      } else {
+        changes.set(line.index, null);
+      }
+      return Prisma.sql`(${previous.id}::uuid, ${line.newPrice!.toFixed()}::numeric, ${line.currency!}::char(3), ${changed}::boolean, ${line.stock}::int, ${line.reactivate}::boolean)`;
+    });
+    await tx.$executeRaw`
+      UPDATE products AS p SET
+        price = v.price,
+        currency = v.currency,
+        price_source_at = CASE WHEN v.changed THEN ${base.messageAt}::timestamptz ELSE p.price_source_at END,
+        last_seen_at = ${base.now}::timestamptz,
+        stock = COALESCE(v.stock, p.stock),
+        available = CASE WHEN v.reactivate THEN true ELSE p.available END,
+        updated_at = ${base.now}::timestamptz
+      FROM (VALUES ${Prisma.join(values)}) AS v(id, price, currency, changed, stock, reactivate)
+      WHERE p.id = v.id`;
+    if (priceRows.length > 0) await tx.priceChange.createMany({ data: priceRows });
+  }
+  return changes;
 }
 
 function createCatalogTx(tx: Tx): CatalogTx {
@@ -353,31 +472,17 @@ function createCatalogTx(tx: Tx): CatalogTx {
         now: input.now,
       };
 
+      // ─── Batched writes (thousands of lines in one transaction, phase 5 M3c) ───
+      const createdIds = await createProductsBatch(tx, input, base);
+      const changes = await updateProductsBatch(tx, input, byId, base);
+
       for (const line of input.lines) {
         let productId = line.productId;
         let changePct: Decimal | null = null;
         if (line.action === "create") {
-          productId = await createProductWithPrice(tx, {
-            ...base,
-            supplierId: input.supplierId,
-            name: line.item.name,
-            sku: line.item.sku,
-            unit: line.item.unit,
-            price: line.newPrice!,
-            currency: line.currency!,
-            stock: line.stock,
-          });
+          productId = createdIds.get(line.index) ?? null;
         } else if (line.action === "update" || line.action === "unchanged") {
-          const previous = byId.get(line.productId!)!;
-          ({ changePct } = await writeProductPrice(tx, {
-            ...base,
-            productId: previous.id,
-            previous: { price: previous.price, currency: previous.currency },
-            newPrice: line.newPrice!,
-            newCurrency: line.currency!,
-            stock: line.stock,
-            reactivate: line.reactivate,
-          }));
+          changePct = changes.get(line.index) ?? null;
         } else {
           const candidate = line.productId ? byId.get(line.productId) : undefined;
           reviewRows.push({
@@ -579,5 +684,16 @@ export function createCatalogRepository(prisma: PrismaClient): CatalogRepository
     },
 
     transaction: (fn) => prisma.$transaction((tx) => fn(createCatalogTx(tx)), TX_OPTIONS),
+
+    async resolveContactSupplier(contactId, supplierName) {
+      const contact = await prisma.contact.findUniqueOrThrow({
+        where: { id: contactId },
+        select: { id: true, name: true, waId: true, bsuid: true, kind: true },
+      });
+      return prisma.$transaction(
+        (tx) => resolveSupplierInTx(createCatalogTx(tx), contact, supplierName),
+        TX_OPTIONS,
+      );
+    },
   };
 }

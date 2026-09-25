@@ -14,6 +14,8 @@ import { createIngestionRepository } from "./modules/extraction/ingestion.reposi
 import { createIngestionService } from "./modules/extraction/ingestion.service.js";
 import { createHealthRepository } from "./modules/health/health.repository.js";
 import { createPostgresMediaStorage } from "./modules/media/media-storage.js";
+import { createSheetExtraction } from "./modules/sheets/sheet-extraction.js";
+import { createSheetFormatRepository } from "./modules/sheets/sheet-format.repository.js";
 import {
   createSettingsRepository,
   createSettingsService,
@@ -49,17 +51,29 @@ try {
 
 // Classification / extraction / catalog ingest (phase 5), exposed to n8n via /internal.
 const settings = createSettingsService({ repository: createSettingsRepository(prisma) });
+const ai = createAiClient({
+  provider: createLlmProvider(env, FAKE_RESPONDERS),
+  usage: createAiUsageRepository(prisma),
+  limits: {
+    totalUsd: env.AI_TOTAL_BUDGET_USD,
+    dailyUsd: env.AI_DAILY_BUDGET_USD,
+    dailyExtractionsPerContact: env.AI_DAILY_LIMIT_PER_CONTACT,
+    runUsd: env.AI_MAX_RUN_USD,
+  },
+});
 const ingestion = createIngestionService({
   repository: createIngestionRepository(prisma),
   storage: createPostgresMediaStorage(prisma),
-  ai: createAiClient({
-    provider: createLlmProvider(env, FAKE_RESPONDERS),
-    usage: createAiUsageRepository(prisma),
-    limits: {
-      totalUsd: env.AI_TOTAL_BUDGET_USD,
-      dailyUsd: env.AI_DAILY_BUDGET_USD,
-      dailyExtractionsPerContact: env.AI_DAILY_LIMIT_PER_CONTACT,
-      runUsd: env.AI_MAX_RUN_USD,
+  ai,
+  // Spreadsheets (M3c): remembered formats per supplier, deterministic read, compact matching.
+  sheets: createSheetExtraction({
+    ai,
+    formats: createSheetFormatRepository(prisma),
+    prompts: { mapper: loadPrompt("column-mapper"), matcher: loadPrompt("matcher") },
+    models: {
+      mapper: env.AI_EXTRACTOR_MODEL,
+      matcher: env.AI_EXTRACTOR_MODEL,
+      cacheSystemPrompts: env.AI_PROMPT_CACHE,
     },
   }),
   prompts: { classifier: loadPrompt("classifier"), extractor: loadPrompt("extractor") },

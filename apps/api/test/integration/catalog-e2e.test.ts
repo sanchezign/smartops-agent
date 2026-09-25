@@ -85,6 +85,7 @@ describe.skipIf(!testDatabaseUrl)("e2e: internal API → catalog (Postgres + gol
       repository: createReviewRepository(prisma),
       ingest: catalog,
       settings,
+      catalog: createCatalogRepository(prisma),
     });
     app = createApp({
       env,

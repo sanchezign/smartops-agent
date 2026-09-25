@@ -19,7 +19,26 @@
       "Cemento 25kg"
     ],
     "voice-transcript.txt": ["tornillo de 6 milímetros"],
-    "injection-message.txt": ["Tornillo 6mm"]
+    "injection-message.txt": ["Tornillo 6mm"],
+    "../sheets/precios-multiples.xlsx": [
+      "Candado bronce 40mm",
+      "Cerradura de embutir",
+      "Bisagra 3 pulgadas",
+      "Tarugo 8mm x100",
+      "Pegamento de contacto 250ml",
+      "Cinta aisladora 20m",
+      "Guante de nitrilo talle M"
+    ],
+    "../sheets/precios-multiples-diciembre.xlsx": [
+      "Candado bronce 40mm",
+      "Cerradura de embutir",
+      "Bisagra 3 pulgadas",
+      "Tarugo 8mm x100",
+      "Pegamento de contacto 250ml",
+      "Cinta aisladora 20m",
+      "Guante de nitrilo talle M",
+      "Tanza para bordeadora 2mm"
+    ]
   },
   "fixturePhrases": {
     "$comment": "Content of the text fixtures that prompts must not quote or paraphrase (Spanish and English), on top of the automatic 3-word check.",

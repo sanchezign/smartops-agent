@@ -21,6 +21,26 @@ export const approveReviewSchema = z
     supplierId: z.uuid().optional(),
     createSupplier: z.string().trim().min(1).max(200).optional(),
     note: z.string().trim().max(500).optional(),
+    /** column_mapping: per-table choices/corrections (the price column is REQUIRED when
+     *  the table has several price columns). */
+    tables: z
+      .array(
+        z
+          .object({
+            table: z.string().regex(/^T\d{1,3}$/),
+            isPriceTable: z.boolean().optional(),
+            headerRow: z.number().int().min(0).max(20).optional(),
+            priceColumn: z.number().int().min(0).max(499).optional(),
+            nameColumn: z.number().int().min(0).max(499).optional(),
+            unitColumn: z.number().int().min(0).max(499).nullable().optional(),
+            skuColumn: z.number().int().min(0).max(499).nullable().optional(),
+            priceFormat: z.enum(["decimal_comma", "decimal_dot"]).optional(),
+            currency: currencyCode.nullable().optional(),
+          })
+          .strict(),
+      )
+      .max(20)
+      .optional(),
   })
   .strict()
   .refine((v) => !(v.productId && v.createNew), {

@@ -101,10 +101,14 @@ export function createAnthropicProvider(config: {
   };
 }
 
-function toBlock(block: LlmContent): ContentBlockParam {
+function toBlock(block: LlmContent, cache: boolean): ContentBlockParam {
   switch (block.type) {
     case "text":
-      return { type: "text", text: block.text };
+      return {
+        type: "text",
+        text: block.text,
+        ...(cache && block.cache ? { cache_control: { type: "ephemeral" as const } } : {}),
+      };
     case "image":
       return {
         type: "image",
@@ -148,7 +152,12 @@ export function buildAnthropicMessageParams<T>(request: StructuredRequest<T>) {
         ...(cacheable ? { cache_control: { type: "ephemeral" as const } } : {}),
       },
     ],
-    messages: [{ role: "user" as const, content: request.content.map(toBlock) }],
+    messages: [
+      {
+        role: "user" as const,
+        content: request.content.map((block) => toBlock(block, request.cacheSystem)),
+      },
+    ],
     output_config: {
       effort: request.effort,
       format: { type: "json_schema" as const, schema: request.jsonSchema },

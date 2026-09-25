@@ -24,7 +24,7 @@ export interface MessageForAi {
 }
 
 const OUR_TAGS =
-  /<\/?\s*(message_text|voice_transcript|caption|document_text|catalog|context)\b[^>]*>/gi;
+  /<\/?\s*(message_text|voice_transcript|caption|document_text|catalog|context|sheet_sample|product_names)\b[^>]*>/gi;
 
 export function neutralizeTags(untrusted: string): string {
   return untrusted.replace(OUR_TAGS, "[etiqueta eliminada]");

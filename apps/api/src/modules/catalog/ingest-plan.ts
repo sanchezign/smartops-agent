@@ -43,6 +43,7 @@ export const REVIEW_KINDS = [
   "suspicious_instructions",
   "unknown_supplier",
   "extraction_failed",
+  "column_mapping",
 ] as const;
 export type ReviewKind = (typeof REVIEW_KINDS)[number];
 

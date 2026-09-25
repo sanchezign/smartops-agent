@@ -283,6 +283,46 @@ describe("AI client", () => {
     expect(rows[0]).toMatchObject({ status: "budget_blocked", reason: "run_budget_exceeded" });
   });
 
+  it("preflight refuses a whole batch up front when its total estimate exceeds the run cap", async () => {
+    const { repo, rows } = usageRepo({ run: 0.1 });
+    const client = createAiClient({
+      provider: anthropicLike(vi.fn()),
+      usage: repo,
+      limits: { ...limits, runUsd: 0.3 },
+    });
+    const one = client.estimateUsd(req);
+    expect(one).toBeGreaterThan(0);
+    await expect(
+      client.preflight(
+        { task: "match", model: "claude-sonnet-5", estimatedUsd: 0.25, isExtraction: false },
+        ctx,
+      ),
+    ).rejects.toMatchObject({ reason: "run_budget_exceeded" });
+    expect(rows[0]).toMatchObject({ task: "match", status: "budget_blocked" });
+    await expect(
+      client.preflight(
+        { task: "match", model: "claude-sonnet-5", estimatedUsd: 0.1, isExtraction: false },
+        ctx,
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it("the fake provider has no cost and no preflight", async () => {
+    const { repo } = usageRepo({ run: 99 });
+    const fake = createAiClient({
+      provider: { name: "fake", generateStructured: vi.fn() },
+      usage: repo,
+      limits: { ...limits, runUsd: 0.3 },
+    });
+    expect(fake.estimateUsd(req)).toBe(0);
+    await expect(
+      fake.preflight(
+        { task: "match", model: "claude-sonnet-5", estimatedUsd: 5, isExtraction: false },
+        ctx,
+      ),
+    ).resolves.toBeUndefined();
+  });
+
   it("records failed calls, including tokens billed for an invalid output", async () => {
     const { repo, rows } = usageRepo();
     const client = createAiClient({

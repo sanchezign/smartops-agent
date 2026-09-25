@@ -147,6 +147,8 @@ enum ReviewKind {
   suspicious_instructions
   unknown_supplier
   extraction_failed
+  /// New spreadsheet format (or several price columns): a human approves the mapping.
+  column_mapping
 }
 
 enum ReviewStatus {
@@ -188,6 +190,17 @@ enum MediaStatus {
 enum AiTask {
   classify
   extract
+  /// Spreadsheet column mapping (phase 5 M3c): header + sample rows only.
+  map_columns
+  /// Compact catalog matching of spreadsheet rows without an exact name match.
+  match
+}
+
+/// Remembered spreadsheet format of a supplier (phase 5 M3c, ADR-014).
+enum SheetFormatStatus {
+  active
+  /// Failed validation (> 20 % unreadable rows) or replaced: never deleted.
+  retired
 }
 
 enum AiUsageStatus {
@@ -250,6 +263,7 @@ model Supplier {
   products      Product[]
   ingestionRuns IngestionRun[]
   reviewItems   ReviewItem[]
+  sheetFormats  SupplierSheetFormat[]
 
   @@index([normalizedName])
   @@map("suppliers")
@@ -402,6 +416,8 @@ model DocumentConversion {
   truncated        Boolean                  @default(false)
   /// Values may be missing (formula without cached value): every line goes to review.
   needsReview      Boolean                  @default(false) @map("needs_review")
+  /// Typed tables of spreadsheets / CSV (deterministic path, phase 5 M3c).
+  tables           Json?
   sheets           Json?
   warnings         Json?
   error            String?
@@ -696,6 +712,39 @@ model ReviewItem {
   @@map("review_items")
 }
 
+/// Spreadsheet format of a supplier (phase 5 M3c, ADR-014): the column mapping approved by
+/// a human for a header fingerprint. Several formats per supplier can be active (different
+/// spreadsheets); at most ONE active per (supplier, fingerprint) — partial unique index in
+/// migration `sheet_formats` (keep it). A format that fails validation is retired, never
+/// deleted, and the table is mapped again.
+model SupplierSheetFormat {
+  id            String            @id @default(uuid(7)) @db.Uuid
+  supplierId    String            @map("supplier_id") @db.Uuid
+  /// sha256 of the normalized header cells (headerFingerprint).
+  fingerprint   String
+  headerCells   Json              @map("header_cells")
+  sheetName     String?           @map("sheet_name")
+  /// SheetMapping (columns, price format, currency, taxIncluded, price candidates).
+  mapping       Json
+  status        SheetFormatStatus @default(active)
+  approvedById  String?           @map("approved_by_id") @db.Uuid
+  approvedAt    DateTime          @default(now()) @map("approved_at") @db.Timestamptz(3)
+  /// Review item that approved it.
+  reviewItemId  String?           @map("review_item_id") @db.Uuid
+  timesUsed     Int               @default(0) @map("times_used")
+  lastUsedAt    DateTime?         @map("last_used_at") @db.Timestamptz(3)
+  retiredAt     DateTime?         @map("retired_at") @db.Timestamptz(3)
+  retiredReason String?           @map("retired_reason")
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  approvedBy User?    @relation(fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([supplierId, fingerprint])
+  @@map("supplier_sheet_formats")
+}
+
 model Alert {
   id             String        @id @default(uuid(7)) @db.Uuid
   type           AlertType
@@ -741,10 +790,11 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  messages        Message[]
-  settings        Setting[]
-  auditLogs       AuditLog[]
-  resolvedReviews ReviewItem[]
+  messages             Message[]
+  settings             Setting[]
+  auditLogs            AuditLog[]
+  resolvedReviews      ReviewItem[]
+  approvedSheetFormats SupplierSheetFormat[]
 
   @@map("users")
 }
