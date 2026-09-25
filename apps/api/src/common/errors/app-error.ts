@@ -10,6 +10,8 @@ export type ErrorCode =
   | "NOT_READY"
   /** Another request is processing the same resource right now (lock held). */
   | "IN_PROGRESS"
+  /** Human review: the proposal is obsolete (the product changed since); it is superseded. */
+  | "STALE_REVIEW"
   /** WhatsApp: free-form message outside the 24h customer service window (send a template). */
   | "WINDOW_CLOSED"
   /** WhatsApp: business-initiated message to a contact without opt-in (ADR-009). */
@@ -57,6 +59,8 @@ export const errors = {
     new AppError(409, "NOT_READY", message, details),
   inProgress: (message: string, details?: unknown) =>
     new AppError(409, "IN_PROGRESS", message, details),
+  staleReview: (message: string, details?: unknown) =>
+    new AppError(409, "STALE_REVIEW", message, details),
   windowClosed: (
     details: unknown,
     message = "Outside the 24h customer service window: send an approved template",

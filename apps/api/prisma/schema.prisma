@@ -91,9 +91,13 @@ enum IngestionStatus {
   /// Claimed by one extraction (lock): concurrent requests never call the LLM twice.
   extracting
   extracted
+  /// Claimed by one catalog ingest (lock).
+  ingesting
   ingested
   needs_review
   failed
+  /// A human rejected the run (run-level review): nothing of it is applied.
+  rejected
 }
 
 enum AlertType {
@@ -114,6 +118,48 @@ enum AlertStatus {
   sent
   acknowledged
   dismissed
+}
+
+/// Human review (ADR-012): what a review item blocks.
+enum ReviewScope {
+  /// Blocks the whole ingestion run (gate).
+  run
+  /// One extracted line.
+  line
+  /// A catalog-wide proposal (mark unavailable, global percentage).
+  catalog
+}
+
+enum ReviewKind {
+  product_match
+  new_or_existing
+  possible_duplicate
+  match_conflict
+  uncertain_value
+  pct_without_match
+  missing_currency
+  currency_changed
+  price_outlier
+  stale_source
+  mark_unavailable
+  global_change
+  tax_basis_changed
+  suspicious_instructions
+  unknown_supplier
+  extraction_failed
+}
+
+enum ReviewStatus {
+  pending
+  approved
+  rejected
+  /// A newer run or a catalog change made this proposal obsolete.
+  superseded
+}
+
+enum PriceChangeSource {
+  auto
+  review
 }
 
 enum UserRole {
@@ -181,16 +227,23 @@ enum WebhookEventStatus {
 // ─── Suppliers & contacts ───────────────────────────────────────────────────
 
 model Supplier {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  name      String
-  notes     String?
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id             String    @id @default(uuid(7)) @db.Uuid
+  name           String
+  /// normalizeSupplierName(name): matching of document supplier names (not unique).
+  normalizedName String    @map("normalized_name")
+  notes          String?
+  /// Last tax basis (IVA) stated by this supplier's lists; null = never stated.
+  taxIncluded    Boolean?  @map("tax_included")
+  taxIncludedAt  DateTime? @map("tax_included_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   contacts      Contact[]
   products      Product[]
   ingestionRuns IngestionRun[]
+  reviewItems   ReviewItem[]
 
+  @@index([normalizedName])
   @@map("suppliers")
 }
 
@@ -464,12 +517,16 @@ model Product {
   stock          Int?
   /// Last time the product appeared in a supplier list/update.
   lastSeenAt     DateTime? @map("last_seen_at") @db.Timestamptz(3)
+  /// WhatsApp timestamp of the message that set the current price: an older message
+  /// processed later never overwrites it (review stale_source).
+  priceSourceAt  DateTime? @map("price_source_at") @db.Timestamptz(3)
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   supplier     Supplier      @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   priceChanges PriceChange[]
   alerts       Alert[]
+  reviewItems  ReviewItem[]
 
   @@unique([supplierId, normalizedName])
   @@map("products")
@@ -481,27 +538,34 @@ model Product {
 /// model CHECKs; keep them when editing this model). Computed by
 /// src/modules/catalog/price-change.ts.
 model PriceChange {
-  id              String   @id @default(uuid(7)) @db.Uuid
-  productId       String   @map("product_id") @db.Uuid
+  id              String            @id @default(uuid(7)) @db.Uuid
+  productId       String            @map("product_id") @db.Uuid
   /// Null for the first price of a new product.
-  oldPrice        Decimal? @map("old_price") @db.Decimal(18, 4)
-  oldCurrency     String?  @map("old_currency") @db.Char(3)
-  newPrice        Decimal  @map("new_price") @db.Decimal(18, 4)
-  newCurrency     String   @map("new_currency") @db.Char(3)
+  oldPrice        Decimal?          @map("old_price") @db.Decimal(18, 4)
+  oldCurrency     String?           @map("old_currency") @db.Char(3)
+  newPrice        Decimal           @map("new_price") @db.Decimal(18, 4)
+  newCurrency     String            @map("new_currency") @db.Char(3)
   /// (new - old) / old * 100, rounded to 4 decimals. Null when there is no old
   /// price, the old price is 0, or the currency changed. Unbounded numeric so
   /// outliers (e.g. +999900%) can still be recorded.
-  changePct       Decimal? @map("change_pct") @db.Decimal
-  currencyChanged Boolean  @default(false) @map("currency_changed")
-  ingestionRunId  String?  @map("ingestion_run_id") @db.Uuid
-  sourceMessageId String?  @map("source_message_id") @db.Uuid
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  changePct       Decimal?          @map("change_pct") @db.Decimal
+  currencyChanged Boolean           @default(false) @map("currency_changed")
+  /// auto = applied by the ingest; review = applied when a human approved a review item.
+  /// Unique (ingestion_run_id, product_id) WHERE source = 'auto' — partial index in
+  /// migration `catalog_ingest` (Prisma does not model it; keep it).
+  source          PriceChangeSource @default(auto)
+  reviewItemId    String?           @map("review_item_id") @db.Uuid
+  ingestionRunId  String?           @map("ingestion_run_id") @db.Uuid
+  sourceMessageId String?           @map("source_message_id") @db.Uuid
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
 
   product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   ingestionRun  IngestionRun? @relation(fields: [ingestionRunId], references: [id], onDelete: SetNull)
   sourceMessage Message?      @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  reviewItem    ReviewItem?   @relation(fields: [reviewItemId], references: [id], onDelete: SetNull)
 
   @@index([productId, createdAt])
+  @@index([reviewItemId])
   @@index([ingestionRunId])
   @@index([sourceMessageId])
   @@map("price_changes")
@@ -539,6 +603,7 @@ model IngestionRun {
   priceChanges PriceChange[]
   alerts       Alert[]
   aiUsages     AiUsage[]
+  reviewItems  ReviewItem[]
 
   @@index([status, createdAt])
   @@index([messageId])
@@ -547,6 +612,45 @@ model IngestionRun {
 }
 
 // ─── Alerts, settings, users, audit ─────────────────────────────────────────
+
+/// One decision a human must take (ADR-012). Created by the catalog ingest (line,
+/// catalog) or when a run cannot proceed (run gates). Resolved by approve/reject.
+model ReviewItem {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  ingestionRunId String       @map("ingestion_run_id") @db.Uuid
+  supplierId     String?      @map("supplier_id") @db.Uuid
+  /// Target or best candidate product (null for new products and run gates).
+  productId      String?      @map("product_id") @db.Uuid
+  scope          ReviewScope
+  kind           ReviewKind
+  status         ReviewStatus @default(pending)
+  /// Unique per run: "line:<index>", "unavailable:<productId>", "global", "gate:<kind>".
+  dedupeKey      String       @map("dedupe_key")
+  /// Reason codes (a line can have several, e.g. price_outlier + uncertain_value).
+  reasons        String[]
+  /// What is proposed (Decimals as strings): line, prices, candidates, preview.
+  proposal       Json
+  /// Product price/currency when proposed; approving a stale proposal fails (superseded).
+  basePrice      Decimal?     @map("base_price") @db.Decimal(18, 4)
+  baseCurrency   String?      @map("base_currency") @db.Char(3)
+  resolution     Json?
+  resolvedById   String?      @map("resolved_by_id") @db.Uuid
+  resolvedAt     DateTime?    @map("resolved_at") @db.Timestamptz(3)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  ingestionRun IngestionRun  @relation(fields: [ingestionRunId], references: [id], onDelete: Cascade)
+  supplier     Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  product      Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  resolvedBy   User?         @relation(fields: [resolvedById], references: [id], onDelete: SetNull)
+  priceChanges PriceChange[]
+
+  @@unique([ingestionRunId, dedupeKey])
+  @@index([status, createdAt])
+  @@index([supplierId, status])
+  @@index([productId, status])
+  @@map("review_items")
+}
 
 model Alert {
   id             String        @id @default(uuid(7)) @db.Uuid
@@ -593,9 +697,10 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  messages  Message[]
-  settings  Setting[]
-  auditLogs AuditLog[]
+  messages        Message[]
+  settings        Setting[]
+  auditLogs       AuditLog[]
+  resolvedReviews ReviewItem[]
 
   @@map("users")
 }

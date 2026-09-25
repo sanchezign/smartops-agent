@@ -98,6 +98,37 @@ function toRecord(row: {
   return { ...row, costUsd: row.costUsd ? row.costUsd.toString() : null };
 }
 
+/**
+ * A run that ends in needs_review gets a run-level review item (ADR-012), so a human sees
+ * it in the review queue: suspicious_instructions (the extraction is kept) or
+ * extraction_failed (budget, invalid output, unsupported content → retry or reject).
+ * Numbered dedupe key: a retried extraction that fails again gets a new item.
+ */
+async function createReviewGate(
+  tx: Prisma.TransactionClient,
+  runId: string,
+  supplierId: string | null,
+  task: "classify" | "extract",
+  runErrors: Prisma.InputJsonValue | undefined,
+): Promise<void> {
+  const errorInfo = (runErrors ?? {}) as { reason?: string; detail?: string };
+  const reason = errorInfo.reason ?? "unknown";
+  const kind =
+    reason === "suspicious_instructions" ? "suspicious_instructions" : "extraction_failed";
+  const previous = await tx.reviewItem.count({ where: { ingestionRunId: runId, kind } });
+  await tx.reviewItem.create({
+    data: {
+      ingestionRunId: runId,
+      supplierId,
+      scope: "run",
+      kind,
+      dedupeKey: `gate:${kind}:${previous + 1}`,
+      reasons: [reason],
+      proposal: { task, reason, detail: errorInfo.detail ?? null },
+    },
+  });
+}
+
 export function createIngestionRepository(prisma: PrismaClient): IngestionRepository {
   return {
     async getMessageContext(messageId) {
@@ -191,15 +222,20 @@ export function createIngestionRepository(prisma: PrismaClient): IngestionReposi
     },
 
     async saveClassification(runId, input) {
-      await prisma.ingestionRun.update({
-        where: { id: runId },
-        data: {
-          status: input.status,
-          classification: input.classification,
-          report: input.report,
-          ...(input.errors ? { errors: input.errors } : {}),
-          ...(input.status === "needs_review" ? { finishedAt: new Date() } : {}),
-        },
+      await prisma.$transaction(async (tx) => {
+        const run = await tx.ingestionRun.update({
+          where: { id: runId },
+          data: {
+            status: input.status,
+            classification: input.classification,
+            report: input.report,
+            ...(input.errors ? { errors: input.errors } : {}),
+            ...(input.status === "needs_review" ? { finishedAt: new Date() } : {}),
+          },
+          select: { supplierId: true },
+        });
+        if (input.status === "needs_review")
+          await createReviewGate(tx, runId, run.supplierId, "classify", input.errors);
       });
     },
 
@@ -219,15 +255,24 @@ export function createIngestionRepository(prisma: PrismaClient): IngestionReposi
     },
 
     async saveExtraction(runId, input) {
-      await prisma.ingestionRun.updateMany({
-        where: { id: runId, status: "extracting" },
-        data: {
-          status: input.status,
-          classification: input.classification,
-          ...(input.rawExtraction ? { rawExtraction: input.rawExtraction } : {}),
-          ...(input.errors ? { errors: input.errors } : {}),
-          ...(input.status === "needs_review" ? { finishedAt: new Date() } : {}),
-        },
+      await prisma.$transaction(async (tx) => {
+        const saved = await tx.ingestionRun.updateMany({
+          where: { id: runId, status: "extracting" },
+          data: {
+            status: input.status,
+            classification: input.classification,
+            ...(input.rawExtraction ? { rawExtraction: input.rawExtraction } : {}),
+            ...(input.errors ? { errors: input.errors } : {}),
+            ...(input.status === "needs_review" ? { finishedAt: new Date() } : {}),
+          },
+        });
+        if (saved.count === 1 && input.status === "needs_review") {
+          const run = await tx.ingestionRun.findUniqueOrThrow({
+            where: { id: runId },
+            select: { supplierId: true },
+          });
+          await createReviewGate(tx, runId, run.supplierId, "extract", input.errors);
+        }
       });
     },
 

@@ -109,7 +109,7 @@ export const extractionJsonSchema = {
 } as const;
 
 /** Plain decimal, dot separator, up to 4 decimals (Decimal(18,4)), strictly positive. */
-const priceString = z
+export const priceString = z
   .string()
   .trim()
   .regex(/^\d{1,14}(\.\d{1,4})?$/, "price must be a plain decimal like 1850 or 12.5")
@@ -127,7 +127,7 @@ const pctString = z
   .refine((v) => Number(v) !== 0, { message: "percentage must not be 0" })
   .refine((v) => Number(v) > -100, { message: "percentage must be greater than -100" });
 
-const currencyCode = z
+export const currencyCode = z
   .string()
   .trim()
   .toUpperCase()
