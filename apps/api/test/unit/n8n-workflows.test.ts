@@ -80,8 +80,9 @@ describe("n8n workflows (static contract)", () => {
       httpMethod: "POST",
       path: "smartops-message-ready",
       authentication: "headerAuth",
-      responseMode: "onReceived",
     });
+    // "Immediately" is the default: n8n omits it from exports.
+    expect(hook.parameters.responseMode ?? "onReceived").toBe("onReceived");
     expect(hook.credentials?.httpHeaderAuth?.name).toBe("SmartOps webhook secret");
   });
 

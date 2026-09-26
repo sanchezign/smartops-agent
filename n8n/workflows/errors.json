@@ -2,25 +2,17 @@
   "name": "SmartOps · Errores",
   "nodes": [
     {
-      "id": "00000000-0000-4000-8000-000000000021",
+      "parameters": {},
+      "id": "5b5e5488-458f-468b-b08c-374da16f870b",
       "name": "Error en un workflow",
       "type": "n8n-nodes-base.errorTrigger",
       "typeVersion": 1,
       "position": [
         0,
         0
-      ],
-      "parameters": {}
+      ]
     },
     {
-      "id": "cfg00000-0000-4000-8000-000000000001",
-      "name": "Config",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        220,
-        0
-      ],
       "parameters": {
         "assignments": {
           "assignments": [
@@ -34,26 +26,17 @@
         },
         "includeOtherFields": true,
         "options": {}
-      }
+      },
+      "id": "b6fc6023-27f1-443a-b099-120e3b8f4160",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ]
     },
     {
-      "id": "00000000-0000-4000-8000-000000000022",
-      "name": "Avisar al backend",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        440,
-        0
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "",
-          "name": "SmartOps API"
-        }
-      },
       "parameters": {
         "method": "POST",
         "url": "={{ $('Config').first().json.apiBaseUrl }}/internal/n8n/errors",
@@ -64,6 +47,23 @@
         "jsonBody": "={{ JSON.stringify({ workflow: $('Error en un workflow').first().json.workflow.name, executionId: String($('Error en un workflow').first().json.execution.id ?? ''), node: $('Error en un workflow').first().json.execution.lastNodeExecuted ?? undefined, message: $('Error en un workflow').first().json.execution.error?.message ?? 'unknown error' }) }}",
         "options": {
           "timeout": 60000
+        }
+      },
+      "id": "cef84aee-0b0b-49a1-8825-2064197eb52d",
+      "name": "Avisar al backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "z2Bc0g3xCfJgYXmZ",
+          "name": "SmartOps API"
         }
       }
     }
@@ -93,7 +93,11 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
   "active": false
 }

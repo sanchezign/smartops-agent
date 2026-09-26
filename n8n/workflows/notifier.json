@@ -2,27 +2,19 @@
   "name": "SmartOps · Notificador",
   "nodes": [
     {
-      "id": "00000000-0000-4000-8000-000000000017",
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "4d6b4a58-4c51-4c34-9786-3d958d6d2f1b",
       "name": "Evento a notificar",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
       "position": [
-        0,
-        0
-      ],
-      "parameters": {
-        "inputSource": "passthrough"
-      }
+        -880,
+        80
+      ]
     },
     {
-      "id": "cfg00000-0000-4000-8000-000000000001",
-      "name": "Config",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        220,
-        0
-      ],
       "parameters": {
         "assignments": {
           "assignments": [
@@ -36,26 +28,17 @@
         },
         "includeOtherFields": true,
         "options": {}
-      }
+      },
+      "id": "a6871fcd-2b1a-41fc-b9fb-3014ecc36f18",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -656,
+        80
+      ]
     },
     {
-      "id": "00000000-0000-4000-8000-000000000018",
-      "name": "Registrar notificación",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        440,
-        0
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "",
-          "name": "SmartOps API"
-        }
-      },
       "parameters": {
         "method": "POST",
         "url": "={{ $('Config').first().json.apiBaseUrl }}/internal/notifications",
@@ -67,17 +50,26 @@
         "options": {
           "timeout": 60000
         }
+      },
+      "id": "1811c00a-5389-4736-9db0-2af168cc8805",
+      "name": "Registrar notificación",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -448,
+        80
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "z2Bc0g3xCfJgYXmZ",
+          "name": "SmartOps API"
+        }
       }
     },
     {
-      "id": "00000000-0000-4000-8000-000000000019",
-      "name": "¿Es una lista?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        660,
-        0
-      ],
       "parameters": {
         "conditions": {
           "options": {
@@ -100,26 +92,17 @@
           "combinator": "and"
         },
         "options": {}
-      }
+      },
+      "id": "0c48e73b-9539-49d5-82af-feaca7748c1f",
+      "name": "¿Es una lista?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -224,
+        80
+      ]
     },
     {
-      "id": "00000000-0000-4000-8000-000000000020",
-      "name": "Acuse al proveedor",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        880,
-        -80
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "",
-          "name": "SmartOps API"
-        }
-      },
       "parameters": {
         "method": "POST",
         "url": "={{ $('Config').first().json.apiBaseUrl }}/internal/messages/ack",
@@ -130,6 +113,23 @@
         "jsonBody": "={{ JSON.stringify({ runId: $('Evento a notificar').first().json.runId }) }}",
         "options": {
           "timeout": 60000
+        }
+      },
+      "id": "6cd66901-d2e9-44c4-b1f0-d6198138d30e",
+      "name": "Acuse al proveedor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "z2Bc0g3xCfJgYXmZ",
+          "name": "SmartOps API"
         }
       }
     }
@@ -176,14 +176,17 @@
             "type": "main",
             "index": 0
           }
-        ],
-        []
+        ]
       ]
     }
   },
   "settings": {
     "executionOrder": "v1",
-    "errorWorkflow": ""
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "wVU6s5keoj4PIPHw",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
   "active": false
 }

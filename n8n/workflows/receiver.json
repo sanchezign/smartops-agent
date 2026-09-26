@@ -2,38 +2,29 @@
   "name": "SmartOps · Receptor",
   "nodes": [
     {
-      "id": "00000000-0000-4000-8000-000000000001",
-      "name": "Mensaje listo",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        0,
-        0
-      ],
-      "webhookId": "5c1f3d2a-7b1e-4c6a-9d0e-5ab1c2d3e4f5",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "",
-          "name": "SmartOps webhook secret"
-        }
-      },
       "parameters": {
         "httpMethod": "POST",
         "path": "smartops-message-ready",
         "authentication": "headerAuth",
-        "responseMode": "onReceived",
         "options": {}
+      },
+      "id": "51df41ec-e9eb-4407-83d8-0dd9b9d54709",
+      "name": "Mensaje listo",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -880,
+        128
+      ],
+      "webhookId": "5c1f3d2a-7b1e-4c6a-9d0e-5ab1c2d3e4f5",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "xAE5mtVJBsv0t143",
+          "name": "SmartOps webhook secret"
+        }
       }
     },
     {
-      "id": "cfg00000-0000-4000-8000-000000000001",
-      "name": "Config",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        220,
-        0
-      ],
       "parameters": {
         "assignments": {
           "assignments": [
@@ -47,26 +38,17 @@
         },
         "includeOtherFields": true,
         "options": {}
-      }
+      },
+      "id": "ec38d13c-1191-424f-8319-64769229735f",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -656,
+        128
+      ]
     },
     {
-      "id": "00000000-0000-4000-8000-000000000002",
-      "name": "Clasificar",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        440,
-        0
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "",
-          "name": "SmartOps API"
-        }
-      },
       "parameters": {
         "method": "POST",
         "url": "={{ $('Config').first().json.apiBaseUrl }}/internal/classify",
@@ -78,17 +60,26 @@
         "options": {
           "timeout": 60000
         }
+      },
+      "id": "7fd5dff3-503a-46be-8c79-e05e09196b2f",
+      "name": "Clasificar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -448,
+        128
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "z2Bc0g3xCfJgYXmZ",
+          "name": "SmartOps API"
+        }
       }
     },
     {
-      "id": "00000000-0000-4000-8000-000000000003",
-      "name": "Ruta",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3.2,
-      "position": [
-        660,
-        0
-      ],
       "parameters": {
         "rules": {
           "values": [
@@ -146,17 +137,17 @@
           "fallbackOutput": "extra",
           "renameFallbackOutput": "otro (fin)"
         }
-      }
+      },
+      "id": "5bad7df5-f7be-4b9b-8e7b-fac5ad85da47",
+      "name": "Ruta",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -224,
+        128
+      ]
     },
     {
-      "id": "00000000-0000-4000-8000-000000000004",
-      "name": "Datos de la corrida",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        880,
-        -120
-      ],
       "parameters": {
         "assignments": {
           "assignments": [
@@ -168,38 +159,46 @@
             }
           ]
         },
-        "includeOtherFields": false,
         "options": {}
-      }
+      },
+      "id": "dfec1e68-f83b-4a11-ac9e-c4e8fb1a73b5",
+      "name": "Datos de la corrida",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        0
+      ]
     },
     {
-      "id": "00000000-0000-4000-8000-000000000005",
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Invf8wyC4lBrp15t",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Invf8wyC4lBrp15t",
+          "cachedResultName": "SmartOps · Procesador"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "13211e1d-017d-4288-871e-365a5ed4f727",
       "name": "Procesar lista",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        1100,
-        -120
-      ],
-      "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "",
-          "mode": "list",
-          "cachedResultName": "SmartOps · Procesador"
-        },
-        "options": {}
-      }
+        224,
+        0
+      ]
     },
     {
-      "id": "00000000-0000-4000-8000-000000000006",
-      "name": "Datos de la consulta",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        880,
-        60
-      ],
       "parameters": {
         "assignments": {
           "assignments": [
@@ -217,39 +216,55 @@
             }
           ]
         },
-        "includeOtherFields": false,
         "options": {}
-      }
+      },
+      "id": "ad05a8f3-4348-4225-9df7-a98dffdbe4a9",
+      "name": "Datos de la consulta",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        192
+      ]
     },
     {
-      "id": "00000000-0000-4000-8000-000000000007",
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "b9T7sfBWvnFQvtkZ",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/b9T7sfBWvnFQvtkZ",
+          "cachedResultName": "SmartOps · Notificador"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "da885ce3-cdce-40bb-b781-351499252cc0",
       "name": "Notificar consulta",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        1100,
-        60
-      ],
-      "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "",
-          "mode": "list",
-          "cachedResultName": "SmartOps · Notificador"
-        },
-        "options": {}
-      }
+        224,
+        192
+      ]
     },
     {
-      "id": "00000000-0000-4000-8000-000000000008",
+      "parameters": {},
+      "id": "922baa1e-4fcd-4eeb-bad5-3679bf59ef60",
       "name": "Fin",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        880,
-        220
-      ],
-      "parameters": {}
+        0,
+        352
+      ]
     }
   ],
   "connections": {
@@ -336,7 +351,11 @@
   },
   "settings": {
     "executionOrder": "v1",
-    "errorWorkflow": ""
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "wVU6s5keoj4PIPHw",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
   "active": false
 }
