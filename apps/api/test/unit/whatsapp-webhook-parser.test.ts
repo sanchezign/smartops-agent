@@ -197,3 +197,58 @@ describe("helpers", () => {
     expect(isBsuid("59899000111")).toBe(false);
   });
 });
+
+describe("parseWhatsAppWebhook — coexistence echoes (smb_message_echoes, phase 7)", () => {
+  it("parses a text echo: a person wrote from the WhatsApp Business app", () => {
+    const change = firstChange("echo-text");
+    expect(change).toMatchObject({ field: "smb_message_echoes", messages: [], statuses: [] });
+    expect(change.echoes).toEqual([
+      expect.objectContaining({
+        waMessageId: "wamid.DOC_ECHO_TEXT",
+        kind: "message",
+        toWaId: "59899000111",
+        toUserId: null,
+        type: "text",
+        text: "Hola, te atiendo yo. ¿Qué necesitás?",
+        media: null,
+        originalWaMessageId: null,
+        timestamp: new Date(1_790_000_000 * 1000),
+      }),
+    ]);
+  });
+
+  it("keeps media metadata of an image echo (never downloaded)", () => {
+    expect(firstChange("echo-image").echoes[0]).toMatchObject({
+      kind: "message",
+      type: "image",
+      text: "Así queda el modelo nuevo",
+      media: { waMediaId: "9000000000000901", mimeType: "image/jpeg" },
+    });
+  });
+
+  it("parses revoke and edit echoes with the original wamid (edit carries the new text)", () => {
+    expect(firstChange("echo-revoke").echoes[0]).toMatchObject({
+      kind: "revoke",
+      originalWaMessageId: "wamid.DOC_ECHO_TEXT",
+      text: null,
+    });
+    expect(firstChange("echo-edit").echoes[0]).toMatchObject({
+      kind: "edit",
+      type: "text",
+      originalWaMessageId: "wamid.DOC_ECHO_TEXT",
+      text: "Hola, te atiendo yo. ¿Qué producto buscás?",
+    });
+  });
+
+  it("an echo without `to` is reported as invalid, not fatal", () => {
+    const payload = whatsappFixtureJson("echo-text") as {
+      entry: { changes: { value: { message_echoes: Record<string, unknown>[] } }[] }[];
+    };
+    const echoes = payload.entry[0]!.changes[0]!.value.message_echoes;
+    echoes.push({ id: "wamid.BROKEN", type: "text", text: { body: "x" } });
+    const parsed = parseWhatsAppWebhook(payload);
+    if (!parsed.recognized) throw new Error("not recognized");
+    expect(parsed.changes[0]?.echoes).toHaveLength(1);
+    expect(parsed.changes[0]?.invalidItems).toEqual([{ kind: "echo", index: 1 }]);
+  });
+});

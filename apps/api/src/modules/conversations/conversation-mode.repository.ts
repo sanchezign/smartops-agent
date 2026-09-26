@@ -48,15 +48,22 @@ export interface ConversationModeView extends ModeState {
   } | null;
 }
 
+export interface ApplyModeEventInput {
+  conversationId: string;
+  event: ModeEvent;
+  actor: ModeActor;
+  messageId?: string;
+  now: Date;
+  takeoverMinutes: number;
+}
+
 export interface ConversationModeRepository {
-  apply(input: {
-    conversationId: string;
-    event: ModeEvent;
-    actor: ModeActor;
-    messageId?: string;
-    now: Date;
-    takeoverMinutes: number;
-  }): Promise<ApplyModeEventResult>;
+  apply(input: ApplyModeEventInput): Promise<ApplyModeEventResult>;
+  /** Same, inside the caller's transaction (e.g. the echo that caused it is stored in it). */
+  applyInTx(
+    tx: Prisma.TransactionClient,
+    input: ApplyModeEventInput,
+  ): Promise<ApplyModeEventResult>;
   find(ref: ConversationRef): Promise<ConversationModeView | null>;
   /** Human conversations whose humanUntil passed (lost reactivation jobs). */
   findExpired(now: Date, limit: number): Promise<string[]>;
@@ -68,68 +75,72 @@ export function createConversationModeRepository(
   prisma: PrismaClient,
   deps: { scheduleBotResumeInTx: ScheduleBotResumeInTx },
 ): ConversationModeRepository {
-  return {
-    async apply({ conversationId, event, actor, messageId, now, takeoverMinutes }) {
-      return prisma.$transaction(async (tx) => {
-        const rows = await tx.$queryRaw<
-          { mode: ConversationMode; human_until: Date | null; mode_changed_at: Date | null }[]
-        >`SELECT mode, human_until, mode_changed_at FROM conversations
+  async function applyInTx(
+    tx: Prisma.TransactionClient,
+    { conversationId, event, actor, messageId, now, takeoverMinutes }: ApplyModeEventInput,
+  ): Promise<ApplyModeEventResult> {
+    const rows = await tx.$queryRaw<
+      { mode: ConversationMode; human_until: Date | null; mode_changed_at: Date | null }[]
+    >`SELECT mode, human_until, mode_changed_at FROM conversations
            WHERE id = ${conversationId}::uuid FOR UPDATE`;
-        const row = rows[0];
-        if (!row) throw new Error(`conversation ${conversationId} not found`);
-        const state: ModeState = {
-          mode: row.mode,
-          humanUntil: row.human_until,
-          modeChangedAt: row.mode_changed_at,
-        };
-        const decision = nextMode(state, event, now, takeoverMinutes);
-        if (!decision.changed) return { conversationId, decision, state, canceledMessages: 0 };
+    const row = rows[0];
+    if (!row) throw new Error(`conversation ${conversationId} not found`);
+    const state: ModeState = {
+      mode: row.mode,
+      humanUntil: row.human_until,
+      modeChangedAt: row.mode_changed_at,
+    };
+    const decision = nextMode(state, event, now, takeoverMinutes);
+    if (!decision.changed) return { conversationId, decision, state, canceledMessages: 0 };
 
-        const { next } = decision;
-        await tx.conversation.update({
-          where: { id: conversationId },
-          data: { mode: next.mode, humanUntil: next.humanUntil, modeChangedAt: next.modeChangedAt },
-        });
-        await tx.conversationModeChange.create({
-          data: {
-            conversationId,
-            fromMode: state.mode,
-            toMode: next.mode,
-            humanUntil: next.humanUntil,
-            reason: decision.reason,
-            actorUserId: actor.userId ?? null,
-            actorLabel: actor.label ?? null,
-            messageId: messageId ?? null,
-          },
-        });
+    const { next } = decision;
+    await tx.conversation.update({
+      where: { id: conversationId },
+      data: { mode: next.mode, humanUntil: next.humanUntil, modeChangedAt: next.modeChangedAt },
+    });
+    await tx.conversationModeChange.create({
+      data: {
+        conversationId,
+        fromMode: state.mode,
+        toMode: next.mode,
+        humanUntil: next.humanUntil,
+        reason: decision.reason,
+        actorUserId: actor.userId ?? null,
+        actorLabel: actor.label ?? null,
+        messageId: messageId ?? null,
+      },
+    });
 
-        let canceledMessages = 0;
-        if (decision.cancelPendingAutoReplies) {
-          // Not claimed = not in flight: the worker has not called Meta yet.
-          const canceled = await tx.message.updateMany({
-            where: {
-              conversationId,
-              direction: "outbound",
-              purpose: "auto_reply",
-              status: "pending",
-              claimedAt: null,
-              waMessageId: null,
-            },
-            data: {
-              status: "canceled",
-              statusAt: now,
-              errorCode: HUMAN_TAKEOVER_CODE,
-              errorMessage: "Cancelled: a person took over the conversation",
-            },
-          });
-          canceledMessages = canceled.count;
-        }
-        if (decision.scheduleResumeAt) {
-          await deps.scheduleBotResumeInTx(tx, { conversationId, at: decision.scheduleResumeAt });
-        }
-        return { conversationId, decision, state: next, canceledMessages };
+    let canceledMessages = 0;
+    if (decision.cancelPendingAutoReplies) {
+      // Not claimed = not in flight: the worker has not called Meta yet.
+      const canceled = await tx.message.updateMany({
+        where: {
+          conversationId,
+          direction: "outbound",
+          purpose: "auto_reply",
+          status: "pending",
+          claimedAt: null,
+          waMessageId: null,
+        },
+        data: {
+          status: "canceled",
+          statusAt: now,
+          errorCode: HUMAN_TAKEOVER_CODE,
+          errorMessage: "Cancelled: a person took over the conversation",
+        },
       });
-    },
+      canceledMessages = canceled.count;
+    }
+    if (decision.scheduleResumeAt) {
+      await deps.scheduleBotResumeInTx(tx, { conversationId, at: decision.scheduleResumeAt });
+    }
+    return { conversationId, decision, state: next, canceledMessages };
+  }
+
+  return {
+    apply: (input) => prisma.$transaction((tx) => applyInTx(tx, input)),
+    applyInTx,
 
     async find(ref) {
       const where =

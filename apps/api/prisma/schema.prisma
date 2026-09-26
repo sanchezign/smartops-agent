@@ -401,6 +401,10 @@ model Message {
   /// Outbound only: the worker claimed it right before calling Meta (in flight → a human
   /// takeover no longer cancels it).
   claimedAt      DateTime?        @map("claimed_at") @db.Timestamptz(3)
+  /// The sender deleted it (WhatsApp Business app "revoke" echo, phase 7).
+  revokedAt      DateTime?        @map("revoked_at") @db.Timestamptz(3)
+  /// Last edit (WhatsApp Business app "edit" echo); previous texts kept in raw.edits.
+  editedAt       DateTime?        @map("edited_at") @db.Timestamptz(3)
   errorCode      String?          @map("error_code")
   errorMessage   String?          @map("error_message")
   /// Timestamp reported by WhatsApp.

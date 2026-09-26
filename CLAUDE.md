@@ -790,6 +790,25 @@ Each one gets an ADR in docs/adr/.
      test (`test/unit/claude-md.test.ts` + `test/fixtures/claude-md-baseline.json`, raised
      only UP by `pnpm --filter @smartops/api claude-md:baseline`; verified to fail on the
      truncated phase 6 M3 version).
+   - M2 echoes + human reply — DONE (2026-09-26). Migration `message_echoes`
+     (`Message.revokedAt/editedAt`). Webhook field `smb_message_echoes` parsed
+     (`whatsappEchoSchema`, `ParsedEcho`: kind message | revoke | edit, `to` is always a
+     phone per Meta's reference — no BSUID in echoes). `WhatsAppIngestRepository.ingestEcho`
+     (idempotent by wamid): a "message" echo creates the contact if new (NO opt-in — WE
+     wrote first), stores it as an OUTBOUND `Message` (author human, purpose human, status
+     sent, media METADATA ONLY — echo media is never downloaded, per the approved plan) and
+     calls `onHumanMessageInTx` (human takeover) in the SAME transaction; `revoke` sets
+     `revokedAt` on the original; `edit` updates `text`/`editedAt` and appends to
+     `raw.edits` (previous text kept). Echoes never reach the classify/extract pipeline
+     (no `message.ready` emitted) and never enter `messagesCreated` — separate counter
+     `echoesStored`. `src/modules/conversations/human-reply.service.ts` (`wa:reply`): queues
+     the person's text first (24h window enforced there — no takeover if it cannot be
+     sent), then applies the takeover with the queued message linked in
+     `conversation_mode_changes`. Simulator: `wa:simulate echo --to <phone>
+     --text|--image|--revoke|--edit`; 4 doc-based fixtures
+     (`test/fixtures/whatsapp/echo-*.json`, our real test number cannot use coexistence —
+     see phase 7 plan — so these are built from Meta's `smb_message_echoes` reference, not
+     captured).
 
 ## Known issues (out of scope)
 - **Phase 6:** approving a `column_mapping` review moves the run back to `classified`, but

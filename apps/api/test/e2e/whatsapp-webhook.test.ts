@@ -93,6 +93,20 @@ describe("POST /api/v1/webhooks/whatsapp", () => {
     expect(repository.events).toHaveLength(1);
   });
 
+  it("stores a signed coexistence echo delivery (smb_message_echoes, phase 7) like any other", async () => {
+    const repository = createInMemoryWebhookRepository();
+    const body = whatsappFixture("echo-text");
+
+    const res = await post(
+      buildTestApp({ whatsappWebhookRepository: repository }),
+      body,
+      signWhatsAppBody(body, TEST_WHATSAPP_APP_SECRET),
+    );
+
+    expect(res.status).toBe(200);
+    expect(repository.events).toHaveLength(1);
+  });
+
   it("returns 401 and stores nothing for an invalid signature", async () => {
     const repository = createInMemoryWebhookRepository();
     const body = whatsappFixture("message-text");

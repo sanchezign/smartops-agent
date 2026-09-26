@@ -5,6 +5,7 @@
  *   pnpm --filter @smartops/api wa:simulate document --file ./lista.pdf --caption "Lista"
  *   pnpm --filter @smartops/api wa:simulate audio --file ./nota.ogg --transcript "texto esperado"
  *   pnpm --filter @smartops/api wa:simulate status --wamid <wamid> --status failed --code 131030
+ *   pnpm --filter @smartops/api wa:simulate echo --to 59899000111 --text "Te atiendo yo"
  *   pnpm --filter @smartops/api wa:simulate fixture message-image
  *   pnpm --filter @smartops/api wa:simulate help
  *
@@ -28,6 +29,7 @@ import {
 } from "./media-store.js";
 import {
   buildInboundMessage,
+  buildMessageEcho,
   buildStatus,
   type SimBusiness,
   type SimContact,
@@ -43,6 +45,9 @@ Commands:
   interactive  --text <button title>
   image | document | audio | video | media   --file <path> [--caption <c>] [--mime <m>]
   status       --wamid <id> --status sent|delivered|read|played|failed [--code <meta code>]
+  echo         a PERSON writes from the WhatsApp Business app (coexistence, field smb_message_echoes):
+               --to <phone> --text <body> | --to <phone> --image [--caption <c>]
+               | --to <phone> --revoke <wamid> | --to <phone> --edit <wamid> --text <new body>
   fixture      <name> (file in test/fixtures/whatsapp, without .json) [--raw]
 
 Options:
@@ -82,6 +87,10 @@ const { positionals, values } = parseArgs({
     "sha-format": { type: "string", default: "base64" },
     raw: { type: "boolean", default: false },
     transcript: { type: "string" },
+    to: { type: "string" },
+    image: { type: "boolean", default: false },
+    revoke: { type: "string" },
+    edit: { type: "string" },
   },
 });
 
@@ -196,6 +205,34 @@ function buildPayload(): { payload: unknown; wamid?: string } {
         }),
       };
     }
+    case "echo": {
+      if (!values.to) fail("echo needs --to <contact phone>");
+      const to = values.to.replace(/D/g, "");
+      if (values.revoke)
+        return buildMessageEcho(business, to, { type: "revoke", originalWamid: values.revoke });
+      if (values.edit) {
+        if (!values.text) fail("echo --edit needs --text <new body>");
+        return buildMessageEcho(business, to, {
+          type: "edit",
+          originalWamid: values.edit,
+          body: values.text,
+        });
+      }
+      if (values.image) {
+        // Metadata only: the API never downloads echo media.
+        return buildMessageEcho(business, to, {
+          type: "image",
+          media: {
+            id: "1234567890123456",
+            mimeType: "image/jpeg",
+            sha256: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+            caption: values.caption ?? null,
+          },
+        });
+      }
+      if (!values.text) fail("echo needs --text <body> (or --image / --revoke / --edit)");
+      return buildMessageEcho(business, to, { type: "text", body: values.text });
+    }
     case "fixture": {
       if (!arg) fail("fixture needs a name, e.g. `fixture message-image`");
       const url = new URL(`../../test/fixtures/whatsapp/${arg}.json`, import.meta.url);
@@ -220,7 +257,9 @@ for (let i = 1; i <= deliveries; i += 1) {
         delivery: `${i}/${deliveries}`,
         httpStatus: result.status,
         ...(wamid ? { wamid } : {}),
-        from: contact.waId ? maskPhone(contact.waId) : "(BSUID only)",
+        ...(command === "echo"
+          ? { to: maskPhone(values.to?.replace(/D/g, "") ?? "") }
+          : { from: contact.waId ? maskPhone(contact.waId) : "(BSUID only)" }),
       },
       result.status === 200 ? "webhook accepted" : `webhook rejected: ${result.body}`,
     );

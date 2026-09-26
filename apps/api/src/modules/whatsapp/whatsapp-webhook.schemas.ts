@@ -102,6 +102,21 @@ export const whatsappMessageSchema = z
   })
   .loose();
 
+/**
+ * Coexistence echo (field `smb_message_echoes`, phase 7): a message the BUSINESS sent from
+ * the WhatsApp Business app or a companion device. Same body as a message plus `to`
+ * (the contact's phone; no BSUID in Meta's reference), and `revoke` / `edit` types.
+ */
+export const whatsappEchoSchema = whatsappMessageSchema.extend({
+  to: z.string(),
+  revoke: z.object({ original_message_id: z.string() }).loose().optional(),
+  edit: z
+    .object({ original_message_id: z.string(), message: z.unknown().optional() })
+    .loose()
+    .optional(),
+});
+export type WhatsAppEcho = z.infer<typeof whatsappEchoSchema>;
+
 export const whatsappChangeValueSchema = z
   .object({
     messaging_product: z.string().optional(),
@@ -117,6 +132,7 @@ export const whatsappChangeValueSchema = z
     contacts: z.array(z.unknown()).optional(),
     messages: z.array(z.unknown()).optional(),
     statuses: z.array(z.unknown()).optional(),
+    message_echoes: z.array(z.unknown()).optional(),
     errors: z.array(z.unknown()).optional(),
   })
   .loose();

@@ -3,6 +3,7 @@ import { fakeBsuidFor, fakeMediaId, fakeWamid } from "../../scripts/simulator/id
 import { formatSha256 } from "../../scripts/simulator/media-store.js";
 import {
   buildInboundMessage,
+  buildMessageEcho,
   buildStatus,
   type SimBusiness,
   type SimContact,
@@ -162,5 +163,43 @@ describe("buildStatus", () => {
       error_data: { details: expect.stringContaining("allowed list") },
     });
     expect(status?.pricing).toBeNull();
+  });
+});
+
+describe("buildMessageEcho (coexistence, phase 7)", () => {
+  it("text echo → parsed as a person's message to the contact", () => {
+    const { wamid, payload } = buildMessageEcho(business, "59899000111", {
+      type: "text",
+      body: "Te atiendo yo",
+    });
+    const change = parseFirst(payload);
+    expect(change.field).toBe("smb_message_echoes");
+    expect(change.echoes[0]).toMatchObject({
+      waMessageId: wamid,
+      kind: "message",
+      toWaId: "59899000111",
+      type: "text",
+      text: "Te atiendo yo",
+    });
+  });
+
+  it("revoke / edit echoes point to the original wamid", () => {
+    const revoke = parseFirst(
+      buildMessageEcho(business, "59899000111", { type: "revoke", originalWamid: "wamid.X" })
+        .payload,
+    );
+    expect(revoke.echoes[0]).toMatchObject({ kind: "revoke", originalWaMessageId: "wamid.X" });
+    const edit = parseFirst(
+      buildMessageEcho(business, "59899000111", {
+        type: "edit",
+        originalWamid: "wamid.X",
+        body: "corregido",
+      }).payload,
+    );
+    expect(edit.echoes[0]).toMatchObject({
+      kind: "edit",
+      originalWaMessageId: "wamid.X",
+      text: "corregido",
+    });
   });
 });

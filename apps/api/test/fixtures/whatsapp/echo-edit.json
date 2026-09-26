@@ -1,0 +1,41 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "200000000000002",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550000000",
+              "phone_number_id": "100000000000001"
+            },
+            "message_echoes": [
+              {
+                "from": "15550000000",
+                "to": "59899000111",
+                "id": "wamid.DOC_ECHO_EDIT",
+                "timestamp": "1790000180",
+                "type": "edit",
+                "edit": {
+                  "original_message_id": "wamid.DOC_ECHO_TEXT",
+                  "message": {
+                    "context": {
+                      "id": "M0"
+                    },
+                    "type": "text",
+                    "text": {
+                      "body": "Hola, te atiendo yo. ¿Qué producto buscás?"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "field": "smb_message_echoes"
+        }
+      ]
+    }
+  ]
+}

@@ -28,8 +28,13 @@ export interface ProcessEventResult {
   duplicateMessages: number;
   statusesRecorded: number;
   duplicateStatuses: number;
+  /** Coexistence echoes (phase 7): messages people sent from the WhatsApp Business app. */
+  echoesStored: number;
   skippedItems: number;
 }
+
+/** Fields we process: incoming messages/statuses and coexistence echoes (phase 7). */
+const HANDLED_FIELDS = new Set(["messages", "smb_message_echoes"]);
 
 export interface WhatsAppIngestService {
   processEvent(eventId: string, log: Logger): Promise<ProcessEventResult>;
@@ -63,6 +68,7 @@ export function createWhatsAppIngestService(deps: {
         duplicateMessages: 0,
         statusesRecorded: 0,
         duplicateStatuses: 0,
+        echoesStored: 0,
         skippedItems: 0,
       };
 
@@ -94,13 +100,13 @@ export function createWhatsAppIngestService(deps: {
       }
 
       const ours = parsed.changes.filter(
-        (c) => c.field === "messages" && c.phoneNumberId === deps.phoneNumberId,
+        (c) => HANDLED_FIELDS.has(c.field) && c.phoneNumberId === deps.phoneNumberId,
       );
       const ignored = parsed.changes.filter((c) => !ours.includes(c));
       for (const change of ignored) {
         log.info(
           { eventId, field: change.field, phoneNumberId: change.phoneNumberId },
-          change.field === "messages"
+          HANDLED_FIELDS.has(change.field)
             ? "ignoring change for another phone_number_id (e.g. dashboard test)"
             : "ignoring webhook field not handled yet",
         );
@@ -136,6 +142,36 @@ export function createWhatsAppIngestService(deps: {
               ...(status.errors.length > 0 ? { errors: toSummaryErrors(status.errors) } : {}),
             },
             `whatsapp status: ${status.status}`,
+          );
+        }
+
+        for (const echo of change.echoes) {
+          if (!echo.toWaId && !echo.toUserId) {
+            result.skippedItems += 1;
+            log.warn({ eventId, wamid: echo.waMessageId }, "echo without recipient, skipped");
+            continue;
+          }
+          const stored = await deps.repository.ingestEcho({ echo, webhookEventId: eventId });
+          if (stored.outcome === "created") result.echoesStored += 1;
+          log.info(
+            {
+              eventId,
+              wamid: echo.waMessageId,
+              kind: echo.kind,
+              type: echo.waType,
+              to: echo.toWaId ? maskPhone(echo.toWaId) : maskUserId(echo.toUserId),
+              outcome: stored.outcome,
+              ...(stored.outcome === "created"
+                ? {
+                    messageId: stored.messageId,
+                    conversationId: stored.conversationId,
+                    mode: stored.takeover?.state.mode,
+                    humanUntil: stored.takeover?.state.humanUntil,
+                    canceledMessages: stored.takeover?.canceledMessages,
+                  }
+                : {}),
+            },
+            "whatsapp business app echo",
           );
         }
 

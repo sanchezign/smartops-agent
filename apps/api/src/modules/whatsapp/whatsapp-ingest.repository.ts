@@ -1,10 +1,12 @@
 import type { PrismaClient } from "../../common/db.js";
+import type { ApplyModeEventResult } from "../conversations/conversation-mode.repository.js";
+import type { OnHumanMessageInTx } from "../conversations/conversation-mode.service.js";
 import type { EmitMessageReadyInTx } from "../integration/message-ready.js";
 import { Prisma } from "../../generated/prisma/client.js";
 import type { WebhookEventStatus } from "../../generated/prisma/enums.js";
 import { planContactUpsert, type ContactPlanResult } from "./contact-identity.js";
 import { allowedPreviousStatuses, toMessageStatus } from "./message-status.js";
-import type { ParsedInboundMessage, ParsedStatus } from "./whatsapp-webhook.parser.js";
+import type { ParsedEcho, ParsedInboundMessage, ParsedStatus } from "./whatsapp-webhook.parser.js";
 
 /**
  * Persistence for the webhook worker. The ONLY place in this flow that touches Prisma.
@@ -27,6 +29,20 @@ export type IngestMessageResult =
       conflict?: ContactPlanResult["conflict"];
     }
   | { outcome: "duplicate" };
+
+/** Coexistence echo (phase 7 M2). */
+export type IngestEchoResult =
+  | {
+      outcome: "created";
+      messageId: string;
+      contactId: string;
+      conversationId: string;
+      /** Human takeover applied in the same transaction (null if no hook). */
+      takeover: ApplyModeEventResult | null;
+    }
+  | { outcome: "duplicate" }
+  | { outcome: "applied"; kind: "revoke" | "edit"; messageId: string }
+  | { outcome: "original_not_found"; kind: "revoke" | "edit" };
 
 export interface RecordStatusResult {
   /** The (waMessageId, status) pair was already recorded. */
@@ -67,6 +83,12 @@ export interface WhatsAppIngestRepository {
     status: ParsedStatus;
     webhookEventId: string;
   }): Promise<RecordStatusResult>;
+  /**
+   * A message a person sent from the WhatsApp Business app: stored as an OUTBOUND human
+   * message (idempotent by wamid, media metadata only) + human takeover in the same
+   * transaction. revoke / edit update the original message.
+   */
+  ingestEcho(input: { echo: ParsedEcho; webhookEventId: string }): Promise<IngestEchoResult>;
 }
 
 const MAX_ERROR_LENGTH = 2_000;
@@ -85,8 +107,115 @@ export function createWhatsAppIngestRepository(
     enqueueMediaInTx: EnqueueMediaInTx;
     /** Outbox "message.ready" (phase 6): here for messages without pending media. */
     emitMessageReadyInTx?: EmitMessageReadyInTx;
+    /** Human takeover when a person writes from the WhatsApp Business app (phase 7). */
+    onHumanMessageInTx?: OnHumanMessageInTx;
   },
 ): WhatsAppIngestRepository {
+  async function ingestEchoOnce(
+    echo: ParsedEcho,
+    webhookEventId: string,
+  ): Promise<IngestEchoResult> {
+    return prisma.$transaction(async (tx) => {
+      const existing = await tx.message.findUnique({
+        where: { waMessageId: echo.waMessageId },
+        select: { id: true },
+      });
+      if (existing) return { outcome: "duplicate" as const };
+
+      const where = echo.toWaId ? { waId: echo.toWaId } : { bsuid: echo.toUserId as string };
+      // The person may write first to a new contact: create it (no opt-in: WE wrote).
+      const contact =
+        (await tx.contact.findUnique({ where, select: { id: true } })) ??
+        (await tx.contact.create({ data: where, select: { id: true } }));
+      const conversation = await tx.conversation.upsert({
+        where: { contactId: contact.id },
+        create: { contactId: contact.id },
+        update: {},
+        select: { id: true },
+      });
+      const at = echo.timestamp ?? new Date();
+      const message = await tx.message.create({
+        data: {
+          conversationId: conversation.id,
+          waMessageId: echo.waMessageId,
+          direction: "outbound",
+          type: echo.type,
+          author: "human",
+          purpose: "human",
+          text: echo.text,
+          status: "sent",
+          statusAt: at,
+          waTimestamp: echo.timestamp,
+          webhookEventId,
+          raw: {
+            source: "whatsapp_business_app",
+            echo: echo.raw,
+            // Metadata only — echo media is never downloaded.
+            ...(echo.media ? { media: echo.media } : {}),
+          } as unknown as Prisma.InputJsonValue,
+        },
+        select: { id: true },
+      });
+      await tx.$executeRaw`
+        UPDATE conversations
+           SET last_message_at = GREATEST(COALESCE(last_message_at, ${at}::timestamptz), ${at}::timestamptz),
+               updated_at = now()
+         WHERE id = ${conversation.id}::uuid`;
+      const takeover = deps.onHumanMessageInTx
+        ? await deps.onHumanMessageInTx(tx, {
+            conversationId: conversation.id,
+            messageId: message.id,
+            messageAt: echo.timestamp,
+            source: "app",
+          })
+        : null;
+      return {
+        outcome: "created" as const,
+        messageId: message.id,
+        contactId: contact.id,
+        conversationId: conversation.id,
+        takeover,
+      };
+    });
+  }
+
+  async function applyEchoChange(echo: ParsedEcho): Promise<IngestEchoResult> {
+    const kind = echo.kind as "revoke" | "edit";
+    if (!echo.originalWaMessageId) return { outcome: "original_not_found", kind };
+    return prisma.$transaction(async (tx) => {
+      const original = await tx.message.findUnique({
+        where: { waMessageId: echo.originalWaMessageId as string },
+        select: { id: true, text: true, raw: true, revokedAt: true },
+      });
+      if (!original) return { outcome: "original_not_found" as const, kind };
+      const at = echo.timestamp ?? new Date();
+      if (kind === "revoke") {
+        if (!original.revokedAt)
+          await tx.message.update({ where: { id: original.id }, data: { revokedAt: at } });
+        return { outcome: "applied" as const, kind, messageId: original.id };
+      }
+      const raw = (original.raw ?? {}) as { edits?: { wamid: string }[] } & Record<string, unknown>;
+      const edits = raw.edits ?? [];
+      if (!edits.some((e) => e.wamid === echo.waMessageId)) {
+        await tx.message.update({
+          where: { id: original.id },
+          data: {
+            text: echo.text,
+            editedAt: at,
+            raw: {
+              ...raw,
+              edits: [
+                ...edits,
+                { wamid: echo.waMessageId, at: at.toISOString(), previousText: original.text },
+              ],
+            } as Prisma.InputJsonValue,
+          },
+        });
+      }
+      return { outcome: "applied" as const, kind, messageId: original.id };
+    });
+  }
+
   async function ingestOnce(
     message: ParsedInboundMessage,
     webhookEventId: string,
@@ -245,6 +374,21 @@ export function createWhatsAppIngestRepository(
         });
         if (existing) return { outcome: "duplicate" };
         return ingestOnce(message, webhookEventId, mediaPlan);
+      }
+    },
+
+    async ingestEcho({ echo, webhookEventId }) {
+      if (echo.kind !== "message") return applyEchoChange(echo);
+      try {
+        return await ingestEchoOnce(echo, webhookEventId);
+      } catch (err) {
+        if (!isUniqueViolation(err)) throw err;
+        const existing = await prisma.message.findUnique({
+          where: { waMessageId: echo.waMessageId },
+          select: { id: true },
+        });
+        if (existing) return { outcome: "duplicate" };
+        return ingestEchoOnce(echo, webhookEventId);
       }
     },
 

@@ -1,5 +1,6 @@
 import { errors } from "../../common/errors/app-error.js";
 import type { Logger } from "../../common/logger.js";
+import type { Prisma } from "../../generated/prisma/client.js";
 import type { SettingsService } from "../settings/settings.service.js";
 import type { ModeEvent } from "./conversation-mode.js";
 import type {
@@ -119,4 +120,40 @@ export function createConversationModeService(deps: {
     },
   };
   return service;
+}
+
+/**
+ * A person wrote to the contact (WhatsApp Business app echo, phase 7 M2): applied INSIDE
+ * the transaction that stores that message, so a retry never stores the echo without the
+ * takeover (or the other way round).
+ */
+export type OnHumanMessageInTx = (
+  tx: Prisma.TransactionClient,
+  input: { conversationId: string; messageId: string; messageAt: Date | null; source: "app" },
+) => Promise<ApplyModeEventResult>;
+
+export function createOnHumanMessageInTx(deps: {
+  repository: Pick<ConversationModeRepository, "applyInTx">;
+  settings: SettingsService;
+  logger: Logger;
+  now?: () => Date;
+}): OnHumanMessageInTx {
+  const now = deps.now ?? (() => new Date());
+  return async (tx, input) => {
+    const takeoverMinutes = (await deps.settings.getAll(deps.logger))[
+      "coexistence.humanTakeoverMinutes"
+    ] as number;
+    return deps.repository.applyInTx(tx, {
+      conversationId: input.conversationId,
+      event: {
+        type: "human_message",
+        source: input.source,
+        ...(input.messageAt ? { messageAt: input.messageAt } : {}),
+      },
+      actor: { label: "whatsapp-business-app" },
+      messageId: input.messageId,
+      now: now(),
+      takeoverMinutes,
+    });
+  };
 }

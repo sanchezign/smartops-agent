@@ -19,7 +19,10 @@ import { registerMediaTranscriptionWorkers } from "./jobs/media-transcription.jo
 import { registerN8nDeliveryWorkers } from "./jobs/n8n-delivery.job.js";
 import { registerNotificationDigestWorkers } from "./jobs/notification-digest.job.js";
 import { createConversationModeRepository } from "./modules/conversations/conversation-mode.repository.js";
-import { createConversationModeService } from "./modules/conversations/conversation-mode.service.js";
+import {
+  createConversationModeService,
+  createOnHumanMessageInTx,
+} from "./modules/conversations/conversation-mode.service.js";
 import { createNotificationRepository } from "./modules/notifications/notification.repository.js";
 import { createNotificationService } from "./modules/notifications/notification.service.js";
 import { createIntegrationEventRepository } from "./modules/integration/integration-event.repository.js";
@@ -103,9 +106,19 @@ try {
 // that makes each message ready (5 places: ingest, media stored/final, transcription,
 // conversion).
 const emitMessageReadyInTx = createEmitMessageReadyInTx(createEnqueueN8nDeliveryInTx(boss));
+const settings = createSettingsService({ repository: createSettingsRepository(prisma) });
+// Bot / human mode (phase 7): WhatsApp Business app echoes take over in the same transaction.
+const conversationModeRepository = createConversationModeRepository(prisma, {
+  scheduleBotResumeInTx: createScheduleBotResumeInTx(boss),
+});
 const ingestRepository = createWhatsAppIngestRepository(prisma, {
   enqueueMediaInTx: createEnqueueMediaInTx(boss),
   emitMessageReadyInTx,
+  onHumanMessageInTx: createOnHumanMessageInTx({
+    repository: conversationModeRepository,
+    settings,
+    logger,
+  }),
 });
 await registerWhatsAppWebhookWorkers(boss, {
   ingest: createWhatsAppIngestService({
@@ -170,7 +183,6 @@ await registerWhatsAppOutboundWorkers(boss, {
   concurrency: env.OUTBOUND_WORKER_CONCURRENCY,
 });
 
-const settings = createSettingsService({ repository: createSettingsRepository(prisma) });
 const transcriber = createTranscriber(env);
 const transcriptionRepository = createTranscriptionRepository(prisma, { emitMessageReadyInTx });
 await registerMediaTranscriptionWorkers(boss, {
@@ -211,12 +223,7 @@ await registerDocumentConversionWorkers(boss, {
 
 // Bot / human mode (phase 7): reactivation at humanUntil + sweeper for lost jobs.
 await registerConversationModeWorkers(boss, {
-  service: createConversationModeService({
-    repository: createConversationModeRepository(prisma, {
-      scheduleBotResumeInTx: createScheduleBotResumeInTx(boss),
-    }),
-    settings,
-  }),
+  service: createConversationModeService({ repository: conversationModeRepository, settings }),
   logger,
 });
 

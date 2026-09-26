@@ -33,4 +33,14 @@ What real payloads showed (vs. the docs): media objects include a signed `url`
 (Meta's own App Dashboard "Test" sample). Replace them with real captures when those
 cases show up in real traffic.
 
+## Coexistence echoes (doc-based, phase 7)
+
+`echo-text.json`, `echo-image.json`, `echo-revoke.json`, `echo-edit.json`: field
+`smb_message_echoes` — messages a PERSON sent from the WhatsApp Business app on a number
+onboarded with coexistence (Meta reference "smb_message_echoes webhook", 2026-09-26).
+Shape per the docs: `from` = business display number, `to` = the contact's PHONE (no
+BSUID fields), `revoke.original_message_id`, `edit.original_message_id` + `edit.message`.
+Our Meta test number cannot use coexistence, so these cannot be captured yet: replace them
+with real captures (`wa:fixtures:capture`) for the first client using coexistence.
+
 Never commit real phone numbers, names, BSUIDs, wamids, media ids/URLs or tokens.

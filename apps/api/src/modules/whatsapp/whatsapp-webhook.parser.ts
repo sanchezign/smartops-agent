@@ -1,11 +1,13 @@
 import type { MessageType } from "../../generated/prisma/enums.js";
 import {
   whatsappContactSchema,
+  whatsappEchoSchema,
   whatsappErrorSchema,
   whatsappMessageSchema,
   whatsappStatusSchema,
   whatsappWebhookSchema,
   type WhatsAppContact,
+  type WhatsAppEcho,
   type WhatsAppError,
   type WhatsAppMessage,
 } from "./whatsapp-webhook.schemas.js";
@@ -54,15 +56,38 @@ export interface ParsedStatus {
   pricing: Record<string, unknown> | null;
 }
 
+/**
+ * Coexistence echo (phase 7): a message a PERSON sent from the WhatsApp Business app.
+ * kind "message" = a new message; "revoke" / "edit" = changes to an earlier one.
+ */
+export interface ParsedEcho {
+  waMessageId: string;
+  kind: "message" | "revoke" | "edit";
+  /** Contact phone (Meta sends phones in echoes). Null if it looked like a BSUID. */
+  toWaId: string | null;
+  toUserId: string | null;
+  timestamp: Date | null;
+  type: MessageType;
+  waType: string;
+  /** Text / caption (for "edit": the NEW text). */
+  text: string | null;
+  /** Metadata only: echo media is never downloaded (phase 7 decision). */
+  media: ParsedMedia | null;
+  /** revoke / edit: the message it refers to. */
+  originalWaMessageId: string | null;
+  raw: WhatsAppEcho;
+}
+
 export interface ParsedChange {
   field: string;
   phoneNumberId: string | null;
   messages: ParsedInboundMessage[];
   statuses: ParsedStatus[];
+  echoes: ParsedEcho[];
   /** Value-level (out-of-band) errors. */
   errors: WhatsAppError[];
   /** Items that failed validation (kind + index) — logged, never fatal. */
-  invalidItems: { kind: "message" | "status" | "contact" | "error"; index: number }[];
+  invalidItems: { kind: "message" | "status" | "contact" | "error" | "echo"; index: number }[];
 }
 
 export type ParsedWebhook =
@@ -179,6 +204,51 @@ function normalizeMessage(message: WhatsAppMessage, contacts: WhatsAppContact[])
   return parsed;
 }
 
+function normalizeEcho(echo: WhatsAppEcho): ParsedEcho {
+  const toIsBsuid = isBsuid(echo.to);
+  const base = {
+    waMessageId: echo.id,
+    toWaId: toIsBsuid ? null : echo.to,
+    toUserId: toIsBsuid ? echo.to : null,
+    timestamp: parseWaTimestamp(echo.timestamp),
+    raw: echo,
+  };
+  if (echo.type === "revoke") {
+    return {
+      ...base,
+      kind: "revoke",
+      type: "unsupported",
+      waType: "revoke",
+      text: null,
+      media: null,
+      originalWaMessageId: echo.revoke?.original_message_id ?? null,
+    };
+  }
+  if (echo.type === "edit") {
+    // The edited message has the same shape as a message body.
+    const inner = whatsappMessageSchema.safeParse({ id: echo.id, ...(echo.edit?.message ?? {}) });
+    const message = inner.success ? inner.data : null;
+    return {
+      ...base,
+      kind: "edit",
+      type: message ? (DIRECT_TYPES[message.type] ?? "unsupported") : "unsupported",
+      waType: "edit",
+      text: message ? messageText(message) : null,
+      media: message ? messageMedia(message) : null,
+      originalWaMessageId: echo.edit?.original_message_id ?? null,
+    };
+  }
+  return {
+    ...base,
+    kind: "message",
+    type: DIRECT_TYPES[echo.type] ?? "unsupported",
+    waType: echo.type,
+    text: messageText(echo),
+    media: messageMedia(echo),
+    originalWaMessageId: null,
+  };
+}
+
 function parseItems<T>(
   items: unknown[] | undefined,
   schema: { safeParse(v: unknown): { success: true; data: T } | { success: false } },
@@ -206,6 +276,7 @@ export function parseWhatsAppWebhook(payload: unknown): ParsedWebhook {
       const contacts = parseItems(value.contacts, whatsappContactSchema, "contact", invalidItems);
       const messages = parseItems(value.messages, whatsappMessageSchema, "message", invalidItems);
       const statuses = parseItems(value.statuses, whatsappStatusSchema, "status", invalidItems);
+      const echoes = parseItems(value.message_echoes, whatsappEchoSchema, "echo", invalidItems);
       const errors = parseItems(value.errors, whatsappErrorSchema, "error", invalidItems);
 
       changes.push({
@@ -224,6 +295,7 @@ export function parseWhatsAppWebhook(payload: unknown): ParsedWebhook {
           errors: s.errors ?? [],
           pricing: s.pricing ?? null,
         })),
+        echoes: echoes.map(normalizeEcho),
         errors,
         invalidItems,
       });

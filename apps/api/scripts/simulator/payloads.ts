@@ -81,7 +81,11 @@ export function toMetaError(error: SimError) {
   };
 }
 
-function envelope(business: SimBusiness, value: Record<string, unknown>) {
+function envelope(
+  business: SimBusiness,
+  value: Record<string, unknown>,
+  field: "messages" | "smb_message_echoes" = "messages",
+) {
   return {
     object: "whatsapp_business_account",
     entry: [
@@ -97,7 +101,7 @@ function envelope(business: SimBusiness, value: Record<string, unknown>) {
               },
               ...value,
             },
-            field: "messages",
+            field,
           },
         ],
       },
@@ -211,4 +215,53 @@ export function buildStatus(
       },
     ],
   });
+}
+
+export type SimEcho =
+  | SimMessage
+  | { type: "revoke"; originalWamid: string }
+  | { type: "edit"; originalWamid: string; body: string };
+
+/**
+ * Coexistence echo (field `smb_message_echoes`, phase 7): a PERSON wrote to the contact
+ * from the WhatsApp Business app. Shaped like Meta's reference: from = business display
+ * number, to = the contact's PHONE (no BSUID), same message bodies + revoke / edit.
+ */
+export function buildMessageEcho(
+  business: SimBusiness,
+  to: string,
+  echo: SimEcho,
+  options: { wamid?: string; at?: Date } = {},
+) {
+  const wamid = options.wamid ?? fakeWamid();
+  let body: Record<string, unknown>;
+  if (echo.type === "revoke") {
+    body = { revoke: { original_message_id: echo.originalWamid } };
+  } else if (echo.type === "edit") {
+    body = {
+      edit: {
+        original_message_id: echo.originalWamid,
+        message: { context: { id: "M0" }, type: "text", text: { body: echo.body } },
+      },
+    };
+  } else {
+    body = messageBody(echo);
+  }
+  const payload = envelope(
+    business,
+    {
+      message_echoes: [
+        {
+          from: business.displayPhoneNumber,
+          to,
+          id: wamid,
+          timestamp: waTimestamp(options.at),
+          type: echo.type,
+          ...body,
+        },
+      ],
+    },
+    "smb_message_echoes",
+  );
+  return { wamid, payload };
 }
