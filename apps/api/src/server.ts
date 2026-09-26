@@ -19,6 +19,7 @@ import {
   createScheduleDigestInTx,
   startBoss,
 } from "./jobs/boss.js";
+import { createCatalogQueryRepository } from "./modules/admin/catalog-query.repository.js";
 import { createConversationQueryRepository } from "./modules/admin/conversation-query.repository.js";
 import { createEventHub } from "./modules/events/event-hub.js";
 import { createPgListener } from "./modules/events/pg-listener.js";
@@ -198,6 +199,7 @@ const app = createApp({
     }),
     reviewQuery: createReviewQueryRepository(prisma),
     conversationQuery: createConversationQueryRepository(prisma),
+    catalogQuery: createCatalogQueryRepository(prisma),
     mediaStorage,
     reviews: createReviewService({
       repository: createReviewRepository(prisma),

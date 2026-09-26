@@ -59,7 +59,7 @@ export function DailyBars({
               />
             }
           />
-          <Bar dataKey="value" fill="var(--color-value)" radius={4} />
+          <Bar dataKey="value" fill="var(--color-value)" radius={4} isAnimationActive={false} />
         </BarChart>
       </ChartContainer>
       <table className="sr-only">

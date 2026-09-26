@@ -1129,7 +1129,25 @@ a real client.**
      ±20 % + immediate retry on visible/online), "En vivo / Reconectando…" indicator, conversation
      queries poll every 30 s ONLY while not live (`useFallbackInterval`). Verified: SSE through the
      Next rewrite with a production `next start` in Chromium + WebKit; Caddy flushes
-     text/event-stream immediately (reverse_proxy docs).
+     text/event-stream immediately (reverse_proxy docs). E2E never waits for "networkidle"
+     (the stream stays open): wait for the page heading.
+   - M5 catalog + price history + alerts + rename supplier — DONE (2026-09-27).
+     `admin/catalog-query.repository.ts`: suppliers (product / available counts, last ingested
+     list, tax basis), products (supplier / name search / availability filters, cursor by
+     name+id, last PriceChange), product + history (oldest first, ≤ 500, conversation of the
+     source message), `renameSupplier` (ADMIN only, audited `supplier.renamed` from→to,
+     `normalizedName` follows so later lists match it; a name another supplier already has →
+     409 — merging stays for later), alerts (open = open|sent, `open` count, product +
+     conversation links) + `acknowledgeAlert` (open/sent → acknowledged, idempotent, audited).
+     Routes `GET /admin/catalog/suppliers`, `/catalog/products`, `/catalog/products/:id`,
+     `PATCH /catalog/suppliers/:id` (admin), `GET /alerts`, `POST /alerts/:id/acknowledge`.
+     Panel `features/catalog/`: catalog (supplier select, search, availability switch, rows with
+     es-UY money + last change %, rename dialog for admins), product page (price, tax basis,
+     availability, stock; step-line chart in the CURRENT currency only + "now" point —
+     `price-chart.ts` pure; visible history list with source auto/review and a link to the
+     message), alerts page (severity icon, type, links, "Vista"). Charts:
+     `isAnimationActive={false}` (reduced motion; screenshots caught half-drawn lines). Live via
+     `catalog.changed` / `alert.changed` events (M4).
 
 ## Known issues (out of scope)
 - **Phase 7 M3:** `wa:optout` (manual/off-WhatsApp) does not send a WhatsApp confirmation

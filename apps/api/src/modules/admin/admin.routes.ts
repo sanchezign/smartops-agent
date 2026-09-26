@@ -4,6 +4,7 @@ import { errors } from "../../common/errors/app-error.js";
 import type { Logger } from "../../common/logger.js";
 import { getValidated, validate } from "../../common/middleware/validate.js";
 import {
+  AlertType,
   ReviewKind,
   ReviewScope,
   ReviewStatus,
@@ -17,6 +18,7 @@ import type { DashboardService } from "../dashboard/dashboard.service.js";
 import type { HumanReplyService } from "../conversations/human-reply.service.js";
 import type { OptOutRepository } from "../optout/optout.repository.js";
 import type { MediaStorage } from "../media/media-storage.js";
+import type { CatalogQueryRepository } from "./catalog-query.repository.js";
 import type { ConversationQueryRepository } from "./conversation-query.repository.js";
 import { mediaResponseHeaders } from "./media-response.js";
 import type { ReviewQueryRepository } from "./review-query.repository.js";
@@ -45,6 +47,11 @@ export interface AdminDeps {
     "list" | "get" | "messages" | "optedOut" | "media"
   >;
   mediaStorage: Pick<MediaStorage, "get">;
+  /** Catalog, price history, alerts; rename supplier + acknowledge alert (phase 9 M5). */
+  catalogQuery: Pick<
+    CatalogQueryRepository,
+    "suppliers" | "products" | "product" | "renameSupplier" | "alerts" | "acknowledgeAlert"
+  >;
   humanReply: Pick<HumanReplyService, "reply">;
   consent: Pick<OptOutRepository, "find" | "apply">;
   settings: Pick<SettingsService, "getAll" | "set">;
@@ -95,6 +102,23 @@ const messagesQuery = z
   .object({
     before: z.uuid().optional(),
     limit: z.coerce.number().int().min(1).max(100).default(40),
+  })
+  .strict();
+const productsQuery = z
+  .object({
+    supplierId: z.uuid().optional(),
+    q: z.string().trim().min(1).max(100).optional(),
+    availability: z.enum(["all", "available", "unavailable"]).default("all"),
+    cursor: z.uuid().optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+  })
+  .strict();
+const renameBody = z.object({ name: z.string().trim().min(2).max(200) }).strict();
+const alertsQuery = z
+  .object({
+    status: z.enum(["open", "all"]).default("open"),
+    type: enumOf(AlertType).optional(),
+    limit: z.coerce.number().int().min(1).max(200).default(100),
   })
   .strict();
 const pauseBody = z.object({ minutes: z.number().int().min(1).max(10_080).nullable() }).strict();
@@ -219,6 +243,78 @@ function buildRoutes(deps: AdminDeps): AdminRoute[] {
       roles: ALL_ROLES,
       schemas: { params: idParams },
       handler: (req, res, ctx) => resolveReview(req, res, ctx, "reject"),
+    },
+    // ── Catalog + price history (phase 9 M5) ────────────────────────────────
+    {
+      method: "get",
+      path: "/catalog/suppliers",
+      roles: ALL_ROLES,
+      handler: async (_req, res) => {
+        res.json({ suppliers: await deps.catalogQuery.suppliers() });
+      },
+    },
+    {
+      method: "get",
+      path: "/catalog/products",
+      roles: ALL_ROLES,
+      schemas: { query: productsQuery },
+      handler: async (_req, res) => {
+        res.json(
+          await deps.catalogQuery.products(getValidated<typeof productsQuery>(res, "query")),
+        );
+      },
+    },
+    {
+      method: "get",
+      path: "/catalog/products/:id",
+      roles: ALL_ROLES,
+      schemas: { params: idParams },
+      handler: async (_req, res) => {
+        const product = await deps.catalogQuery.product(
+          getValidated<typeof idParams>(res, "params").id,
+        );
+        if (!product) throw errors.notFound("Product not found");
+        res.json({ product });
+      },
+    },
+    {
+      // Renaming changes how later lists are matched to the supplier: admin only, audited.
+      method: "patch",
+      path: "/catalog/suppliers/:id",
+      roles: ADMIN_ONLY,
+      schemas: { params: idParams, body: renameBody },
+      handler: async (_req, res, ctx) => {
+        const supplier = await deps.catalogQuery.renameSupplier({
+          supplierId: getValidated<typeof idParams>(res, "params").id,
+          name: getValidated<typeof renameBody>(res, "body").name,
+          actor: { userId: ctx.user.userId, requestId: ctx.requestId ?? null },
+        });
+        res.json({ supplier });
+      },
+    },
+    // ── Alerts ──────────────────────────────────────────────────────────────
+    {
+      method: "get",
+      path: "/alerts",
+      roles: ALL_ROLES,
+      schemas: { query: alertsQuery },
+      handler: async (_req, res) => {
+        res.json(await deps.catalogQuery.alerts(getValidated<typeof alertsQuery>(res, "query")));
+      },
+    },
+    {
+      method: "post",
+      path: "/alerts/:id/acknowledge",
+      roles: ALL_ROLES,
+      schemas: { params: idParams },
+      handler: async (_req, res, ctx) => {
+        res.json(
+          await deps.catalogQuery.acknowledgeAlert({
+            alertId: getValidated<typeof idParams>(res, "params").id,
+            actor: { userId: ctx.user.userId, requestId: ctx.requestId ?? null },
+          }),
+        );
+      },
     },
     // ── Conversations (bot / human, ADR-016) ────────────────────────────────
     {

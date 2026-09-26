@@ -106,7 +106,9 @@ describe("GET /api/v1/events", () => {
     expect(first.status).toBe(200);
     const second = await fetch(base, { headers: { authorization: "Bearer good" } });
     expect(second.status).toBe(429);
-    expect((await second.json()).error.code).toBe("TOO_MANY_STREAMS");
+    expect(((await second.json()) as { error: { code: string } }).error.code).toBe(
+      "TOO_MANY_STREAMS",
+    );
     await first.body!.cancel();
     await new Promise((r) => setTimeout(r, 50));
     expect(hub.stats().total).toBe(0); // the closed stream freed its slot

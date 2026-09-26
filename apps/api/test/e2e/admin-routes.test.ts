@@ -80,6 +80,7 @@ describe("route inventory: every /admin route is protected", () => {
     ).toEqual(
       [
         "GET /users",
+        "PATCH /catalog/suppliers/:id",
         "PATCH /users/:id",
         "POST /contacts/:id/opt-in",
         "POST /users",

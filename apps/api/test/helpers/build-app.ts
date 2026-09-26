@@ -124,6 +124,14 @@ export const stubAdminDeps: AdminDeps = {
     media: notConfigured,
   },
   mediaStorage: { get: notConfigured },
+  catalogQuery: {
+    suppliers: notConfigured,
+    products: notConfigured,
+    product: notConfigured,
+    renameSupplier: notConfigured,
+    alerts: notConfigured,
+    acknowledgeAlert: notConfigured,
+  },
   reviewQuery: {
     list: notConfigured,
     get: notConfigured,
