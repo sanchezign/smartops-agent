@@ -1049,6 +1049,29 @@ a real client.**
      global setup), API :4100, panel as a PRODUCTION build in `.next-e2e` (next dev chunks were
      flaky and would clobber the developer's .next); `SCREENS=1` takes review screenshots into
      e2e/screens (gitignored).
+   - M2 review queue — DONE (2026-09-27). API: read model `admin/review-query.repository.ts`
+     (item + supplier, product with current price, run, source message text/transcript/file;
+     pending first by scope run → line → catalog, then FIFO) behind `GET /admin/reviews`
+     (filters status/scope/kind/supplierId/limit), `GET /admin/reviews/summary` (pending per
+     scope), `GET /admin/reviews/:id`, `GET /admin/suppliers`; decisions still go through
+     ReviewService. Panel `features/reviews/`: list with scope chips + counts and status switch;
+     detail with the source card and one resolver per kind (line: candidates / new product +
+     price and currency; spreadsheet: price-column cards with REAL values from the file, the
+     model's pick only pre-selected with a "Sugerida" badge; global change table; mark
+     unavailable; supplier picker; tax / suspicious / extraction-failed gates); reject asks an
+     optional note; operator sees run/catalog items read-only (mirror of `canResolveReview`,
+     the API still enforces it); STALE_REVIEW/409/400 → plain-language toasts. Approve bodies
+     built by pure `resolve-input.ts` (unit-tested): values equal to the proposal are NOT sent
+     (the API applies its own rule, e.g. a % on the chosen product); typed prices accept one
+     comma/dot decimal separator and REFUSE "1.850" (thousands or decimals? never guessed).
+     Demo seed adds a column_mapping review built with the production code path (real xlsx
+     generated with `xlsx`, `convertDocument`, `normalizeMapperTable`, `headerCandidates`,
+     `sheetPreview` — exported from sheet-extraction; only the mapper answer is canned) with
+     stored blob + conversion (approving it really re-extracts), and a mark_unavailable review
+     (an Oriental full list without one product). E2E: projects run one after another on the
+     SAME seeded DB, so resolving specs run on desktop only and phones read items nobody
+     resolves. Link to the conversation has `prefetch={false}` (a prefetch of the not-yet-built
+     `/conversaciones/[id]` stayed open; re-check in M3).
 
 ## Known issues (out of scope)
 - **Phase 7 M3:** `wa:optout` (manual/off-WhatsApp) does not send a WhatsApp confirmation

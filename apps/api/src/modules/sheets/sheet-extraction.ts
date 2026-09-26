@@ -96,7 +96,11 @@ export function headerCandidates(table: SheetTable): HeaderCandidate[] {
   return out;
 }
 
-function preview(table: SheetTable, headerRow: number, mapping: TableProposal["mapping"]) {
+export function sheetPreview(
+  table: SheetTable,
+  headerRow: number,
+  mapping: TableProposal["mapping"],
+) {
   const rows = table.rows
     .slice(headerRow + 1)
     .filter((row) => cellText(row[mapping.nameColumn]).trim() !== "")
@@ -270,7 +274,7 @@ export function createSheetExtraction(deps: SheetExtractionDeps) {
               recommendedPriceColumn: mapping.priceColumn,
               confidence: "high",
               remembered: true,
-              preview: stored.isPriceTable ? preview(table, loc.headerRow, mapping) : [],
+              preview: stored.isPriceTable ? sheetPreview(table, loc.headerRow, mapping) : [],
               headerCandidates: candidates[i]!,
             };
           }
@@ -296,7 +300,7 @@ export function createSheetExtraction(deps: SheetExtractionDeps) {
             recommendedPriceColumn: normalized.recommendedPriceColumn,
             confidence: answer?.confidence ?? "low",
             remembered: false,
-            preview: isPriceTable ? preview(table, headerRow, normalized.mapping) : [],
+            preview: isPriceTable ? sheetPreview(table, headerRow, normalized.mapping) : [],
             headerCandidates: candidates[i]!,
           };
         });

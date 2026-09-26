@@ -19,6 +19,7 @@ import {
   createScheduleDigestInTx,
   startBoss,
 } from "./jobs/boss.js";
+import { createReviewQueryRepository } from "./modules/admin/review-query.repository.js";
 import { createRunRetrigger } from "./modules/admin/run-retrigger.js";
 import { createDashboardRepository } from "./modules/dashboard/dashboard.repository.js";
 import { createDashboardService } from "./modules/dashboard/dashboard.service.js";
@@ -185,6 +186,7 @@ const app = createApp({
       repository: createDashboardRepository(prisma),
       budget: { totalUsd: env.AI_TOTAL_BUDGET_USD, dailyUsd: env.AI_DAILY_BUDGET_USD },
     }),
+    reviewQuery: createReviewQueryRepository(prisma),
     reviews: createReviewService({
       repository: createReviewRepository(prisma),
       ingest: catalog,

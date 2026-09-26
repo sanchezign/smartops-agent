@@ -74,3 +74,10 @@ export function formatRelative(iso: string, now = new Date()): string {
   const days = Math.round(hours / 24);
   return days === 1 ? "ayer" : `hace ${days} días`;
 }
+
+/** Signed percentage for people: "+85 %", "−7,5 %" (the stored value keeps its decimals). */
+export function formatPct(value: string | number): string {
+  const n = Number(value);
+  const text = new Intl.NumberFormat("es-UY", { maximumFractionDigits: 1 }).format(Math.abs(n));
+  return `${n > 0 ? "+" : n < 0 ? "−" : ""}${text} %`;
+}

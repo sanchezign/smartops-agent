@@ -1,15 +1,29 @@
+import { createHash } from "node:crypto";
+import * as XLSX from "xlsx";
 import type { PrismaClient } from "../../common/db.js";
 import type { Logger } from "../../common/logger.js";
 import { Prisma } from "../../generated/prisma/client.js";
 import { hashPassword } from "../auth/password.js";
 import type { CatalogIngestService } from "../catalog/catalog-ingest.service.js";
 import { normalizeSupplierName } from "../catalog/supplier-name.js";
+import { convertDocument } from "../documents/convert.js";
+import { CONVERTER_VERSION } from "../documents/document-conversion.service.js";
+import { cellText, DEFAULT_CONVERSION_LIMITS } from "../documents/document-types.js";
+import {
+  headerCandidates,
+  sheetPreview,
+  type ColumnMappingProposal,
+} from "../sheets/sheet-extraction.js";
+import { normalizeMapperTable } from "../sheets/sheet-mapping.js";
+import { headerFingerprint } from "../sheets/sheet-values.js";
 import type { ExtractionOutput } from "../extraction/extraction.schemas.js";
 import type { StoredExtraction } from "../extraction/ingestion.service.js";
 import {
   DEMO_CHITCHAT,
   DEMO_CUSTOMER_MESSAGES,
   DEMO_CUSTOMERS,
+  DEMO_NORTE_SHEET,
+  DEMO_NORTE_SHEET_MAPPER,
   DEMO_SUPPLIERS,
   type DemoSupplier,
 } from "./demo-data.js";
@@ -458,6 +472,21 @@ export async function seedDemo(deps: {
       { globalChangePct: "8" },
     ),
   );
+  // Oriental, 4 days ago: a FULL list without "Zapatilla 5 tomas" → the planner asks a person
+  // before marking it unavailable (mark_unavailable, missing_from_full_list).
+  await ingestList(
+    oriental,
+    await idsOf(oriental),
+    at(4),
+    "Lista completa actualizada",
+    list(
+      oriental,
+      oriental.products
+        .filter((p) => p.name !== "Zapatilla 5 tomas")
+        .map((p) => item(p.name, round2(price(oriental, p.name)), { unit: p.unit })),
+      { listKind: "full_list", fullListEvidence: "LISTA COMPLETA" },
+    ),
+  );
   // Oriental, 2 days ago: one product quoted in USD (currency change) + a new product.
   await ingestList(
     oriental,
@@ -473,6 +502,12 @@ export async function seedDemo(deps: {
       { currency: null },
     ),
   );
+  // Norte, a few hours ago: a spreadsheet in a format never approved, with four price columns →
+  // column_mapping gate. Real xlsx bytes, converted by the production converter; the proposal
+  // is built with the same functions the sheet extraction uses (only the mapper answer is
+  // canned, like the fake LLM does).
+  reviewItems += await seedColumnMappingReview(prisma, await idsOf(norte), at(0, 8));
+
   // Norte, yesterday: a message trying to give orders to the bot (prompt injection gate).
   await ingestList(
     norte,
@@ -633,4 +668,125 @@ export async function seedDemo(deps: {
   };
   logger.info(result, "demo database seeded");
   return result;
+}
+
+async function seedColumnMappingReview(
+  prisma: PrismaClient,
+  ids: { contactId: string; conversationId: string; supplierId: string },
+  when: Date,
+): Promise<number> {
+  const sheet = XLSX.utils.aoa_to_sheet(DEMO_NORTE_SHEET.rows);
+  const book = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(book, sheet, DEMO_NORTE_SHEET.name);
+  const bytes = new Uint8Array(XLSX.write(book, { type: "buffer", bookType: "xlsx" }) as Buffer);
+  const filename = "Lista Distribuidora Norte.xlsx";
+  const mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  const converted = await convertDocument({ bytes, mimeType, filename }, DEFAULT_CONVERSION_LIMITS);
+  if (!converted.ok) throw new Error(`demo spreadsheet conversion failed: ${converted.reason}`);
+  const table = converted.tables[0]!;
+
+  const media = await prisma.mediaFile.create({
+    data: {
+      waMediaId: "demo-media-norte-sheet",
+      mimeType,
+      sizeBytes: bytes.byteLength,
+      contentSha256: createHash("sha256").update(bytes).digest("hex"),
+      filename,
+      status: "stored",
+      storage: "postgres",
+      downloadedAt: when,
+      createdAt: when,
+      blob: { create: { data: bytes } },
+      documentConversion: {
+        create: {
+          status: "done",
+          format: converted.format,
+          text: converted.text,
+          charCount: converted.charCount,
+          dataRows: converted.dataRows,
+          truncated: converted.truncated,
+          needsReview: converted.needsReview,
+          sheets: converted.sheets as unknown as Prisma.InputJsonValue,
+          tables: converted.tables as unknown as Prisma.InputJsonValue,
+          warnings: converted.warnings as unknown as Prisma.InputJsonValue,
+          converterVersion: CONVERTER_VERSION,
+          completedAt: when,
+          createdAt: when,
+        },
+      },
+    },
+  });
+  const message = await prisma.message.create({
+    data: {
+      conversationId: ids.conversationId,
+      waMessageId: "wamid.DEMOSHEET0001",
+      direction: "inbound",
+      type: "document",
+      author: "contact",
+      text: "Te paso la lista nueva",
+      mediaFileId: media.id,
+      waTimestamp: when,
+      createdAt: when,
+    },
+  });
+  await prisma.$executeRaw`
+    UPDATE conversations
+       SET last_inbound_at = GREATEST(COALESCE(last_inbound_at, ${when}::timestamptz), ${when}::timestamptz),
+           last_message_at = GREATEST(COALESCE(last_message_at, ${when}::timestamptz), ${when}::timestamptz)
+     WHERE id = ${ids.conversationId}::uuid`;
+
+  const answer = DEMO_NORTE_SHEET_MAPPER;
+  const normalized = normalizeMapperTable(answer, table.rows[answer.headerRow]!.length);
+  const proposal: ColumnMappingProposal = {
+    reason: "new_format",
+    supplierName: "DISTRIBUIDORA NORTE S.A.",
+    suspiciousInstructions: false,
+    warnings: [
+      "Filas de categoría (SEGURIDAD, HERRAJES, ELECTRICIDAD) sin datos, no son productos.",
+      "Varias columnas de precio: se recomienda confirmar cuál usar como principal.",
+    ],
+    retiredFormatIds: [],
+    tables: [
+      {
+        table: answer.table,
+        sheet: table.name,
+        isPriceTable: true,
+        headerRow: answer.headerRow,
+        fingerprint: headerFingerprint(table.rows[answer.headerRow] ?? []),
+        headerCells: table.rows[answer.headerRow]?.map(cellText) ?? [],
+        mapping: normalized.mapping,
+        ambiguous: normalized.ambiguous,
+        recommendedPriceColumn: normalized.recommendedPriceColumn,
+        confidence: answer.confidence,
+        remembered: false,
+        preview: sheetPreview(table, answer.headerRow, normalized.mapping),
+        headerCandidates: headerCandidates(table),
+      },
+    ],
+  };
+  await prisma.ingestionRun.create({
+    data: {
+      messageId: message.id,
+      supplierId: ids.supplierId,
+      classification: "price_list_full",
+      status: "needs_review",
+      errors: { reason: "column_mapping_required" },
+      model: "claude-sonnet-5",
+      createdAt: when,
+      finishedAt: new Date(when.getTime() + 7000),
+      reviewItems: {
+        create: {
+          supplierId: ids.supplierId,
+          scope: "run",
+          kind: "column_mapping",
+          dedupeKey: "gate:column_mapping:1",
+          reasons: ["column_mapping_required"],
+          proposal: proposal as unknown as Prisma.InputJsonValue,
+          createdAt: when,
+          updatedAt: when,
+        },
+      },
+    },
+  });
+  return 1;
 }

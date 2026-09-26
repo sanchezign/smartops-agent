@@ -115,3 +115,48 @@ export const DEMO_CUSTOMER_MESSAGES: [number, string, "query" | "order", number]
 
 /** Chit-chat that the deterministic pre-filter keeps away from the LLM. */
 export const DEMO_CHITCHAT = ["hola", "gracias!!", "ok", "👍", "buen día", "dale, te aviso"];
+
+/**
+ * Distribuidora Norte's spreadsheet (a format never approved): the column_mapping review of
+ * the demo. Four price columns → a person chooses (phase 9 M2). Values like a real list.
+ */
+export const DEMO_NORTE_SHEET: { name: string; rows: (string | number | null)[][] } = {
+  name: "Lista",
+  rows: [
+    ["DISTRIBUIDORA NORTE S.A. - LISTA DE PRECIOS", null, null, null, null, null, null],
+    ["Precios en pesos uruguayos", null, null, null, null, null, null],
+    ["Código", "Descripción", "Unidad", "Precio s/IVA", "Precio c/IVA", "Mayorista", "Contado"],
+    ["SEGURIDAD", null, null, null, null, null, null],
+    ["CAN-040", "Candado bronce 40mm", "unidad", 262.3, 320, 238, 304],
+    ["CER-001", "Cerradura de embutir", "unidad", 209.84, 256, 191, 243],
+    ["HERRAJES", null, null, null, null, null, null],
+    ["BIS-003", "Bisagra 3 pulgadas", "par", 385.25, 470, 350, 446],
+    ["TAR-008", "Tarugo 8mm x100", "bolsa", 122.95, 150, 112, 142],
+    ["ELECTRICIDAD", null, null, null, null, null, null],
+    ["GUA-00M", "Guante de nitrilo talle M", "par", 97.54, 119, 89, 113],
+  ],
+};
+
+/** What the column mapper (LLM) answers for that sheet (same shape as its golden output). */
+export const DEMO_NORTE_SHEET_MAPPER = {
+  table: "T1",
+  isPriceTable: true,
+  headerRow: 2,
+  nameColumn: 1,
+  unitColumn: 2,
+  skuColumn: 0,
+  currencyColumn: null,
+  stockColumn: null,
+  availableColumn: null,
+  pctColumn: null,
+  priceColumns: [
+    { column: 3, header: "Precio s/IVA", taxIncluded: false, kind: "list" as const },
+    { column: 4, header: "Precio c/IVA", taxIncluded: true, kind: "list" as const },
+    { column: 5, header: "Mayorista", taxIncluded: null, kind: "wholesale" as const },
+    { column: 6, header: "Contado", taxIncluded: null, kind: "cash" as const },
+  ],
+  recommendedPriceColumn: 4,
+  priceFormat: "decimal_dot" as const,
+  currency: "UYU",
+  confidence: "high" as const,
+};

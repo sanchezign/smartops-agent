@@ -3,7 +3,12 @@ import { z } from "zod";
 import { errors } from "../../common/errors/app-error.js";
 import type { Logger } from "../../common/logger.js";
 import { getValidated, validate } from "../../common/middleware/validate.js";
-import { ReviewKind, ReviewStatus, type UserRole } from "../../generated/prisma/enums.js";
+import {
+  ReviewKind,
+  ReviewScope,
+  ReviewStatus,
+  type UserRole,
+} from "../../generated/prisma/enums.js";
 import { createRequireAuth, currentUser } from "../auth/auth-http.js";
 import type { AuthenticatedUser, AuthService } from "../auth/auth.service.js";
 import { ADMIN_ONLY, ALL_ROLES, canResolveReview, requireRole } from "../auth/permissions.js";
@@ -11,6 +16,7 @@ import type { ConversationModeService } from "../conversations/conversation-mode
 import type { DashboardService } from "../dashboard/dashboard.service.js";
 import type { HumanReplyService } from "../conversations/human-reply.service.js";
 import type { OptOutRepository } from "../optout/optout.repository.js";
+import type { ReviewQueryRepository } from "./review-query.repository.js";
 import type { ReviewService } from "../reviews/review.service.js";
 import type { SettingsService } from "../settings/settings.service.js";
 import { roleSchema, type UsersService } from "../users/users.service.js";
@@ -24,6 +30,8 @@ import { roleSchema, type UsersService } from "../users/users.service.js";
 
 export interface AdminDeps {
   dashboard: Pick<DashboardService, "get">;
+  /** Read model with context (supplier, product, source message) for the queue. */
+  reviewQuery: Pick<ReviewQueryRepository, "list" | "get" | "summary" | "suppliers">;
   reviews: Pick<ReviewService, "list" | "get" | "approve" | "reject">;
   /** Re-emits message.ready for a run a review sent back to extraction (closes phase 6 gap). */
   retriggerRun(runId: string, reason: string): Promise<{ retriggered: boolean }>;
@@ -58,8 +66,8 @@ const reviewQuery = z
   .object({
     status: enumOf(ReviewStatus).optional(),
     kind: enumOf(ReviewKind).optional(),
+    scope: enumOf(ReviewScope).optional(),
     supplierId: z.uuid().optional(),
-    ingestionRunId: z.uuid().optional(),
     limit: z.coerce.number().int().min(1).max(200).optional(),
   })
   .strict();
@@ -144,8 +152,16 @@ function buildRoutes(deps: AdminDeps): AdminRoute[] {
       schemas: { query: reviewQuery },
       handler: async (_req, res) => {
         res.json({
-          items: await deps.reviews.list(getValidated<typeof reviewQuery>(res, "query")),
+          items: await deps.reviewQuery.list(getValidated<typeof reviewQuery>(res, "query")),
         });
+      },
+    },
+    {
+      method: "get",
+      path: "/reviews/summary",
+      roles: ALL_ROLES,
+      handler: async (_req, res) => {
+        res.json(await deps.reviewQuery.summary());
       },
     },
     {
@@ -154,7 +170,17 @@ function buildRoutes(deps: AdminDeps): AdminRoute[] {
       roles: ALL_ROLES,
       schemas: { params: idParams },
       handler: async (_req, res) => {
-        res.json({ item: await reviewOr404(getValidated<typeof idParams>(res, "params").id) });
+        const item = await deps.reviewQuery.get(getValidated<typeof idParams>(res, "params").id);
+        if (!item) throw errors.notFound("Review item not found");
+        res.json({ item });
+      },
+    },
+    {
+      method: "get",
+      path: "/suppliers",
+      roles: ALL_ROLES,
+      handler: async (_req, res) => {
+        res.json({ suppliers: await deps.reviewQuery.suppliers() });
       },
     },
     {
