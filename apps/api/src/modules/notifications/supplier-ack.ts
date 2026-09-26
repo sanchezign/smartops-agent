@@ -59,8 +59,11 @@ export function createSupplierAckService(deps: {
       runId: string,
       log: Logger,
     ): Promise<{ sent: boolean; reason?: string; messageId?: string }> {
-      const enabled = (await deps.settings.getAll(log))["bot.supplierAck"] as boolean;
-      if (!enabled) return { sent: false, reason: "disabled" };
+      const all = await deps.settings.getAll(log);
+      if (!(all["bot.supplierAck"] as boolean)) return { sent: false, reason: "disabled" };
+      // Global switch (phase 9 M6): no automatic reply to anyone.
+      if (all["bot.autoRepliesEnabled"] === false)
+        return { sent: false, reason: "auto_replies_off" };
       const ctx = await deps.repository.ackContext(runId);
       if (!ctx) throw errors.notFound("Ingestion run not found");
       if (!["ingested", "needs_review"].includes(ctx.status))

@@ -57,6 +57,7 @@ function setup(
     sendError?: Error;
     markAcceptedError?: Error;
     claim?: "claimed" | "canceled" | "not_pending";
+    settings?: Record<string, unknown>;
   } = {},
 ) {
   const repository: OutboundRepository = {
@@ -101,6 +102,7 @@ function setup(
     }),
     markFailed: vi.fn(async () => {}),
     claimForSend: vi.fn(async () => options.claim ?? ("claimed" as const)),
+    cancelPending: vi.fn(async () => true),
   };
   const client: WhatsAppSendClient = {
     send: vi.fn(async () => {
@@ -108,7 +110,12 @@ function setup(
       return { wamid: "wamid.OUT", messageStatus: null, waId: "59899000111", userId: null };
     }),
   };
-  const service = createOutboundService({ repository, client, now: () => NOW });
+  const service = createOutboundService({
+    repository,
+    client,
+    now: () => NOW,
+    ...(options.settings ? { settings: { getAll: async () => options.settings! } } : {}),
+  });
   return { service, repository, client };
 }
 
@@ -389,5 +396,48 @@ describe("OutboundService — human takeover (phase 7, ADR-016)", () => {
       "already_sent",
     );
     expect(client.send).not.toHaveBeenCalled();
+  });
+});
+
+describe("global automatic-replies switch (phase 9 M6)", () => {
+  const off = { "bot.autoRepliesEnabled": false, "optOut.instructionReminderDays": 30 };
+
+  it("send(): an automatic reply is refused; a person's reply and compliance still go", async () => {
+    const { service, repository } = setup({ settings: off });
+    const text = { kind: "text" as const, body: "Recibimos tu lista" };
+    await expectAppError(
+      service.send({ recipient: { waId: "59899000111" }, content: text, author: "bot" }, log),
+      "AUTO_REPLIES_OFF",
+    );
+    expect(repository.createOutbound).not.toHaveBeenCalled();
+    await service.send(
+      { recipient: { waId: "59899000111" }, content: text, author: "human", authorUserId: "u1" },
+      log,
+    );
+    await service.send(
+      { recipient: { waId: "59899000111" }, content: text, author: "bot", purpose: "compliance" },
+      log,
+    );
+    expect(repository.createOutbound).toHaveBeenCalledTimes(2);
+  });
+
+  it("worker: a queued automatic reply is cancelled if the switch went off meanwhile", async () => {
+    const { service, repository, client } = setup({ settings: off });
+    expect(await service.processOutbound("m1", log, { finalAttempt: false })).toEqual({
+      outcome: "canceled",
+      reason: "auto_replies_off",
+    });
+    expect(repository.cancelPending).toHaveBeenCalledOnce();
+    expect(client.send).not.toHaveBeenCalled();
+  });
+
+  it("with the switch on (default) nothing changes", async () => {
+    const { service, client } = setup({
+      settings: { "bot.autoRepliesEnabled": true, "optOut.instructionReminderDays": 30 },
+    });
+    expect((await service.processOutbound("m1", log, { finalAttempt: false })).outcome).toBe(
+      "accepted",
+    );
+    expect(client.send).toHaveBeenCalledOnce();
   });
 });

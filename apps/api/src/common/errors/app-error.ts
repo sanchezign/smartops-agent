@@ -18,6 +18,8 @@ export type ErrorCode =
   | "OPT_IN_REQUIRED"
   /** WhatsApp: automatic reply while a person handles the conversation (ADR-016). */
   | "HUMAN_MODE"
+  /** WhatsApp: automatic replies are switched off globally (Setting bot.autoRepliesEnabled). */
+  | "AUTO_REPLIES_OFF"
   /** WhatsApp: business-initiated message to a contact who opted out (ADR-017). */
   | "OPTED_OUT"
   /** Panel auth: two tabs refreshed with the same cookie at once — retry (ADR-018). */
@@ -83,6 +85,8 @@ export const errors = {
   ) => new AppError(409, "HUMAN_MODE", message, details),
   optedOut: (details: unknown, message = "The contact opted out of business-initiated messages") =>
     new AppError(409, "OPTED_OUT", message, details),
+  autoRepliesOff: (message = "Automatic replies are switched off (bot.autoRepliesEnabled)") =>
+    new AppError(409, "AUTO_REPLIES_OFF", message),
   refreshRace: (message = "Concurrent session refresh: retry") =>
     new AppError(409, "REFRESH_RACE", message),
   rateLimited: (message = "Too many requests, try again later") =>

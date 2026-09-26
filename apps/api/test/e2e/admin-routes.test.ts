@@ -260,3 +260,41 @@ describe("chat media for the panel (phase 9 M3, ADR-019)", () => {
     expect((await request(app).get(`/api/v1/admin/media/${ID}?token=x`)).status).toBe(401);
   });
 });
+
+describe("GET /admin/status (phase 9 M6)", () => {
+  const bearer = { authorization: "Bearer operator-token" };
+  const withSettings = (values: Record<string, unknown>) =>
+    buildTestApp({
+      auth,
+      admin: {
+        ...stubAdminDeps,
+        settings: { ...stubAdminDeps.settings, getAll: async () => values },
+      },
+    });
+
+  it("no business hours configured → always open; switch on by default", async () => {
+    const res = await request(withSettings({ businessHours: null }))
+      .get("/api/v1/admin/status")
+      .set(bearer);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      autoRepliesEnabled: true,
+      businessHours: { configured: false, open: true, nextOpening: null },
+    });
+  });
+
+  it("hours without any open day → closed ('fuera de horario'); switch off is reported", async () => {
+    const res = await request(
+      withSettings({
+        "bot.autoRepliesEnabled": false,
+        businessHours: { timeZone: "America/Montevideo", days: [] },
+      }),
+    )
+      .get("/api/v1/admin/status")
+      .set(bearer);
+    expect(res.body).toEqual({
+      autoRepliesEnabled: false,
+      businessHours: { configured: true, open: false, nextOpening: null },
+    });
+  });
+});

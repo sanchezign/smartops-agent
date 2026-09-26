@@ -58,6 +58,11 @@ export function createUsersService(deps: { repository: UsersRepository }) {
 
     async update(id: string, change: { role?: UserRole; active?: boolean }, actor: AuditActor) {
       if (change.role !== undefined) roleSchema.parse(change.role);
+      // Nobody changes their own role or deactivates themselves (user rule, phase 9 M6): another
+      // admin has to do it, so a mistake cannot lock the only person who could fix it.
+      if (actor.userId === id && (change.role !== undefined || change.active === false)) {
+        throw errors.forbidden("You cannot change your own role or deactivate yourself");
+      }
       const result = await repository.update(id, change, actor);
       if (result === "not_found") throw errors.notFound("User not found");
       if (result === "last_admin")

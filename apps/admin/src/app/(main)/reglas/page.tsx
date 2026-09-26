@@ -1,13 +1,8 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "@/components/coming-soon";
+import { RulesView } from "@/features/rules/components/rules-view";
 
 export const metadata: Metadata = { title: "Reglas" };
 
 export default function Page() {
-  return (
-    <ComingSoon
-      title="Reglas"
-      description="Acá vas a ajustar las reglas del sistema sin tocar código."
-    />
-  );
+  return <RulesView />;
 }

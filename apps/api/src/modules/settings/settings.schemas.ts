@@ -7,6 +7,37 @@ import { z } from "zod";
  * reported), so a bad edit can never break ingestion.
  */
 
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "time must be HH:MM");
+
+/** Opening hours per weekday (business-hours.ts evaluates them). */
+export const businessHoursSchema = z
+  .object({
+    timeZone: z
+      .string()
+      .min(1)
+      .max(64)
+      .refine(
+        (tz) => {
+          try {
+            new Intl.DateTimeFormat("en-US", { timeZone: tz });
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { message: "unknown time zone" },
+      ),
+    days: z
+      .array(
+        z
+          .object({ day: z.number().int().min(0).max(6), open: hhmm, close: hhmm })
+          .refine((d) => d.open !== d.close, { message: "open and close must differ" }),
+      )
+      .max(14),
+  })
+  .strict();
+export type BusinessHours = z.infer<typeof businessHoursSchema>;
+
 export const SETTING_DEFINITIONS = {
   /** Price increases above this % go to human review instead of being applied. */
   "catalog.maxIncreasePct": { schema: z.number().positive().max(100_000), default: 50 },
@@ -52,6 +83,24 @@ export const SETTING_DEFINITIONS = {
       })
       .nullable(),
     default: null as { name: string; languageCode: string; bodyParam: boolean } | null,
+  },
+  /**
+   * GLOBAL switch for automatic replies to contacts (phase 9 M6, user decision): off = the bot
+   * answers nobody (like every chat in human mode). Lists are still processed, the catalog is
+   * updated and the TEAM keeps getting notifications; the opt-out confirmation (compliance)
+   * and replies written by a person still go out.
+   */
+  "bot.autoRepliesEnabled": { schema: z.boolean(), default: true },
+  /**
+   * Business hours (phase 9 M6): outside them, NON-critical WhatsApp digests to the team wait
+   * until opening (critical ones still go out) and the panel shows "fuera de horario".
+   * null = always open. days: 0 = Sunday … 6 = Saturday. Times "HH:MM" in `timeZone`;
+   * close may be earlier than open (overnight). An automatic "we reply tomorrow" answer to
+   * contacts is a FUTURE option, off by default (not implemented).
+   */
+  businessHours: {
+    schema: businessHoursSchema.nullable(),
+    default: null as BusinessHours | null,
   },
   /** Acknowledge supplier lists by WhatsApp ("Recibimos tu lista…"). OFF by default, ON in demo mode. */
   "bot.supplierAck": { schema: z.boolean(), default: false },

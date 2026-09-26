@@ -47,7 +47,9 @@ test.describe("conversations (phase 9 M3)", () => {
     await login(page, "operator");
     await openConversations(page);
     await page.getByLabel("Buscar por nombre, proveedor o teléfono").fill("Norte");
-    await inbox(page).getByRole("link").first().click();
+    await inbox(page)
+      .getByRole("link", { name: /Ventas Distribuidora Norte/ })
+      .click();
     await expect(page.getByRole("heading", { name: "Ventas Distribuidora Norte" })).toBeVisible();
     // The photo is 5 days back: load older pages until its caption shows up.
     const caption = page.getByText("Foto de la lista impresa");
@@ -83,7 +85,9 @@ test.describe("acting on conversations (desktop only: it changes the shared demo
     await login(page);
     await openConversations(page);
     await page.getByLabel("Buscar por nombre, proveedor o teléfono").fill("Norte");
-    await inbox(page).getByRole("link").first().click();
+    await inbox(page)
+      .getByRole("link", { name: /Ventas Distribuidora Norte/ })
+      .click();
     const row = page.getByText("Lista Distribuidora Norte.xlsx").locator("..");
     const download = page.waitForEvent("download");
     await row.getByRole("button", { name: "Descargar" }).click();
@@ -94,7 +98,9 @@ test.describe("acting on conversations (desktop only: it changes the shared demo
     await login(page, "operator");
     await openConversations(page);
     await page.getByLabel("Buscar por nombre, proveedor o teléfono").fill("Oriental");
-    await inbox(page).getByRole("link").first().click();
+    await inbox(page)
+      .getByRole("link", { name: /Eléctrica Oriental/ })
+      .click();
     await page.getByRole("button", { name: "Pausar el bot" }).click();
     await page.getByRole("radio", { name: "30 minutos" }).click();
     await page.getByRole("button", { name: "Pausar", exact: true }).click();

@@ -30,7 +30,11 @@ test("a mode change made elsewhere appears live in the open chat", async ({ page
 
   await page.getByRole("link", { name: "Conversaciones", exact: true }).click();
   await page.getByLabel("Buscar por nombre, proveedor o teléfono").fill("Carolina");
-  await page.getByRole("list", { name: "Conversaciones" }).getByRole("link").first().click();
+  // (by name: clicking "the first link" could hit the list before the search filtered it)
+  await page
+    .getByRole("list", { name: "Conversaciones" })
+    .getByRole("link", { name: /Carolina/ })
+    .click();
   await expect(page.getByRole("heading", { name: "Carolina (depósito)" })).toBeVisible();
   const conversationId = new URL(page.url()).pathname.split("/").pop()!;
 

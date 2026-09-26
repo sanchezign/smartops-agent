@@ -12,6 +12,8 @@ import {
 } from "./digest-rules.js";
 import { PANEL, type NotificationRepository } from "./notification.repository.js";
 import type { NotifyInput, N8nErrorInput } from "./notification.schemas.js";
+import { nextOpening } from "../settings/business-hours.js";
+import type { BusinessHours } from "../settings/settings.schemas.js";
 
 /**
  * Notifications (phase 6). n8n (notifier) says WHAT happened; the backend decides whether it
@@ -59,6 +61,7 @@ export function createNotificationService(deps: {
         bodyParam: boolean;
       } | null,
       thresholdPct: all["catalog.priceAlertPct"] as number,
+      businessHours: all["businessHours"] as BusinessHours | null,
     };
   }
 
@@ -192,6 +195,19 @@ export function createNotificationService(deps: {
           // Hourly cap reached: keep collecting until a slot frees up (one message later).
           await deps.repository.postpone(digest.id, until);
           log.info({ digestId, until }, "notification digest postponed (hourly cap)");
+          return { outcome: "postponed" };
+        }
+      }
+
+      // Business hours (phase 9 M6): non-critical digests wait until opening; critical ones go.
+      if (!digest.critical) {
+        const opening = nextOpening(cfg.businessHours, at);
+        if (opening && opening > at) {
+          await deps.repository.postpone(digest.id, opening);
+          log.info(
+            { digestId, until: opening },
+            "notification digest postponed (outside business hours)",
+          );
           return { outcome: "postponed" };
         }
       }

@@ -1148,6 +1148,32 @@ a real client.**
      message), alerts page (severity icon, type, links, "Vista"). Charts:
      `isAnimationActive={false}` (reduced motion; screenshots caught half-drawn lines). Live via
      `catalog.changed` / `alert.changed` events (M4).
+   - M6 rules + users — DONE (2026-09-27). User rules (user, after M5): never without an active
+     admin (phase 8 advisory-lock rule; there is NO delete, only deactivate), NOBODY changes
+     their own role or deactivates themselves (`UsersService.update` → 403 FORBIDDEN when
+     actor.userId = id; CLI actors have no userId), every role change / deactivation / password
+     reset revokes that user's sessions (reset now has its own HTTP test: 2 sessions → 401,
+     reason `password_changed`). New Settings: `bot.autoRepliesEnabled` (default true; off →
+     `send()` refuses `auto_reply` with 409 `AUTO_REPLIES_OFF`, the worker cancels queued ones
+     via `OutboundRepository.cancelPending` (code `auto_replies_off`), supplier ack skipped
+     reason `auto_replies_off`; compliance and human replies still go; without injected settings
+     (CLI) it counts as on) and `businessHours` ({timeZone, days[{day 0=Sun, open, close
+     "HH:MM"}]} or null = always open; `settings/business-hours.ts` pure `isOpen` /
+     `nextOpening` / `zonedTimeToUtc` via Intl, DST-safe, overnight rules belong to the day they
+     open; no configured day → never opens → digests are NOT held). Non-critical digests outside
+     hours are postponed to the next opening (`postpone` + re-scheduled job); critical ones go.
+     `GET /admin/status` {autoRepliesEnabled, businessHours {configured, open, nextOpening}} →
+     top-bar chips "Fuera de horario · abre …" / "Bot apagado" (polled 60 s; settings saves
+     invalidate it). Panel `/reglas`: five sections (bot, hours editor with a row per weekday,
+     prices, team notifications incl. recipients' numbers, audio + opt-out keywords), one
+     "Guardar" per section sending only changed keys (PUT per key, audited), same limits as the
+     API schemas, es-UY number parsing (`lib/number-input.ts`, "1.500" refused), operators
+     read-only. `/usuarios` (admin; operators get the no-permission state even by URL): list
+     with role / Vos / Desactivado / Bloqueado, create (policy hint, errors from the API's
+     policy messages), promote/demote, deactivate/reactivate, new password, unlock, close
+     sessions; own row offers no role/deactivate actions. E2E: `RATE_LIMIT_MAX` 100000 in the
+     Playwright API env (every project shares one IP — 429 surfaced as "Demasiados intentos");
+     never click "the first link" after typing a search (race with the filter) — click by name.
 
 ## Known issues (out of scope)
 - **Phase 7 M3:** `wa:optout` (manual/off-WhatsApp) does not send a WhatsApp confirmation

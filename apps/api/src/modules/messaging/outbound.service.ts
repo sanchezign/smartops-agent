@@ -79,6 +79,9 @@ export function createOutboundService(deps: {
   settings?: OutOptOutSettings;
 }): OutboundService {
   const now = deps.now ?? (() => new Date());
+  // Without settings (CLI tools) automatic replies count as enabled.
+  const autoRepliesEnabled = async (log: Logger) =>
+    deps.settings ? (await deps.settings.getAll(log))["bot.autoRepliesEnabled"] !== false : true;
 
   return {
     async send(input, log) {
@@ -123,6 +126,11 @@ export function createOutboundService(deps: {
           conversationId: conversation.id,
           humanUntil: conversation.humanUntil?.toISOString() ?? null,
         });
+      }
+
+      // Global switch (phase 9 M6): with automatic replies off, the bot answers nobody.
+      if (purpose === "auto_reply" && !(await autoRepliesEnabled(log))) {
+        throw errors.autoRepliesOff();
       }
 
       let optOutInstructionCutoff: Date | undefined;
@@ -204,6 +212,16 @@ export function createOutboundService(deps: {
         message.purpose !== "human"
       ) {
         return fail("opted_out", "Contact opted out of business-initiated messages");
+      }
+
+      // Re-check: automatic replies may have been switched off while it waited in the queue.
+      if (message.purpose === "auto_reply" && !(await autoRepliesEnabled(log))) {
+        await deps.repository.cancelPending(messageId, now(), {
+          code: "auto_replies_off",
+          message: "Cancelled: automatic replies are switched off",
+        });
+        log.info({ messageId }, "automatic reply cancelled: automatic replies are switched off");
+        return { outcome: "canceled", reason: "auto_replies_off" };
       }
 
       // Last gate before Meta, under the conversation lock (ADR-016).

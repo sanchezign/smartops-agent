@@ -20,6 +20,8 @@ import type { OptOutRepository } from "../optout/optout.repository.js";
 import type { MediaStorage } from "../media/media-storage.js";
 import type { CatalogQueryRepository } from "./catalog-query.repository.js";
 import type { ConversationQueryRepository } from "./conversation-query.repository.js";
+import { isOpen, nextOpening } from "../settings/business-hours.js";
+import type { BusinessHours } from "../settings/settings.schemas.js";
 import { mediaResponseHeaders } from "./media-response.js";
 import type { ReviewQueryRepository } from "./review-query.repository.js";
 import type { ReviewService } from "../reviews/review.service.js";
@@ -499,6 +501,27 @@ function buildRoutes(deps: AdminDeps): AdminRoute[] {
       roles: ALL_ROLES,
       handler: async (_req, res, ctx) => {
         res.json({ settings: await deps.settings.getAll(ctx.log) });
+      },
+    },
+    {
+      // Operating status for the panel header (phase 9 M6): open / "fuera de horario" and the
+      // global automatic-replies switch.
+      method: "get",
+      path: "/status",
+      roles: ALL_ROLES,
+      handler: async (_req, res, ctx) => {
+        const all = await deps.settings.getAll(ctx.log);
+        const hours = (all["businessHours"] ?? null) as BusinessHours | null;
+        const now = new Date();
+        const opening = nextOpening(hours, now);
+        res.json({
+          autoRepliesEnabled: all["bot.autoRepliesEnabled"] !== false,
+          businessHours: {
+            configured: hours !== null,
+            open: isOpen(hours, now),
+            nextOpening: opening && opening > now ? opening : null,
+          },
+        });
       },
     },
     {

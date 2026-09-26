@@ -107,6 +107,12 @@ export interface OutboundRepository {
    * anything else is marked claimed (in flight — a later takeover no longer cancels it).
    */
   claimForSend(messageId: string, at: Date): Promise<"claimed" | "canceled" | "not_pending">;
+  /** pending + unclaimed → canceled with a reason (e.g. automatic replies switched off). */
+  cancelPending(
+    messageId: string,
+    at: Date,
+    reason: { code: string; message: string },
+  ): Promise<boolean>;
   /** pending → accepted by Meta: stores the wamid, then applies statuses that arrived first. */
   markAccepted(
     messageId: string,
@@ -301,6 +307,19 @@ ${OPT_OUT_INSTRUCTION_TEXT}`;
         contactOptOutAt: row.conversation.contact.optOutAt,
         request: raw.request ?? {},
       };
+    },
+
+    async cancelPending(messageId, at, reason) {
+      const done = await prisma.message.updateMany({
+        where: { id: messageId, status: "pending", waMessageId: null, claimedAt: null },
+        data: {
+          status: "canceled",
+          statusAt: at,
+          errorCode: reason.code,
+          errorMessage: reason.message,
+        },
+      });
+      return done.count === 1;
     },
 
     async claimForSend(messageId, at) {

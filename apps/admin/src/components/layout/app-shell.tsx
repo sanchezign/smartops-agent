@@ -9,6 +9,7 @@ import { useAuthStore } from "@/features/auth/store";
 import { cn } from "@/lib/utils";
 import { isActive, navFor } from "./nav-items";
 import { LiveIndicator } from "@/features/realtime/live-indicator";
+import { StatusChips } from "@/features/realtime/status-chips";
 import { UserMenu } from "./user-menu";
 
 /**
@@ -67,6 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <span className="font-semibold tracking-tight md:hidden">SmartOps</span>
         <span className="hidden md:block" />
         <div className="flex items-center gap-3">
+          <StatusChips />
           <LiveIndicator />
           <UserMenu />
         </div>

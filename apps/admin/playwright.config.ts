@@ -49,6 +49,8 @@ export default defineConfig({
         CORS_ORIGINS: E2E.panelUrl,
         LOG_LEVEL: "warn",
         LOGIN_RATE_LIMIT_MAX: "1000",
+        // Every browser project hits the API from one IP in a few minutes (not a real-world load).
+        RATE_LIMIT_MAX: "100000",
         N8N_DELIVERY_ENABLED: "false",
         AI_PROVIDER: "fake",
         TRANSCRIPTION_PROVIDER: "fake",

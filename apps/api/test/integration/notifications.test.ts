@@ -231,6 +231,38 @@ describe.skipIf(!testDatabaseUrl)("notifications (Postgres)", () => {
     });
   });
 
+  it("outside business hours a normal digest waits for the opening; a critical one goes now", async () => {
+    await prisma.setting.create({
+      data: {
+        key: "businessHours",
+        value: {
+          timeZone: "America/Montevideo",
+          days: [1, 2, 3, 4, 5].map((day) => ({ day, open: "09:00", close: "18:00" })),
+        },
+      },
+    });
+    const { svc, out } = service(); // clock: Monday 10:00Z = 07:00 in Montevideo (closed)
+    const run = await runWith({ pcts: [20] });
+    await svc.notify({ kind: "run", runId: run.run.id }, log);
+    const digest = await prisma.notificationDigest.findFirstOrThrow({ where: { critical: false } });
+    clock = new Date(digest.windowEndsAt.getTime() + 1000);
+    expect(await svc.processDigest(digest.id, log)).toEqual({ outcome: "postponed" });
+    const waiting = await prisma.notificationDigest.findUniqueOrThrow({ where: { id: digest.id } });
+    expect(waiting.windowEndsAt).toEqual(new Date("2026-10-05T12:00:00Z")); // 09:00 local
+    expect(scheduled.at(-1)).toEqual({ digestId: digest.id, startAfter: waiting.windowEndsAt });
+    expect(out.send).not.toHaveBeenCalled();
+
+    await svc.recordN8nError({ workflow: "procesador", executionId: "1", message: "caído" }, log);
+    const critical = await prisma.notificationDigest.findFirstOrThrow({
+      where: { critical: true },
+    });
+    expect(await svc.processDigest(critical.id, log)).toEqual({ outcome: "sent" });
+
+    clock = new Date("2026-10-05T12:00:01Z");
+    expect(await svc.processDigest(digest.id, log)).toEqual({ outcome: "sent" });
+    expect(out.send).toHaveBeenCalledTimes(2);
+  });
+
   it("critical integration errors skip the window (own cap); beyond it they wait in the digest", async () => {
     await prisma.setting.create({ data: { key: "notifications.criticalMaxPerHour", value: 1 } });
     const { svc, out } = service();

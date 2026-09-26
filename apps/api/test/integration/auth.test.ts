@@ -198,6 +198,46 @@ describe.skipIf(!testDatabaseUrl)("panel auth over HTTP (Postgres)", () => {
     expect(await prisma.auditLog.count({ where: { action: "auth.logout_all" } })).toBe(1);
   });
 
+  it("a password reset by an admin ends every session of that user", async () => {
+    await usersService().create(
+      { email: "luis@x.uy", name: "Luis", role: "operator", password: PASS },
+      { label: "test" },
+    );
+    const a = await login("luis@x.uy").expect(200);
+    const b = await login("luis@x.uy").expect(200);
+    const luis = await prisma.user.findUniqueOrThrow({ where: { email: "luis@x.uy" } });
+    const result = await usersService().resetPassword(
+      luis.id,
+      "una frase nueva bastante larga y distinta",
+      { label: "test" },
+    );
+    expect(result.revokedSessions).toBe(2);
+    await me(a.body.accessToken).expect(401);
+    await me(b.body.accessToken).expect(401);
+    const revoked = await prisma.authSession.findMany({ where: { userId: luis.id } });
+    expect(revoked.map((s) => s.revokeReason)).toEqual(["password_changed", "password_changed"]);
+  });
+
+  it("nobody changes their own role or deactivates themselves (another admin must)", async () => {
+    const ana = await usersService().create(
+      { email: "ana2@x.uy", name: "Ana", role: "admin", password: PASS },
+      { label: "test" },
+    );
+    await usersService().create(
+      { email: "beto@x.uy", name: "Beto", role: "admin", password: PASS },
+      { label: "test" },
+    );
+    for (const change of [{ role: "operator" as const }, { active: false }]) {
+      await expect(usersService().update(ana.id, change, { userId: ana.id })).rejects.toMatchObject(
+        { code: "FORBIDDEN" },
+      );
+    }
+    expect(await prisma.user.findUniqueOrThrow({ where: { id: ana.id } })).toMatchObject({
+      role: "admin",
+      active: true,
+    });
+  });
+
   it("a role change or a deactivation ends the user's sessions at once", async () => {
     await usersService().create(
       { email: "luis@x.uy", name: "Luis", role: "admin", password: PASS },
