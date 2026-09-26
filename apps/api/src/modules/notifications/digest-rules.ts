@@ -21,6 +21,7 @@ export function isActionableRun(facts: RunFacts): boolean {
 export type ItemData =
   | ({ category: "run_summary" } & RunFacts)
   | { category: "customer_query"; messageId: string; contactName: string | null; preview: string }
+  | { category: "order"; messageId: string; contactName: string | null; preview: string }
   | { category: "integration_error"; source: string; message: string }
   | { category: "manual_attention"; title: string };
 
@@ -79,6 +80,8 @@ export function renderDigest(items: ItemData[]): string {
     );
   }
 
+  const orders = items.filter((i) => i.category === "order").length;
+  if (orders > 0) lines.push(`${plural(orders, "pedido", "pedidos")}.`);
   const queries = items.filter((i) => i.category === "customer_query").length;
   if (queries > 0)
     lines.push(`${plural(queries, "consulta de cliente", "consultas de clientes")}.`);

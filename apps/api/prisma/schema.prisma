@@ -160,6 +160,8 @@ enum AlertType {
 enum NotificationCategory {
   run_summary
   customer_query
+  /// An order / purchase request (classification internal_order, phase 8): never dropped.
+  order
   integration_error
   manual_attention
 }

@@ -86,6 +86,39 @@ describe("n8n workflows (static contract)", () => {
     expect(hook.credentials?.httpHeaderAuth?.name).toBe("SmartOps webhook secret");
   });
 
+  it("every classification that needs a person reaches the Notificador with its kind (phase 8: no lost orders)", () => {
+    const receiver = byName("SmartOps · Receptor");
+    const ruta = receiver.nodes.find((n) => n.name === "Ruta")!;
+    const rules = (
+      ruta.parameters.rules as {
+        values: { conditions: { conditions: { rightValue?: string }[] }; outputKey: string }[];
+      }
+    ).values;
+    const expected: Record<string, string> = {
+      customer_query: "customer_query",
+      internal_order: "order",
+    };
+    for (const [classification, kind] of Object.entries(expected)) {
+      const index = rules.findIndex((r) =>
+        r.conditions.conditions.some((c) => c.rightValue === classification),
+      );
+      expect(index, `${classification} has a route`).toBeGreaterThanOrEqual(0);
+      // Follow the route: Set node → Execute Workflow (Notificador).
+      const setName = receiver.connections.Ruta!.main[index]![0]!.node;
+      const set = receiver.nodes.find((n) => n.name === setName)!;
+      const assignments = (
+        set.parameters.assignments as { assignments: { name: string; value: string }[] }
+      ).assignments;
+      expect(assignments.find((a) => a.name === "kind")?.value, classification).toBe(kind);
+      const execName = receiver.connections[setName]!.main[0]![0]!.node;
+      const exec = receiver.nodes.find((n) => n.name === execName)!;
+      expect(exec.type).toBe("n8n-nodes-base.executeWorkflow");
+      expect((exec.parameters.workflowId as { cachedResultName?: string }).cachedResultName).toBe(
+        "SmartOps · Notificador",
+      );
+    }
+  });
+
   it("full vs partial is never decided in n8n: only the receiver looks at the classification", () => {
     for (const name of ["SmartOps · Procesador", "SmartOps · Notificador"]) {
       expect(JSON.stringify(byName(name)), name).not.toMatch(/classification|price_list_full/);

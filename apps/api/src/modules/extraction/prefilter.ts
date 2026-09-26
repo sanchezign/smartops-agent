@@ -6,6 +6,10 @@
  *
  * Only what can be a price list goes on: numbers, currency, price/stock words, or a PDF,
  * image, spreadsheet or voice note from a supplier (or a still unknown contact).
+ *
+ * Phase 8 (user rule): an ORDER or a question must never be dropped. A request signal
+ * ("necesito", "¿tienen…?", "mandame"…) sends the text to the classifier even without
+ * numbers; a customer's message with an order signal is labeled internal_order (no LLM).
  */
 
 export type PrefilterRule =
@@ -18,7 +22,7 @@ export type PrefilterRule =
 
 export interface PrefilterDecision {
   rule: PrefilterRule;
-  classification: "other" | "customer_query";
+  classification: "other" | "customer_query" | "internal_order";
   reason: string;
 }
 
@@ -53,13 +57,43 @@ export function hasPriceSignal(text: string): boolean {
   return PRICE_SIGNAL.test(text);
 }
 
+/** Order / purchase request words (Rioplatense and neutral Spanish, accents removed). */
+const ORDER_SIGNAL =
+  /\b(necesit\w*|quiero|querria|quisiera|manda\w*|envia\w*|pedi\w*|pedido|encarg\w*|reserv\w*|compr\w*|llevo|me (llevo|das|pasas))\b/i;
+
+/**
+ * A question or a request about products: it may be an order or a query. A bare "?" is NOT
+ * enough ("buen día, cómo andás?" stays chit-chat, without LLM).
+ */
+const REQUEST_SIGNAL = /\b(tienen|tenes|hay|cuanto|cuando|donde|entrega|envio|consulta)\b/i;
+
+/** Accents removed, so the patterns above only need plain letters ("mandá" → "manda"). */
+function normalizeAccents(text: string): string {
+  return text.normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+export function hasOrderSignal(text: string): boolean {
+  return ORDER_SIGNAL.test(normalizeAccents(text));
+}
+
+export function hasRequestSignal(text: string): boolean {
+  return hasOrderSignal(text) || REQUEST_SIGNAL.test(normalizeAccents(text));
+}
+
 export function prefilter(input: PrefilterInput): PrefilterDecision | null {
   if (input.contactKind === "customer") {
-    return {
-      rule: "customer_contact",
-      classification: "customer_query",
-      reason: "Contacto cliente: nunca pasa a extracción de precios (sin LLM).",
-    };
+    const text = input.text ?? input.transcript ?? "";
+    return hasOrderSignal(text)
+      ? {
+          rule: "customer_contact",
+          classification: "internal_order",
+          reason: "Contacto cliente con palabras de pedido: pedido para el equipo (sin LLM).",
+        }
+      : {
+          rule: "customer_contact",
+          classification: "customer_query",
+          reason: "Contacto cliente: nunca pasa a extracción de precios (sin LLM).",
+        };
   }
   if (NON_CONTENT_TYPES.has(input.messageType)) {
     return {
@@ -90,7 +124,7 @@ export function prefilter(input: PrefilterInput): PrefilterDecision | null {
         reason: `Audio sin transcripción (${input.transcriptionReason ?? input.transcriptionStatus ?? "desconocido"}).`,
       };
     }
-    return hasPriceSignal(input.transcript)
+    return hasPriceSignal(input.transcript) || hasRequestSignal(input.transcript)
       ? null
       : {
           rule: "no_price_signal",
@@ -99,7 +133,7 @@ export function prefilter(input: PrefilterInput): PrefilterDecision | null {
         };
   }
   if (input.messageType === "text") {
-    return hasPriceSignal(input.text ?? "")
+    return hasPriceSignal(input.text ?? "") || hasRequestSignal(input.text ?? "")
       ? null
       : {
           rule: "no_price_signal",

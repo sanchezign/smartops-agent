@@ -5,6 +5,7 @@ import { z } from "zod";
 export const notifySchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("run"), runId: z.uuid() }).strict(),
   z.object({ kind: z.literal("customer_query"), messageId: z.uuid() }).strict(),
+  z.object({ kind: z.literal("order"), messageId: z.uuid() }).strict(),
   z.object({ kind: z.literal("manual_attention"), alertId: z.uuid() }).strict(),
 ]);
 export type NotifyInput = z.infer<typeof notifySchema>;

@@ -106,18 +106,20 @@ export function createNotificationService(deps: {
             log,
           );
         }
-        case "customer_query": {
+        case "customer_query":
+        case "order": {
           const message = await deps.repository.customerMessage(input.messageId);
           if (!message) throw errors.notFound("Message not found");
           const preview = (message.text ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
+          const label = input.kind === "order" ? "Pedido" : "Consulta";
           return record(
             {
-              category: "customer_query",
+              category: input.kind,
               severity: "info",
-              dedupeKey: `customer_query:${input.messageId}`,
-              title: `Consulta de ${message.contactName ?? "un cliente"}: ${preview}`,
+              dedupeKey: `${input.kind}:${input.messageId}`,
+              title: `${label} de ${message.contactName ?? "un contacto"}: ${preview}`,
               data: {
-                category: "customer_query",
+                category: input.kind,
                 messageId: input.messageId,
                 contactName: message.contactName,
                 preview,

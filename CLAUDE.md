@@ -520,9 +520,8 @@ Each one gets an ADR in docs/adr/.
   (actor `cli:<--by>`).
 
 ## Current phase
-**Phase 7 complete (2026-09-26), merged to `main`. Phase 8 (admin auth) next on
-`feat/phase-8-admin-auth` — starts with the internal_order routing requirement found during
-the phase 7 phone test (see Phase order). M3b (phase 5) remains required before
+**Phase 7 complete (2026-09-26), merged to `main`. Phase 8 (admin auth) IN PROGRESS on
+`feat/phase-8-admin-auth` (M1 orders done). M3b (phase 5) remains required before
 production.**
 
 1. scaffold — done (2026-09-24).
@@ -868,6 +867,56 @@ production.**
      All verified in the DB. Also surfaced: a real order ("necesito 3 macetas") classified
      `internal_order` produced no notification — promoted to a required pre-phase-8 step
      (see Phase order), not merely a known issue anymore.
+8. admin auth — IN PROGRESS on `feat/phase-8-admin-auth`. Approved plan (2026-09-27) + user
+   answers:
+   - Deploy for the demo: **option D** (recommended) = everything on the Oracle VM behind
+     Caddy, REAL same origin (`/` → Next.js panel, `/api` → API), refresh cookie
+     `SameSite=Strict`, SSE direct, real client IP, $0 with a free subdomain + Caddy HTTPS.
+     Option A (Vercel rewrite, same origin through a proxy) = alternative if phase 12 ends on
+     plan B (Render). Option B (own domain, same site) documented for clients. Option C
+     (cross-site, `SameSite=None; Partitioned`) supported but fragile (Safari). The code
+     supports every mode through env (`AUTH_COOKIE_SAMESITE/SECURE/PARTITIONED`).
+   - Tokens: access JWT HS256 (`jose`) 15 min in panel MEMORY (Bearer); refresh = opaque
+     256-bit value, stored as SHA-256, HttpOnly cookie `Path=/api/v1/auth`; rotation on every
+     refresh; reuse of a rotated token revokes the whole session (RFC 9700), except a 10 s
+     grace for the rotated-just-now token (409 `REFRESH_RACE`, tabs serialize with Web Locks).
+     Session: 24 h idle, 7 days absolute. Every request re-reads session + user (logout-all,
+     role change and deactivation apply instantly). CSRF on the cookie routes (login,
+     refresh, logout): custom header `X-SmartOps-CSRF` + Origin allowlist (+ SameSite,
+     + reject `Sec-Fetch-Site: cross-site` in same-origin modes).
+   - Passwords: Argon2id via Node's built-in `crypto.argon2` (stable since Node 24.19 →
+     `engines >=24.19`), OWASP minimum m=19 MiB, t=2, p=1, PHC string (rehash on login when
+     params are weaker). Policy: 15–128 chars, no composition rules, NFKC, blocked: offline
+     common-password list + email/name (HIBP only documented as a client option). Lockout:
+     5 failures in 15 min → 15 min, doubling, **capped at 1 h** (user); per-IP login limit;
+     identical generic error; dummy hash for unknown emails.
+   - Roles: operator = line reviews, pause/resume, reply as human, manual OPT-OUT; admin also =
+     run gates (`scope: run`), `global_change`, `mark_unavailable`, manual OPT-IN, settings
+     writes, users. Last active admin cannot be demoted/deactivated; role change or
+     deactivation revokes that user's sessions.
+   - First admin only by CLI (`users:create`, password prompted hidden or `--password-stdin`,
+     never an argument, no defaults, no HTTP bootstrap). AuditLog for logins, failures,
+     locks, refresh reuse, logouts, user/role changes.
+   - Panel routes under `/api/v1/admin/*` (reviews approve/reject by scope/kind, mode
+     pause/resume, reply, opt-out/opt-in, settings, users) + route-inventory test (no
+     unprotected route). Approving a review that sends the run back to extraction re-emits
+     an outbox event (closes the phase 6 known issue).
+   - MFA (TOTP) = recommended improvement BEFORE a real client (user, 2026-09-27; see Known
+     issues). Minimal login page in `apps/admin` is part of this phase (M5). $0.
+   - M1 orders never lost — DONE (2026-09-27). Migration `order_notifications`
+     (`NotificationCategory.order`). `POST /internal/notifications {kind: "order", messageId}`
+     (same window + hourly cap as customer_query; dedupe `order:<messageId>`; title
+     "Pedido de …"; digest line "N pedidos" before queries). Pre-filter
+     (`prefilter.ts`): customer contacts with an order signal (necesito, quiero, mandame,
+     pedido, encargar, reservar, comprar…) → `internal_order` without LLM (otherwise
+     customer_query); for other contacts a request signal (order words or tienen / hay /
+     cuánto / cuándo / dónde / entrega / envío / consulta) sends the text or transcript to
+     the classifier instead of `no_price_signal` (a bare "?" does not count — greetings stay
+     free). n8n `receiver.json`: new `Ruta` output "pedido" (internal_order) → "Datos del
+     pedido" (kind order) → "Notificar pedido" (same Notificador). Static test: every
+     classification that needs a person reaches the Notificador with its kind; the contract
+     test's fake orchestrator mirrors the mapping. PENDING (user): import the new
+     receiver.json into n8n, publish and export it back (`n8n:export`).
 
 ## Known issues (out of scope)
 - **Phase 7 M3:** `wa:optout` (manual/off-WhatsApp) does not send a WhatsApp confirmation
@@ -882,7 +931,9 @@ production.**
   nothing re-triggers n8n: `extract` + `catalog/ingest` must be called again (done by hand
   in the M5 pass). The panel (phase 9) must re-trigger it (call the internal flow or emit a
   new event). The same applies to other approvals that send a run back to extraction.
-- **Phase 6:** `internal_order` is not routed yet (the receiver sends it to "otro (fin)") —
+- **Before a real client (user, 2026-09-27):** MFA (TOTP) for panel users is the recommended
+  next step after phase 8's password + session hardening (not implemented in the demo).
+- **Phase 6 (RESOLVED in phase 8 M1):** `internal_order` was not routed (the receiver sent it to "otro (fin)") —
   confirmed live during the phase 7 phone test ("necesito 3 macetas" → classified, no
   notification, a real order would be lost). Promoted to a REQUIRED BEFORE PRODUCTION
   first sub-step of phase 8 (see Phase order) — not just a known issue anymore.

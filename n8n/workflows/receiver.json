@@ -130,6 +130,30 @@
               },
               "renameOutput": true,
               "outputKey": "consulta de cliente"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ruta-pedido",
+                    "leftValue": "={{ $json.classification }}",
+                    "rightValue": "internal_order",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pedido"
             }
           ]
         },
@@ -263,6 +287,63 @@
       "typeVersion": 1,
       "position": [
         0,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "Datos del pedido-kind",
+              "name": "kind",
+              "value": "order",
+              "type": "string"
+            },
+            {
+              "id": "Datos del pedido-messageId",
+              "name": "messageId",
+              "value": "={{ $('Mensaje listo').first().json.body.messageId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3f1c2a7e-8b4d-4e6f-9a01-5c2d7e8f9a10",
+      "name": "Datos del pedido",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "b9T7sfBWvnFQvtkZ",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/b9T7sfBWvnFQvtkZ",
+          "cachedResultName": "SmartOps · Notificador"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "7a9e4b21-6c3d-4f58-8e12-0b4c6d8e2f31",
+      "name": "Notificar pedido",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        224,
         352
       ]
     }
@@ -319,6 +400,13 @@
         ],
         [
           {
+            "node": "Datos del pedido",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "Fin",
             "type": "main",
             "index": 0
@@ -342,6 +430,17 @@
         [
           {
             "node": "Notificar consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos del pedido": {
+      "main": [
+        [
+          {
+            "node": "Notificar pedido",
             "type": "main",
             "index": 0
           }

@@ -247,3 +247,52 @@ describe("transcription duration cap (Setting transcription.maxAutoDurationSecon
     ).toBe("done");
   });
 });
+
+describe("pre-filter — orders and questions are never dropped (phase 8)", () => {
+  it.each([
+    "necesito macetas",
+    "Necesito 3 macetas",
+    "mandame cinta aisladora",
+    "¿tienen macetas grandes?",
+    "quisiera encargar tanza",
+    "cuándo me entregan?",
+  ])("a request from a supplier/unknown contact goes to the classifier: %j", (text) => {
+    expect(prefilter({ ...base, text })).toBeNull();
+    expect(prefilter({ ...base, contactKind: "unknown", text })).toBeNull();
+  });
+
+  it.each(["hola", "gracias!!", "buen día, cómo andás?", "dale, te aviso"])(
+    "chit-chat still skips the LLM: %j",
+    (text) => {
+      expect(prefilter({ ...base, text })).toMatchObject({ rule: "no_price_signal" });
+    },
+  );
+
+  it.each(["necesito 3 macetas", "quiero encargar 2 candados", "Mandame 10 rollos"])(
+    "a customer's order is labeled internal_order without LLM: %j",
+    (text) => {
+      expect(prefilter({ ...base, contactKind: "customer", text })).toMatchObject({
+        rule: "customer_contact",
+        classification: "internal_order",
+      });
+    },
+  );
+
+  it("a customer's question stays customer_query", () => {
+    expect(
+      prefilter({ ...base, contactKind: "customer", text: "¿tienen candados de 40mm?" }),
+    ).toMatchObject({ classification: "customer_query" });
+  });
+
+  it("a voice note with an order is transcribed text too", () => {
+    expect(
+      prefilter({
+        ...base,
+        messageType: "audio",
+        mediaStatus: "stored",
+        transcriptionStatus: "done",
+        transcript: "hola necesito macetas para el sábado",
+      }),
+    ).toBeNull();
+  });
+});

@@ -4,7 +4,7 @@ Los borradores están en `n8n/workflows/`:
 
 | Archivo          | Workflow               | Qué hace                                                                                               |
 | ---------------- | ---------------------- | ------------------------------------------------------------------------------------------------------ |
-| `receiver.json`  | SmartOps · Receptor    | Webhook "mensaje listo" → `POST /internal/classify` → ruta (lista / consulta / fin)                    |
+| `receiver.json`  | SmartOps · Receptor    | Webhook "mensaje listo" → `POST /internal/classify` → ruta (lista / consulta / pedido / fin)           |
 | `processor.json` | SmartOps · Procesador  | `POST /internal/extract` (espera si está "extracting") → `POST /internal/catalog/ingest` → notificador |
 | `notifier.json`  | SmartOps · Notificador | `POST /internal/notifications` → (si es lista) `POST /internal/messages/ack`                           |
 | `errors.json`    | SmartOps · Errores     | Error Trigger → `POST /internal/n8n/errors` (alerta + aviso crítico)                                   |
@@ -87,6 +87,22 @@ El script corre `n8n export:workflow` dentro del contenedor, descarta `pinData` 
 fijados de prueba pueden tener teléfonos reales), `staticData` y metadatos, deja las
 credenciales solo como referencia (nombre e id) y **no escribe nada** si encuentra algo con
 forma de secreto. Nunca exportes credenciales.
+
+## 7. Actualizar el Receptor (fase 8: pedidos)
+
+`receiver.json` suma la salida **"pedido"** en el nodo `Ruta` (`internal_order`) → "Datos del
+pedido" (`kind: order`) → "Notificar pedido" (el mismo Notificador). Sin esto un pedido queda
+clasificado pero sin aviso.
+
+1. En n8n abrí **SmartOps · Receptor** → ⋯ → **Import from File** → `n8n/workflows/receiver.json`
+   (reemplaza el contenido del workflow abierto; conserva el mismo workflow y su webhook).
+2. Revisá que el nodo **Notificar pedido** apunte a _SmartOps · Notificador_ (si aparece vacío,
+   elegilo en el desplegable) y que los nodos HTTP / el webhook tengan sus credenciales.
+3. Guardá y **Publish**.
+4. Probá con un mensaje "necesito 3 macetas" (desde un contacto que no sea cliente va al
+   clasificador; desde un cliente se etiqueta pedido sin IA).
+5. Exportá de vuelta: `pnpm --filter @smartops/api n8n:export`, Prettier y
+   `pnpm --filter @smartops/api test -- n8n-workflows`.
 
 ## Seguridad
 

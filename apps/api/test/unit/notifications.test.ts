@@ -61,6 +61,15 @@ describe("digest text (one WhatsApp for many events)", () => {
       "SmartOps · ⚠️ Error de integración (n8n · procesador): timeout 1 lista procesada: 1 producto con stock bajo. 2 consultas de clientes. 1 audio para escuchar. Detalle en el panel.",
     );
   });
+
+  it("orders are counted before queries (phase 8: an order is never lost)", () => {
+    const text = renderDigest([
+      { category: "order", messageId: "o1", contactName: "Ana", preview: "necesito 3 macetas" },
+      { category: "order", messageId: "o2", contactName: null, preview: "mandame tanza" },
+      { category: "customer_query", messageId: "q", contactName: "Luis", preview: "¿stock?" },
+    ]);
+    expect(text).toBe("SmartOps · 2 pedidos. 1 consulta de cliente. Detalle en el panel.");
+  });
 });
 
 describe("hourly cap", () => {

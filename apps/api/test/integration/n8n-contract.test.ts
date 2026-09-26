@@ -99,8 +99,10 @@ describe.skipIf(!testDatabaseUrl)("contract: backend ↔ fake n8n orchestrator (
     // Receiver
     const classified = await call("POST", "/classify", { messageId: event.messageId });
     const cls = classified.classification as string | null;
-    if (cls === "customer_query") {
-      await call("POST", "/notifications", { kind: "customer_query", messageId: event.messageId });
+    // Same mapping as the real receiver (Ruta): customer_query → customer_query, internal_order → order.
+    const notifyKind = { customer_query: "customer_query", internal_order: "order" }[cls ?? ""];
+    if (notifyKind) {
+      await call("POST", "/notifications", { kind: notifyKind, messageId: event.messageId });
       return steps;
     }
     if (!(cls === null || cls === "price_list_full" || cls === "price_update_partial"))
@@ -349,5 +351,30 @@ describe.skipIf(!testDatabaseUrl)("contract: backend ↔ fake n8n orchestrator (
     expect(await prisma.notificationItem.findFirstOrThrow()).toMatchObject({
       category: "customer_query",
     });
+  });
+
+  it("a customer's ORDER: no LLM, an order notification (phase 8 — never lost)", async () => {
+    const conversation = await contactAndConversation("customer");
+    const message = await prisma.message.create({
+      data: {
+        conversationId: conversation.id,
+        direction: "inbound",
+        type: "text",
+        author: "contact",
+        text: "Perfecto, necesito 3 macetas",
+      },
+    });
+    await prisma.$transaction((tx) => emit()(tx, { messageId: message.id }));
+    const [steps] = await deliver();
+    expect(steps!.map((s) => s.path)).toEqual(["/classify", "/notifications"]);
+    expect(steps![0]!.body).toMatchObject({
+      classification: "internal_order",
+      prefilterRule: "customer_contact",
+    });
+    expect(await prisma.aiUsage.count()).toBe(0);
+    const items = await prisma.notificationItem.findMany();
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.every((i) => i.category === "order")).toBe(true);
+    expect(items[0]!.title).toMatch(/^Pedido de /);
   });
 });
