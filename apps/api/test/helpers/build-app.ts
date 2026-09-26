@@ -113,6 +113,7 @@ export const stubAuthService: AuthService = {
 
 /** Panel API services that are never reached in tests without Postgres. */
 export const stubAdminDeps: AdminDeps = {
+  dashboard: { get: notConfigured },
   reviews: {
     list: notConfigured,
     get: notConfigured,

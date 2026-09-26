@@ -33,3 +33,9 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# Playwright (phase 9)
+apps/admin/e2e/results/
+apps/admin/e2e/report/
+apps/admin/e2e/screens/
+apps/admin/.next-e2e/

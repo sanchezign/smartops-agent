@@ -8,6 +8,7 @@ import { createRequireAuth, currentUser } from "../auth/auth-http.js";
 import type { AuthenticatedUser, AuthService } from "../auth/auth.service.js";
 import { ADMIN_ONLY, ALL_ROLES, canResolveReview, requireRole } from "../auth/permissions.js";
 import type { ConversationModeService } from "../conversations/conversation-mode.service.js";
+import type { DashboardService } from "../dashboard/dashboard.service.js";
 import type { HumanReplyService } from "../conversations/human-reply.service.js";
 import type { OptOutRepository } from "../optout/optout.repository.js";
 import type { ReviewService } from "../reviews/review.service.js";
@@ -22,6 +23,7 @@ import { roleSchema, type UsersService } from "../users/users.service.js";
  */
 
 export interface AdminDeps {
+  dashboard: Pick<DashboardService, "get">;
   reviews: Pick<ReviewService, "list" | "get" | "approve" | "reject">;
   /** Re-emits message.ready for a run a review sent back to extraction (closes phase 6 gap). */
   retriggerRun(runId: string, reason: string): Promise<{ retriggered: boolean }>;
@@ -60,6 +62,9 @@ const reviewQuery = z
     ingestionRunId: z.uuid().optional(),
     limit: z.coerce.number().int().min(1).max(200).optional(),
   })
+  .strict();
+const dashboardQuery = z
+  .object({ days: z.coerce.number().int().min(7).max(90).default(14) })
   .strict();
 const pauseBody = z.object({ minutes: z.number().int().min(1).max(10_080).nullable() }).strict();
 const replyBody = z.object({ text: z.string().trim().min(1).max(4_096) }).strict();
@@ -120,6 +125,17 @@ function buildRoutes(deps: AdminDeps): AdminRoute[] {
   }
 
   return [
+    // ── Dashboard ───────────────────────────────────────────────────────────
+    {
+      method: "get",
+      path: "/dashboard",
+      roles: ALL_ROLES,
+      schemas: { query: dashboardQuery },
+      handler: async (_req, res) => {
+        const { days } = getValidated<typeof dashboardQuery>(res, "query");
+        res.json(await deps.dashboard.get(days));
+      },
+    },
     // ── Reviews ─────────────────────────────────────────────────────────────
     {
       method: "get",

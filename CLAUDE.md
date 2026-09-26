@@ -520,7 +520,7 @@ Each one gets an ADR in docs/adr/.
   (actor `cli:<--by>`).
 
 ## Current phase
-**Phase 8 complete (2026-09-26), merged to `main`. Phase 9 (admin UI) next on
+**Phase 8 complete (2026-09-26), merged to `main`. Phase 9 (admin UI) IN PROGRESS on
 `feat/phase-9-admin-panel`. M3b (phase 5) and MFA (TOTP) remain recommended/required before
 a real client.**
 
@@ -990,6 +990,65 @@ a real client.**
      only node ids/positions changed). Lesson (docs/n8n-setup.md §7): n8n "Import from File"
      ADDS nodes to the open canvas — clear it first, or you get duplicate nodes and two
      webhooks on the same path.
+9. admin UI — IN PROGRESS on `feat/phase-9-admin-panel`. Approved plan (2026-09-27) + user
+   answers: shadcn/ui (new-york, Tailwind v4, React 19) + TanStack Query + Recharts (shadcn chart);
+   MOBILE FIRST (375 px first; bottom nav on phones, sidebar from tablet; 44 px targets; tables
+   become cards); consistent loading/empty/error/403/expired states; WCAG 2.1 AA (axe);
+   rioplatense "vos" texts, America/Montevideo dates, Intl money from Decimal strings (display
+   only). 8 milestones, commit + push each, STOP at the end of M8 for the user's phone tests:
+   M1 shell + demo seed + dashboard; M2 review queue (every kind incl. the spreadsheet price
+   column picker); M3 conversations (🤖/👤/⛔ badges, pause/resume, reply as a person, opt-out /
+   opt-in, opted-out list, chat media); M4 real time (SSE); M5 catalog + price history chart +
+   alerts + rename supplier (merge later); M6 rules + users (admin); M7 richer digest + deep link;
+   M8 "Probar el sistema" (DEMO_MODE) + Playwright E2E + close.
+   - Settings: `bot.autoRepliesEnabled` = GLOBAL switch for automatic replies (processing and
+     team notifications continue, like human mode); `businessHours` = QUIET HOURS for non-critical
+     WhatsApp digests (wait until opening; critical ones still go out) + "fuera de horario" in the
+     panel; an automatic "we reply tomorrow" answer is a future option, OFF by default.
+   - DEMO_MODE (decided here, closes the phase 12 question): enables the demo page and
+     `/api/v1/demo/*`, FORCES fake LLM + fake transcriber ($0 guaranteed), serves a fake Graph API
+     INSIDE the API (demo only), visible "modo demo" banner; the production "no fakes" rule stays
+     unless DEMO_MODE is explicit. Demo data in a SEPARATE database `smartops_demo` (seed refuses
+     any DB not ending in `_demo`), `demo:seed` / `demo:reset` + AUTOMATIC periodic reset
+     (configurable) + "Reiniciar demo" button. PUBLIC ACCESS (user addendum 1): a demo user with
+     role operator whose credentials are shown on the login screen, without access to users or
+     critical rules; a test guarantees that in DEMO_MODE no real WhatsApp message can ever leave.
+   - Chat media (user addendum 2): an `<img>` cannot send the Bearer — decide and document
+     (blob fetch with Bearer vs short-lived signed URLs), with tests.
+   - SSE (user addendum 3): LISTEN/NOTIFY with ONE LISTEN connection per API process fanning out
+     in memory to every SSE connection (never a Postgres connection per client); cap of SSE
+     connections per user. Events carry ids + type only; fetch-based stream with the in-memory
+     Bearer; session re-checked on every heartbeat (logout-all / role change close the stream);
+     reconnect with backoff + invalidate every query.
+   - Playwright projects: Chromium desktop, Chromium mobile (Pixel 7), WebKit mobile (iPhone).
+   - Deep link: `PANEL_PUBLIC_URL` + `/d/<digestId>` (list of the digest's items, or a direct
+     redirect when there is one); login keeps the URL.
+   - M1 shell + demo seed + dashboard — DONE (2026-09-27). shadcn CLI 4.21 (preset "nova",
+     base radix: `radix-ui`, `cn` = shadcn's own clsx+tailwind-merge package), Recharts 3.8,
+     TanStack Query 5, next-themes, sonner; chart colors = accent tokens (--chart-1 green,
+     --chart-2 blue). `apps/admin`: Providers (query client: no retry on 4xx), AppShell
+     (bottom bar + "Más" sheet on phones, sidebar md+, skip link, aria-current), UserMenu (theme,
+     logout, logout-all), shared states (Loading/Empty/Error with requestId/Forbidden),
+     `lib/format.ts` (es-UY, Montevideo, Intl money from Decimal strings), dashboard (period as a
+     button group with aria-pressed — NOT tabs without panels; charts aria-hidden with
+     `accessibilityLayer={false}` + a visually hidden table), "en construcción" placeholders.
+     Login submit disabled until hydrated + method=post (a pre-JS native GET would put the
+     credentials in the URL). API: `src/modules/dashboard/` (rules: automatic = finished runs
+     without review items; automationRate excludes in-progress; pre-filter savings = count ×
+     avg real classify cost, fallback 0.0027; days in America/Montevideo; "today" AI spend =
+     UTC day like the spend guard) + `GET /admin/dashboard?days=7..90`. Demo seed
+     (`src/modules/demo/`, `pnpm --filter @smartops/api demo:seed`): DEMO_DATABASE_URL must end
+     in `_demo` (guard in code + DB name check), wipes every public table, 3 suppliers / 39
+     products / 90 days of lists through the REAL catalog ingest (reviews and alerts exactly as
+     production; timestamps moved back to the message date), a suspicious-instructions gate like
+     the extraction creates it, customers with queries/orders, one chat in human mode, one
+     opt-out, pre-filtered chit-chat, AI usages. Demo operator = public credentials (env
+     DEMO_OPERATOR_*); demo admin only with DEMO_ADMIN_PASSWORD. Playwright 1.63 + axe 4.13
+     (`pnpm --filter @smartops/admin e2e`): projects desktop / Pixel 7 / iPhone 15 (WebKit),
+     own DB `<dev>_e2e_demo` seeded by the API web server command (web servers start before any
+     global setup), API :4100, panel as a PRODUCTION build in `.next-e2e` (next dev chunks were
+     flaky and would clobber the developer's .next); `SCREENS=1` takes review screenshots into
+     e2e/screens (gitignored).
 
 ## Known issues (out of scope)
 - **Phase 7 M3:** `wa:optout` (manual/off-WhatsApp) does not send a WhatsApp confirmation

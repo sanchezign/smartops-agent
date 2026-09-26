@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ApiError } from "@/lib/api-client";
 import { api } from "../api";
 import { loginErrorText, loginSchema } from "../schemas";
@@ -16,6 +16,10 @@ export function LoginForm() {
   const params = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  // Until React hydrates, the button stays disabled: a native (pre-JS) submit would send the
+  // credentials in the URL query string (history, logs).
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,7 +44,12 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex w-full max-w-sm flex-col gap-4" noValidate>
+    <form
+      method="post"
+      onSubmit={onSubmit}
+      className="flex w-full max-w-sm flex-col gap-4"
+      noValidate
+    >
       <label className="flex flex-col gap-1 text-sm">
         Email
         <input
@@ -68,7 +77,7 @@ export function LoginForm() {
       ) : null}
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || !hydrated}
         className="rounded-md bg-neutral-900 px-3 py-2 text-white disabled:opacity-60"
       >
         {pending ? "Ingresando…" : "Ingresar"}

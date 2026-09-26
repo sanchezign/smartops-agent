@@ -5,6 +5,8 @@ const { API_PROXY_TARGET } = serverEnv();
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // E2E builds into their own folder so they never clobber a running `next dev` (.next).
+  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   // Same origin without Caddy (local dev, or deploy option A): the browser calls /api/* on the
   // panel's own origin and Next forwards it, so the refresh cookie stays first-party
   // (SameSite=Strict). In option D Caddy routes /api before it ever reaches Next.

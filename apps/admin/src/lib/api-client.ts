@@ -27,6 +27,8 @@ export class ApiError extends Error {
     public readonly code: string,
     message: string,
     public readonly details?: unknown,
+    /** Correlates the failure with the API logs (shown to the person for support). */
+    public readonly requestId?: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -53,13 +55,14 @@ const REFRESH_LOCK = "smartops-auth-refresh";
 
 async function toError(res: Response): Promise<ApiError> {
   const body = (await res.json().catch(() => null)) as {
-    error?: { code?: string; message?: string; details?: unknown };
+    error?: { code?: string; message?: string; details?: unknown; requestId?: string };
   } | null;
   return new ApiError(
     res.status,
     body?.error?.code ?? "HTTP_ERROR",
     body?.error?.message ?? res.statusText,
     body?.error?.details,
+    body?.error?.requestId ?? res.headers.get("x-request-id") ?? undefined,
   );
 }
 

@@ -20,6 +20,8 @@ import {
   startBoss,
 } from "./jobs/boss.js";
 import { createRunRetrigger } from "./modules/admin/run-retrigger.js";
+import { createDashboardRepository } from "./modules/dashboard/dashboard.repository.js";
+import { createDashboardService } from "./modules/dashboard/dashboard.service.js";
 import { createConversationModeRepository } from "./modules/conversations/conversation-mode.repository.js";
 import { createConversationModeService } from "./modules/conversations/conversation-mode.service.js";
 import { createHumanReplyService } from "./modules/conversations/human-reply.service.js";
@@ -179,6 +181,10 @@ const app = createApp({
   auth,
   // Panel API (phase 8 M4): the same services the CLIs use, behind roles.
   admin: {
+    dashboard: createDashboardService({
+      repository: createDashboardRepository(prisma),
+      budget: { totalUsd: env.AI_TOTAL_BUDGET_USD, dailyUsd: env.AI_DAILY_BUDGET_USD },
+    }),
     reviews: createReviewService({
       repository: createReviewRepository(prisma),
       ingest: catalog,

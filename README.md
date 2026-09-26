@@ -243,6 +243,8 @@ Validated end to end on 2026-09-26:
 
 Per app: `pnpm --filter @smartops/api <script>` / `pnpm --filter @smartops/admin <script>`.
 
+Browser E2E (Playwright, phase 9): `pnpm --filter @smartops/admin e2e` — desktop Chromium, Pixel 7 and iPhone (WebKit), with axe accessibility checks. It seeds its own `<dev db>_e2e_demo` database and starts its own API (:4100) and a production build of the panel (:3100), so it never touches your running `pnpm dev`. First time: `pnpm --filter @smartops/admin exec playwright install chromium webkit`.
+
 API processes (run with `pnpm --filter @smartops/api <script>`):
 
 | Script               | What it does                                                                                                                                                |
@@ -258,6 +260,7 @@ API processes (run with `pnpm --filter @smartops/api <script>`):
 | `wa:reply`           | A person replies to a contact (24 h window) and takes over the conversation (phase 7)                                                                       |
 | `wa:optout`          | Manual opt-in / opt-out of a contact, requires `--reason` (phase 7, ADR-017)                                                                                |
 | `users`              | Panel users: `create` (first admin), `list`, `reset-password`, `unlock`, `set-role`, `deactivate` — passwords prompted hidden, never as arguments (phase 8) |
+| `demo:seed`          | Wipes and refills the DEMO database (`DEMO_DATABASE_URL`, name must end in `_demo`) with 90 days of realistic activity (phase 9)                            |
 | `claude-md:baseline` | Raises the size floor of the CLAUDE.md guard test after intentional growth                                                                                  |
 | `n8n:export`         | Exports the SmartOps workflows from local n8n, sanitized, to n8n/workflows                                                                                  |
 

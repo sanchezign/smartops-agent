@@ -46,7 +46,7 @@ describe("route inventory: every /admin route is protected", () => {
       )
       .sort();
     expect(mounted).toEqual(table.map((r) => `${r.method.toUpperCase()} ${r.path}`).sort());
-    expect(table.length).toBeGreaterThanOrEqual(19);
+    expect(table.length).toBeGreaterThanOrEqual(20);
   });
 
   it.each(table.map((r) => [r.method.toUpperCase(), r.path, r] as const))(

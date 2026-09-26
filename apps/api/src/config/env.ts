@@ -146,6 +146,18 @@ export const envSchema = z.object({
   /** Per-IP login attempts per 15 minutes (on top of the per-account lockout). */
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
 
+  // ─── Demo data (phase 9) ───
+  /** Separate demo database (name MUST end in "_demo"): demo:seed / demo:reset. */
+  DEMO_DATABASE_URL: optionalString(
+    z.string().regex(/^postgres(ql)?:\/\/.+/, "must be a postgres:// connection string"),
+  ),
+  /** Demo operator: PUBLIC credentials by design (shown on the login screen in DEMO_MODE). */
+  DEMO_OPERATOR_EMAIL: z.string().email().default("demo@ferreteria.demo"),
+  DEMO_OPERATOR_PASSWORD: z.string().min(15).default("probá el panel sin miedo"),
+  /** Demo admin: only created when a password is given (no default admin password). */
+  DEMO_ADMIN_EMAIL: z.string().email().default("admin@ferreteria.demo"),
+  DEMO_ADMIN_PASSWORD: optionalString(z.string().min(15)),
+
   // ─── n8n (phase 6, ADR-015) ───
   /** Deliver "message.ready" events to n8n. Off: events accumulate and go out when enabled. */
   N8N_DELIVERY_ENABLED: z
