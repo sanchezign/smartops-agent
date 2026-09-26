@@ -332,6 +332,7 @@ describe.skipIf(!testDatabaseUrl)(
         type: "text",
         text: "Hola",
         author: "bot",
+        purpose: "auto_reply",
         request: {},
       });
       // The webhook wins the race: statuses recorded while the message has no wamid yet.

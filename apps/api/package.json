@@ -23,11 +23,13 @@
     "wa:fake-graph": "tsx --env-file-if-exists=.env scripts/simulator/fake-graph-cli.ts",
     "wa:media:retry": "tsx --env-file-if-exists=.env scripts/media-retry.ts",
     "wa:send": "tsx --env-file-if-exists=.env scripts/whatsapp-send.ts",
+    "wa:conversation": "tsx --env-file-if-exists=.env scripts/conversation-mode.ts",
     "wa:transcription:retry": "tsx --env-file-if-exists=.env scripts/transcription-retry.ts",
     "wa:fixtures:capture": "tsx --env-file-if-exists=.env scripts/capture-whatsapp-fixtures.ts",
     "ai:record-golden": "tsx --env-file-if-exists=.env scripts/ai-record-golden.ts",
     "n8n:replay": "tsx --env-file-if-exists=.env scripts/n8n-replay.ts",
-    "n8n:export": "tsx scripts/n8n/export.ts"
+    "n8n:export": "tsx scripts/n8n/export.ts",
+    "claude-md:baseline": "tsx scripts/claude-md-baseline.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

@@ -1,6 +1,13 @@
 import type { PrismaClient } from "../../common/db.js";
 import { Prisma } from "../../generated/prisma/client.js";
-import type { MessageAuthor, MessageStatus, OptInSource } from "../../generated/prisma/enums.js";
+import type {
+  ConversationMode,
+  MessageAuthor,
+  MessagePurpose,
+  MessageStatus,
+  OptInSource,
+} from "../../generated/prisma/enums.js";
+import { HUMAN_TAKEOVER_CODE } from "../conversations/conversation-mode.repository.js";
 import { allowedPreviousStatuses, toMessageStatus } from "../whatsapp/message-status.js";
 
 /** Outbound messages + opt-in. The only place in the outbound flow that touches Prisma. */
@@ -15,7 +22,13 @@ export interface RecipientContact {
     optInAt: Date | null;
     optInSource: OptInSource | null;
   };
-  conversation: { id: string; lastInboundAt: Date | null } | null;
+  conversation: {
+    id: string;
+    lastInboundAt: Date | null;
+    mode: ConversationMode;
+    humanUntil: Date | null;
+    modeChangedAt: Date | null;
+  } | null;
 }
 
 export interface OutboundForSend {
@@ -23,6 +36,7 @@ export interface OutboundForSend {
   status: MessageStatus;
   waMessageId: string | null;
   type: string;
+  purpose: MessagePurpose | null;
   conversationId: string;
   lastInboundAt: Date | null;
   contactOptInAt: Date | null;
@@ -53,11 +67,18 @@ export interface OutboundRepository {
     type: "text" | "template";
     text: string | null;
     author: MessageAuthor;
+    purpose: MessagePurpose;
     authorUserId?: string;
     idempotencyKey?: string;
     request: Record<string, unknown>;
   }): Promise<{ messageId: string; conversationId: string; duplicate: boolean }>;
   getForSend(messageId: string): Promise<OutboundForSend | null>;
+  /**
+   * Right before calling Meta, under the conversation row lock (the same lock a human
+   * takeover takes, ADR-016): an automatic reply in a human-mode conversation is cancelled;
+   * anything else is marked claimed (in flight — a later takeover no longer cancels it).
+   */
+  claimForSend(messageId: string, at: Date): Promise<"claimed" | "canceled" | "not_pending">;
   /** pending → accepted by Meta: stores the wamid, then applies statuses that arrived first. */
   markAccepted(
     messageId: string,
@@ -83,7 +104,9 @@ export function createOutboundRepository(
     bsuid: true,
     optInAt: true,
     optInSource: true,
-    conversation: { select: { id: true, lastInboundAt: true } },
+    conversation: {
+      select: { id: true, lastInboundAt: true, mode: true, humanUntil: true, modeChangedAt: true },
+    },
   } as const;
 
   return {
@@ -162,6 +185,7 @@ export function createOutboundRepository(
               direction: "outbound",
               type: input.type,
               author: input.author,
+              purpose: input.purpose,
               authorUserId: input.authorUserId ?? null,
               text: input.text,
               status: "pending",
@@ -203,6 +227,7 @@ export function createOutboundRepository(
           status: true,
           waMessageId: true,
           type: true,
+          purpose: true,
           direction: true,
           raw: true,
           conversation: {
@@ -221,11 +246,44 @@ export function createOutboundRepository(
         status: row.status,
         waMessageId: row.waMessageId,
         type: row.type,
+        purpose: row.purpose,
         conversationId: row.conversation.id,
         lastInboundAt: row.conversation.lastInboundAt,
         contactOptInAt: row.conversation.contact.optInAt,
         request: raw.request ?? {},
       };
+    },
+
+    async claimForSend(messageId, at) {
+      return prisma.$transaction(async (tx) => {
+        const message = await tx.message.findUnique({
+          where: { id: messageId },
+          select: { conversationId: true },
+        });
+        if (!message) return "not_pending";
+        const rows = await tx.$queryRaw<{ mode: ConversationMode }[]>`
+          SELECT mode FROM conversations WHERE id = ${message.conversationId}::uuid FOR UPDATE`;
+        // Re-read under the lock: a takeover may have cancelled it meanwhile.
+        const current = await tx.message.findUniqueOrThrow({
+          where: { id: messageId },
+          select: { status: true, waMessageId: true, purpose: true },
+        });
+        if (current.status !== "pending" || current.waMessageId) return "not_pending";
+        if (current.purpose === "auto_reply" && rows[0]?.mode === "human") {
+          await tx.message.update({
+            where: { id: messageId },
+            data: {
+              status: "canceled",
+              statusAt: at,
+              errorCode: HUMAN_TAKEOVER_CODE,
+              errorMessage: "Cancelled: a person took over the conversation",
+            },
+          });
+          return "canceled";
+        }
+        await tx.message.update({ where: { id: messageId }, data: { claimedAt: at } });
+        return "claimed";
+      });
     },
 
     async markAccepted(messageId, { wamid, response, at }) {

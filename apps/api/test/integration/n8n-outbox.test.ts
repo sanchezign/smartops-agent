@@ -339,6 +339,7 @@ describe.skipIf(!testDatabaseUrl)(
           direction: "outbound",
           type: "text",
           author: "bot",
+          purpose: "auto_reply",
           text: "ok",
         },
       });

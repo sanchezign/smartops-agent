@@ -1,11 +1,13 @@
 import { fromPrisma, PgBoss } from "pg-boss";
 import type { Logger } from "../common/logger.js";
 import type { Prisma } from "../generated/prisma/client.js";
+import type { ScheduleBotResumeInTx } from "../modules/conversations/conversation-mode.repository.js";
 import type { EnqueueOutboundInTx } from "../modules/messaging/outbound.repository.js";
 import type { EnqueueMediaInTx } from "../modules/whatsapp/whatsapp-ingest.repository.js";
 import {
   QUEUE_DEFINITIONS,
   QUEUES,
+  type ConversationBotResumeJob,
   type MediaDownloadJob,
   type OutboundMessageJob,
   type DocumentConversionJob,
@@ -148,6 +150,18 @@ export function createScheduleDigestInTx(
       startAfter,
     });
     if (!jobId) throw new Error(`pg-boss did not create a digest job for ${digestId}`);
+  };
+}
+
+/** Schedules the bot reactivation (humanUntil) inside the mode-change transaction (phase 7). */
+export function createScheduleBotResumeInTx(boss: PgBoss): ScheduleBotResumeInTx {
+  return async (tx, { conversationId, at }) => {
+    const data: ConversationBotResumeJob = { conversationId };
+    const jobId = await boss.send(QUEUES.conversationBotResume, data, {
+      db: fromPrisma(tx),
+      startAfter: at,
+    });
+    if (!jobId) throw new Error(`pg-boss did not create a resume job for ${conversationId}`);
   };
 }
 

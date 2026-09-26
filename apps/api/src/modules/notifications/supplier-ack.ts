@@ -1,5 +1,6 @@
-import { errors } from "../../common/errors/app-error.js";
+import { AppError, errors } from "../../common/errors/app-error.js";
 import type { Logger } from "../../common/logger.js";
+import { autoReplyAllowed } from "../conversations/conversation-mode.js";
 import type { OutboundService } from "../messaging/outbound.service.js";
 import type { SettingsService } from "../settings/settings.service.js";
 import type { NotificationRepository } from "./notification.repository.js";
@@ -9,7 +10,8 @@ import type { NotificationRepository } from "./notification.repository.js";
  * OFF by default (Setting bot.supplierAck; ON in demo mode). The text is composed by the
  * backend from the run report (n8n never sends free text to a contact). Sent inside the
  * 24 h window the supplier just opened (free), never when a human is handling the
- * conversation, and at most once per run (idempotencyKey ack:<runId>).
+ * conversation nor for a message received while a human was handling it (ADR-016), and at
+ * most once per run (idempotencyKey ack:<runId>).
  */
 
 export interface AckContext {
@@ -18,7 +20,11 @@ export interface AckContext {
   pendingReviews: number;
   contactKind: string;
   conversationId: string;
-  conversationMode: string;
+  conversationMode: "bot" | "human";
+  humanUntil: Date | null;
+  modeChangedAt: Date | null;
+  /** When the run's message reached us. */
+  messageReceivedAt: Date;
 }
 
 export function ackText(ctx: AckContext): string {
@@ -60,17 +66,34 @@ export function createSupplierAckService(deps: {
       if (!["ingested", "needs_review"].includes(ctx.status))
         return { sent: false, reason: `run_${ctx.status}` };
       if (ctx.contactKind !== "supplier") return { sent: false, reason: "not_a_supplier" };
-      if (ctx.conversationMode !== "bot") return { sent: false, reason: "human_mode" };
-      const sent = await deps.outbound.send(
-        {
-          recipient: { conversationId: ctx.conversationId },
-          content: { kind: "text", body: ackText(ctx) },
-          author: "bot",
-          idempotencyKey: `ack:${runId}`,
-        },
-        log,
-      );
-      return { sent: true, messageId: sent.messageId };
+      const mode = {
+        mode: ctx.conversationMode,
+        humanUntil: ctx.humanUntil,
+        modeChangedAt: ctx.modeChangedAt,
+      };
+      if (!autoReplyAllowed(mode, ctx.messageReceivedAt))
+        return {
+          sent: false,
+          reason: ctx.conversationMode === "human" ? "human_mode" : "received_during_human_mode",
+        };
+      try {
+        const sent = await deps.outbound.send(
+          {
+            recipient: { conversationId: ctx.conversationId },
+            content: { kind: "text", body: ackText(ctx) },
+            author: "bot",
+            purpose: "auto_reply",
+            idempotencyKey: `ack:${runId}`,
+          },
+          log,
+        );
+        return { sent: true, messageId: sent.messageId };
+      } catch (err) {
+        // A person took over between the check and the send.
+        if (err instanceof AppError && err.code === "HUMAN_MODE")
+          return { sent: false, reason: "human_mode" };
+        throw err;
+      }
     },
   };
 }

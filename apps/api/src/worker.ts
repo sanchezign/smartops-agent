@@ -4,6 +4,7 @@ import { loadEnv } from "./config/env.js";
 import {
   createEnqueueDocumentConversionInTx,
   createEnqueueN8nDeliveryInTx,
+  createScheduleBotResumeInTx,
   createScheduleDigestInTx,
   enqueueN8nDelivery,
   createEnqueueMediaInTx,
@@ -12,10 +13,13 @@ import {
   createPgBossWebhookQueue,
   startBoss,
 } from "./jobs/boss.js";
+import { registerConversationModeWorkers } from "./jobs/conversation-mode.job.js";
 import { registerDocumentConversionWorkers } from "./jobs/document-conversion.job.js";
 import { registerMediaTranscriptionWorkers } from "./jobs/media-transcription.job.js";
 import { registerN8nDeliveryWorkers } from "./jobs/n8n-delivery.job.js";
 import { registerNotificationDigestWorkers } from "./jobs/notification-digest.job.js";
+import { createConversationModeRepository } from "./modules/conversations/conversation-mode.repository.js";
+import { createConversationModeService } from "./modules/conversations/conversation-mode.service.js";
 import { createNotificationRepository } from "./modules/notifications/notification.repository.js";
 import { createNotificationService } from "./modules/notifications/notification.service.js";
 import { createIntegrationEventRepository } from "./modules/integration/integration-event.repository.js";
@@ -203,6 +207,17 @@ await registerDocumentConversionWorkers(boss, {
   repository: conversionRepository,
   logger,
   concurrency: env.DOC_CONVERT_WORKER_CONCURRENCY,
+});
+
+// Bot / human mode (phase 7): reactivation at humanUntil + sweeper for lost jobs.
+await registerConversationModeWorkers(boss, {
+  service: createConversationModeService({
+    repository: createConversationModeRepository(prisma, {
+      scheduleBotResumeInTx: createScheduleBotResumeInTx(boss),
+    }),
+    settings,
+  }),
+  logger,
 });
 
 // Notification digests (phase 6): sent at the end of their window, anti-spam rules.

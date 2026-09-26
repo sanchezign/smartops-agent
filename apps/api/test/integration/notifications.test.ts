@@ -339,5 +339,15 @@ describe.skipIf(!testDatabaseUrl)("notifications (Postgres)", () => {
     );
     await prisma.conversation.update({ where: { id: conversation.id }, data: { mode: "human" } });
     expect(await ack.ack(run.id, log)).toEqual({ sent: false, reason: "human_mode" });
+    // Phase 7 (ADR-016): back to bot, but the list arrived while a person handled the
+    // chat → no delayed automatic reply.
+    await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: { mode: "bot", humanUntil: null, modeChangedAt: new Date(Date.now() + 60_000) },
+    });
+    expect(await ack.ack(run.id, log)).toEqual({
+      sent: false,
+      reason: "received_during_human_mode",
+    });
   });
 });

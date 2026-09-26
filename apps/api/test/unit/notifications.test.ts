@@ -81,7 +81,10 @@ describe("supplier acknowledgement text", () => {
     pendingReviews: 1,
     contactKind: "supplier",
     conversationId: "c",
-    conversationMode: "bot",
+    conversationMode: "bot" as const,
+    humanUntil: null,
+    modeChangedAt: null,
+    messageReceivedAt: new Date(),
   };
   it("summarizes what was applied, never prices or product names", () => {
     expect(ackText(ctx)).toBe(

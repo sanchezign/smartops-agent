@@ -256,8 +256,15 @@ export function createNotificationRepository(
           _count: { select: { reviewItems: { where: { status: "pending" } } } },
           message: {
             select: {
+              createdAt: true,
               conversation: {
-                select: { id: true, mode: true, contact: { select: { kind: true } } },
+                select: {
+                  id: true,
+                  mode: true,
+                  humanUntil: true,
+                  modeChangedAt: true,
+                  contact: { select: { kind: true } },
+                },
               },
             },
           },
@@ -272,6 +279,9 @@ export function createNotificationRepository(
         contactKind: conversation.contact.kind,
         conversationId: conversation.id,
         conversationMode: conversation.mode,
+        humanUntil: conversation.humanUntil,
+        modeChangedAt: conversation.modeChangedAt,
+        messageReceivedAt: run.message.createdAt,
       };
     },
 

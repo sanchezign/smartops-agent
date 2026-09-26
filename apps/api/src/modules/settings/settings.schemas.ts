@@ -55,6 +55,15 @@ export const SETTING_DEFINITIONS = {
   },
   /** Acknowledge supplier lists by WhatsApp ("Recibimos tu lista…"). OFF by default, ON in demo mode. */
   "bot.supplierAck": { schema: z.boolean(), default: false },
+  /**
+   * Human takeover (phase 7, ADR-016): after a person replies (panel or WhatsApp Business
+   * app), automatic replies to that contact stay paused this long (extended by each human
+   * message). Up to 7 days.
+   */
+  "coexistence.humanTakeoverMinutes": {
+    schema: z.number().int().min(1).max(10_080),
+    default: 120,
+  },
 } as const;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

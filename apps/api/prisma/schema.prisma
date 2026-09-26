@@ -75,6 +75,32 @@ enum MessageStatus {
   delivered
   read
   failed
+  /// Outbound never sent: cancelled before reaching Meta (e.g. a human took over, phase 7).
+  canceled
+}
+
+/// Why an OUTBOUND message is sent (phase 7). Decides what human mode / opt-out block.
+enum MessagePurpose {
+  /// Automatic reply to the contact (supplier ack, bot answers) — paused in human mode.
+  auto_reply
+  /// Opt-out / opt-in confirmation — never paused (policy), only inside the window.
+  compliance
+  /// Digest / alert to a team member (not a reply to this contact).
+  team_notification
+  /// Written by a person (panel reply).
+  human
+}
+
+/// Why a conversation changed mode (phase 7).
+enum ConversationModeReason {
+  /// A person replied from the admin panel.
+  human_reply_panel
+  /// A person replied from the WhatsApp Business app (coexistence echo).
+  human_reply_app
+  manual_pause
+  manual_resume
+  /// humanUntil passed → bot again.
+  timeout
 }
 
 enum IngestionClassification {
@@ -335,14 +361,18 @@ model Conversation {
   mode          ConversationMode @default(bot)
   /// While mode = human, the bot reactivates after this instant (null = until manual reactivation).
   humanUntil    DateTime?        @map("human_until") @db.Timestamptz(3)
+  /// Last mode change (phase 7): late echoes older than a resume never pause again, and
+  /// messages received before it get no delayed automatic reply.
+  modeChangedAt DateTime?        @map("mode_changed_at") @db.Timestamptz(3)
   /// Last inbound message from the contact — drives the 24h customer service window.
   lastInboundAt DateTime?        @map("last_inbound_at") @db.Timestamptz(3)
   lastMessageAt DateTime?        @map("last_message_at") @db.Timestamptz(3)
   createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt     DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  contact  Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  messages Message[]
+  contact     Contact                  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  messages    Message[]
+  modeChanges ConversationModeChange[]
 
   @@index([mode, humanUntil])
   @@index([lastMessageAt])
@@ -366,6 +396,11 @@ model Message {
   transcript     String?
   status         MessageStatus    @default(received)
   statusAt       DateTime?        @map("status_at") @db.Timestamptz(3)
+  /// Outbound only: why it is sent (null for inbound).
+  purpose        MessagePurpose?
+  /// Outbound only: the worker claimed it right before calling Meta (in flight → a human
+  /// takeover no longer cancels it).
+  claimedAt      DateTime?        @map("claimed_at") @db.Timestamptz(3)
   errorCode      String?          @map("error_code")
   errorMessage   String?          @map("error_message")
   /// Timestamp reported by WhatsApp.
@@ -378,19 +413,44 @@ model Message {
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  conversation      Conversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  authorUser        User?                @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
-  mediaFile         MediaFile?           @relation(fields: [mediaFileId], references: [id], onDelete: SetNull)
-  webhookEvent      WebhookEvent?        @relation(fields: [webhookEventId], references: [id], onDelete: SetNull)
+  conversation      Conversation             @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  authorUser        User?                    @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+  mediaFile         MediaFile?               @relation(fields: [mediaFileId], references: [id], onDelete: SetNull)
+  webhookEvent      WebhookEvent?            @relation(fields: [webhookEventId], references: [id], onDelete: SetNull)
   ingestionRuns     IngestionRun[]
   priceChanges      PriceChange[]
   statusEvents      MessageStatusEvent[]
   integrationEvents IntegrationEvent[]
+  modeChanges       ConversationModeChange[]
 
   @@index([conversationId, createdAt])
   @@index([authorUserId])
   @@index([webhookEventId])
   @@map("messages")
+}
+
+/// Append-only history of bot/human mode changes (phase 7, ADR-016): who and when.
+model ConversationModeChange {
+  id             String                 @id @default(uuid(7)) @db.Uuid
+  conversationId String                 @map("conversation_id") @db.Uuid
+  fromMode       ConversationMode       @map("from_mode")
+  toMode         ConversationMode       @map("to_mode")
+  /// humanUntil after the change (null = bot, or human until manual reactivation).
+  humanUntil     DateTime?              @map("human_until") @db.Timestamptz(3)
+  reason         ConversationModeReason
+  actorUserId    String?                @map("actor_user_id") @db.Uuid
+  /// Who, when there is no user (e.g. "cli:ana", "system").
+  actorLabel     String?                @map("actor_label")
+  /// Human message that caused it (panel reply or app echo).
+  messageId      String?                @map("message_id") @db.Uuid
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  actorUser    User?        @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  message      Message?     @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
+  @@map("conversation_mode_changes")
 }
 
 /// Media metadata + download state. Bytes live in MediaBlob (see ADR-008).
@@ -900,6 +960,7 @@ model User {
   auditLogs            AuditLog[]
   resolvedReviews      ReviewItem[]
   approvedSheetFormats SupplierSheetFormat[]
+  modeChanges          ConversationModeChange[]
 
   @@map("users")
 }

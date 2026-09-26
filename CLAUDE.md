@@ -61,7 +61,8 @@ Message flow:
 ```
 WhatsApp Cloud API ──webhook──▶ api: verify signature → store raw → ack 200 → enqueue (pg-boss)
   worker: dedupe by message.id → download media → transcribe audio → persist Message
-        → if conversation is in HUMAN mode: stop (no bot action)
+        → HUMAN mode pauses only automatic replies to the contact (ack, bot answers);
+          list processing, catalog and team notifications continue (ADR-016)
         → POST n8n "receiver" webhook (secret header)
 n8n receiver agent: classify → price_list_full | price_update_partial | customer_query | internal_order | other
 n8n processor agent: call api /internal/extract (Claude) → call api /internal/catalog/ingest
@@ -485,9 +486,28 @@ Each one gets an ADR in docs/adr/.
   LLM: it saves formats and moves the run back to `classified` (`next: "extract"`).
 - Local tunnel: cloudflared quick tunnel (`cloudflared tunnel --url
   http://localhost:4000`); URL changes on every restart → update it in Meta.
+- 2026-09-26 (phase 7, M1) Human takeover (ADR-016, `src/modules/conversations/`). Pure
+  `nextMode` (bot ↔ human, `humanUntil` null = indefinite): human message (panel / app echo)
+  → human until now + `coexistence.humanTakeoverMinutes` (Setting, 120), later human messages
+  only EXTEND; manual pause/resume; timeout only if humanUntil passed; contact messages never
+  change the mode; a late echo older than the last change back to bot is ignored;
+  `autoReplyAllowed` = bot AND received ≥ `modeChangedAt`. History table
+  `conversation_mode_changes` (append-only, actor user or label, message). Migration
+  `conversation_modes`: `Conversation.modeChangedAt`, `Message.purpose`
+  (auto_reply | compliance | team_notification | human; CHECK `messages_purpose_chk`
+  outbound ⇔ purpose — keep it), `Message.claimedAt`, status `canceled`.
+- Race rules: takeover = ONE transaction under the conversation row lock (mode + history +
+  cancel pending UNCLAIMED auto_reply → canceled/human_takeover + reactivation job via
+  fromPrisma). The outbound worker claims under the same lock right before Meta
+  (`OutboundRepository.claimForSend`): auto_reply in human mode → canceled. Claimed = in
+  flight, never cancelled. `send()` refuses auto_reply in human mode (409 `HUMAN_MODE`);
+  `purpose` defaults from author (human → human, else auto_reply); digests pass
+  team_notification. Queue `conversation-bot-resume` (startAfter = humanUntil; stale jobs
+  no-op) + cron `conversation-mode-sweeper` */5. CLI `wa:conversation status|pause|resume`
+  (actor `cli:<--by>`).
 
 ## Current phase
-**Phase 6 complete (2026-09-26), merged to `main`. Phase 7 (coexistence) next on
+**Phase 6 complete (2026-09-26), merged to `main`. Phase 7 (coexistence) IN PROGRESS on
 `feat/phase-7-coexistence`. M3b (phase 5) remains required before production.**
 
 1. scaffold — done (2026-09-24).
@@ -749,7 +769,27 @@ Each one gets an ADR in docs/adr/.
    - Process note: the M3 commit accidentally truncated this file (phases 1–5 history, Known
      issues, Conventions); restored from the M2 version in M5.
 
-**Next: phase 7 (coexistence human + bot) on `feat/phase-7-coexistence`.**
+7. coexistence human + bot + opt-out — IN PROGRESS on `feat/phase-7-coexistence`. Approved plan
+   (2026-09-26) + user answers: real coexistence is NOT testable with the Meta test number
+   (needs a number already in the WhatsApp Business app + Embedded Signup by a Tech Provider /
+   Solution Partner) → demo plan B: humans reply from the panel (phase 9; CLI `wa:reply` until
+   then) and app echoes (`smb_message_echoes`) are tested with the simulator + doc-based
+   fixtures; real path for a client in `docs/coexistence-client-guide.md` (A: API-only number
+   + panel replies; B: coexistence via a BSP that is a Tech Provider, e.g. 360dialog, or
+   becoming one — costs verified, else "a confirmar"). Human mode pauses ONLY automatic
+   replies (ADR-016). Takeover timeout default 120 min. Opt-out: deterministic keywords (no
+   LLM), blocks every message we SEND (bot, templates, digests) except the single compliance
+   confirmation; a person may still reply from the panel inside the window with a visible
+   warning; an opted-out supplier's lists are STILL processed and update the catalog (no ack)
+   — explicit in ADR-017 + tests. Opt-out instruction in the first automatic message to each
+   contact, then at most every 30 days. Echo media: metadata only. $0. 4 milestones with
+   commit + push; stop at M4 to guide the user's phone tests.
+   - M1 state machine + human takeover — DONE (2026-09-26). ADR-016, migration
+     `conversation_modes`, `src/modules/conversations/`, claim gate in the outbound worker,
+     ack uses `autoReplyAllowed`, resume job + sweeper, `wa:conversation`, CLAUDE.md guard
+     test (`test/unit/claude-md.test.ts` + `test/fixtures/claude-md-baseline.json`, raised
+     only UP by `pnpm --filter @smartops/api claude-md:baseline`; verified to fail on the
+     truncated phase 6 M3 version).
 
 ## Known issues (out of scope)
 - **Phase 6:** approving a `column_mapping` review moves the run back to `classified`, but
@@ -863,3 +903,7 @@ Each one gets an ADR in docs/adr/.
 - API modules: factories with injected deps
   (`createXRepository(prisma)` → `createXService({...})` → `createXController` →
   `createXRouter`), mounted in `app.ts` on the `/api/v1` router.
+- CLAUDE.md is guarded by `test/unit/claude-md.test.ts` (key sections in order, minimum
+  content, phases 1..N without gaps, size floor, and locally ≤ 15 % loss vs HEAD). Edit it with
+  targeted replacements, never by rewriting the whole file from a partial copy; after
+  intentional growth run `pnpm --filter @smartops/api claude-md:baseline`.

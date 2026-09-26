@@ -1,7 +1,7 @@
 import { errors } from "../../common/errors/app-error.js";
 import type { Logger } from "../../common/logger.js";
 import { maskPhone, maskUserId } from "../../common/phone.js";
-import type { MessageAuthor } from "../../generated/prisma/enums.js";
+import type { MessageAuthor, MessagePurpose } from "../../generated/prisma/enums.js";
 import { customerServiceWindow } from "../whatsapp/customer-service-window.js";
 import {
   buildSendPayload,
@@ -30,6 +30,11 @@ export interface SendInput {
   recipient: RecipientRef;
   content: SendContentInput;
   author: MessageAuthor;
+  /**
+   * Why it is sent (phase 7). Default: author human → "human", otherwise "auto_reply"
+   * (paused while a person handles the conversation). Digests pass "team_notification".
+   */
+  purpose?: MessagePurpose;
   authorUserId?: string;
   idempotencyKey?: string;
 }
@@ -40,7 +45,11 @@ export interface SendOutput {
   duplicate: boolean;
 }
 
-export type OutboundOutcome = "accepted" | "failed" | "already_sent" | "not_found";
+export type OutboundOutcome = "accepted" | "failed" | "already_sent" | "not_found" | "canceled";
+
+export function defaultPurpose(author: MessageAuthor): MessagePurpose {
+  return author === "human" ? "human" : "auto_reply";
+}
 
 export interface OutboundService {
   send(input: SendInput, log: Logger): Promise<SendOutput>;
@@ -94,7 +103,15 @@ export function createOutboundService(deps: {
         throw errors.optInRequired({ contactId: found?.contact.id ?? null });
       }
       // `found` is non-null past the checks above.
-      const { contact } = found as NonNullable<typeof found>;
+      const { contact, conversation } = found as NonNullable<typeof found>;
+      const purpose = input.purpose ?? defaultPurpose(input.author);
+      // Human takeover (ADR-016): automatic replies to this contact are paused.
+      if (purpose === "auto_reply" && conversation?.mode === "human") {
+        throw errors.humanMode({
+          conversationId: conversation.id,
+          humanUntil: conversation.humanUntil?.toISOString() ?? null,
+        });
+      }
 
       const recipient: SendRecipient = contact.waId
         ? { waId: contact.waId }
@@ -104,6 +121,7 @@ export function createOutboundService(deps: {
         type: content.kind,
         text: content.kind === "text" ? content.body : templateSummary(content),
         author: input.author,
+        purpose,
         ...(input.authorUserId ? { authorUserId: input.authorUserId } : {}),
         ...(idempotencyKey ? { idempotencyKey } : {}),
         request: buildSendPayload(recipient, content),
@@ -158,6 +176,14 @@ export function createOutboundService(deps: {
       } else if (!message.contactOptInAt) {
         return fail("opt_in_required", "Contact has no opt-in");
       }
+
+      // Last gate before Meta, under the conversation lock (ADR-016).
+      const claim = await deps.repository.claimForSend(messageId, now());
+      if (claim === "canceled") {
+        log.info({ messageId }, "automatic reply cancelled: a person is handling the conversation");
+        return { outcome: "canceled", reason: "human_takeover" };
+      }
+      if (claim === "not_pending") return { outcome: "already_sent" };
 
       let result;
       try {

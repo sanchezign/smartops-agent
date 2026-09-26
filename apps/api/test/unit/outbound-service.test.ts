@@ -23,6 +23,7 @@ function recipient(
     waId?: string | null;
     bsuid?: string | null;
     conversation?: boolean;
+    mode?: "bot" | "human";
   } = {},
 ): RecipientContact {
   return {
@@ -40,6 +41,9 @@ function recipient(
             id: "v1",
             lastInboundAt:
               overrides.lastInboundAt === undefined ? hoursAgo(1) : overrides.lastInboundAt,
+            mode: overrides.mode ?? "bot",
+            humanUntil: null,
+            modeChangedAt: null,
           },
   };
 }
@@ -50,6 +54,7 @@ function setup(
     forSend?: Partial<OutboundForSend> | null;
     sendError?: Error;
     markAcceptedError?: Error;
+    claim?: "claimed" | "canceled" | "not_pending";
   } = {},
 ) {
   const repository: OutboundRepository = {
@@ -74,6 +79,7 @@ function setup(
             status: "pending" as const,
             waMessageId: null,
             type: "text",
+            purpose: "auto_reply" as const,
             conversationId: "v1",
             lastInboundAt: hoursAgo(1),
             contactOptInAt: hoursAgo(48),
@@ -86,6 +92,7 @@ function setup(
       return { appliedStatuses: 0 };
     }),
     markFailed: vi.fn(async () => {}),
+    claimForSend: vi.fn(async () => options.claim ?? ("claimed" as const)),
   };
   const client: WhatsAppSendClient = {
     send: vi.fn(async () => {
@@ -318,5 +325,61 @@ describe("OutboundService.processOutbound — job", () => {
     expect((await service.processOutbound("m1", log, { finalAttempt: false })).reason).toBe(
       "opt_in_required",
     );
+  });
+});
+
+describe("OutboundService — human takeover (phase 7, ADR-016)", () => {
+  const text = { kind: "text" as const, body: "Hola" };
+
+  it("refuses an automatic reply while a person handles the conversation (HUMAN_MODE)", async () => {
+    const { service, repository } = setup({ found: recipient({ mode: "human" }) });
+    await expectAppError(
+      service.send({ recipient: { waId: "59899000111" }, content: text, author: "bot" }, log),
+      "HUMAN_MODE",
+    );
+    expect(repository.createOutbound).not.toHaveBeenCalled();
+  });
+
+  it("lets a person reply and team notifications through in human mode", async () => {
+    const { service, repository } = setup({ found: recipient({ mode: "human" }) });
+    await service.send({ recipient: { waId: "59899000111" }, content: text, author: "human" }, log);
+    await service.send(
+      {
+        recipient: { waId: "59899000111" },
+        content: text,
+        author: "bot",
+        purpose: "team_notification",
+      },
+      log,
+    );
+    const purposes = vi
+      .mocked(repository.createOutbound)
+      .mock.calls.map(([input]) => input.purpose);
+    expect(purposes).toEqual(["human", "team_notification"]);
+  });
+
+  it("defaults purpose from the author (bot → auto_reply)", async () => {
+    const { service, repository } = setup();
+    await service.send({ recipient: { waId: "59899000111" }, content: text, author: "bot" }, log);
+    expect(repository.createOutbound).toHaveBeenCalledWith(
+      expect.objectContaining({ purpose: "auto_reply" }),
+    );
+  });
+
+  it("the job does not call Meta when the claim cancels the message (takeover while queued)", async () => {
+    const { service, client } = setup({ claim: "canceled" });
+    expect(await service.processOutbound("m1", log, { finalAttempt: false })).toEqual({
+      outcome: "canceled",
+      reason: "human_takeover",
+    });
+    expect(client.send).not.toHaveBeenCalled();
+  });
+
+  it("the job skips a message that is no longer pending at claim time", async () => {
+    const { service, client } = setup({ claim: "not_pending" });
+    expect((await service.processOutbound("m1", log, { finalAttempt: false })).outcome).toBe(
+      "already_sent",
+    );
+    expect(client.send).not.toHaveBeenCalled();
   });
 });

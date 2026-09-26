@@ -21,6 +21,8 @@ export const QUEUES = {
   n8nWatchdog: "n8n-watchdog",
   notificationDigest: "notification-digest",
   notificationDigestDlq: "notification-digest-dlq",
+  conversationBotResume: "conversation-bot-resume",
+  conversationModeSweeper: "conversation-mode-sweeper",
 } as const;
 
 export interface WebhookEventJob {
@@ -49,6 +51,10 @@ export interface N8nDeliveryJob {
 
 export interface NotificationDigestJob {
   digestId: string;
+}
+
+export interface ConversationBotResumeJob {
+  conversationId: string;
 }
 
 type QueueDefinition = Omit<Queue, "name"> & { name: string };
@@ -174,6 +180,21 @@ export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
     retryDelayMax: 900,
     expireInSeconds: 60,
     deadLetter: QUEUES.notificationDigestDlq,
+  },
+  {
+    name: QUEUES.conversationBotResume,
+    // startAfter = humanUntil (phase 7). A stale job (the takeover was extended or resumed
+    // by hand) is a no-op; the sweeper covers lost jobs, so a short retry is enough.
+    retryLimit: 3,
+    retryDelay: 30,
+    expireInSeconds: 60,
+    deleteAfterSeconds: 24 * 3600,
+  },
+  {
+    name: QUEUES.conversationModeSweeper,
+    retryLimit: 0,
+    expireInSeconds: 60,
+    deleteAfterSeconds: 3600,
   },
   {
     name: QUEUES.n8nWatchdog,

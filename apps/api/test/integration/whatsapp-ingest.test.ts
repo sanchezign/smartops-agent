@@ -206,6 +206,7 @@ describe.skipIf(!testDatabaseUrl)("WhatsApp ingestion against Postgres", () => {
           direction: "outbound",
           type: "template",
           author: "bot",
+          purpose: "team_notification",
           status: "pending",
         },
       });

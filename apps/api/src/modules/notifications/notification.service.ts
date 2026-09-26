@@ -217,7 +217,13 @@ export function createNotificationService(deps: {
 
       try {
         const sent = await deps.outbound.send(
-          { recipient, content: { kind: "text", body: text }, author: "bot", idempotencyKey },
+          {
+            recipient,
+            content: { kind: "text", body: text },
+            author: "bot",
+            purpose: "team_notification",
+            idempotencyKey,
+          },
           log,
         );
         return settle("sent", "text", sent.messageId);
@@ -240,6 +246,7 @@ export function createNotificationService(deps: {
                 : {}),
             },
             author: "bot",
+            purpose: "team_notification",
             idempotencyKey: `${idempotencyKey}:template`,
           },
           log,
