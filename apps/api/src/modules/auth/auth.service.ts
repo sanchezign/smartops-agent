@@ -194,6 +194,18 @@ export function createAuthService(deps: {
       return count;
     },
 
+    /**
+     * Is this session still alive, and with which role? For long-lived connections (SSE,
+     * ADR-020) whose access token may expire while the session stays valid: logout-all,
+     * idle/absolute expiry, deactivation and role changes are seen on the next heartbeat.
+     */
+    async checkSession(
+      sessionId: string,
+    ): Promise<{ userId: string; role: SessionUser["role"] } | null> {
+      const active = await deps.sessions.findActive(sessionId, now());
+      return active ? { userId: active.user.id, role: active.user.role } : null;
+    },
+
     /** Bearer → the live session and user (role from the DB, not from the token). */
     async authenticate(accessToken: string): Promise<AuthenticatedUser | null> {
       const claims = await deps.tokens.verify(accessToken, now());

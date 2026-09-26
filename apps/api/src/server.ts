@@ -20,6 +20,8 @@ import {
   startBoss,
 } from "./jobs/boss.js";
 import { createConversationQueryRepository } from "./modules/admin/conversation-query.repository.js";
+import { createEventHub } from "./modules/events/event-hub.js";
+import { createPgListener } from "./modules/events/pg-listener.js";
 import { createReviewQueryRepository } from "./modules/admin/review-query.repository.js";
 import { createRunRetrigger } from "./modules/admin/run-retrigger.js";
 import { createDashboardRepository } from "./modules/dashboard/dashboard.repository.js";
@@ -174,6 +176,12 @@ const supplierAck = createSupplierAckService({
   outbound,
 });
 
+const eventHub = createEventHub({
+  maxPerUser: env.SSE_MAX_STREAMS_PER_USER,
+  maxTotal: env.SSE_MAX_STREAMS,
+  flushMs: 250,
+  logger,
+});
 const app = createApp({
   env,
   logger,
@@ -208,7 +216,17 @@ const app = createApp({
     users: createUsersService({ repository: usersRepository }),
     sessions: sessionsRepository,
   },
+  events: { hub: eventHub, heartbeatMs: env.SSE_HEARTBEAT_SECONDS * 1000 },
 });
+// Real time (ADR-020): ONE LISTEN connection for this process → in-memory hub → SSE streams.
+const listener = createPgListener({
+  connectionString: env.DATABASE_URL,
+  onEvent: (event) => eventHub.publish(event),
+  onReconnect: () => eventHub.resync(),
+  logger,
+});
+await listener.start();
+
 const server = app.listen(env.PORT, () => {
   logger.info(
     { port: env.PORT, env: env.NODE_ENV },
@@ -228,6 +246,9 @@ function shutdown(reason: string, exitCode: number): void {
     process.exit(1);
   }, SHUTDOWN_TIMEOUT_MS).unref();
 
+  // Open SSE streams would keep server.close() waiting: end them (the panel reconnects).
+  eventHub.close();
+  void listener.stop();
   server.close(() => {
     boss
       .stop({ graceful: true, timeout: 5_000 })

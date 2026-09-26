@@ -146,6 +146,14 @@ export const envSchema = z.object({
   /** Per-IP login attempts per 15 minutes (on top of the per-account lockout). */
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
 
+  // ─── Panel real time (phase 9 M4, ADR-020) ───
+  /** Open event streams per user (tabs + phone); more → 429 TOO_MANY_STREAMS. */
+  SSE_MAX_STREAMS_PER_USER: z.coerce.number().int().min(1).max(50).default(5),
+  /** Open event streams per API process. */
+  SSE_MAX_STREAMS: z.coerce.number().int().min(1).max(10_000).default(500),
+  /** Heartbeat: keeps proxies from closing the stream and re-checks the session. */
+  SSE_HEARTBEAT_SECONDS: z.coerce.number().int().min(5).max(120).default(25),
+
   // ─── Demo data (phase 9) ───
   /** Separate demo database (name MUST end in "_demo"): demo:seed / demo:reset. */
   DEMO_DATABASE_URL: optionalString(

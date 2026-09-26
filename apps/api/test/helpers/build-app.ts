@@ -5,6 +5,7 @@ import type { WebhookQueue } from "../../src/jobs/queues.js";
 import type { HealthRepository } from "../../src/modules/health/health.repository.js";
 import type { AdminDeps } from "../../src/modules/admin/admin.routes.js";
 import type { AuthService } from "../../src/modules/auth/auth.service.js";
+import { createEventHub, type EventHub } from "../../src/modules/events/event-hub.js";
 import type { InternalDeps } from "../../src/modules/internal/internal.routes.js";
 import type {
   SaveWebhookEventInput,
@@ -109,6 +110,7 @@ export const stubAuthService: AuthService = {
   logout: async () => {},
   logoutAll: notConfigured,
   authenticate: async () => null,
+  checkSession: async () => null,
 };
 
 /** Panel API services that are never reached in tests without Postgres. */
@@ -159,6 +161,7 @@ export function buildTestApp(
     internal?: InternalDeps;
     auth?: AuthService;
     admin?: AdminDeps;
+    events?: { hub: EventHub; heartbeatMs: number };
   } = {},
 ) {
   const env = parseEnv({ ...TEST_ENV_SOURCE, ...options.env });
@@ -172,5 +175,9 @@ export function buildTestApp(
     internal: options.internal ?? stubInternalDeps,
     auth: options.auth ?? stubAuthService,
     admin: options.admin ?? stubAdminDeps,
+    events: options.events ?? {
+      hub: createEventHub({ maxPerUser: 5, maxTotal: 50, flushMs: 10, logger: createLogger(env) }),
+      heartbeatMs: 60_000,
+    },
   });
 }

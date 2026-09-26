@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { useAuthStore } from "@/features/auth/store";
 import { cn } from "@/lib/utils";
 import { isActive, navFor } from "./nav-items";
+import { LiveIndicator } from "@/features/realtime/live-indicator";
 import { UserMenu } from "./user-menu";
 
 /**
@@ -65,7 +66,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b bg-background/90 px-4 backdrop-blur md:ml-60 md:h-16 md:px-8">
         <span className="font-semibold tracking-tight md:hidden">SmartOps</span>
         <span className="hidden md:block" />
-        <UserMenu />
+        <div className="flex items-center gap-3">
+          <LiveIndicator />
+          <UserMenu />
+        </div>
       </header>
 
       <main id="contenido" className="px-4 pb-28 pt-4 md:ml-60 md:px-8 md:pb-10 md:pt-6">

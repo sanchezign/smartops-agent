@@ -11,6 +11,8 @@ import type { HealthRepository } from "./modules/health/health.repository.js";
 import { createHealthRouter } from "./modules/health/health.routes.js";
 import { createAdminRouter, type AdminDeps } from "./modules/admin/admin.routes.js";
 import { createAuthRouter } from "./modules/auth/auth.routes.js";
+import { createEventHub, type EventHub } from "./modules/events/event-hub.js";
+import { createEventsRouter } from "./modules/events/events.routes.js";
 import type { AuthService } from "./modules/auth/auth.service.js";
 import { createInternalRouter, type InternalDeps } from "./modules/internal/internal.routes.js";
 import type { WhatsAppWebhookRepository } from "./modules/whatsapp/whatsapp-webhook.repository.js";
@@ -28,6 +30,11 @@ export interface AppDeps {
   auth: AuthService;
   /** Panel API (/api/v1/admin/*, phase 8 M4): every route behind a role. */
   admin: AdminDeps;
+  /**
+   * Panel real time (/api/v1/events, phase 9 M4): the process's event hub (fed by the one
+   * LISTEN connection in server.ts). Omitted in tests: a hub nobody publishes to.
+   */
+  events?: { hub: EventHub; heartbeatMs: number };
 }
 
 /** Builds the Express app without listening (server.ts listens; Supertest uses it directly). */
@@ -40,6 +47,7 @@ export function createApp({
   internal,
   auth,
   admin,
+  events,
 }: AppDeps): Express {
   const app = express();
 
@@ -89,6 +97,22 @@ export function createApp({
   );
   v1.use("/auth", createAuthRouter({ service: auth, env, logger }));
   v1.use("/admin", createAdminRouter({ deps: admin, authenticate: auth.authenticate, logger }));
+  v1.use(
+    "/events",
+    createEventsRouter({
+      hub:
+        events?.hub ??
+        createEventHub({
+          maxPerUser: env.SSE_MAX_STREAMS_PER_USER,
+          maxTotal: env.SSE_MAX_STREAMS,
+          flushMs: 250,
+          logger,
+        }),
+      auth,
+      heartbeatMs: events?.heartbeatMs ?? env.SSE_HEARTBEAT_SECONDS * 1000,
+      logger,
+    }),
+  );
   app.use("/api/v1", v1);
 
   app.use(notFoundHandler);

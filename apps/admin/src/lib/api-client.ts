@@ -142,6 +142,8 @@ export function createApiClient(deps: ApiClientDeps) {
   return {
     request,
     requestBlob,
+    /** Raw authenticated response for streams (SSE, ADR-020): same Bearer + refresh rules. */
+    stream: (path: string, init: RequestInit = {}) => send(path, init),
     refresh,
     async login(email: string, password: string): Promise<Session> {
       const res = await post("/auth/login", { email, password });

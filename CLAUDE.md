@@ -1106,6 +1106,30 @@ a real client.**
      (`demo/demo-image.ts`, no binary asset) to Norte's chat. Accessibility: light theme
      `--muted-foreground` 0.556 → 0.5 and `--destructive` 0.577 → 0.52 (axe color-contrast on
      muted backgrounds / the red tint); `expectAccessible` now prints the failing selectors.
+   - M4 real time — DONE (2026-09-27). ADR-020. Migration `realtime_events`: Postgres TRIGGERS
+     `pg_notify('smartops_events', …)` with type + ids + status only (never content) on messages
+     (insert; status/transcript/text/media/revoked changes), media_files (status → its message),
+     conversations (mode/humanUntil), contacts (opt-out), review_items, ingestion_runs (status),
+     alerts, products (STATEMENT-level with a transition table → one `catalog.changed` per
+     statement, ≤ 50 supplier ids) — Prisma does not model triggers: KEEP THEM. Transactional:
+     rolled-back changes are never announced; every writer (API, worker, CLI) covered.
+     `src/modules/events/`: `panel-events.ts` (Zod re-validation, unknown types / extra fields
+     dropped), `pg-listener.ts` (ONE dedicated `pg.Client` per API process, LISTEN, reconnect
+     1 s→30 s, `onReconnect` → hub resync), `event-hub.ts` (in-memory fan-out, 250 ms
+     coalescing, caps `SSE_MAX_STREAMS_PER_USER` 5 / `SSE_MAX_STREAMS` 500 → 429
+     `TOO_MANY_STREAMS`, `close()` ends streams on shutdown so server.close() does not hang),
+     `events.routes.ts` (`GET /api/v1/events`, Bearer only, frames ready / events / resync /
+     session + `: ping`; heartbeat `SSE_HEARTBEAT_SECONDS` 25 re-checks the SESSION via new
+     `AuthService.checkSession` — not the 15-min JWT — and ends with `session: ended |
+     role_changed`). `createApp` `events` dep optional (tests get an idle hub). The worker opens
+     no listener. Panel `features/realtime/`: `RealtimeProvider` in the (main) layout (one
+     fetch-based stream per tab via `api.stream`, `lib/sse.ts` parser incl. split CRLF,
+     `keysFor` event → query-key prefixes merged and batched 200 ms, full invalidation on every
+     RE-connect / resync, session end → `api.refresh()` then reconnect or login, backoff 1→30 s
+     ±20 % + immediate retry on visible/online), "En vivo / Reconectando…" indicator, conversation
+     queries poll every 30 s ONLY while not live (`useFallbackInterval`). Verified: SSE through the
+     Next rewrite with a production `next start` in Chromium + WebKit; Caddy flushes
+     text/event-stream immediately (reverse_proxy docs).
 
 ## Known issues (out of scope)
 - **Phase 7 M3:** `wa:optout` (manual/off-WhatsApp) does not send a WhatsApp confirmation

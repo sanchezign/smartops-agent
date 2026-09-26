@@ -24,6 +24,8 @@ export type ErrorCode =
   | "REFRESH_RACE"
   | "PAYLOAD_TOO_LARGE"
   | "RATE_LIMITED"
+  /** Panel real time: too many open event streams for this user (ADR-020). */
+  | "TOO_MANY_STREAMS"
   | "SERVICE_UNAVAILABLE"
   | "INTERNAL_ERROR";
 
@@ -85,6 +87,8 @@ export const errors = {
     new AppError(409, "REFRESH_RACE", message),
   rateLimited: (message = "Too many requests, try again later") =>
     new AppError(429, "RATE_LIMITED", message),
+  tooManyStreams: (message = "Too many open event streams for this user") =>
+    new AppError(429, "TOO_MANY_STREAMS", message),
   serviceUnavailable: (message = "Service unavailable") =>
     new AppError(503, "SERVICE_UNAVAILABLE", message),
 };
