@@ -34,7 +34,7 @@ export interface ProcessEventResult {
 }
 
 /** Fields we process: incoming messages/statuses and coexistence echoes (phase 7). */
-const HANDLED_FIELDS = new Set(["messages", "smb_message_echoes"]);
+const HANDLED_FIELDS = new Set(["messages", "smb_message_echoes", "user_preferences"]);
 
 export interface WhatsAppIngestService {
   processEvent(eventId: string, log: Logger): Promise<ProcessEventResult>;
@@ -142,6 +142,19 @@ export function createWhatsAppIngestService(deps: {
               ...(status.errors.length > 0 ? { errors: toSummaryErrors(status.errors) } : {}),
             },
             `whatsapp status: ${status.status}`,
+          );
+        }
+
+        for (const preference of change.userPreferences) {
+          await deps.repository.recordUserPreference(preference);
+          log.info(
+            {
+              eventId,
+              to: maskPhone(preference.waId),
+              category: preference.category,
+              value: preference.value,
+            },
+            "whatsapp user_preferences (marketing, informational)",
           );
         }
 

@@ -18,6 +18,7 @@ describe("classifySendError", () => {
     [190, 401, "unauthorized", false],
     [368, 403, "account_restricted", false],
     [131031, 400, "account_restricted", false],
+    [131050, 400, "recipient_opted_out", false],
     [130429, 429, "rate_limited", true],
     [131056, 400, "rate_limited", true],
     [131000, 500, "transient", true],

@@ -41,7 +41,9 @@ export type SendErrorCategory =
   | "unauthorized"
   | "account_restricted"
   | "rate_limited"
-  | "transient";
+  | "transient"
+  /** The recipient opted out of marketing messages via WhatsApp's own control (131050). */
+  | "recipient_opted_out";
 
 export class WhatsAppSendError extends Error {
   constructor(
@@ -79,6 +81,8 @@ export function classifySendError(
     case 368:
     case 131031:
       return { category: "account_restricted", retryable: false };
+    case 131050:
+      return { category: "recipient_opted_out", retryable: false };
     case 130429:
     case 131056:
       return { category: "rate_limited", retryable: true };

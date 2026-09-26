@@ -18,6 +18,8 @@ export type ErrorCode =
   | "OPT_IN_REQUIRED"
   /** WhatsApp: automatic reply while a person handles the conversation (ADR-016). */
   | "HUMAN_MODE"
+  /** WhatsApp: business-initiated message to a contact who opted out (ADR-017). */
+  | "OPTED_OUT"
   | "PAYLOAD_TOO_LARGE"
   | "RATE_LIMITED"
   | "SERVICE_UNAVAILABLE"
@@ -75,6 +77,8 @@ export const errors = {
     details: unknown,
     message = "A person is handling this conversation: automatic replies are paused",
   ) => new AppError(409, "HUMAN_MODE", message, details),
+  optedOut: (details: unknown, message = "The contact opted out of business-initiated messages") =>
+    new AppError(409, "OPTED_OUT", message, details),
   rateLimited: (message = "Too many requests, try again later") =>
     new AppError(429, "RATE_LIMITED", message),
   serviceUnavailable: (message = "Service unavailable") =>

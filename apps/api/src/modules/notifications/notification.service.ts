@@ -228,7 +228,11 @@ export function createNotificationService(deps: {
         );
         return settle("sent", "text", sent.messageId);
       } catch (err) {
-        if (!(err instanceof AppError) || err.code !== "WINDOW_CLOSED") throw err;
+        if (!(err instanceof AppError)) throw err;
+        // A team member who opted out (ADR-017, rare): every channel is blocked, panel only.
+        if (err.code === "OPTED_OUT")
+          return settle("panel_only", "panel_only", null, "recipient opted out");
+        if (err.code !== "WINDOW_CLOSED") throw err;
       }
       // Outside the 24 h window: only an approved template (utility), with opt-in.
       if (!cfg.template)

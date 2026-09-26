@@ -221,6 +221,7 @@ API processes (run with `pnpm --filter @smartops/api <script>`):
 | `n8n:replay`         | Re-sends `failed` message.ready events to n8n (after fixing the cause)                |
 | `wa:conversation`    | Bot / human mode of a chat: `status`, `pause`, `resume` (stands in for the panel)     |
 | `wa:reply`           | A person replies to a contact (24 h window) and takes over the conversation (phase 7) |
+| `wa:optout`          | Manual opt-in / opt-out of a contact, requires `--reason` (phase 7, ADR-017)          |
 | `claude-md:baseline` | Raises the size floor of the CLAUDE.md guard test after intentional growth            |
 | `n8n:export`         | Exports the SmartOps workflows from local n8n, sanitized, to n8n/workflows            |
 
@@ -335,3 +336,4 @@ demo and any real client) must enable ZDR in the Groq console → Settings → D
 - [ADR-014](docs/adr/ADR-014-spreadsheet-formats.md) — Spreadsheets read deterministically with remembered formats per supplier
 - [ADR-015](docs/adr/ADR-015-n8n-contract-outbox-notifications.md) — n8n contract: reliable outbox, AI-free pre-filter and anti-spam notifications
 - [ADR-016](docs/adr/ADR-016-human-takeover.md) — Human takeover pauses only automatic replies to the contact
+- [ADR-017](docs/adr/ADR-017-opt-out.md) — Deterministic opt-out, gated at the outbound service

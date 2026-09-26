@@ -48,8 +48,10 @@ describe.skipIf(!testDatabaseUrl)("notifications (Postgres)", () => {
     scheduled.length = 0;
   });
 
-  function outbound(behaviour: "open" | "closed" | "closed_no_optin" = "open") {
+  function outbound(behaviour: "open" | "closed" | "closed_no_optin" | "opted_out" = "open") {
     const send = vi.fn(async (input: Parameters<OutboundService["send"]>[0]) => {
+      if (behaviour === "opted_out")
+        throw errors.optedOut({ contactId: null, optOutAt: new Date().toISOString() });
       if (input.content.kind === "text" && behaviour !== "open")
         throw errors.windowClosed({ lastInboundAt: null, closedAt: null });
       if (input.content.kind === "template" && behaviour === "closed_no_optin")
@@ -304,6 +306,19 @@ describe.skipIf(!testDatabaseUrl)("notifications (Postgres)", () => {
     });
   });
 
+  it("a recipient who opted out (ADR-017): digest falls back to panel_only on the first try (no template attempt)", async () => {
+    const { run } = await runWith({ pcts: [30] });
+    const optedOut = service(outbound("opted_out"));
+    await optedOut.svc.notify({ kind: "run", runId: run.id }, log);
+    const digest = await prisma.notificationDigest.findFirstOrThrow();
+    clock = new Date(digest.windowEndsAt.getTime() + 1000);
+    expect(await optedOut.svc.processDigest(digest.id, log)).toEqual({ outcome: "panel_only" });
+    expect(optedOut.out.send).toHaveBeenCalledTimes(1); // no second (template) attempt
+    expect(
+      await prisma.notificationDigest.findUniqueOrThrow({ where: { id: digest.id } }),
+    ).toMatchObject({ status: "panel_only", error: "recipient opted out" });
+  });
+
   it("customer queries and long voice notes are notified; the supplier ack is OFF by default", async () => {
     const { svc, ack, out } = service();
     const { run, conversation } = await runWith({ pcts: [5] });
@@ -349,5 +364,17 @@ describe.skipIf(!testDatabaseUrl)("notifications (Postgres)", () => {
       sent: false,
       reason: "received_during_human_mode",
     });
+  });
+
+  it("an opted-out supplier (ADR-017): the ack is skipped, the catalog was already updated", async () => {
+    const { run, conversation } = await runWith({ pcts: [5] });
+    const { ack, out } = service(outbound("opted_out"));
+    await prisma.setting.create({ data: { key: "bot.supplierAck", value: true } });
+    expect(await ack.ack(run.id, log)).toEqual({ sent: false, reason: "opted_out" });
+    expect(out.send).toHaveBeenCalledOnce();
+    // The run itself (catalog ingest) is untouched by opt-out — only the ack was blocked.
+    expect(
+      await prisma.conversation.findUniqueOrThrow({ where: { id: conversation.id } }),
+    ).toMatchObject({ mode: "bot" });
   });
 });

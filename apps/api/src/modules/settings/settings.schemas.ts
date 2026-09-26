@@ -64,6 +64,18 @@ export const SETTING_DEFINITIONS = {
     schema: z.number().int().min(1).max(10_080),
     default: 120,
   },
+  /** Whole-message keywords (case/accent-insensitive) that opt a contact OUT (phase 7, ADR-017). */
+  "optOut.keywords": {
+    schema: z.array(z.string().min(1).max(40)).min(1).max(20),
+    default: ["BAJA", "STOP", "CANCELAR", "UNSUBSCRIBE"] as string[],
+  },
+  /** Whole-message keywords that opt a previously opted-out contact back IN. */
+  "optIn.keywords": {
+    schema: z.array(z.string().min(1).max(40)).min(1).max(20),
+    default: ["ALTA", "START"] as string[],
+  },
+  /** The opt-out instruction is appended to an auto reply at most this often per contact. */
+  "optOut.instructionReminderDays": { schema: z.number().int().min(1).max(365), default: 30 },
 } as const;
 
 export type SettingKey = keyof typeof SETTING_DEFINITIONS;

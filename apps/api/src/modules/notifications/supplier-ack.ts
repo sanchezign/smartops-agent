@@ -92,6 +92,10 @@ export function createSupplierAckService(deps: {
         // A person took over between the check and the send.
         if (err instanceof AppError && err.code === "HUMAN_MODE")
           return { sent: false, reason: "human_mode" };
+        // Opted-out supplier (ADR-017): the list is still ingested and updates the
+        // catalog (this method runs after that); only the acknowledgement is skipped.
+        if (err instanceof AppError && err.code === "OPTED_OUT")
+          return { sent: false, reason: "opted_out" };
         throw err;
       }
     },

@@ -25,6 +25,7 @@
     "wa:send": "tsx --env-file-if-exists=.env scripts/whatsapp-send.ts",
     "wa:conversation": "tsx --env-file-if-exists=.env scripts/conversation-mode.ts",
     "wa:reply": "tsx --env-file-if-exists=.env scripts/whatsapp-reply.ts",
+    "wa:optout": "tsx --env-file-if-exists=.env scripts/optout.ts",
     "wa:transcription:retry": "tsx --env-file-if-exists=.env scripts/transcription-retry.ts",
     "wa:fixtures:capture": "tsx --env-file-if-exists=.env scripts/capture-whatsapp-fixtures.ts",
     "ai:record-golden": "tsx --env-file-if-exists=.env scripts/ai-record-golden.ts",

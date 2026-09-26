@@ -67,10 +67,16 @@ function templateSummary(content: Extract<SendContent, { kind: "template" }>): s
   return `[template ${content.name} ${content.languageCode}]${params.length ? ` ${params.join(" | ")}` : ""}`;
 }
 
+export interface OutOptOutSettings {
+  getAll(log: Logger): Promise<Record<string, unknown>>;
+}
+
 export function createOutboundService(deps: {
   repository: OutboundRepository;
   client: WhatsAppSendClient;
   now?: () => Date;
+  /** When provided, an auto reply gets the opt-out instruction appended (ADR-017). */
+  settings?: OutOptOutSettings;
 }): OutboundService {
   const now = deps.now ?? (() => new Date());
 
@@ -105,12 +111,26 @@ export function createOutboundService(deps: {
       // `found` is non-null past the checks above.
       const { contact, conversation } = found as NonNullable<typeof found>;
       const purpose = input.purpose ?? defaultPurpose(input.author);
+      // Opt-out (ADR-017): blocks everything WE initiate except the compliance reply
+      // itself and a person's own reply (still allowed inside the window, with a warning
+      // in the panel).
+      if (contact.optOutAt && purpose !== "compliance" && purpose !== "human") {
+        throw errors.optedOut({ contactId: contact.id, optOutAt: contact.optOutAt.toISOString() });
+      }
       // Human takeover (ADR-016): automatic replies to this contact are paused.
       if (purpose === "auto_reply" && conversation?.mode === "human") {
         throw errors.humanMode({
           conversationId: conversation.id,
           humanUntil: conversation.humanUntil?.toISOString() ?? null,
         });
+      }
+
+      let optOutInstructionCutoff: Date | undefined;
+      if (purpose === "auto_reply" && content.kind === "text" && deps.settings) {
+        const reminderDays = (await deps.settings.getAll(log))[
+          "optOut.instructionReminderDays"
+        ] as number;
+        optOutInstructionCutoff = new Date(now().getTime() - reminderDays * 24 * 3_600_000);
       }
 
       const recipient: SendRecipient = contact.waId
@@ -124,6 +144,7 @@ export function createOutboundService(deps: {
         purpose,
         ...(input.authorUserId ? { authorUserId: input.authorUserId } : {}),
         ...(idempotencyKey ? { idempotencyKey } : {}),
+        ...(optOutInstructionCutoff ? { optOutInstructionCutoff } : {}),
         request: buildSendPayload(recipient, content),
       });
       log.info(
@@ -175,6 +196,14 @@ export function createOutboundService(deps: {
         }
       } else if (!message.contactOptInAt) {
         return fail("opt_in_required", "Contact has no opt-in");
+      }
+      // Re-check: the contact may have opted out while this message waited in the queue.
+      if (
+        message.contactOptOutAt &&
+        message.purpose !== "compliance" &&
+        message.purpose !== "human"
+      ) {
+        return fail("opted_out", "Contact opted out of business-initiated messages");
       }
 
       // Last gate before Meta, under the conversation lock (ADR-016).

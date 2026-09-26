@@ -117,6 +117,21 @@ export const whatsappEchoSchema = whatsappMessageSchema.extend({
 });
 export type WhatsAppEcho = z.infer<typeof whatsappEchoSchema>;
 
+/**
+ * user_preferences webhook (Meta reference, 2026-09-26): a WhatsApp user stopped or
+ * resumed MARKETING messages using WhatsApp's own control. Informational for us (we send
+ * no marketing messages) — kept for completeness and future template use.
+ */
+export const whatsappUserPreferenceSchema = z
+  .object({
+    wa_id: z.string(),
+    category: z.string(),
+    value: z.string(),
+    timestamp: z.union([z.string(), z.number()]).optional(),
+  })
+  .loose();
+export type WhatsAppUserPreference = z.infer<typeof whatsappUserPreferenceSchema>;
+
 export const whatsappChangeValueSchema = z
   .object({
     messaging_product: z.string().optional(),
@@ -133,6 +148,7 @@ export const whatsappChangeValueSchema = z
     messages: z.array(z.unknown()).optional(),
     statuses: z.array(z.unknown()).optional(),
     message_echoes: z.array(z.unknown()).optional(),
+    user_preferences: z.array(z.unknown()).optional(),
     errors: z.array(z.unknown()).optional(),
   })
   .loose();

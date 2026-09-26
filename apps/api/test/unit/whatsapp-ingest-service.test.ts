@@ -36,6 +36,7 @@ function fakeRepository(event: StoredWebhookEvent | null) {
       return { duplicate, messageId: null, messageUpdated: false };
     }),
     ingestEcho: vi.fn(async () => ({ outcome: "duplicate" as const })),
+    recordUserPreference: vi.fn(async () => {}),
   };
   return { repo, finished };
 }

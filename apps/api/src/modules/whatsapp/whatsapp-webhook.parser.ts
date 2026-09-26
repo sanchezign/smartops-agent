@@ -5,11 +5,13 @@ import {
   whatsappErrorSchema,
   whatsappMessageSchema,
   whatsappStatusSchema,
+  whatsappUserPreferenceSchema,
   whatsappWebhookSchema,
   type WhatsAppContact,
   type WhatsAppEcho,
   type WhatsAppError,
   type WhatsAppMessage,
+  type WhatsAppUserPreference,
 } from "./whatsapp-webhook.schemas.js";
 
 /**
@@ -78,16 +80,29 @@ export interface ParsedEcho {
   raw: WhatsAppEcho;
 }
 
+export interface ParsedUserPreference {
+  waId: string;
+  /** Always "marketing_messages" per Meta's reference. */
+  category: string;
+  /** "stop" | "resume". */
+  value: string;
+  timestamp: Date | null;
+}
+
 export interface ParsedChange {
   field: string;
   phoneNumberId: string | null;
   messages: ParsedInboundMessage[];
   statuses: ParsedStatus[];
   echoes: ParsedEcho[];
+  userPreferences: ParsedUserPreference[];
   /** Value-level (out-of-band) errors. */
   errors: WhatsAppError[];
   /** Items that failed validation (kind + index) — logged, never fatal. */
-  invalidItems: { kind: "message" | "status" | "contact" | "error" | "echo"; index: number }[];
+  invalidItems: {
+    kind: "message" | "status" | "contact" | "error" | "echo" | "user_preference";
+    index: number;
+  }[];
 }
 
 export type ParsedWebhook =
@@ -277,6 +292,12 @@ export function parseWhatsAppWebhook(payload: unknown): ParsedWebhook {
       const messages = parseItems(value.messages, whatsappMessageSchema, "message", invalidItems);
       const statuses = parseItems(value.statuses, whatsappStatusSchema, "status", invalidItems);
       const echoes = parseItems(value.message_echoes, whatsappEchoSchema, "echo", invalidItems);
+      const userPreferences = parseItems(
+        value.user_preferences,
+        whatsappUserPreferenceSchema,
+        "user_preference",
+        invalidItems,
+      );
       const errors = parseItems(value.errors, whatsappErrorSchema, "error", invalidItems);
 
       changes.push({
@@ -296,6 +317,12 @@ export function parseWhatsAppWebhook(payload: unknown): ParsedWebhook {
           pricing: s.pricing ?? null,
         })),
         echoes: echoes.map(normalizeEcho),
+        userPreferences: userPreferences.map((p: WhatsAppUserPreference) => ({
+          waId: p.wa_id,
+          category: p.category,
+          value: p.value,
+          timestamp: parseWaTimestamp(p.timestamp !== undefined ? String(p.timestamp) : undefined),
+        })),
         errors,
         invalidItems,
       });

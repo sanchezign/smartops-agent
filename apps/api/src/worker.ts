@@ -23,6 +23,8 @@ import {
   createConversationModeService,
   createOnHumanMessageInTx,
 } from "./modules/conversations/conversation-mode.service.js";
+import { createOptOutRepository } from "./modules/optout/optout.repository.js";
+import { createOnComplianceMessageInTx } from "./modules/optout/optout.service.js";
 import { createNotificationRepository } from "./modules/notifications/notification.repository.js";
 import { createNotificationService } from "./modules/notifications/notification.service.js";
 import { createIntegrationEventRepository } from "./modules/integration/integration-event.repository.js";
@@ -111,11 +113,23 @@ const settings = createSettingsService({ repository: createSettingsRepository(pr
 const conversationModeRepository = createConversationModeRepository(prisma, {
   scheduleBotResumeInTx: createScheduleBotResumeInTx(boss),
 });
+// Outbound repository is created early: opt-out detection (below) queues the compliance
+// confirmation inside the SAME transaction as the inbound message that triggered it.
+const outboundRepository = createOutboundRepository(prisma, {
+  enqueueOutboundInTx: createEnqueueOutboundInTx(boss),
+});
+const optOutRepository = createOptOutRepository(prisma);
 const ingestRepository = createWhatsAppIngestRepository(prisma, {
   enqueueMediaInTx: createEnqueueMediaInTx(boss),
   emitMessageReadyInTx,
   onHumanMessageInTx: createOnHumanMessageInTx({
     repository: conversationModeRepository,
+    settings,
+    logger,
+  }),
+  onComplianceMessageInTx: createOnComplianceMessageInTx({
+    optOut: optOutRepository,
+    outbound: outboundRepository,
     settings,
     logger,
   }),
@@ -169,12 +183,10 @@ await registerWhatsAppMediaWorkers(boss, {
   logger,
   concurrency: env.MEDIA_WORKER_CONCURRENCY,
 });
-const outboundRepository = createOutboundRepository(prisma, {
-  enqueueOutboundInTx: createEnqueueOutboundInTx(boss),
-});
 const outboundService = createOutboundService({
   repository: outboundRepository,
   client: createWhatsAppSendClient({ graph, phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID }),
+  settings,
 });
 await registerWhatsAppOutboundWorkers(boss, {
   service: outboundService,

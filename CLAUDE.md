@@ -809,8 +809,44 @@ Each one gets an ADR in docs/adr/.
      (`test/fixtures/whatsapp/echo-*.json`, our real test number cannot use coexistence —
      see phase 7 plan — so these are built from Meta's `smb_message_echoes` reference, not
      captured).
+   - M3 opt-out — DONE (2026-09-26). ADR-017, migration `opt_out`
+     (`Contact.optOutAt/optOutSource/optOutInstructionSentAt/marketingOptOutAt`, CHECK
+     `contacts_opt_out_chk`; `ContactConsentEvent` append-only; `AlertType.possible_opt_out`).
+     `src/modules/optout/optout-detector.ts` (pure, NO LLM): whole-message keyword match
+     (`optOut.keywords`/`optIn.keywords` Settings, filler words "por favor"/"gracias"
+     stripped) or one of a fixed set of explicit short phrases (≤ 12 words); a second,
+     looser phrase set → `possible_opt_out` Alert instead of auto-applying. Detected in the
+     WORKER at ingestion (`createOnComplianceMessageInTx`, called from
+     `WhatsAppIngestRepository.ingestOnce` in the SAME transaction as the inbound message —
+     works even if n8n is down), never in n8n or the extraction pre-filter. Effect: gated at
+     `OutboundRepository`/`OutboundService` by `Message.purpose` — opted-out contacts block
+     `auto_reply`, templates and `team_notification`, but NOT `compliance` (the one
+     confirmation reply, queued in the same transaction via the new
+     `OutboundRepository.createOutboundInTx`) nor `human` (a person may still reply inside
+     the window). Checked twice: `send()` and again in `processOutbound()` (a contact may
+     opt out while queued) → error code `OPTED_OUT` (409) / job reason `opted_out`.
+     Independent of `Contact.optInAt` (ADR-009): an inbound message never clears an
+     opt-out; re-enabling needs `ALTA`/`START` or `wa:optout in` (off-WhatsApp, `--reason`
+     required). **An opted-out supplier's lists are still ingested and update the catalog**
+     — only `supplier-ack.ts` skips (`reason: "opted_out"`); the digest also falls back to
+     `panel_only` for an opted-out team member. Opt-out instruction footer
+     ("Respondé BAJA…") appended to the first `auto_reply` text and at most every
+     `optOut.instructionReminderDays` (30) after that — checked/set atomically inside
+     `createOutboundInTx`'s own transaction (no double-append under concurrent sends).
+     `user_preferences` webhook parsed (informational only: `Contact.marketingOptOutAt`;
+     Meta error `131050` mapped to a new permanent `recipient_opted_out` category — we send
+     no marketing messages, so nothing else reacts to it yet). CLI
+     `pnpm --filter @smartops/api wa:optout status|out|in`.
 
 ## Known issues (out of scope)
+- **Phase 7 M3:** `wa:optout` (manual/off-WhatsApp) does not send a WhatsApp confirmation
+  (only the in-band keyword flow does, since that is a direct reply to the contact's own
+  message) — the panel (phase 9) should probably confirm to the operator instead.
+- **Phase 7 M3:** `user_preferences` marketing opt-out is recorded but never checked before
+  a send (no template category yet, and SmartOps sends no marketing messages today).
+- **Phase 7 M3:** the opt-out instruction footer only applies when `OutboundService` is
+  built with `settings` (the worker's real instance); CLI scripts (`wa:send`) do not inject
+  it — acceptable for a dev tool, but note it if the CLI is ever used for real sends.
 - **Phase 6:** approving a `column_mapping` review moves the run back to `classified`, but
   nothing re-triggers n8n: `extract` + `catalog/ingest` must be called again (done by hand
   in the M5 pass). The panel (phase 9) must re-trigger it (call the internal flow or emit a

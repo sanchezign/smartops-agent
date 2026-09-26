@@ -252,3 +252,51 @@ describe("parseWhatsAppWebhook — coexistence echoes (smb_message_echoes, phase
     expect(parsed.changes[0]?.invalidItems).toEqual([{ kind: "echo", index: 1 }]);
   });
 });
+
+describe("parseWhatsAppWebhook — user_preferences (marketing, phase 7)", () => {
+  it("parses a marketing stop/resume preference", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "200000000000002",
+          changes: [
+            {
+              value: {
+                messaging_product: "whatsapp",
+                metadata: {
+                  display_phone_number: "15550000000",
+                  phone_number_id: "100000000000001",
+                },
+                contacts: [{ wa_id: "59899000111" }],
+                user_preferences: [
+                  {
+                    wa_id: "59899000111",
+                    detail: "User requested to stop marketing messages",
+                    category: "marketing_messages",
+                    value: "stop",
+                    timestamp: "1790000000",
+                  },
+                ],
+              },
+              field: "user_preferences",
+            },
+          ],
+        },
+      ],
+    };
+    const parsed = parseWhatsAppWebhook(payload);
+    if (!parsed.recognized) throw new Error("not recognized");
+    expect(parsed.changes[0]).toMatchObject({
+      field: "user_preferences",
+      userPreferences: [
+        {
+          waId: "59899000111",
+          category: "marketing_messages",
+          value: "stop",
+          timestamp: new Date(1_790_000_000 * 1000),
+        },
+      ],
+    });
+  });
+});

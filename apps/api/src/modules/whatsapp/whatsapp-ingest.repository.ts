@@ -1,12 +1,18 @@
 import type { PrismaClient } from "../../common/db.js";
 import type { ApplyModeEventResult } from "../conversations/conversation-mode.repository.js";
 import type { OnHumanMessageInTx } from "../conversations/conversation-mode.service.js";
+import type { OnComplianceMessageInTx } from "../optout/optout.service.js";
 import type { EmitMessageReadyInTx } from "../integration/message-ready.js";
 import { Prisma } from "../../generated/prisma/client.js";
 import type { WebhookEventStatus } from "../../generated/prisma/enums.js";
 import { planContactUpsert, type ContactPlanResult } from "./contact-identity.js";
 import { allowedPreviousStatuses, toMessageStatus } from "./message-status.js";
-import type { ParsedEcho, ParsedInboundMessage, ParsedStatus } from "./whatsapp-webhook.parser.js";
+import type {
+  ParsedEcho,
+  ParsedInboundMessage,
+  ParsedStatus,
+  ParsedUserPreference,
+} from "./whatsapp-webhook.parser.js";
 
 /**
  * Persistence for the webhook worker. The ONLY place in this flow that touches Prisma.
@@ -89,6 +95,11 @@ export interface WhatsAppIngestRepository {
    * transaction. revoke / edit update the original message.
    */
   ingestEcho(input: { echo: ParsedEcho; webhookEventId: string }): Promise<IngestEchoResult>;
+  /**
+   * user_preferences webhook (phase 7): informational marketing opt-out/in, recorded on
+   * the contact. We send no marketing messages — nothing else reacts to this.
+   */
+  recordUserPreference(preference: ParsedUserPreference): Promise<void>;
 }
 
 const MAX_ERROR_LENGTH = 2_000;
@@ -109,6 +120,8 @@ export function createWhatsAppIngestRepository(
     emitMessageReadyInTx?: EmitMessageReadyInTx;
     /** Human takeover when a person writes from the WhatsApp Business app (phase 7). */
     onHumanMessageInTx?: OnHumanMessageInTx;
+    /** Opt-out / opt-in keyword detection (phase 7, ADR-017). */
+    onComplianceMessageInTx?: OnComplianceMessageInTx;
   },
 ): WhatsAppIngestRepository {
   async function ingestEchoOnce(
@@ -317,6 +330,14 @@ export function createWhatsAppIngestRepository(
         },
         select: { id: true },
       });
+      if (deps.onComplianceMessageInTx) {
+        await deps.onComplianceMessageInTx(tx, {
+          contactId,
+          messageId: created.id,
+          text: message.text,
+          at,
+        });
+      }
       if (deps.emitMessageReadyInTx && (!mediaFile || media.status !== "pending")) {
         await deps.emitMessageReadyInTx(tx, { messageId: created.id });
       }
@@ -390,6 +411,18 @@ export function createWhatsAppIngestRepository(
         if (existing) return { outcome: "duplicate" };
         return ingestEchoOnce(echo, webhookEventId);
       }
+    },
+
+    async recordUserPreference(preference) {
+      if (preference.category !== "marketing_messages") return;
+      if (preference.value !== "stop" && preference.value !== "resume") return;
+      await prisma.contact.updateMany({
+        where: { waId: preference.waId },
+        data: {
+          marketingOptOutAt:
+            preference.value === "stop" ? (preference.timestamp ?? new Date()) : null,
+        },
+      });
     },
 
     async recordStatus({ status, webhookEventId }) {

@@ -24,6 +24,7 @@ function recipient(
     bsuid?: string | null;
     conversation?: boolean;
     mode?: "bot" | "human";
+    optOutAt?: Date | null;
   } = {},
 ): RecipientContact {
   return {
@@ -33,6 +34,7 @@ function recipient(
       bsuid: overrides.bsuid ?? null,
       optInAt: overrides.optInAt === undefined ? hoursAgo(48) : overrides.optInAt,
       optInSource: overrides.optInAt === null ? null : "inbound",
+      optOutAt: overrides.optOutAt ?? null,
     },
     conversation:
       overrides.conversation === false
@@ -71,6 +73,11 @@ function setup(
       conversationId: "v1",
       duplicate: false,
     })),
+    createOutboundInTx: vi.fn(async () => ({
+      messageId: "m1",
+      conversationId: "v1",
+      duplicate: false as const,
+    })),
     getForSend: vi.fn(async () =>
       options.forSend === null
         ? null
@@ -83,6 +90,7 @@ function setup(
             conversationId: "v1",
             lastInboundAt: hoursAgo(1),
             contactOptInAt: hoursAgo(48),
+            contactOptOutAt: null,
             request: { to: "59899000111" },
             ...options.forSend,
           },

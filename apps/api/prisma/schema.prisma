@@ -28,6 +28,23 @@ enum OptInSource {
   manual
 }
 
+/// Opt-out (phase 7, ADR-017): blocks every business-initiated message to the contact,
+/// independent of OptInSource (an inbound message does NOT clear an opt-out).
+enum OptOutSource {
+  /// Detected in an inbound message (e.g. "BAJA", "STOP").
+  keyword
+  /// Recorded by an operator/CLI after a request made off WhatsApp.
+  off_whatsapp
+  /// Recorded manually for any other reason.
+  manual
+}
+
+/// Append-only opt-in / opt-out history (ADR-017), separate from Contact's current flags.
+enum ConsentEventKind {
+  opt_in
+  opt_out
+}
+
 enum ContactKind {
   supplier
   customer
@@ -135,6 +152,8 @@ enum AlertType {
   manual_attention
   /// n8n unreachable, workflow errors (phase 6).
   integration_error
+  /// Ambiguous opt-out phrase (phase 7): needs a human decision, not auto-applied.
+  possible_opt_out
 }
 
 /// Notifications (phase 6): only actionable events, grouped per recipient.
@@ -329,27 +348,64 @@ model Supplier {
 /// not model CHECKs; keep it when editing this model). Meta may omit the phone for users
 /// with a WhatsApp username, and the BSUID changes if the user changes phone number.
 model Contact {
-  id          String       @id @default(uuid(7)) @db.Uuid
+  id                      String        @id @default(uuid(7)) @db.Uuid
   /// WhatsApp id (phone number in international format, digits only). Null when Meta only sent a BSUID.
-  waId        String?      @unique @map("wa_id")
+  waId                    String?       @unique @map("wa_id")
   /// Business-scoped user id (e.g. "US.13491208655302741918"), from contacts[].user_id / from_user_id.
-  bsuid       String?      @unique
+  bsuid                   String?       @unique
   /// WhatsApp username, when the user adopted one.
-  username    String?
-  name        String?
-  kind        ContactKind  @default(unknown)
-  supplierId  String?      @map("supplier_id") @db.Uuid
+  username                String?
+  name                    String?
+  kind                    ContactKind   @default(unknown)
+  supplierId              String?       @map("supplier_id") @db.Uuid
   /// Consent for business-initiated messages (templates). Null = no opt-in → templates refused (ADR-009).
-  optInAt     DateTime?    @map("opt_in_at") @db.Timestamptz(3)
-  optInSource OptInSource? @map("opt_in_source")
-  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  optInAt                 DateTime?     @map("opt_in_at") @db.Timestamptz(3)
+  optInSource             OptInSource?  @map("opt_in_source")
+  /// Opt-out (ADR-017): blocks auto replies, templates and team notifications to this
+  /// contact. Null = not opted out. Independent of optInAt/optInSource.
+  optOutAt                DateTime?     @map("opt_out_at") @db.Timestamptz(3)
+  optOutSource            OptOutSource? @map("opt_out_source")
+  /// Last time the opt-out instruction ("Respondé BAJA…") was appended to an auto reply.
+  optOutInstructionSentAt DateTime?     @map("opt_out_instruction_sent_at") @db.Timestamptz(3)
+  /// From the user_preferences webhook (category marketing_messages). Informational only:
+  /// we send no marketing messages, so this never gates anything by itself.
+  marketingOptOutAt       DateTime?     @map("marketing_opt_out_at") @db.Timestamptz(3)
+  createdAt               DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  supplier     Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  conversation Conversation?
+  supplier      Supplier?             @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  conversation  Conversation?
+  consentEvents ContactConsentEvent[]
 
   @@index([supplierId])
   @@map("contacts")
+}
+
+/// Append-only opt-in / opt-out audit trail (phase 7, ADR-017).
+model ContactConsentEvent {
+  id          String           @id @default(uuid(7)) @db.Uuid
+  contactId   String           @map("contact_id") @db.Uuid
+  kind        ConsentEventKind
+  /// "keyword" | "manual" | "off_whatsapp" | free text — not a DB enum, kept simple for an
+  /// append-only audit log.
+  method      String
+  /// The keyword or phrase that triggered a keyword-based event.
+  keyword     String?
+  actorUserId String?          @map("actor_user_id") @db.Uuid
+  /// Who, when there is no user (e.g. "cli:ana", "system").
+  actorLabel  String?          @map("actor_label")
+  /// Inbound message that triggered it (keyword) — never the confirmation we sent back.
+  messageId   String?          @map("message_id") @db.Uuid
+  /// Required for manual/off_whatsapp entries (operator's reason).
+  note        String?
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  actorUser User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  message   Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([contactId, createdAt])
+  @@map("contact_consent_events")
 }
 
 // ─── Conversations & messages ───────────────────────────────────────────────
@@ -426,6 +482,7 @@ model Message {
   statusEvents      MessageStatusEvent[]
   integrationEvents IntegrationEvent[]
   modeChanges       ConversationModeChange[]
+  consentEvents     ContactConsentEvent[]
 
   @@index([conversationId, createdAt])
   @@index([authorUserId])
@@ -965,6 +1022,7 @@ model User {
   resolvedReviews      ReviewItem[]
   approvedSheetFormats SupplierSheetFormat[]
   modeChanges          ConversationModeChange[]
+  consentEvents        ContactConsentEvent[]
 
   @@map("users")
 }
