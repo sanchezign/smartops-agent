@@ -5,8 +5,8 @@ information over WhatsApp in chaotic formats (text, PDFs, photos, voice notes);
 SmartOps extracts structured data with Claude, keeps a product catalog up to
 date, alerts the team and coexists with human operators on the same number.
 
-> Status: **phase 2 — config/env/logging + initial Prisma schema**. See `CLAUDE.md` for the full phase plan and
-> `docs/pitch.md` for the original pitch.
+> Status: **phase 6 done — n8n multi-agent orchestration** (next: phase 7, human + bot
+> coexistence). See `CLAUDE.md` for the full phase plan and `docs/pitch.md` for the original pitch.
 
 ## Repository layout
 
@@ -161,6 +161,37 @@ Notes:
 - It covers the WhatsApp side only. Other providers (Claude, speech-to-text) need
   their own keys or test doubles, added in their phases.
 
+## Orquestación con n8n (fase 6)
+
+The backend decides; n8n only orchestrates (ADR-015). Four workflows live in
+`n8n/workflows/`: **Receptor** (webhook `smartops-message-ready` → classify → route),
+**Procesador** (extract → ingest), **Notificador** (notifications → supplier ack) and
+**Errores** (error workflow → critical alert). Import, credentials and publishing:
+[docs/n8n-setup.md](docs/n8n-setup.md).
+
+- **Outbox:** every inbound message ready for processing writes a `message.ready` event
+  (`integration_events`) in the same transaction, delivered to n8n with
+  `X-SmartOps-Secret`. Retries go from 30 s up to 1 h for about 24 h, then `failed` + a
+  critical alert. Resend with `pnpm --filter @smartops/api n8n:replay`. Events wait while
+  `N8N_DELIVERY_ENABLED=false`.
+- **Pre-filter without AI:** greetings, stickers, reactions, customers' messages and long
+  voice notes never reach Claude (`ingestion_runs.prefilter_rule`).
+- **Notifications:** only actionable events. They go to the panel always and, as one
+  WhatsApp digest per window, to `notifications.whatsappRecipients` (Settings, stored in the
+  DB — never commit real numbers), with an hourly cap.
+- **Export:** `pnpm --filter @smartops/api n8n:export` writes sanitized workflows (no
+  pinned data, no secrets, credentials only by name). Then run Prettier and the static
+  tests (`test -- n8n-workflows`).
+- **Security:** the n8n editor must never be publicly exposed. n8n never touches the
+  database.
+
+Validated end to end on 2026-09-26:
+
+- **Real Claude pass:** 7 scenarios for $0.0655 in total.
+- **Real WhatsApp digest:** delivered to a phone.
+- **Resilience:** n8n stopped and restarted. Every message was delivered once, with one run
+  each.
+
 ## Scripts (root)
 
 | Script              | What it does                            |
@@ -177,14 +208,16 @@ Per app: `pnpm --filter @smartops/api <script>` / `pnpm --filter @smartops/admin
 
 API processes (run with `pnpm --filter @smartops/api <script>`):
 
-| Script          | What it does                                                              |
-| --------------- | ------------------------------------------------------------------------- |
-| `dev`           | HTTP server + worker in watch mode (`dev:api` and `dev:worker`)           |
-| `start`         | HTTP server from `dist/` (webhooks, API)                                  |
-| `start:worker`  | Worker from `dist/` (pg-boss: webhook processing, dead letters, sweeper)  |
-| `wa:subscribe`  | Subscribes the Meta app to the WABA webhooks (idempotent)                 |
-| `wa:simulate`   | Sends signed WhatsApp webhooks to the local API (see Desarrollo sin Meta) |
-| `wa:fake-graph` | Local fake Meta Graph API on :4010 (see Desarrollo sin Meta)              |
+| Script          | What it does                                                               |
+| --------------- | -------------------------------------------------------------------------- |
+| `dev`           | HTTP server + worker in watch mode (`dev:api` and `dev:worker`)            |
+| `start`         | HTTP server from `dist/` (webhooks, API)                                   |
+| `start:worker`  | Worker from `dist/` (pg-boss: webhook processing, dead letters, sweeper)   |
+| `wa:subscribe`  | Subscribes the Meta app to the WABA webhooks (idempotent)                  |
+| `wa:simulate`   | Sends signed WhatsApp webhooks to the local API (see Desarrollo sin Meta)  |
+| `wa:fake-graph` | Local fake Meta Graph API on :4010 (see Desarrollo sin Meta)               |
+| `n8n:replay`    | Re-sends `failed` message.ready events to n8n (after fixing the cause)     |
+| `n8n:export`    | Exports the SmartOps workflows from local n8n, sanitized, to n8n/workflows |
 
 Tests: `pnpm --filter @smartops/api test`. Integration tests (`test/integration`) run
 against a real Postgres when `TEST_DATABASE_URL` is set in `apps/api/.env` (database
@@ -211,7 +244,9 @@ Database (API, run with `pnpm --filter @smartops/api <script>`):
 - Internal API for n8n (`X-Internal-Api-Key`, never used by the frontend), all idempotent:
   `POST /api/v1/internal/classify {messageId}`, `POST /api/v1/internal/extract {runId}`,
   `POST /api/v1/internal/catalog/ingest {runId}`, `GET /api/v1/internal/runs/:id` (status to
-  poll), `GET /api/v1/internal/rules`.
+  poll), `GET /api/v1/internal/rules`, `POST /api/v1/internal/notifications`
+  `{kind: run|customer_query|manual_attention}`, `POST /api/v1/internal/n8n/errors`,
+  `POST /api/v1/internal/messages/ack {runId}`.
 - Spreadsheets, CSV, text and Word files are converted to text by the worker before
   extraction (ADR-013); PDFs and images go to Claude as-is.
 - Spreadsheets (xlsx/xls/csv) are read row by row by CODE with the supplier's remembered
@@ -262,6 +297,9 @@ Database (API, run with `pnpm --filter @smartops/api <script>`):
 | `AI_TIMEOUT_MS`, `AI_PROMPT_CACHE`, `AI_FAKE_GOLDEN_DIR` | `apps/api`   | Call timeout, prompt caching, fake golden outputs          |
 | `INTERNAL_API_KEY`                                       | `apps/api`   | Secret for `/api/v1/internal/*` (n8n); min 32 chars        |
 | `INTERNAL_RATE_LIMIT_MAX`                                | `apps/api`   | Per-IP limit for the internal API (600 / window)           |
+| `N8N_DELIVERY_ENABLED`                                   | `apps/api`   | Deliver message.ready events to n8n (default `false`)      |
+| `N8N_RECEIVER_WEBHOOK_URL`                               | `apps/api`   | n8n Receptor webhook (production URL, `/webhook/…`)        |
+| `N8N_WEBHOOK_SECRET`                                     | `apps/api`   | `X-SmartOps-Secret` value; required when delivery is on    |
 | `TEST_DATABASE_URL`                                      | `apps/api`   | Optional; enables integration tests (`*_test` DB)          |
 | `NEXT_PUBLIC_API_URL`                                    | `apps/admin` | Base URL of the API                                        |
 
@@ -290,3 +328,4 @@ demo and any real client) must enable ZDR in the Groq console → Settings → D
 - [ADR-012](docs/adr/ADR-012-human-review.md) — Catalog ingest rules and human review items
 - [ADR-013](docs/adr/ADR-013-document-conversion.md) — Document conversion (xlsx/xls/csv/txt/docx) with isolation and limits
 - [ADR-014](docs/adr/ADR-014-spreadsheet-formats.md) — Spreadsheets read deterministically with remembered formats per supplier
+- [ADR-015](docs/adr/ADR-015-n8n-contract-outbox-notifications.md) — n8n contract: reliable outbox, AI-free pre-filter and anti-spam notifications
