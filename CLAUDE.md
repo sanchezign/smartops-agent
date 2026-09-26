@@ -917,6 +917,24 @@ production.**
      classification that needs a person reaches the Notificador with its kind; the contract
      test's fake orchestrator mirrors the mapping. PENDING (user): import the new
      receiver.json into n8n, publish and export it back (`n8n:export`).
+   - M2 users + passwords — DONE (2026-09-27). Migration `user_lockout` (User:
+     failedLoginCount, loginWindowStartedAt, lockedUntil, lockLevel, lastLoginAt,
+     passwordChangedAt). `src/modules/auth/`: `password.ts` (Argon2id via built-in
+     `crypto.argon2`, OWASP m=19456 KiB t=2 p=1, 16-byte salt, 32-byte tag, PHC string,
+     `needsRehash` when stored params are weaker, NFKC, `burnPasswordCheck` for unknown
+     emails), `password-policy.ts` (15–128 chars, no composition rules, common list +
+     trivial patterns + email/name/"smartops"), `common-passwords.ts` (329 SecLists NCSC
+     entries of ≥ 15 chars stored as SHA-256 — the repo never ships the plain list;
+     regenerate with `scripts/auth/build-common-passwords.mjs`), `login-lockout.ts` (pure:
+     5 failures / 15 min → 15 min lock, doubling, capped at 1 h, success resets).
+     `src/modules/users/` (repository + service): email normalized (trim + lowercase), role
+     / active changes under advisory lock `users:admins` (the last active admin can never be
+     demoted or deactivated, verified with a concurrent test), audit
+     user.created / role_changed / deactivated / reactivated / password_reset / unlocked
+     (actorType system + `cli:<name>` label, or user). `RevokeUserSessionsInTx` hook ready for
+     M3. CLI `pnpm --filter @smartops/api users create|list|reset-password|unlock|set-role|
+     deactivate|reactivate` (hidden prompt twice, or `--password-stdin`; never an argument).
+     `engines.node >=24.19.0` (root + api).
 
 ## Known issues (out of scope)
 - **Phase 7 M3:** `wa:optout` (manual/off-WhatsApp) does not send a WhatsApp confirmation

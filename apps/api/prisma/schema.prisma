@@ -1009,14 +1009,22 @@ model Setting {
 }
 
 model User {
-  id           String   @id @default(uuid(7)) @db.Uuid
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  name         String
-  role         UserRole @default(operator)
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                   String    @id @default(uuid(7)) @db.Uuid
+  email                String    @unique
+  passwordHash         String    @map("password_hash")
+  name                 String
+  role                 UserRole  @default(operator)
+  active               Boolean   @default(true)
+  /// Lockout (phase 8, ADR-018): failures in the current 15-min window.
+  failedLoginCount     Int       @default(0) @map("failed_login_count")
+  loginWindowStartedAt DateTime? @map("login_window_started_at") @db.Timestamptz(3)
+  lockedUntil          DateTime? @map("locked_until") @db.Timestamptz(3)
+  /// Consecutive locks since the last success (lock duration doubles, capped at 1 h).
+  lockLevel            Int       @default(0) @map("lock_level")
+  lastLoginAt          DateTime? @map("last_login_at") @db.Timestamptz(3)
+  passwordChangedAt    DateTime? @map("password_changed_at") @db.Timestamptz(3)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   messages             Message[]
   settings             Setting[]

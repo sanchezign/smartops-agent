@@ -227,20 +227,21 @@ Per app: `pnpm --filter @smartops/api <script>` / `pnpm --filter @smartops/admin
 
 API processes (run with `pnpm --filter @smartops/api <script>`):
 
-| Script               | What it does                                                                          |
-| -------------------- | ------------------------------------------------------------------------------------- |
-| `dev`                | HTTP server + worker in watch mode (`dev:api` and `dev:worker`)                       |
-| `start`              | HTTP server from `dist/` (webhooks, API)                                              |
-| `start:worker`       | Worker from `dist/` (pg-boss: webhook processing, dead letters, sweeper)              |
-| `wa:subscribe`       | Subscribes the Meta app to the WABA webhooks (idempotent)                             |
-| `wa:simulate`        | Sends signed WhatsApp webhooks to the local API (see Desarrollo sin Meta)             |
-| `wa:fake-graph`      | Local fake Meta Graph API on :4010 (see Desarrollo sin Meta)                          |
-| `n8n:replay`         | Re-sends `failed` message.ready events to n8n (after fixing the cause)                |
-| `wa:conversation`    | Bot / human mode of a chat: `status`, `pause`, `resume` (stands in for the panel)     |
-| `wa:reply`           | A person replies to a contact (24 h window) and takes over the conversation (phase 7) |
-| `wa:optout`          | Manual opt-in / opt-out of a contact, requires `--reason` (phase 7, ADR-017)          |
-| `claude-md:baseline` | Raises the size floor of the CLAUDE.md guard test after intentional growth            |
-| `n8n:export`         | Exports the SmartOps workflows from local n8n, sanitized, to n8n/workflows            |
+| Script               | What it does                                                                                                                                                |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dev`                | HTTP server + worker in watch mode (`dev:api` and `dev:worker`)                                                                                             |
+| `start`              | HTTP server from `dist/` (webhooks, API)                                                                                                                    |
+| `start:worker`       | Worker from `dist/` (pg-boss: webhook processing, dead letters, sweeper)                                                                                    |
+| `wa:subscribe`       | Subscribes the Meta app to the WABA webhooks (idempotent)                                                                                                   |
+| `wa:simulate`        | Sends signed WhatsApp webhooks to the local API (see Desarrollo sin Meta)                                                                                   |
+| `wa:fake-graph`      | Local fake Meta Graph API on :4010 (see Desarrollo sin Meta)                                                                                                |
+| `n8n:replay`         | Re-sends `failed` message.ready events to n8n (after fixing the cause)                                                                                      |
+| `wa:conversation`    | Bot / human mode of a chat: `status`, `pause`, `resume` (stands in for the panel)                                                                           |
+| `wa:reply`           | A person replies to a contact (24 h window) and takes over the conversation (phase 7)                                                                       |
+| `wa:optout`          | Manual opt-in / opt-out of a contact, requires `--reason` (phase 7, ADR-017)                                                                                |
+| `users`              | Panel users: `create` (first admin), `list`, `reset-password`, `unlock`, `set-role`, `deactivate` — passwords prompted hidden, never as arguments (phase 8) |
+| `claude-md:baseline` | Raises the size floor of the CLAUDE.md guard test after intentional growth                                                                                  |
+| `n8n:export`         | Exports the SmartOps workflows from local n8n, sanitized, to n8n/workflows                                                                                  |
 
 Tests: `pnpm --filter @smartops/api test`. Integration tests (`test/integration`) run
 against a real Postgres when `TEST_DATABASE_URL` is set in `apps/api/.env` (database

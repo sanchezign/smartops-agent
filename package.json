@@ -5,7 +5,7 @@
   "description": "SmartOps Agent — multi-channel operations agent with AI (WhatsApp + Claude + n8n)",
   "packageManager": "pnpm@12.6.0",
   "engines": {
-    "node": ">=24"
+    "node": ">=24.19.0"
   },
   "scripts": {
     "dev": "pnpm -r --parallel --if-present dev",
