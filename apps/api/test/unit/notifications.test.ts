@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isActionableRun,
   nextAllowedSend,
+  neutralize,
   renderDigest,
   runTitle,
   type ItemData,
@@ -37,38 +38,101 @@ describe("what is actionable (anti-spam)", () => {
   });
 });
 
-describe("digest text (one WhatsApp for many events)", () => {
-  it("groups the lists of the window like the user's example", () => {
-    const text = renderDigest([
-      item(run({ increases: 3, increasesOverThreshold: 1 })),
-      item(run({ increases: 5, increasesOverThreshold: 1, pendingReviews: 1 })),
-      item(run({ pendingReviews: 0, lowStock: 0, increases: 0 })),
-    ]);
+describe("digest text (phase 9 M7: one WhatsApp, a little context per item)", () => {
+  const LINK = "https://panel.example.uy/d/" + "x".repeat(43);
+  const tornillo = {
+    productName: "Tornillo 6mm",
+    oldPrice: "12",
+    newPrice: "14",
+    currency: "UYU",
+    changePct: "16.6667",
+  };
+
+  it("headline with counts, one line per item with the main change, and the panel link", () => {
+    const text = renderDigest(
+      [
+        item(
+          run({ increases: 3, increasesOverThreshold: 1, pendingReviews: 1, mainChange: tornillo }),
+        ),
+        { category: "order", messageId: "o1", contactName: "Luis", preview: "necesito 3 macetas" },
+      ],
+      { link: LINK },
+    );
     expect(text).toBe(
-      "SmartOps · 3 listas procesadas: 8 aumentos (2 mayores al 10 %), 1 revisión pendiente. Detalle en el panel.",
+      [
+        "SmartOps · 1 pedido · 1 lista",
+        "• Pedido de Luis: «necesito 3 macetas»",
+        "• Distribuidora Ejemplo: Tornillo 6mm $ 12,00 → $ 14,00 (+16,7 %), 2 aumentos más, 1 revisión pendiente",
+        `Ver en el panel: ${LINK}`,
+      ].join("\n"),
     );
   });
 
-  it("adds customer queries, audios to listen to and integration errors (errors first)", () => {
-    const text = renderDigest([
+  it("errors first, then orders, queries, lists, audios; at most 5 lines and '+N más'", () => {
+    const items: ItemData[] = [
       item(run({ lowStock: 1 })),
-      { category: "customer_query", messageId: "m", contactName: "Ana", preview: "¿precio?" },
-      { category: "customer_query", messageId: "m2", contactName: null, preview: "¿stock?" },
-      { category: "manual_attention", title: "Audio de 4:12" },
+      { category: "manual_attention", title: "Audio de 4:12 de Pinturas del Sur" },
+      ...Array.from({ length: 5 }, (_, i): ItemData => ({
+        category: "customer_query",
+        messageId: `q${i}`,
+        contactName: `Cliente ${i}`,
+        preview: "¿tienen stock?",
+      })),
       { category: "integration_error", source: "n8n · procesador", message: "timeout" },
+    ];
+    const lines = renderDigest(items).split("\n");
+    expect(lines[0]).toBe("SmartOps · ⚠️ 1 error · 5 consultas · 1 lista · 1 audio para escuchar");
+    expect(lines[1]).toBe("• ⚠️ Error (n8n · procesador): timeout");
+    expect(lines.filter((l) => l.startsWith("• "))).toHaveLength(6); // 5 details + "+N más"
+    expect(lines.at(-2)).toBe("• +3 más en el panel");
+    expect(lines.at(-1)).toBe("Detalle en el panel.");
+  });
+
+  it("snippets are truncated and neutralized: no links, no formatting marks, no line breaks", () => {
+    const text = renderDigest([
+      {
+        category: "customer_query",
+        messageId: "q",
+        contactName: "*Juan*\nPérez",
+        preview:
+          "Mirá https://phish.example/login y *pagá* ya‮ — ~oferta~ `x` " + "muy ".repeat(20),
+      },
     ]);
+    const line = text.split("\n")[1]!;
+    expect(line).not.toMatch(/https?:|phish|[*~`‮]/);
+    expect(line).toContain("[enlace]");
+    expect(line.startsWith("• Consulta de Juan Pérez: «Mirá [enlace] y pagá ya")).toBe(true);
+    expect(line.endsWith("…»")).toBe(true);
+  });
+
+  it("template variant is a single line (WhatsApp forbids line breaks in parameters)", () => {
+    const text = renderDigest(
+      [{ category: "order", messageId: "o", contactName: "Ana", preview: "mandame tanza" }],
+      { link: LINK, singleLine: true },
+    );
+    expect(text).not.toContain("\n");
     expect(text).toBe(
-      "SmartOps · ⚠️ Error de integración (n8n · procesador): timeout 1 lista procesada: 1 producto con stock bajo. 2 consultas de clientes. 1 audio para escuchar. Detalle en el panel.",
+      `SmartOps · 1 pedido · Pedido de Ana: «mandame tanza» · Ver en el panel: ${LINK}`,
     );
   });
 
-  it("orders are counted before queries (phase 8: an order is never lost)", () => {
-    const text = renderDigest([
-      { category: "order", messageId: "o1", contactName: "Ana", preview: "necesito 3 macetas" },
-      { category: "order", messageId: "o2", contactName: null, preview: "mandame tanza" },
-      { category: "customer_query", messageId: "q", contactName: "Luis", preview: "¿stock?" },
-    ]);
-    expect(text).toBe("SmartOps · 2 pedidos. 1 consulta de cliente. Detalle en el panel.");
+  it("never exceeds 1,024 chars and never cuts the link: drops detail lines instead", () => {
+    const many: ItemData[] = Array.from({ length: 40 }, (_, i) => ({
+      category: "order",
+      messageId: `o${i}`,
+      contactName: "N".repeat(60),
+      preview: "p".repeat(200),
+    }));
+    const text = renderDigest(many, { link: LINK });
+    expect(text.length).toBeLessThanOrEqual(1024);
+    expect(text.endsWith(LINK)).toBe(true);
+    expect(text).toMatch(/\+\d+ más en el panel/);
+  });
+
+  it("neutralize() keeps plain text and cuts with an ellipsis", () => {
+    expect(neutralize("  hola\n\tche  ", 20)).toBe("hola che");
+    expect(neutralize("abcdefghij", 5)).toBe("abcd…");
+    expect(neutralize(null, 5)).toBe("");
   });
 });
 

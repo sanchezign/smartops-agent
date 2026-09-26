@@ -247,6 +247,7 @@ await registerNotificationDigestWorkers(boss, {
     }),
     settings,
     outbound: outboundService,
+    panelUrl: env.PANEL_PUBLIC_URL ?? null,
   }),
   logger,
 });

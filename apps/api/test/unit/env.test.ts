@@ -89,6 +89,20 @@ describe("parseEnv", () => {
     ]);
   });
 
+  it("PANEL_PUBLIC_URL: optional, trailing slash removed, https required in production", () => {
+    expect(parseEnv({ ...base, PANEL_PUBLIC_URL: "http://localhost:3000/" }).PANEL_PUBLIC_URL).toBe(
+      "http://localhost:3000",
+    );
+    expect(parseEnv(base).PANEL_PUBLIC_URL).toBeUndefined();
+    expect(
+      issuesOf({
+        ...prodBase,
+        CORS_ORIGINS: "https://panel.x.uy",
+        PANEL_PUBLIC_URL: "http://panel.x.uy",
+      }),
+    ).toEqual(["PANEL_PUBLIC_URL: must use https:// in production"]);
+  });
+
   it("reports cross-field problems together with field errors", () => {
     const issues = issuesOf({ ...prodBase, LOG_LEVEL: "loud" });
     expect(issues).toEqual([

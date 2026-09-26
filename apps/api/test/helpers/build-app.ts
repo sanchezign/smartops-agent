@@ -124,6 +124,7 @@ export const stubAdminDeps: AdminDeps = {
     media: notConfigured,
   },
   mediaStorage: { get: notConfigured },
+  digestLinks: { byToken: notConfigured },
   catalogQuery: {
     suppliers: notConfigured,
     products: notConfigured,

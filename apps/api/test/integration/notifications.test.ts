@@ -24,6 +24,7 @@ import { createTestPrisma, resetWhatsAppTables, testDatabaseUrl } from "./db.js"
 
 const log = pino({ level: "silent" });
 const OWNER = "59899000999";
+const PANEL_URL = "https://panel.test";
 
 describe.skipIf(!testDatabaseUrl)("notifications (Postgres)", () => {
   let prisma: PrismaClient;
@@ -77,7 +78,13 @@ describe.skipIf(!testDatabaseUrl)("notifications (Postgres)", () => {
     return {
       out,
       repository,
-      svc: createNotificationService({ repository, settings, outbound: out, now: () => clock }),
+      svc: createNotificationService({
+        repository,
+        settings,
+        outbound: out,
+        now: () => clock,
+        panelUrl: PANEL_URL,
+      }),
       ack: createSupplierAckService({ repository, settings, outbound: out }),
     };
   }
@@ -193,14 +200,21 @@ describe.skipIf(!testDatabaseUrl)("notifications (Postgres)", () => {
     clock = new Date(digests[0]!.windowEndsAt.getTime() + 1000);
     expect(await svc.processDigest(digests[0]!.id, log)).toEqual({ outcome: "sent" });
     expect(out.send).toHaveBeenCalledTimes(1);
-    expect(out.send.mock.calls[0]![0]).toMatchObject({
+    const sent = out.send.mock.calls[0]![0];
+    expect(sent).toMatchObject({
       recipient: { waId: OWNER },
-      content: {
-        kind: "text",
-        body: "SmartOps · 15 listas procesadas: 30 aumentos (15 mayores al 10 %). Detalle en el panel.",
-      },
+      content: { kind: "text" },
       idempotencyKey: `digest:${digests[0]!.id}`,
     });
+    // One message: headline, 5 lines with the main change of each list, "+10 más", the link.
+    const token = digests[0]!.linkToken!;
+    expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    const lines = (sent.content as { body: string }).body.split("\n");
+    expect(lines[0]).toBe("SmartOps · 15 listas");
+    expect(lines[1]).toBe("• Distribuidora Ejemplo: P0 $ 100,00 → $ 112,00 (+12 %), 1 aumento más");
+    expect(lines).toContain("• +10 más en el panel");
+    expect(lines.at(-1)).toBe(`Ver en el panel: ${PANEL_URL}/d/${token}`);
+    expect(lines.at(-1)).not.toContain(digests[0]!.id); // the id never goes in the URL
   });
 
   it("hourly cap: the excess waits and goes in the next digest", async () => {
@@ -226,9 +240,12 @@ describe.skipIf(!testDatabaseUrl)("notifications (Postgres)", () => {
     clock = new Date(postponed.windowEndsAt.getTime() + 1000);
     expect(await svc.processDigest(d2.id, log)).toEqual({ outcome: "sent" });
     expect(out.send).toHaveBeenCalledTimes(2);
-    expect(out.send.mock.calls[1]![0].content).toMatchObject({
-      body: "SmartOps · 2 listas procesadas: 1 aumento (1 mayor al 10 %), 1 producto con stock bajo. Detalle en el panel.",
-    });
+    const body = (out.send.mock.calls[1]![0].content as { body: string }).body;
+    expect(body.split("\n").slice(0, 3)).toEqual([
+      "SmartOps · 2 listas",
+      "• Distribuidora Ejemplo: P0 $ 100,00 → $ 125,00 (+25 %)",
+      "• Distribuidora Ejemplo: 1 producto con stock bajo",
+    ]);
   });
 
   it("outside business hours a normal digest waits for the opening; a critical one goes now", async () => {
@@ -276,9 +293,13 @@ describe.skipIf(!testDatabaseUrl)("notifications (Postgres)", () => {
     });
     expect(scheduled[0]).toEqual({ digestId: critical.id, startAfter: clock });
     expect(await svc.processDigest(critical.id, log)).toEqual({ outcome: "sent" });
-    expect(out.send.mock.calls[0]![0].content).toMatchObject({
-      body: "SmartOps · ⚠️ Error de integración (n8n · procesador): timeout Detalle en el panel.",
-    });
+    expect((out.send.mock.calls[0]![0].content as { body: string }).body).toBe(
+      [
+        "SmartOps · ⚠️ 1 error",
+        "• ⚠️ Error (n8n · procesador): timeout",
+        `Ver en el panel: ${PANEL_URL}/d/${critical.linkToken}`,
+      ].join("\n"),
+    );
     expect(
       await prisma.alert.count({ where: { type: "integration_error", severity: "critical" } }),
     ).toBe(1);

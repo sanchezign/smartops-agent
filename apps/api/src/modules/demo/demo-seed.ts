@@ -5,6 +5,8 @@ import type { Logger } from "../../common/logger.js";
 import { Prisma } from "../../generated/prisma/client.js";
 import { hashPassword } from "../auth/password.js";
 import type { CatalogIngestService } from "../catalog/catalog-ingest.service.js";
+import { renderDigest, type ItemData } from "../notifications/digest-rules.js";
+import { newLinkToken } from "../notifications/notification.repository.js";
 import { demoListPng } from "./demo-image.js";
 import { normalizeSupplierName } from "../catalog/supplier-name.js";
 import { convertDocument } from "../documents/convert.js";
@@ -560,10 +562,17 @@ export async function seedDemo(deps: {
   for (const customer of DEMO_CUSTOMERS) {
     customerIds.push(await conversationFor(customer.waId, customer.name, customer.kind));
   }
+  const customerMessages: {
+    who: number;
+    kind: "query" | "order";
+    messageId: string;
+    text: string;
+  }[] = [];
   for (const [who, text, kind, daysAgo] of DEMO_CUSTOMER_MESSAGES) {
     const ids = customerIds[who]!;
     const when = at(daysAgo, 15);
     const message = await inbound(ids.conversationId, text, when);
+    customerMessages.push({ who, kind, messageId: message.id, text });
     await prisma.ingestionRun.create({
       data: {
         messageId: message.id,
@@ -669,6 +678,72 @@ export async function seedDemo(deps: {
           status: "classified",
           prefilterRule: "no_price_signal",
           createdAt: when,
+        },
+      });
+    }
+  }
+
+  // ── WhatsApp digests already sent to the team, with their panel link (phase 9 M7) ─
+  // A fake team number (the demo sends nothing); /d/<link_token> opens them in the panel.
+  const TEAM = "59899300001";
+  const itemOf = (m: (typeof customerMessages)[number]): ItemData => ({
+    category: m.kind === "order" ? "order" : "customer_query",
+    messageId: m.messageId,
+    contactName: DEMO_CUSTOMERS[m.who]!.name,
+    preview: m.text.slice(0, 80),
+  });
+  const seededDigests: { items: ItemData[]; daysAgo: number }[] = [
+    {
+      daysAgo: 0,
+      items: customerMessages
+        .filter((m) => m.kind === "order")
+        .slice(-2)
+        .map(itemOf)
+        .concat({
+          category: "manual_attention",
+          title: "Audio de 4:12 de Pinturas del Sur sin transcribir: escuchalo en la conversación",
+        }),
+    },
+    {
+      daysAgo: 1,
+      items: customerMessages
+        .filter((m) => m.kind === "query")
+        .slice(-1)
+        .map(itemOf),
+    },
+  ];
+  for (const [n, seeded] of seededDigests.entries()) {
+    const sentAt = at(seeded.daysAgo, 11);
+    const digest = await prisma.notificationDigest.create({
+      data: {
+        recipient: TEAM,
+        status: "sent",
+        windowEndsAt: sentAt,
+        sentAt,
+        channel: "text",
+        text: renderDigest(seeded.items),
+        linkToken: newLinkToken(),
+        createdAt: sentAt,
+      },
+    });
+    for (const [i, data] of seeded.items.entries()) {
+      await prisma.notificationItem.create({
+        data: {
+          recipient: TEAM,
+          category:
+            data.category === "manual_attention"
+              ? "manual_attention"
+              : data.category === "order"
+                ? "order"
+                : "customer_query",
+          dedupeKey: `demo-digest:${n}:${i}`,
+          title:
+            data.category === "manual_attention"
+              ? data.title
+              : `${data.category === "order" ? "Pedido" : "Consulta"} de ${"contactName" in data ? data.contactName : ""}: ${"preview" in data ? data.preview : ""}`,
+          data: data as unknown as Prisma.InputJsonValue,
+          digestId: digest.id,
+          createdAt: new Date(sentAt.getTime() - 60_000 + i),
         },
       });
     }

@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { PrismaClient } from "../../common/db.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 import type {
@@ -38,8 +39,13 @@ export interface DigestRecord {
   status: NotificationDigestStatus;
   critical: boolean;
   windowEndsAt: Date;
+  /** Deep link token (null for digests created before phase 9 M7). */
+  linkToken: string | null;
   items: { data: ItemData }[];
 }
+
+/** 256 random bits, URL-safe (43 chars): the digest deep link /d/<token> (phase 9 M7). */
+export const newLinkToken = () => randomBytes(32).toString("base64url");
 
 export interface NotificationRepository {
   runFacts(runId: string, thresholdPct: number): Promise<RunFacts | null>;
@@ -88,9 +94,37 @@ export function createNotificationRepository(
         prisma.alert.count({ where: { ingestionRunId: runId, type: "low_stock" } }),
         prisma.reviewItem.count({ where: { ingestionRunId: runId, status: "pending" } }),
       ]);
+      // The biggest change of the run (by absolute %), shown in the WhatsApp digest line.
+      const [up, down] = await Promise.all(
+        (["desc", "asc"] as const).map((order) =>
+          prisma.priceChange.findFirst({
+            where: { ingestionRunId: runId, changePct: { not: null } },
+            orderBy: { changePct: order },
+            select: {
+              oldPrice: true,
+              newPrice: true,
+              newCurrency: true,
+              changePct: true,
+              product: { select: { name: true } },
+            },
+          }),
+        ),
+      );
+      const biggest = [up, down]
+        .filter((c): c is NonNullable<typeof c> => Boolean(c?.oldPrice && c.changePct))
+        .sort((a, b) => b.changePct!.abs().comparedTo(a.changePct!.abs()))[0];
       return {
         runId,
         supplierName: run.supplier?.name ?? null,
+        mainChange: biggest
+          ? {
+              productName: biggest.product.name,
+              oldPrice: biggest.oldPrice!.toFixed(),
+              newPrice: biggest.newPrice.toFixed(),
+              currency: biggest.newCurrency,
+              changePct: biggest.changePct!.toFixed(),
+            }
+          : null,
         increases,
         increasesOverThreshold: over,
         thresholdPct,
@@ -156,7 +190,12 @@ export function createNotificationRepository(
             });
             if (criticalSent < input.criticalCap) {
               const digest = await tx.notificationDigest.create({
-                data: { recipient, critical: true, windowEndsAt: input.now },
+                data: {
+                  recipient,
+                  critical: true,
+                  windowEndsAt: input.now,
+                  linkToken: newLinkToken(),
+                },
                 select: { id: true },
               });
               await tx.notificationItem.update({
@@ -182,7 +221,7 @@ export function createNotificationRepository(
           }
           const windowEndsAt = new Date(input.now.getTime() + input.windowMs);
           const digest = await tx.notificationDigest.create({
-            data: { recipient, windowEndsAt },
+            data: { recipient, windowEndsAt, linkToken: newLinkToken() },
             select: { id: true },
           });
           await tx.notificationItem.update({
@@ -204,6 +243,7 @@ export function createNotificationRepository(
           status: true,
           critical: true,
           windowEndsAt: true,
+          linkToken: true,
           items: { select: { data: true }, orderBy: { createdAt: "asc" } },
         },
       });

@@ -44,6 +44,8 @@ export function createNotificationService(deps: {
   settings: SettingsService;
   /** Only in the worker (digests are sent there). */
   outbound?: OutboundService;
+  /** PANEL_PUBLIC_URL: adds the deep link /d/<token> to each digest (phase 9 M7). */
+  panelUrl?: string | null;
   now?: () => Date;
 }): NotificationService {
   const now = deps.now ?? (() => new Date());
@@ -212,7 +214,10 @@ export function createNotificationService(deps: {
         }
       }
 
-      const text = renderDigest(digest.items.map((i) => i.data));
+      const link =
+        deps.panelUrl && digest.linkToken ? `${deps.panelUrl}/d/${digest.linkToken}` : null;
+      const data = digest.items.map((i) => i.data);
+      const text = renderDigest(data, { link });
       const idempotencyKey = `digest:${digest.id}`;
       const recipient = { waId: digest.recipient };
       const settle = async (
@@ -264,7 +269,17 @@ export function createNotificationService(deps: {
               name: cfg.template.name,
               languageCode: cfg.template.languageCode,
               ...(cfg.template.bodyParam
-                ? { components: [{ type: "body", parameters: [{ type: "text", text }] }] }
+                ? {
+                    components: [
+                      {
+                        type: "body",
+                        // Template parameters cannot contain line breaks: one-line variant.
+                        parameters: [
+                          { type: "text", text: renderDigest(data, { link, singleLine: true }) },
+                        ],
+                      },
+                    ],
+                  }
                 : {}),
             },
             author: "bot",

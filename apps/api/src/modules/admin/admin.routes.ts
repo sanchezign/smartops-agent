@@ -20,6 +20,7 @@ import type { OptOutRepository } from "../optout/optout.repository.js";
 import type { MediaStorage } from "../media/media-storage.js";
 import type { CatalogQueryRepository } from "./catalog-query.repository.js";
 import type { ConversationQueryRepository } from "./conversation-query.repository.js";
+import type { DigestLinkRepository } from "./digest-link.repository.js";
 import { isOpen, nextOpening } from "../settings/business-hours.js";
 import type { BusinessHours } from "../settings/settings.schemas.js";
 import { mediaResponseHeaders } from "./media-response.js";
@@ -49,6 +50,8 @@ export interface AdminDeps {
     "list" | "get" | "messages" | "optedOut" | "media"
   >;
   mediaStorage: Pick<MediaStorage, "get">;
+  /** WhatsApp digest deep links /d/<token> (phase 9 M7). */
+  digestLinks: Pick<DigestLinkRepository, "byToken">;
   /** Catalog, price history, alerts; rename supplier + acknowledge alert (phase 9 M5). */
   catalogQuery: Pick<
     CatalogQueryRepository,
@@ -123,6 +126,7 @@ const alertsQuery = z
     limit: z.coerce.number().int().min(1).max(200).default(100),
   })
   .strict();
+const tokenParams = z.object({ token: z.string().max(100) }).strict();
 const pauseBody = z.object({ minutes: z.number().int().min(1).max(10_080).nullable() }).strict();
 const replyBody = z.object({ text: z.string().trim().min(1).max(4_096) }).strict();
 const consentBody = z
@@ -292,6 +296,22 @@ function buildRoutes(deps: AdminDeps): AdminRoute[] {
           actor: { userId: ctx.user.userId, requestId: ctx.requestId ?? null },
         });
         res.json({ supplier });
+      },
+    },
+    // ── Digest deep link (phase 9 M7) ───────────────────────────────────────
+    {
+      // Login required like every panel route; unknown and malformed tokens answer the same
+      // 404 (no oracle). The token is random (256 bits) — never the digest id.
+      method: "get",
+      path: "/digests/:token",
+      roles: ALL_ROLES,
+      schemas: { params: tokenParams },
+      handler: async (_req, res) => {
+        const digest = await deps.digestLinks.byToken(
+          getValidated<typeof tokenParams>(res, "params").token,
+        );
+        if (!digest) throw errors.notFound("Digest not found");
+        res.json({ digest });
       },
     },
     // ── Alerts ──────────────────────────────────────────────────────────────

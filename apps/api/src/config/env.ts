@@ -153,6 +153,16 @@ export const envSchema = z.object({
   SSE_MAX_STREAMS: z.coerce.number().int().min(1).max(10_000).default(500),
   /** Heartbeat: keeps proxies from closing the stream and re-checks the session. */
   SSE_HEARTBEAT_SECONDS: z.coerce.number().int().min(5).max(120).default(25),
+  /**
+   * Public URL of the panel (phase 9 M7): WhatsApp digests end with PANEL_PUBLIC_URL/d/<token>.
+   * Unset → no link. HTTPS required in production.
+   */
+  PANEL_PUBLIC_URL: optionalString(
+    z
+      .string()
+      .refine(isHttpUrl, { message: "must be an http(s) URL" })
+      .transform((url) => url.replace(/\/+$/, "")),
+  ),
 
   // ─── Demo data (phase 9) ───
   /** Separate demo database (name MUST end in "_demo"): demo:seed / demo:reset. */
@@ -239,6 +249,13 @@ function crossFieldIssues(source: Record<string, string | undefined>): string[] 
     source.WHATSAPP_GRAPH_BASE_URL.replace(/\/+$/, "") !== META_GRAPH_BASE_URL
   ) {
     issues.push(`WHATSAPP_GRAPH_BASE_URL: must be ${META_GRAPH_BASE_URL} in production`);
+  }
+  if (
+    source.NODE_ENV === "production" &&
+    source.PANEL_PUBLIC_URL?.trim() &&
+    !source.PANEL_PUBLIC_URL.trim().startsWith("https://")
+  ) {
+    issues.push("PANEL_PUBLIC_URL: must use https:// in production");
   }
   const provider = source.TRANSCRIPTION_PROVIDER ?? "fake";
   if (source.NODE_ENV === "production" && provider === "fake") {

@@ -962,6 +962,9 @@ model NotificationDigest {
   /// text | template | panel_only
   channel           String?
   outboundMessageId String?                  @map("outbound_message_id") @db.Uuid
+  /// Random 256-bit token of the panel deep link /d/<token> (phase 9 M7). Not the id (a
+  /// UUIDv7 leaks its creation time); the URL carries no content. Requires login.
+  linkToken         String?                  @unique @map("link_token")
   error             String?
   createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)

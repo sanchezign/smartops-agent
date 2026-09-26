@@ -26,7 +26,7 @@ const auth: AuthService = {
   authenticate: async (token) => users[token] ?? null,
 };
 const pathFor = (path: string) =>
-  `/api/v1/admin${path.replace(":id", ID).replace(":key", "bot.supplierAck")}`;
+  `/api/v1/admin${path.replace(":id", ID).replace(":key", "bot.supplierAck").replace(":token", "t".repeat(43))}`;
 
 describe("route inventory: every /admin route is protected", () => {
   const table = adminRouteTable(stubAdminDeps);
@@ -296,5 +296,37 @@ describe("GET /admin/status (phase 9 M6)", () => {
       autoRepliesEnabled: false,
       businessHours: { configured: true, open: false, nextOpening: null },
     });
+  });
+});
+
+describe("GET /admin/digests/:token (phase 9 M7)", () => {
+  it("unknown or malformed tokens get the same 404; a found digest is returned", async () => {
+    const seen: string[] = [];
+    const app = buildTestApp({
+      auth,
+      admin: {
+        ...stubAdminDeps,
+        digestLinks: {
+          byToken: async (token: string) => {
+            seen.push(token);
+            return token === "a".repeat(43)
+              ? { createdAt: new Date(), sentAt: null, critical: false, items: [] }
+              : null;
+          },
+        },
+      },
+    });
+    const get = (token: string) =>
+      request(app)
+        .get(`/api/v1/admin/digests/${token}`)
+        .set("authorization", "Bearer operator-token");
+    const [unknown, malformed, found] = [
+      await get("b".repeat(43)),
+      await get("nope"),
+      await get("a".repeat(43)),
+    ];
+    expect([unknown.status, malformed.status, found.status]).toEqual([404, 404, 200]);
+    expect(unknown.body.error.code).toBe(malformed.body.error.code);
+    expect(seen).toContain("nope");
   });
 });

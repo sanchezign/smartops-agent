@@ -1174,6 +1174,28 @@ a real client.**
      sessions; own row offers no role/deactivate actions. E2E: `RATE_LIMIT_MAX` 100000 in the
      Playwright API env (every project shares one IP — 429 surfaced as "Demasiados intentos");
      never click "the first link" after typing a search (race with the filter) — click by name.
+   - M7 richer digest + deep link — DONE (2026-09-27). `renderDigest(items, {link, singleLine})`
+     (pure, `digest-rules.ts`): headline with counts ("SmartOps · 2 pedidos · 1 lista"), up to
+     5 detail lines in priority order errors → orders → queries → lists → audios ("Pedido de Ana:
+     «…»", "Distribuidora Norte: Tornillo 6mm $ 12,00 → $ 14,00 (+16,7 %), 2 aumentos más, 1
+     revisión pendiente"), "+N más en el panel", footer "Ver en el panel: <link>" (or "Detalle en
+     el panel."); ≤ 1,024 chars by DROPPING lines (the link is never cut); single-line variant
+     joined with " · " for template parameters (no line breaks allowed there). `neutralize()`:
+     control / bidi chars removed, links → "[enlace]", WhatsApp formatting marks and «» stripped,
+     whitespace collapsed, snippets 60 / names 40 chars with "…". Still ONE message per window
+     and the same caps; bodies never logged. `RunFacts.mainChange` = the run's biggest change by
+     absolute % (product, old/new price, currency, pct), optional (older items without it).
+     Deep link (user rules): `notification_digests.link_token` (migration `digest_links`, unique)
+     = 256 random bits base64url (43 chars, `newLinkToken`) set when the digest is created —
+     NOT the UUIDv7 id (it leaks its time) — URL `PANEL_PUBLIC_URL/d/<token>` (new optional env,
+     trailing slash trimmed, https required in production; unset → no link) carries no content.
+     `GET /admin/digests/:token` (login required, strict token pattern, unknown / malformed /
+     digest-id → the same 404) → items with the panel path that resolves each (order/query →
+     its conversation, list → /revisiones if reviews pending else /catalogo, audio / error →
+     /alertas). Panel `/d/[token]` (inside the login area: AuthGate keeps it as `next`,
+     `referrer: no-referrer`): one item → redirect, several → list; only in-panel paths are
+     followed (`digests/paths.ts`). Demo seed: two sent digests to a fake team number with
+     tokens (E2E reads them from the E2E DB through the API package's `pg`).
 
 ## Known issues (out of scope)
 - **Phase 7 M3:** `wa:optout` (manual/off-WhatsApp) does not send a WhatsApp confirmation
