@@ -9,6 +9,7 @@ const PAGES = [
   "/",
   "/revisiones",
   "/conversaciones",
+  "/conversaciones/bajas",
   "/catalogo",
   "/alertas",
   "/reglas",
@@ -32,6 +33,18 @@ test("screenshots", async ({ page }, info) => {
     await page.waitForLoadState("networkidle");
     const name = path === "/" ? "inicio" : path.slice(1).replaceAll("/", "-");
     await page.screenshot({ path: `e2e/screens/${info.project.name}-${name}.png`, fullPage: true });
+  }
+  // Chats: Norte (photo + spreadsheet) and Luis (human mode).
+  for (const [search, name] of [
+    ["Norte", "chat-norte"],
+    ["Luis", "chat-luis"],
+  ] as const) {
+    await page.goto("/conversaciones");
+    await page.getByLabel("Buscar por nombre, proveedor o teléfono").fill(search);
+    await page.getByRole("list", { name: "Conversaciones" }).getByRole("link").first().click();
+    await page.getByRole("region", { name: "Mensajes" }).waitFor();
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: `e2e/screens/${info.project.name}-${name}.png` });
   }
   // Review detail screens (one per resolver).
   for (const [title, name] of REVIEWS) {

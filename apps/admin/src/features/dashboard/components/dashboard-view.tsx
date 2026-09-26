@@ -15,7 +15,7 @@ import { ErrorState, LoadingState } from "@/components/states";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useApiQuery } from "@/hooks/use-api";
-import { formatInt, formatRatio, formatUsd } from "@/lib/format";
+import { formatInt, formatNumber, formatRatio, formatUsd } from "@/lib/format";
 import { PREFILTER_RULE_LABEL, type DashboardData } from "../types";
 import { DailyBars } from "./daily-bars";
 import { StatCard } from "./stat-card";
@@ -163,7 +163,7 @@ function DashboardContent({ data }: { data: DashboardData }) {
               color="var(--chart-2)"
               data={data.ai.byDay.map((d) => ({ day: d.day, value: Number(d.usd) }))}
               format={(v) => formatUsd(v.toFixed(4))}
-              axisFormat={(v) => (v === 0 ? "0" : v.toFixed(3).replace(".", ","))}
+              axisFormat={(v) => formatNumber(v, { maximumFractionDigits: 3 })}
             />
           </CardContent>
         </Card>

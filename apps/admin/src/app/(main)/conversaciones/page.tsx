@@ -1,13 +1,8 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "@/components/coming-soon";
+import { Inbox } from "@/features/conversations/components/inbox";
 
 export const metadata: Metadata = { title: "Conversaciones" };
 
 export default function Page() {
-  return (
-    <ComingSoon
-      title="Conversaciones"
-      description="Acá vas a ver los chats, quién responde y contestar como persona."
-    />
-  );
+  return <Inbox />;
 }

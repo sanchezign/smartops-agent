@@ -8,7 +8,7 @@ import {
 } from "../../src/modules/admin/admin.routes.js";
 import type { AuthenticatedUser, AuthService } from "../../src/modules/auth/auth.service.js";
 import { canResolveReview } from "../../src/modules/auth/permissions.js";
-import { ReviewKind, ReviewScope } from "../../src/generated/prisma/enums.js";
+import { ReviewKind, ReviewScope, type MediaStatus } from "../../src/generated/prisma/enums.js";
 import { buildTestApp, stubAdminDeps, stubAuthService } from "../helpers/build-app.js";
 
 /**
@@ -201,5 +201,61 @@ describe("admin routes: validation and no-store", () => {
       .set("authorization", "Bearer operator-token")
       .expect(200);
     expect(res.headers["cache-control"]).toBe("no-store");
+  });
+});
+
+describe("chat media for the panel (phase 9 M3, ADR-019)", () => {
+  const bearer = { authorization: "Bearer operator-token" };
+  const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+  function appWith(
+    media: { mimeType: string; filename: string | null; status: MediaStatus } | null,
+  ) {
+    const get = vi.fn(async () => bytes);
+    const admin: AdminDeps = {
+      ...stubAdminDeps,
+      conversationQuery: {
+        ...stubAdminDeps.conversationQuery,
+        media: async () => (media ? { id: ID, sizeBytes: bytes.byteLength, ...media } : null),
+      },
+      mediaStorage: { get },
+    };
+    return { app: buildTestApp({ auth, admin }), get };
+  }
+
+  it("streams stored bytes with the Bearer (no token in the URL) and safe headers", async () => {
+    const { app } = appWith({ mimeType: "image/jpeg", filename: "foto.jpg", status: "stored" });
+    const res = await request(app).get(`/api/v1/admin/media/${ID}`).set(bearer).buffer(true);
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toBe("image/jpeg");
+    expect(res.headers["x-content-type-options"]).toBe("nosniff");
+    expect(res.headers["content-security-policy"]).toBe("default-src 'none'; sandbox");
+    expect(res.headers["cache-control"]).toBe("private, no-store");
+    expect(new Uint8Array(res.body as Buffer)).toEqual(bytes);
+  });
+
+  it("a spreadsheet is an attachment, never rendered", async () => {
+    const { app } = appWith({
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      filename: "lista.xlsx",
+      status: "stored",
+    });
+    const res = await request(app).get(`/api/v1/admin/media/${ID}`).set(bearer).buffer(true);
+    expect(res.headers["content-type"]).toBe("application/octet-stream");
+    expect(res.headers["content-disposition"]).toMatch(/^attachment; filename="lista.xlsx"/);
+  });
+
+  it.each([null, { mimeType: "image/jpeg", filename: null, status: "rejected" as const }])(
+    "not stored → 404 without touching the storage (%j)",
+    async (media) => {
+      const { app, get } = appWith(media);
+      const res = await request(app).get(`/api/v1/admin/media/${ID}`).set(bearer);
+      expect(res.status).toBe(404);
+      expect(get).not.toHaveBeenCalled();
+    },
+  );
+
+  it("without a token → 401 (media URLs carry no credentials)", async () => {
+    const { app } = appWith({ mimeType: "image/jpeg", filename: null, status: "stored" });
+    expect((await request(app).get(`/api/v1/admin/media/${ID}?token=x`)).status).toBe(401);
   });
 });

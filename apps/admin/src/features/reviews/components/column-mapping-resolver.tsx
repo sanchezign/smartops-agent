@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { formatPrice } from "@/lib/format";
 import type { ResolveInput } from "../hooks";
 import { columnMappingApproveBody, initialPriceColumns } from "../resolve-input";
 import type { ColumnMappingProposal, PriceColumn, ReviewItem, TableProposal } from "../types";
@@ -143,7 +144,9 @@ function TableChoice({
                   {sample.map((row) => (
                     <span key={row.name} className="flex justify-between gap-3">
                       <span className="truncate text-muted-foreground">{row.name}</span>
-                      <span className="font-mono tabular-nums">{row.prices[key] ?? "—"}</span>
+                      <span className="font-mono tabular-nums">
+                        {row.prices[key] ? formatPrice(row.prices[key]) : "—"}
+                      </span>
                     </span>
                   ))}
                 </span>

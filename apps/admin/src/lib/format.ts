@@ -75,9 +75,40 @@ export function formatRelative(iso: string, now = new Date()): string {
   return days === 1 ? "ayer" : `hace ${days} días`;
 }
 
-/** Signed percentage for people: "+85 %", "−7,5 %" (the stored value keeps its decimals). */
+/**
+ * THE number formatter of the panel: es-UY (comma decimals, dot thousands: "1.850,5").
+ * Accepts Decimal strings from the API (Intl formats them without a binary float).
+ */
+export function formatNumber(
+  value: string | number,
+  { minimumFractionDigits = 0, maximumFractionDigits = 2, grouping = true } = {},
+): string {
+  return new Intl.NumberFormat(LOCALE, {
+    minimumFractionDigits,
+    maximumFractionDigits,
+    useGrouping: grouping,
+  }).format(value as number);
+}
+
+/** A price without currency, as in a list: "1.850,00", "262,30" (up to 4 decimals). */
+export function formatPrice(value: string): string {
+  return formatNumber(value, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+}
+
+/**
+ * Signed percentage with UP TO one decimal: "+85 %", "+12,5 %", "−7,5 %" (the stored value
+ * keeps all its decimals; this is display only).
+ */
 export function formatPct(value: string | number): string {
   const n = Number(value);
-  const text = new Intl.NumberFormat("es-UY", { maximumFractionDigits: 1 }).format(Math.abs(n));
+  const text = formatNumber(Math.abs(n), { maximumFractionDigits: 1 });
   return `${n > 0 ? "+" : n < 0 ? "−" : ""}${text} %`;
+}
+
+/**
+ * A Decimal string to pre-fill an editable price field: comma decimals and NO thousands dot
+ * ("3325.36" → "3325,36"), because the input refuses an ambiguous "1.850".
+ */
+export function toDecimalInput(value: string | null): string {
+  return value ? value.replace(".", ",") : "";
 }

@@ -1,3 +1,4 @@
+import { toDecimalInput } from "@/lib/format";
 import type { ApproveInput, ColumnMappingProposal, LineProposal } from "./types";
 
 /**
@@ -44,7 +45,7 @@ export function lineDefaults(
   const target = productId ?? proposal.candidates[0]?.id ?? "new";
   return {
     target,
-    price: proposal.proposedPrice ?? proposal.item.price ?? "",
+    price: toDecimalInput(proposal.proposedPrice ?? proposal.item.price),
     currency:
       proposal.currency ?? proposal.item.currency ?? proposal.listCurrency ?? productCurrency ?? "",
     name: proposal.item.name,

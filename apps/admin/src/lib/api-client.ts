@@ -109,7 +109,8 @@ export function createApiClient(deps: ApiClientDeps) {
     return inflight;
   }
 
-  async function request<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {
+  /** Authenticated call: Bearer from memory, ONE refresh + retry on a 401. */
+  async function send(path: string, init: RequestInit = {}, retried = false): Promise<Response> {
     const token = deps.getAccessToken();
     const res = await deps.fetch(`${deps.base}${path}`, {
       ...init,
@@ -120,13 +121,27 @@ export function createApiClient(deps: ApiClientDeps) {
         ...(token ? { authorization: `Bearer ${token}` } : {}),
       },
     });
-    if (res.status === 401 && !retried && (await refresh())) return request<T>(path, init, true);
+    if (res.status === 401 && !retried && (await refresh())) return send(path, init, true);
     if (!res.ok) throw await toError(res);
+    return res;
+  }
+
+  async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const res = await send(path, init);
     return (res.status === 204 ? undefined : await res.json()) as T;
+  }
+
+  /**
+   * Binary download with the same auth (ADR-019): chat media is never fetched through a URL
+   * that carries credentials; the caller shows it from a blob: URL.
+   */
+  async function requestBlob(path: string, init: RequestInit = {}): Promise<Blob> {
+    return (await send(path, init)).blob();
   }
 
   return {
     request,
+    requestBlob,
     refresh,
     async login(email: string, password: string): Promise<Session> {
       const res = await post("/auth/login", { email, password });

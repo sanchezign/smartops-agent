@@ -16,6 +16,9 @@ import type { ConversationModeService } from "../conversations/conversation-mode
 import type { DashboardService } from "../dashboard/dashboard.service.js";
 import type { HumanReplyService } from "../conversations/human-reply.service.js";
 import type { OptOutRepository } from "../optout/optout.repository.js";
+import type { MediaStorage } from "../media/media-storage.js";
+import type { ConversationQueryRepository } from "./conversation-query.repository.js";
+import { mediaResponseHeaders } from "./media-response.js";
 import type { ReviewQueryRepository } from "./review-query.repository.js";
 import type { ReviewService } from "../reviews/review.service.js";
 import type { SettingsService } from "../settings/settings.service.js";
@@ -36,6 +39,12 @@ export interface AdminDeps {
   /** Re-emits message.ready for a run a review sent back to extraction (closes phase 6 gap). */
   retriggerRun(runId: string, reason: string): Promise<{ retriggered: boolean }>;
   mode: Pick<ConversationModeService, "status" | "pause" | "resume">;
+  /** Inbox, chat history, opted-out list, media metadata (phase 9 M3). */
+  conversationQuery: Pick<
+    ConversationQueryRepository,
+    "list" | "get" | "messages" | "optedOut" | "media"
+  >;
+  mediaStorage: Pick<MediaStorage, "get">;
   humanReply: Pick<HumanReplyService, "reply">;
   consent: Pick<OptOutRepository, "find" | "apply">;
   settings: Pick<SettingsService, "getAll" | "set">;
@@ -73,6 +82,20 @@ const reviewQuery = z
   .strict();
 const dashboardQuery = z
   .object({ days: z.coerce.number().int().min(7).max(90).default(14) })
+  .strict();
+const inboxQuery = z
+  .object({
+    filter: z.enum(["all", "human", "opted_out", "suppliers", "customers"]).default("all"),
+    q: z.string().trim().min(1).max(100).optional(),
+    cursor: z.uuid().optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(30),
+  })
+  .strict();
+const messagesQuery = z
+  .object({
+    before: z.uuid().optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(40),
+  })
   .strict();
 const pauseBody = z.object({ minutes: z.number().int().min(1).max(10_080).nullable() }).strict();
 const replyBody = z.object({ text: z.string().trim().min(1).max(4_096) }).strict();
@@ -200,6 +223,67 @@ function buildRoutes(deps: AdminDeps): AdminRoute[] {
     // ── Conversations (bot / human, ADR-016) ────────────────────────────────
     {
       method: "get",
+      path: "/conversations",
+      roles: ALL_ROLES,
+      schemas: { query: inboxQuery },
+      handler: async (_req, res) => {
+        res.json(await deps.conversationQuery.list(getValidated<typeof inboxQuery>(res, "query")));
+      },
+    },
+    {
+      method: "get",
+      path: "/conversations/:id",
+      roles: ALL_ROLES,
+      schemas: { params: idParams },
+      handler: async (_req, res) => {
+        const conversation = await deps.conversationQuery.get(
+          getValidated<typeof idParams>(res, "params").id,
+        );
+        if (!conversation) throw errors.notFound("Conversation not found");
+        res.json({ conversation });
+      },
+    },
+    {
+      method: "get",
+      path: "/conversations/:id/messages",
+      roles: ALL_ROLES,
+      schemas: { params: idParams, query: messagesQuery },
+      handler: async (_req, res) => {
+        res.json(
+          await deps.conversationQuery.messages(
+            getValidated<typeof idParams>(res, "params").id,
+            getValidated<typeof messagesQuery>(res, "query"),
+          ),
+        );
+      },
+    },
+    {
+      // Chat media for the panel (ADR-019): fetched with the Bearer like any other call and
+      // shown from a blob: URL — no tokens in URLs. Untrusted bytes: inline only for images,
+      // audio and PDF; nosniff + sandbox CSP always.
+      method: "get",
+      path: "/media/:id",
+      roles: ALL_ROLES,
+      schemas: { params: idParams },
+      handler: async (_req, res) => {
+        const { id } = getValidated<typeof idParams>(res, "params");
+        const media = await deps.conversationQuery.media(id);
+        if (!media || media.status !== "stored") throw errors.notFound("Media not available");
+        const bytes = await deps.mediaStorage.get(id);
+        if (!bytes) throw errors.notFound("Media not available");
+        res.set(
+          mediaResponseHeaders({
+            id,
+            mimeType: media.mimeType,
+            filename: media.filename,
+            size: bytes.byteLength,
+          }),
+        );
+        res.end(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength));
+      },
+    },
+    {
+      method: "get",
       path: "/conversations/:id/mode",
       roles: ALL_ROLES,
       schemas: { params: idParams },
@@ -269,6 +353,14 @@ function buildRoutes(deps: AdminDeps): AdminRoute[] {
       },
     },
     // ── Contacts: manual opt-out / opt-in (ADR-017) ─────────────────────────
+    {
+      method: "get",
+      path: "/contacts/opted-out",
+      roles: ALL_ROLES,
+      handler: async (_req, res) => {
+        res.json({ contacts: await deps.conversationQuery.optedOut() });
+      },
+    },
     {
       method: "get",
       path: "/contacts/:id/consent",

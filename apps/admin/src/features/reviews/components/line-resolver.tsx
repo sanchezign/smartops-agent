@@ -146,7 +146,11 @@ export function LineResolver({
               inputMode="decimal"
               value={choice.price}
               disabled={readOnly}
-              placeholder={line.priceChangePct ? `${line.priceChangePct} % sobre el actual` : ""}
+              placeholder={
+                line.priceChangePct
+                  ? `${formatPct(line.priceChangePct)} sobre el precio actual`
+                  : ""
+              }
               onChange={(e) => setChoice((c) => ({ ...c, price: e.target.value }))}
             />
           </div>

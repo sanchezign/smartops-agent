@@ -1072,6 +1072,40 @@ a real client.**
      SAME seeded DB, so resolving specs run on desktop only and phones read items nobody
      resolves. Link to the conversation has `prefetch={false}` (a prefetch of the not-yet-built
      `/conversaciones/[id]` stayed open; re-check in M3).
+   - Numbers (user, after M2): EVERY number in the panel goes through `lib/format.ts` (es-UY via
+     Intl: `formatNumber`, `formatMoney` "$ 1.850,00", `formatPrice` "262,30", `formatPct` with
+     UP TO one decimal "+85 %" / "+12,5 %", `toDecimalInput` "3325,36" for editable fields —
+     never a thousands dot there, the input refuses "1.850"). No `toFixed`/raw decimals in UI.
+   - M8 addition (user, after M2): at least one test PER MOBILE BROWSER approves and rejects a
+     review with the sticky bottom buttons → the E2E seed gives EACH Playwright project its own
+     reviews (projects share one DB and run one after another).
+   - M3 conversations — DONE (2026-09-27). ADR-019 (chat media): media fetched with the Bearer
+     through the same client (`api.requestBlob`, one refresh on 401) and shown from `blob:` URLs
+     (TanStack Query caches the Blob, the object URL is revoked on unmount); photos load when
+     scrolled into view, audio/documents on tap; no token ever in a URL; option B (signed URLs)
+     documented for large media later. `GET /admin/media/:id` (only `stored`; inline ONLY
+     images/audio/PDF, everything else `application/octet-stream` + attachment; nosniff +
+     `default-src 'none'; sandbox` CSP + no-store + CORP same-origin; filename sanitized, ASCII +
+     UTF-8 `filename*`) — `admin/media-response.ts` pure + unit tests. Chat `<img>` is a bare img
+     on purpose (blob: URL; next/image cannot optimize it) — exception to the checklist, see
+     ADR-019. Read model `admin/conversation-query.repository.ts`: inbox (filters all / human /
+     suppliers / customers / opted_out, search by name, supplier or ≥ 3 phone digits, cursor
+     pagination, last message snippet 120 chars, 24 h window), header (mode + last change + window
+     + consent), messages (pages BACKWARDS by `before`, each page oldest-first), opted-out list
+     (with how: keyword / off WhatsApp / manual + who). Routes `GET /admin/conversations`,
+     `/conversations/:id`, `/conversations/:id/messages`, `/contacts/opted-out`, `/media/:id`.
+     Panel `features/conversations/`: inbox, chat (day separators, bubbles with author 🤖 / 👤
+     name / compliance, status, edited / deleted, transcript under audio, media), badges 🤖
+     "Responde el bot" / 👤 "Atiende una persona hasta HH:MM" / ⛔ "Dado de baja" (opt-out wins
+     over the mode), pause dialog (30 min / 2 h / 8 h / until resumed) + resume, reply as a person
+     (only inside the 24 h window; explains why otherwise; warning when opted out; Enter = new
+     line, Ctrl/Cmd+Enter sends), manual opt-out (both roles, reason required) / opt-in (admin
+     only), `/conversaciones/bajas`. Polling every 15 s until M4 (SSE). Voice notes: Ogg/Opus
+     plays on iOS/Safari 18.4+ (WebKit notes; reports of incomplete support) → the transcript is
+     always shown + "¿No se escucha? Descargalo". Demo seed adds a code-drawn PNG photo
+     (`demo/demo-image.ts`, no binary asset) to Norte's chat. Accessibility: light theme
+     `--muted-foreground` 0.556 → 0.5 and `--destructive` 0.577 → 0.52 (axe color-contrast on
+     muted backgrounds / the red tint); `expectAccessible` now prints the failing selectors.
 
 ## Known issues (out of scope)
 - **Phase 7 M3:** `wa:optout` (manual/off-WhatsApp) does not send a WhatsApp confirmation

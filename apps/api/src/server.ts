@@ -19,6 +19,7 @@ import {
   createScheduleDigestInTx,
   startBoss,
 } from "./jobs/boss.js";
+import { createConversationQueryRepository } from "./modules/admin/conversation-query.repository.js";
 import { createReviewQueryRepository } from "./modules/admin/review-query.repository.js";
 import { createRunRetrigger } from "./modules/admin/run-retrigger.js";
 import { createDashboardRepository } from "./modules/dashboard/dashboard.repository.js";
@@ -96,9 +97,10 @@ const ai = createAiClient({
     runUsd: env.AI_MAX_RUN_USD,
   },
 });
+const mediaStorage = createPostgresMediaStorage(prisma);
 const ingestion = createIngestionService({
   repository: createIngestionRepository(prisma),
-  storage: createPostgresMediaStorage(prisma),
+  storage: mediaStorage,
   ai,
   // Spreadsheets (M3c): remembered formats per supplier, deterministic read, compact matching.
   sheets: createSheetExtraction({
@@ -187,6 +189,8 @@ const app = createApp({
       budget: { totalUsd: env.AI_TOTAL_BUDGET_USD, dailyUsd: env.AI_DAILY_BUDGET_USD },
     }),
     reviewQuery: createReviewQueryRepository(prisma),
+    conversationQuery: createConversationQueryRepository(prisma),
+    mediaStorage,
     reviews: createReviewService({
       repository: createReviewRepository(prisma),
       ingest: catalog,

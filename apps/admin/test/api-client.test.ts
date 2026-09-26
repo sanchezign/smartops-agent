@@ -54,6 +54,30 @@ describe("api client", () => {
     );
   });
 
+  it("media downloads use the same Bearer + refresh and return a Blob (ADR-019)", async () => {
+    const seen: (string | undefined)[] = [];
+    const { client } = setup((url, init) => {
+      if (url.endsWith("/auth/refresh")) return json(200, session("new"));
+      const auth = (init.headers as Record<string, string>).authorization;
+      seen.push(auth);
+      return auth === "Bearer new"
+        ? new Response(new Uint8Array([1, 2, 3]), { headers: { "content-type": "image/jpeg" } })
+        : apiError(401, "UNAUTHORIZED");
+    });
+    const blob = await client.requestBlob("/admin/media/m1");
+    expect(blob.type).toBe("image/jpeg");
+    expect(new Uint8Array(await blob.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
+    expect(seen).toEqual(["Bearer old", "Bearer new"]);
+  });
+
+  it("a media 404 surfaces as an ApiError (no blob of an error page)", async () => {
+    const { client } = setup(() => apiError(404, "NOT_FOUND"));
+    await expect(client.requestBlob("/admin/media/m1")).rejects.toMatchObject({
+      status: 404,
+      code: "NOT_FOUND",
+    });
+  });
+
   it("concurrent 401s share ONE refresh (a rotated cookie must never be sent twice)", async () => {
     let refreshes = 0;
     const { client } = setup(async (url, init) => {

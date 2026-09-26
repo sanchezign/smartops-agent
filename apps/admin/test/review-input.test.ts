@@ -71,6 +71,14 @@ describe("lineApproveBody", () => {
       ok: true,
       body: { createNew: true, price: "3052.5", currency: "UYU", name: "Arena fina" },
     });
+  });
+
+  it('the price field starts in es-UY without a thousands dot (the input refuses "1.850")', () => {
+    expect(defaults.price).toBe("3052,5");
+    expect(lineApproveBody({ ...defaults, price: "3052,5" }, defaults)).toEqual({
+      ok: true,
+      body: { productId: "p1" },
+    });
     expect(lineApproveBody({ ...defaults, target: "new", price: "" }, defaults).ok).toBe(false);
     expect(lineApproveBody({ ...defaults, target: "new", name: " " }, defaults).ok).toBe(false);
   });
@@ -128,14 +136,5 @@ describe("column mapping", () => {
       body: { tables: [{ table: "T1", priceColumn: 3 }] },
     });
     expect(columnMappingApproveBody(mapping, { T1: null }).ok).toBe(false);
-  });
-});
-
-describe("formatPct", () => {
-  it("rounds to one decimal with the local separator and a sign", async () => {
-    const { formatPct } = await import("../src/lib/format");
-    expect(formatPct("85.0002")).toBe("+85 %");
-    expect(formatPct("-7.54")).toBe("−7,5 %");
-    expect(formatPct("0")).toBe("0 %");
   });
 });

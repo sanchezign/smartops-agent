@@ -5,6 +5,7 @@ import type { Logger } from "../../common/logger.js";
 import { Prisma } from "../../generated/prisma/client.js";
 import { hashPassword } from "../auth/password.js";
 import type { CatalogIngestService } from "../catalog/catalog-ingest.service.js";
+import { demoListPng } from "./demo-image.js";
 import { normalizeSupplierName } from "../catalog/supplier-name.js";
 import { convertDocument } from "../documents/convert.js";
 import { CONVERTER_VERSION } from "../documents/document-conversion.service.js";
@@ -455,6 +456,39 @@ export async function seedDemo(deps: {
       }),
     ]),
   );
+  // Norte, 5 days ago: the photo of the printed list (chat media for the panel, ADR-019).
+  {
+    const ids = await idsOf(norte);
+    const when = at(5, 9);
+    const bytes = demoListPng();
+    const media = await prisma.mediaFile.create({
+      data: {
+        waMediaId: "demo-media-norte-photo",
+        mimeType: "image/png",
+        sizeBytes: bytes.byteLength,
+        contentSha256: createHash("sha256").update(bytes).digest("hex"),
+        status: "stored",
+        storage: "postgres",
+        downloadedAt: when,
+        createdAt: when,
+        blob: { create: { data: bytes } },
+      },
+    });
+    messages += 1;
+    await prisma.message.create({
+      data: {
+        conversationId: ids.conversationId,
+        waMessageId: wamid(),
+        direction: "inbound",
+        type: "image",
+        author: "contact",
+        text: "Foto de la lista impresa",
+        mediaFileId: media.id,
+        waTimestamp: when,
+        createdAt: when,
+      },
+    });
+  }
   // Sur, 3 days ago: a global +8 % and a doubtful value from a voice note.
   await ingestList(
     sur,
