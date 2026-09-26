@@ -163,6 +163,24 @@ Notes:
 - It covers the WhatsApp side only. Other providers (Claude, speech-to-text) need
   their own keys or test doubles, added in their phases.
 
+## Panel login (phase 8)
+
+1. Create the first admin **from the server** (there is no default password and no signup):
+
+   ```bash
+   pnpm --filter @smartops/api users create --email ana@example.com --name "Ana" --role admin
+   # the password is asked twice, hidden (min. 15 characters; a passphrase is ideal)
+   ```
+
+2. `pnpm dev` at the root runs the API, the worker and the panel. Open
+   http://localhost:3000 → login. The panel calls `/api/v1` on its own origin (Next rewrites
+   it to `API_PROXY_TARGET`, default `http://localhost:4000`), so the refresh cookie is
+   first-party with `SameSite=Strict` — the same setup as the demo deploy (Caddy on one VM).
+3. Other user tasks: `users list | reset-password | unlock | set-role | deactivate`.
+
+Security details (rotation and reuse detection, CSRF, lockout, roles, deploy modes):
+[ADR-018](docs/adr/ADR-018-panel-auth.md).
+
 ## Coexistence & opt-out (phase 7)
 
 - **Human takeover (ADR-016):** a human reply — from the panel or, on a real coexistence

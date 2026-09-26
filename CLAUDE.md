@@ -968,6 +968,19 @@ production.**
      `message.ready:<messageId>:review:<reviewItemId>` (`createRunRetrigger`; the emitter got a
      `retrigger` option) → closes the phase 6 known issue. `AppDeps.admin` required; tests use
      `stubAdminDeps`.
+   - M5 minimal panel login — DONE (2026-09-27), STOPPED for the user's tests (login locally,
+     orders from the phone). `apps/admin`: `src/env.ts` (Zod: NEXT_PUBLIC_API_BASE default
+     `/api/v1` = same origin; server-only API_PROXY_TARGET, default http://localhost:4000
+     outside production), `next.config.ts` rewrite `/api/*` → API (same origin in dev and
+     option A; in option D Caddy routes /api), `src/lib/api-client.ts` (Bearer from memory;
+     401 → ONE refresh then retry; single-flight per tab + Web Locks across tabs;
+     REFRESH_RACE retried once; CSRF header + same-origin credentials on cookie routes),
+     `src/features/auth/` (Zustand store IN MEMORY only, login schema + Spanish error texts,
+     LoginForm with safe `next` redirect, AuthGate = silent refresh on load or /login),
+     routes `(auth)/login` and `(main)` (minimal home: name, role, logout, logout-all),
+     `error.tsx`, `not-found.tsx`, `lang="es"`, noindex kept. zod ^4.6.5 + zustand 5.0.15;
+     Vitest in the panel (`test/api-client.test.ts`, root `pnpm test` runs both apps).
+     shadcn/ui + TanStack Query arrive with the real screens in phase 9.
 
 ## Known issues (out of scope)
 - **Phase 7 M3:** `wa:optout` (manual/off-WhatsApp) does not send a WhatsApp confirmation

@@ -1,0 +1,148 @@
+/**
+ * Panel ↔ API client (phase 8, ADR-018).
+ * - The access token lives only in memory (the auth store), sent as a Bearer header.
+ * - On a 401 the client refreshes ONCE and retries. Refreshes are single-flight inside a tab
+ *   and serialized across tabs with the Web Locks API, because the refresh cookie rotates on
+ *   every use and a reused one ends the session. A 409 REFRESH_RACE (another tab just
+ *   rotated it) is retried once with the new cookie.
+ * - Cookie-authenticated calls (login, refresh, logout) send the CSRF header the API requires.
+ */
+
+export interface SessionUser {
+  id: string;
+  email: string;
+  name: string;
+  role: "admin" | "operator";
+}
+
+export interface Session {
+  accessToken: string;
+  expiresIn: number;
+  user: SessionUser;
+}
+
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+    public readonly details?: unknown,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+export interface LockManagerLike {
+  request<T>(name: string, callback: () => Promise<T>): Promise<T>;
+}
+
+export interface ApiClientDeps {
+  base: string;
+  fetch: typeof fetch;
+  getAccessToken(): string | null;
+  onSession(session: Session): void;
+  onSignedOut(): void;
+  /** navigator.locks when available (all current browsers); tests inject a fake. */
+  locks?: LockManagerLike;
+  sleep?: (ms: number) => Promise<void>;
+}
+
+const CSRF = { "x-smartops-csrf": "1" };
+const REFRESH_LOCK = "smartops-auth-refresh";
+
+async function toError(res: Response): Promise<ApiError> {
+  const body = (await res.json().catch(() => null)) as {
+    error?: { code?: string; message?: string; details?: unknown };
+  } | null;
+  return new ApiError(
+    res.status,
+    body?.error?.code ?? "HTTP_ERROR",
+    body?.error?.message ?? res.statusText,
+    body?.error?.details,
+  );
+}
+
+export function createApiClient(deps: ApiClientDeps) {
+  const sleep = deps.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
+  let inflight: Promise<boolean> | null = null;
+
+  const post = (path: string, body?: unknown, headers: Record<string, string> = {}) =>
+    deps.fetch(`${deps.base}${path}`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        ...CSRF,
+        ...(body !== undefined ? { "content-type": "application/json" } : {}),
+        ...headers,
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    });
+
+  async function refreshOnce(): Promise<boolean> {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const res = await post("/auth/refresh");
+      if (res.ok) {
+        deps.onSession((await res.json()) as Session);
+        return true;
+      }
+      const error = await toError(res);
+      if (error.code === "REFRESH_RACE" && attempt === 0) {
+        await sleep(250); // the other tab's new cookie is in place by now
+        continue;
+      }
+      deps.onSignedOut();
+      return false;
+    }
+    return false;
+  }
+
+  function refresh(): Promise<boolean> {
+    inflight ??= (
+      deps.locks ? deps.locks.request(REFRESH_LOCK, refreshOnce) : refreshOnce()
+    ).finally(() => {
+      inflight = null;
+    });
+    return inflight;
+  }
+
+  async function request<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {
+    const token = deps.getAccessToken();
+    const res = await deps.fetch(`${deps.base}${path}`, {
+      ...init,
+      credentials: "same-origin",
+      headers: {
+        ...(init.body ? { "content-type": "application/json" } : {}),
+        ...(init.headers as Record<string, string> | undefined),
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.status === 401 && !retried && (await refresh())) return request<T>(path, init, true);
+    if (!res.ok) throw await toError(res);
+    return (res.status === 204 ? undefined : await res.json()) as T;
+  }
+
+  return {
+    request,
+    refresh,
+    async login(email: string, password: string): Promise<Session> {
+      const res = await post("/auth/login", { email, password });
+      if (!res.ok) throw await toError(res);
+      const session = (await res.json()) as Session;
+      deps.onSession(session);
+      return session;
+    },
+    async logout(): Promise<void> {
+      await post("/auth/logout").catch(() => undefined);
+      deps.onSignedOut();
+    },
+    async logoutAll(): Promise<number> {
+      const { sessions } = await request<{ sessions: number }>("/auth/logout-all", {
+        method: "POST",
+      });
+      deps.onSignedOut();
+      return sessions;
+    },
+  };
+}
+export type ApiClient = ReturnType<typeof createApiClient>;
