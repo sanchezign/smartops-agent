@@ -18,6 +18,7 @@ import { createPrismaClient } from "../src/common/db.js";
 import { AppError } from "../src/common/errors/app-error.js";
 import { createLogger } from "../src/common/logger.js";
 import { loadEnv } from "../src/config/env.js";
+import { createSessionsRepository } from "../src/modules/auth/sessions.repository.js";
 import { createUsersRepository } from "../src/modules/users/users.repository.js";
 import { createUsersService } from "../src/modules/users/users.service.js";
 
@@ -97,8 +98,10 @@ async function newPassword(): Promise<string> {
 
 const prisma = createPrismaClient(env.DATABASE_URL, logger);
 const service = createUsersService({
-  // Sessions (phase 8 M3) are revoked on role change / deactivation / password reset.
-  repository: createUsersRepository(prisma),
+  // Role change, deactivation and password reset end every session of that user.
+  repository: createUsersRepository(prisma, {
+    revokeUserSessionsInTx: createSessionsRepository(prisma).revokeAllForUserInTx,
+  }),
 });
 const actor = { label: `cli:${values.by ?? userInfo().username}` };
 

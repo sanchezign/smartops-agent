@@ -9,6 +9,8 @@ import type { Env } from "./config/env.js";
 import type { WebhookQueue } from "./jobs/queues.js";
 import type { HealthRepository } from "./modules/health/health.repository.js";
 import { createHealthRouter } from "./modules/health/health.routes.js";
+import { createAuthRouter } from "./modules/auth/auth.routes.js";
+import type { AuthService } from "./modules/auth/auth.service.js";
 import { createInternalRouter, type InternalDeps } from "./modules/internal/internal.routes.js";
 import type { WhatsAppWebhookRepository } from "./modules/whatsapp/whatsapp-webhook.repository.js";
 import { createWhatsAppWebhookRouter } from "./modules/whatsapp/whatsapp-webhook.routes.js";
@@ -21,6 +23,8 @@ export interface AppDeps {
   webhookQueue: WebhookQueue;
   /** Services behind the internal API for n8n (/api/v1/internal/*). */
   internal: InternalDeps;
+  /** Panel auth (/api/v1/auth/*, phase 8). */
+  auth: AuthService;
 }
 
 /** Builds the Express app without listening (server.ts listens; Supertest uses it directly). */
@@ -31,6 +35,7 @@ export function createApp({
   whatsappWebhookRepository,
   webhookQueue,
   internal,
+  auth,
 }: AppDeps): Express {
   const app = express();
 
@@ -78,6 +83,7 @@ export function createApp({
       rateLimit: { windowMs: env.RATE_LIMIT_WINDOW_MS, limit: env.INTERNAL_RATE_LIMIT_MAX },
     }),
   );
+  v1.use("/auth", createAuthRouter({ service: auth, env, logger }));
   app.use("/api/v1", v1);
 
   app.use(notFoundHandler);

@@ -54,6 +54,7 @@ import {
   healthyDb,
   TEST_ENV_SOURCE,
   TEST_INTERNAL_API_KEY,
+  stubAuthService,
 } from "../helpers/build-app.js";
 import { createTestPrisma, resetWhatsAppTables, testDatabaseUrl } from "./db.js";
 
@@ -148,6 +149,7 @@ describe.skipIf(!testDatabaseUrl)("contract: backend ↔ fake n8n orchestrator (
       healthRepository: healthyDb,
       whatsappWebhookRepository: createInMemoryWebhookRepository(),
       webhookQueue: createFakeWebhookQueue(),
+      auth: stubAuthService,
       internal: {
         ingestion: createIngestionService({
           repository: createIngestionRepository(prisma),

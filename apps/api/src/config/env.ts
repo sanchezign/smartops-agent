@@ -119,6 +119,33 @@ export const envSchema = z.object({
   /** Per-IP rate limit for /api/v1/internal (per RATE_LIMIT_WINDOW_MS). */
   INTERNAL_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(600),
 
+  // ─── Panel auth (phase 8, ADR-018) ───
+  /** HS256 key for access tokens (API only). Random, ≥ 32 characters; rotating it logs everyone out. */
+  JWT_ACCESS_SECRET: z.string().min(32, "must be a random secret of at least 32 characters"),
+  ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(3_600).default(900),
+  /** A session without a refresh for this long ends (idle timeout). */
+  SESSION_IDLE_HOURS: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 30)
+    .default(24),
+  /** Absolute session lifetime, whatever the activity. */
+  SESSION_MAX_DAYS: z.coerce.number().int().min(1).max(90).default(7),
+  /**
+   * Refresh cookie. strict = same origin (option D, VM + Caddy; option A, Vercel rewrite);
+   * lax = same site (own domain); none = cross-site (needs Secure; add PARTITIONED for Safari).
+   */
+  AUTH_COOKIE_SAMESITE: z.enum(["strict", "lax", "none"]).default("strict"),
+  /** auto = Secure in production (HTTPS), not in local http dev. */
+  AUTH_COOKIE_SECURE: z.enum(["auto", "true", "false"]).default("auto"),
+  AUTH_COOKIE_PARTITIONED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+  /** Per-IP login attempts per 15 minutes (on top of the per-account lockout). */
+  LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
+
   // ─── n8n (phase 6, ADR-015) ───
   /** Deliver "message.ready" events to n8n. Off: events accumulate and go out when enabled. */
   N8N_DELIVERY_ENABLED: z
@@ -211,6 +238,18 @@ function crossFieldIssues(source: Record<string, string | undefined>): string[] 
   const total = Number(source.AI_TOTAL_BUDGET_USD ?? 4);
   if (Number.isFinite(daily) && Number.isFinite(total) && daily > total) {
     issues.push("AI_DAILY_BUDGET_USD: must not exceed AI_TOTAL_BUDGET_USD");
+  }
+  const cookieSecure = source.AUTH_COOKIE_SECURE ?? "auto";
+  const secureEffective =
+    cookieSecure === "true" || (cookieSecure === "auto" && source.NODE_ENV === "production");
+  if (source.NODE_ENV === "production" && cookieSecure === "false") {
+    issues.push("AUTH_COOKIE_SECURE: cannot be false in production");
+  }
+  if (source.AUTH_COOKIE_SAMESITE === "none" && !secureEffective) {
+    issues.push("AUTH_COOKIE_SAMESITE: none requires a Secure cookie (AUTH_COOKIE_SECURE=true)");
+  }
+  if (source.AUTH_COOKIE_PARTITIONED === "true" && !secureEffective) {
+    issues.push("AUTH_COOKIE_PARTITIONED: requires a Secure cookie (AUTH_COOKIE_SECURE=true)");
   }
   if (provider !== "fake" && !source.TRANSCRIPTION_API_KEY?.trim()) {
     issues.push(`TRANSCRIPTION_API_KEY: is required when TRANSCRIPTION_PROVIDER=${provider}`);

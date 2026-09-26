@@ -935,6 +935,24 @@ production.**
      M3. CLI `pnpm --filter @smartops/api users create|list|reset-password|unlock|set-role|
      deactivate|reactivate` (hidden prompt twice, or `--password-stdin`; never an argument).
      `engines.node >=24.19.0` (root + api).
+   - M3 sessions — DONE (2026-09-27). ADR-018. Migration `auth_sessions` (AuthSession: idle
+     + absolute expiry, revokedAt/revokeReason, userAgent, ip; RefreshToken: token_hash unique,
+     rotatedAt). `jose` 6.2.12 (no deps). `src/modules/auth/`: `tokens.ts` (HS256 access,
+     iss/aud, 256-bit refresh + SHA-256), `session-rules.ts` (pure: rotate / race ≤ 10 s on the
+     latest rotated token → 409 REFRESH_RACE / reuse → revoke session / reject revoked, expired,
+     idle, inactive), `sessions.repository.ts` (token row FOR UPDATE), `auth.service.ts`
+     (generic 401 + dummy Argon2 for unknown emails, lockout, rehash, audits), `auth-http.ts`
+     (cookie config by mode, `readCookie`, CSRF guard: `X-SmartOps-CSRF: 1` + Origin own/
+     allowlist + reject Sec-Fetch-Site cross-site unless SameSite=None; `createRequireAuth`,
+     `currentUser`), `auth.routes.ts` (/api/v1/auth login, refresh, logout, logout-all, me;
+     no-store; per-IP login limiter). `AppDeps.auth` required; tests use `stubAuthService`
+     (rejects every Bearer). Env: JWT_ACCESS_SECRET (required, generated into the local
+     .env), ACCESS_TOKEN_TTL_SECONDS, SESSION_IDLE_HOURS, SESSION_MAX_DAYS,
+     AUTH_COOKIE_SAMESITE/SECURE(auto)/PARTITIONED (None/Partitioned need Secure; production
+     never Secure=false), LOGIN_RATE_LIMIT_MAX. The API exits at startup without
+     `crypto.argon2`. Also FIXED a phase 7 bug: the API's OutboundService (which sends the
+     supplier ack) was built without `settings`, so the opt-out instruction footer never
+     applied — now injected in server.ts.
 
 ## Known issues (out of scope)
 - **Phase 7 M3:** `wa:optout` (manual/off-WhatsApp) does not send a WhatsApp confirmation
@@ -943,8 +961,8 @@ production.**
 - **Phase 7 M3:** `user_preferences` marketing opt-out is recorded but never checked before
   a send (no template category yet, and SmartOps sends no marketing messages today).
 - **Phase 7 M3:** the opt-out instruction footer only applies when `OutboundService` is
-  built with `settings` (the worker's real instance); CLI scripts (`wa:send`) do not inject
-  it — acceptable for a dev tool, but note it if the CLI is ever used for real sends.
+  built with `settings` (the API and worker instances do since phase 8 M3); CLI scripts
+  (`wa:send`) do not inject it — acceptable for a dev tool.
 - **Phase 6:** approving a `column_mapping` review moves the run back to `classified`, but
   nothing re-triggers n8n: `extract` + `catalog/ingest` must be called again (done by hand
   in the M5 pass). The panel (phase 9) must re-trigger it (call the internal flow or emit a

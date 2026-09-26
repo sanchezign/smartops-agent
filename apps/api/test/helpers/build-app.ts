@@ -3,6 +3,7 @@ import { createLogger } from "../../src/common/logger.js";
 import { parseEnv } from "../../src/config/env.js";
 import type { WebhookQueue } from "../../src/jobs/queues.js";
 import type { HealthRepository } from "../../src/modules/health/health.repository.js";
+import type { AuthService } from "../../src/modules/auth/auth.service.js";
 import type { InternalDeps } from "../../src/modules/internal/internal.routes.js";
 import type {
   SaveWebhookEventInput,
@@ -12,6 +13,7 @@ import type {
 export const TEST_WHATSAPP_APP_SECRET = "test-app-secret-0123456789abcdef";
 export const TEST_WHATSAPP_VERIFY_TOKEN = "test-verify-token-0123456789";
 export const TEST_INTERNAL_API_KEY = "test-internal-api-key-0123456789abcdef";
+export const TEST_JWT_ACCESS_SECRET = "test-jwt-access-secret-0123456789abcdef";
 
 /** Fake but schema-valid WhatsApp values (no real credentials). */
 export const TEST_WHATSAPP_ENV = {
@@ -28,6 +30,7 @@ export const TEST_ENV_SOURCE = {
   DATABASE_URL: "postgresql://user:pass@localhost:5432/smartops_test",
   CORS_ORIGINS: "http://localhost:3000",
   INTERNAL_API_KEY: TEST_INTERNAL_API_KEY,
+  JWT_ACCESS_SECRET: TEST_JWT_ACCESS_SECRET,
   ...TEST_WHATSAPP_ENV,
 } as const;
 
@@ -98,6 +101,15 @@ export const stubInternalDeps: InternalDeps = {
   supplierAck: { ack: notConfigured },
 };
 
+/** Panel auth that knows no session: every Bearer is rejected (protected routes → 401). */
+export const stubAuthService: AuthService = {
+  login: notConfigured,
+  refresh: notConfigured,
+  logout: async () => {},
+  logoutAll: notConfigured,
+  authenticate: async () => null,
+};
+
 /** App with stubbed repositories — no Postgres needed. */
 export function buildTestApp(
   options: {
@@ -106,6 +118,7 @@ export function buildTestApp(
     whatsappWebhookRepository?: WhatsAppWebhookRepository;
     webhookQueue?: WebhookQueue;
     internal?: InternalDeps;
+    auth?: AuthService;
   } = {},
 ) {
   const env = parseEnv({ ...TEST_ENV_SOURCE, ...options.env });
@@ -117,5 +130,6 @@ export function buildTestApp(
       options.whatsappWebhookRepository ?? createInMemoryWebhookRepository(),
     webhookQueue: options.webhookQueue ?? createFakeWebhookQueue(),
     internal: options.internal ?? stubInternalDeps,
+    auth: options.auth ?? stubAuthService,
   });
 }

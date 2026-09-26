@@ -20,6 +20,8 @@ export type ErrorCode =
   | "HUMAN_MODE"
   /** WhatsApp: business-initiated message to a contact who opted out (ADR-017). */
   | "OPTED_OUT"
+  /** Panel auth: two tabs refreshed with the same cookie at once — retry (ADR-018). */
+  | "REFRESH_RACE"
   | "PAYLOAD_TOO_LARGE"
   | "RATE_LIMITED"
   | "SERVICE_UNAVAILABLE"
@@ -79,6 +81,8 @@ export const errors = {
   ) => new AppError(409, "HUMAN_MODE", message, details),
   optedOut: (details: unknown, message = "The contact opted out of business-initiated messages") =>
     new AppError(409, "OPTED_OUT", message, details),
+  refreshRace: (message = "Concurrent session refresh: retry") =>
+    new AppError(409, "REFRESH_RACE", message),
   rateLimited: (message = "Too many requests, try again later") =>
     new AppError(429, "RATE_LIMITED", message),
   serviceUnavailable: (message = "Service unavailable") =>

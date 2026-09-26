@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { EnvValidationError, parseEnv } from "../../src/config/env.js";
-import { TEST_INTERNAL_API_KEY, TEST_WHATSAPP_ENV } from "../helpers/build-app.js";
+import {
+  TEST_INTERNAL_API_KEY,
+  TEST_JWT_ACCESS_SECRET,
+  TEST_WHATSAPP_ENV,
+} from "../helpers/build-app.js";
 
 const base: Record<string, string> = {
   DATABASE_URL: "postgresql://u:p@localhost:5432/db",
   INTERNAL_API_KEY: TEST_INTERNAL_API_KEY,
+  JWT_ACCESS_SECRET: TEST_JWT_ACCESS_SECRET,
   ...TEST_WHATSAPP_ENV,
 };
 /** Production needs a real transcription provider; isolates the rule under test. */
@@ -220,5 +225,42 @@ describe("n8n delivery", () => {
         N8N_WEBHOOK_SECRET: "a-very-long-random-secret-0123456789",
       }).N8N_DELIVERY_ENABLED,
     ).toBe(true);
+  });
+});
+
+describe("panel auth env (phase 8, ADR-018)", () => {
+  it("requires JWT_ACCESS_SECRET of at least 32 characters", () => {
+    const rest = Object.fromEntries(
+      Object.entries(base).filter(([key]) => key !== "JWT_ACCESS_SECRET"),
+    );
+    expect(() => parseEnv(rest)).toThrow(/JWT_ACCESS_SECRET/);
+    expect(() => parseEnv({ ...base, JWT_ACCESS_SECRET: "short" })).toThrow(/JWT_ACCESS_SECRET/);
+  });
+
+  it("defaults: 15-min access, 24 h idle, 7-day sessions, Strict cookie, auto Secure", () => {
+    expect(parseEnv(base)).toMatchObject({
+      ACCESS_TOKEN_TTL_SECONDS: 900,
+      SESSION_IDLE_HOURS: 24,
+      SESSION_MAX_DAYS: 7,
+      AUTH_COOKIE_SAMESITE: "strict",
+      AUTH_COOKIE_SECURE: "auto",
+      AUTH_COOKIE_PARTITIONED: false,
+      LOGIN_RATE_LIMIT_MAX: 10,
+    });
+  });
+
+  it("SameSite=None and Partitioned need a Secure cookie; production never allows Secure=false", () => {
+    expect(() => parseEnv({ ...base, AUTH_COOKIE_SAMESITE: "none" })).toThrow(
+      /AUTH_COOKIE_SAMESITE/,
+    );
+    expect(() => parseEnv({ ...base, AUTH_COOKIE_PARTITIONED: "true" })).toThrow(
+      /AUTH_COOKIE_PARTITIONED/,
+    );
+    expect(
+      parseEnv({ ...base, AUTH_COOKIE_SAMESITE: "none", AUTH_COOKIE_SECURE: "true" }),
+    ).toMatchObject({ AUTH_COOKIE_SAMESITE: "none" });
+    expect(() =>
+      parseEnv({ ...prodBase, CORS_ORIGINS: "https://p.example.com", AUTH_COOKIE_SECURE: "false" }),
+    ).toThrow(/AUTH_COOKIE_SECURE/);
   });
 });

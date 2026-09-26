@@ -34,6 +34,7 @@ import {
   stubInternalDeps,
   TEST_ENV_SOURCE,
   TEST_INTERNAL_API_KEY,
+  stubAuthService,
 } from "../helpers/build-app.js";
 import { createTestPrisma, resetWhatsAppTables, testDatabaseUrl } from "./db.js";
 
@@ -111,6 +112,7 @@ describe.skipIf(!testDatabaseUrl)("e2e: internal API → catalog (Postgres + gol
       healthRepository: healthyDb,
       whatsappWebhookRepository: createInMemoryWebhookRepository(),
       webhookQueue: createFakeWebhookQueue(),
+      auth: stubAuthService,
       internal: {
         ingestion,
         catalog,

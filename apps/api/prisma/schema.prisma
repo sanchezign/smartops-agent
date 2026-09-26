@@ -1033,8 +1033,48 @@ model User {
   approvedSheetFormats SupplierSheetFormat[]
   modeChanges          ConversationModeChange[]
   consentEvents        ContactConsentEvent[]
+  sessions             AuthSession[]
 
   @@map("users")
+}
+
+/// A panel login (phase 8, ADR-018): one per device/browser; its refresh tokens rotate.
+model AuthSession {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastUsedAt    DateTime  @default(now()) @map("last_used_at") @db.Timestamptz(3)
+  /// Moves forward on every refresh (SESSION_IDLE_HOURS).
+  idleExpiresAt DateTime  @map("idle_expires_at") @db.Timestamptz(3)
+  /// Absolute end (SESSION_MAX_DAYS), never extended.
+  expiresAt     DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(3)
+  /// logout | logout_all | refresh_reuse | role_changed | user_deactivated | password_changed …
+  revokeReason  String?   @map("revoke_reason")
+  userAgent     String?   @map("user_agent")
+  ip            String?
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@index([userId, revokedAt])
+  @@map("auth_sessions")
+}
+
+/// Refresh tokens (only their SHA-256). Rotated on every use: reusing a rotated one
+/// revokes the whole session (RFC 9700), except a short race grace (ADR-018).
+model RefreshToken {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  sessionId String    @map("session_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// Set when it was exchanged for the next one (null = the current token).
+  rotatedAt DateTime? @map("rotated_at") @db.Timestamptz(3)
+
+  session AuthSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("refresh_tokens")
 }
 
 /// Append-only audit trail.

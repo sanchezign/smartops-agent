@@ -1,3 +1,8 @@
+import nodeCrypto from "node:crypto";
+import { createAuthService } from "./modules/auth/auth.service.js";
+import { createSessionsRepository } from "./modules/auth/sessions.repository.js";
+import { createAccessTokens } from "./modules/auth/tokens.js";
+import { createUsersRepository } from "./modules/users/users.repository.js";
 import { createAiClient } from "./ai/ai.client.js";
 import { createLlmProvider } from "./ai/ai.factory.js";
 import { loadPrompt } from "./ai/prompts.js";
@@ -35,6 +40,11 @@ import { createWhatsAppWebhookRepository } from "./modules/whatsapp/whatsapp-web
 
 const SHUTDOWN_TIMEOUT_MS = 10_000;
 
+// Panel passwords use Node's built-in Argon2id (stable since 24.19, ADR-018).
+if (typeof nodeCrypto.argon2 !== "function") {
+  process.stderr.write(`Node ${process.version} has no crypto.argon2: use Node >= 24.19\n`);
+  process.exit(1);
+}
 const env = loadEnv();
 const logger = createLogger(env);
 const prisma = createPrismaClient(env.DATABASE_URL, logger);
@@ -117,7 +127,23 @@ const outbound = createOutboundService({
     },
     phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID,
   }),
+  // Opt-out instruction on auto replies (ADR-017): the supplier ack is sent from here.
+  settings,
 });
+// Panel auth (phase 8, ADR-018).
+const sessionsRepository = createSessionsRepository(prisma);
+const auth = createAuthService({
+  users: createUsersRepository(prisma, {
+    revokeUserSessionsInTx: sessionsRepository.revokeAllForUserInTx,
+  }),
+  sessions: sessionsRepository,
+  tokens: createAccessTokens({
+    secret: env.JWT_ACCESS_SECRET,
+    ttlSeconds: env.ACCESS_TOKEN_TTL_SECONDS,
+  }),
+  config: { idleHours: env.SESSION_IDLE_HOURS, maxDays: env.SESSION_MAX_DAYS },
+});
+
 const supplierAck = createSupplierAckService({
   repository: notificationRepository,
   settings,
@@ -131,6 +157,7 @@ const app = createApp({
   whatsappWebhookRepository: createWhatsAppWebhookRepository(prisma),
   webhookQueue: createPgBossWebhookQueue(boss),
   internal: { ingestion, catalog, settings, notifications, supplierAck },
+  auth,
 });
 const server = app.listen(env.PORT, () => {
   logger.info(
