@@ -520,8 +520,10 @@ Each one gets an ADR in docs/adr/.
   (actor `cli:<--by>`).
 
 ## Current phase
-**Phase 6 complete (2026-09-26), merged to `main`. Phase 7 (coexistence) IN PROGRESS on
-`feat/phase-7-coexistence`. M3b (phase 5) remains required before production.**
+**Phase 7 complete (2026-09-26), merged to `main`. Phase 8 (admin auth) next on
+`feat/phase-8-admin-auth` — starts with the internal_order routing requirement found during
+the phase 7 phone test (see Phase order). M3b (phase 5) remains required before
+production.**
 
 1. scaffold — done (2026-09-24).
 2. config/env/logging + initial Prisma schema — done (2026-09-24). Migrations:
@@ -782,7 +784,8 @@ Each one gets an ADR in docs/adr/.
    - Process note: the M3 commit accidentally truncated this file (phases 1–5 history, Known
      issues, Conventions); restored from the M2 version in M5.
 
-7. coexistence human + bot + opt-out — IN PROGRESS on `feat/phase-7-coexistence`. Approved plan
+7. coexistence human + bot + opt-out — DONE (2026-09-26), merged to `main`. Branch
+   `feat/phase-7-coexistence`. Approved plan
    (2026-09-26) + user answers: real coexistence is NOT testable with the Meta test number
    (needs a number already in the WhatsApp Business app + Embedded Signup by a Tech Provider /
    Solution Partner) → demo plan B: humans reply from the panel (phase 9; CLI `wa:reply` until
@@ -855,8 +858,16 @@ Each one gets an ADR in docs/adr/.
      coexistence via a BSP that is already a Tech Provider, e.g. 360dialog from ~€49/month,
      or becoming one directly — business verification + app review, cost to confirm);
      explains why the demo cannot exercise path B and what to capture/replace
-     (`wa:fixtures:capture`) before a real client goes live on it. STOPPED for the user's
-     phone tests (BAJA/ALTA, `wa:reply` pause/resume) before merging to `main`.
+     (`wa:fixtures:capture`) before a real client goes live on it.
+   - Real phone test (user's own number, real test number) — DONE (2026-09-26): BAJA →
+     opt_out recorded (source keyword, keyword "baja") + confirmation delivered/read; ALTA →
+     opt_in recorded + confirmation delivered/read; manual pause (`wa:conversation pause`,
+     2 min) → mode human; `wa:reply` → message delivered/read, EXTENDED the pause to the
+     default 120 min (a human message always extends to now + humanTakeoverMinutes — the
+     2 min manual pause was superseded, as designed); `wa:conversation resume` → mode bot.
+     All verified in the DB. Also surfaced: a real order ("necesito 3 macetas") classified
+     `internal_order` produced no notification — promoted to a required pre-phase-8 step
+     (see Phase order), not merely a known issue anymore.
 
 ## Known issues (out of scope)
 - **Phase 7 M3:** `wa:optout` (manual/off-WhatsApp) does not send a WhatsApp confirmation
