@@ -837,6 +837,13 @@ Each one gets an ADR in docs/adr/.
      Meta error `131050` mapped to a new permanent `recipient_opted_out` category — we send
      no marketing messages, so nothing else reacts to it yet). CLI
      `pnpm --filter @smartops/api wa:optout status|out|in`.
+   - M4 client docs — DONE (2026-09-26). `docs/coexistence-client-guide.md`: path A
+     (dedicated API number, panel replies, no Tech Provider needed) vs. path B (real
+     coexistence via a BSP that is already a Tech Provider, e.g. 360dialog from ~€49/month,
+     or becoming one directly — business verification + app review, cost to confirm);
+     explains why the demo cannot exercise path B and what to capture/replace
+     (`wa:fixtures:capture`) before a real client goes live on it. STOPPED for the user's
+     phone tests (BAJA/ALTA, `wa:reply` pause/resume) before merging to `main`.
 
 ## Known issues (out of scope)
 - **Phase 7 M3:** `wa:optout` (manual/off-WhatsApp) does not send a WhatsApp confirmation

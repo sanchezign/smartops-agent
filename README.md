@@ -163,6 +163,23 @@ Notes:
 - It covers the WhatsApp side only. Other providers (Claude, speech-to-text) need
   their own keys or test doubles, added in their phases.
 
+## Coexistence & opt-out (phase 7)
+
+- **Human takeover (ADR-016):** a human reply — from the panel or, on a real coexistence
+  number, from the WhatsApp Business app — pauses only automatic replies to that contact
+  (`Message.purpose`); list processing, the catalog and team notifications never pause.
+  `pnpm --filter @smartops/api wa:conversation status|pause|resume` and
+  `wa:reply --to <phone> --text "…" --by <name>` stand in for the panel until phase 9.
+- **Coexistence with the WhatsApp Business app** needs a real number already in the app and
+  Embedded Signup run by a Solution Partner / Tech Provider — our Meta test number cannot
+  exercise it. `wa:simulate echo` + doc-based fixtures test the wire format instead. See
+  [docs/coexistence-client-guide.md](docs/coexistence-client-guide.md) for the two paths
+  (dedicated API number vs. real coexistence) and their costs for an actual client.
+- **Opt-out (ADR-017):** deterministic keyword/phrase detection (no LLM), independent of
+  the ADR-009 opt-in. `pnpm --filter @smartops/api wa:optout status|out|in --reason "…"
+--by <name>` for manual/off-WhatsApp requests. An opted-out supplier's price lists are
+  still ingested and update the catalog — only the acknowledgement is skipped.
+
 ## Orquestación con n8n (fase 6)
 
 The backend decides; n8n only orchestrates (ADR-015). Four workflows live in
