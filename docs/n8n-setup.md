@@ -94,8 +94,11 @@ forma de secreto. Nunca exportes credenciales.
 pedido" (`kind: order`) → "Notificar pedido" (el mismo Notificador). Sin esto un pedido queda
 clasificado pero sin aviso.
 
-1. En n8n abrí **SmartOps · Receptor** → ⋯ → **Import from File** → `n8n/workflows/receiver.json`
-   (reemplaza el contenido del workflow abierto; conserva el mismo workflow y su webhook).
+1. En n8n abrí **SmartOps · Receptor**, **vaciá el lienzo** (seleccioná todo con Ctrl+A →
+   Delete) y recién ahí ⋯ → **Import from File** → `n8n/workflows/receiver.json`.
+   **Import from File SUMA los nodos al lienzo, no los reemplaza**: sin vaciarlo quedan nodos
+   duplicados ("Ruta1", "Clasificar1"…) y dos webhooks en el mismo path. Así se conserva el
+   mismo workflow (su id y su URL de producción).
 2. Revisá que el nodo **Notificar pedido** apunte a _SmartOps · Notificador_ (si aparece vacío,
    elegilo en el desplegable) y que los nodos HTTP / el webhook tengan sus credenciales.
 3. Guardá y **Publish**.

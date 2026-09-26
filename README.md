@@ -5,8 +5,8 @@ information over WhatsApp in chaotic formats (text, PDFs, photos, voice notes);
 SmartOps extracts structured data with Claude, keeps a product catalog up to
 date, alerts the team and coexists with human operators on the same number.
 
-> Status: **phase 6 done — n8n multi-agent orchestration** (next: phase 7, human + bot
-> coexistence). See `CLAUDE.md` for the full phase plan and `docs/pitch.md` for the original pitch.
+> Status: **phase 8 done — panel auth (JWT access + rotating refresh, roles) and orders
+> never lost** (next: phase 9, admin UI). See `CLAUDE.md` for the full phase plan and `docs/pitch.md` for the original pitch.
 
 ## Repository layout
 

@@ -8,13 +8,13 @@
         "authentication": "headerAuth",
         "options": {}
       },
-      "id": "51df41ec-e9eb-4407-83d8-0dd9b9d54709",
+      "id": "c49c0f03-702e-430d-90e2-42d978a7bd25",
       "name": "Mensaje listo",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -880,
-        128
+        -1280,
+        656
       ],
       "webhookId": "5c1f3d2a-7b1e-4c6a-9d0e-5ab1c2d3e4f5",
       "credentials": {
@@ -39,13 +39,13 @@
         "includeOtherFields": true,
         "options": {}
       },
-      "id": "ec38d13c-1191-424f-8319-64769229735f",
+      "id": "2434c52f-b865-44a5-8cea-f82b7e79d3e7",
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -656,
-        128
+        -1056,
+        656
       ]
     },
     {
@@ -61,13 +61,13 @@
           "timeout": 60000
         }
       },
-      "id": "7fd5dff3-503a-46be-8c79-e05e09196b2f",
+      "id": "56c8a54f-ea48-49e5-88a3-f3276526d877",
       "name": "Clasificar",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -448,
-        128
+        -848,
+        656
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -162,13 +162,13 @@
           "renameFallbackOutput": "otro (fin)"
         }
       },
-      "id": "5bad7df5-f7be-4b9b-8e7b-fac5ad85da47",
+      "id": "62820678-ccaa-4a3f-ad23-2eee24301966",
       "name": "Ruta",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        -224,
-        128
+        -624,
+        656
       ]
     },
     {
@@ -185,13 +185,13 @@
         },
         "options": {}
       },
-      "id": "dfec1e68-f83b-4a11-ac9e-c4e8fb1a73b5",
+      "id": "86f987b7-5129-4d20-91e4-b67802cb3ce5",
       "name": "Datos de la corrida",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        0,
-        0
+        -400,
+        528
       ]
     },
     {
@@ -213,13 +213,13 @@
         },
         "options": {}
       },
-      "id": "13211e1d-017d-4288-871e-365a5ed4f727",
+      "id": "4bc258f9-52bd-4e3a-97e6-b6050d721874",
       "name": "Procesar lista",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        224,
-        0
+        -176,
+        528
       ]
     },
     {
@@ -242,13 +242,13 @@
         },
         "options": {}
       },
-      "id": "ad05a8f3-4348-4225-9df7-a98dffdbe4a9",
+      "id": "1ec1e76c-00ea-442f-99ce-243f489d6008",
       "name": "Datos de la consulta",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        0,
-        192
+        -400,
+        720
       ]
     },
     {
@@ -270,24 +270,24 @@
         },
         "options": {}
       },
-      "id": "da885ce3-cdce-40bb-b781-351499252cc0",
+      "id": "af36a4cc-5d07-41d6-b7ce-fcf232088f28",
       "name": "Notificar consulta",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        224,
-        192
+        -176,
+        720
       ]
     },
     {
       "parameters": {},
-      "id": "922baa1e-4fcd-4eeb-bad5-3679bf59ef60",
+      "id": "2e2e32a4-eb39-4096-bd19-05a3cbcf6dfb",
       "name": "Fin",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        0,
-        512
+        -400,
+        1040
       ]
     },
     {
@@ -310,13 +310,13 @@
         },
         "options": {}
       },
-      "id": "3f1c2a7e-8b4d-4e6f-9a01-5c2d7e8f9a10",
+      "id": "1e3e5b2f-39a2-464b-b976-b8e55ad122dd",
       "name": "Datos del pedido",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        0,
-        352
+        -400,
+        880
       ]
     },
     {
@@ -338,13 +338,13 @@
         },
         "options": {}
       },
-      "id": "7a9e4b21-6c3d-4f58-8e12-0b4c6d8e2f31",
+      "id": "1f77c94b-2454-4de7-ba31-61e669f67d43",
       "name": "Notificar pedido",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        224,
-        352
+        -176,
+        880
       ]
     }
   ],

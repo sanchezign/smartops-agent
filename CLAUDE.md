@@ -520,9 +520,9 @@ Each one gets an ADR in docs/adr/.
   (actor `cli:<--by>`).
 
 ## Current phase
-**Phase 7 complete (2026-09-26), merged to `main`. Phase 8 (admin auth) IN PROGRESS on
-`feat/phase-8-admin-auth` (M1 orders done). M3b (phase 5) remains required before
-production.**
+**Phase 8 complete (2026-09-26), merged to `main`. Phase 9 (admin UI) next on
+`feat/phase-9-admin-panel`. M3b (phase 5) and MFA (TOTP) remain recommended/required before
+a real client.**
 
 1. scaffold — done (2026-09-24).
 2. config/env/logging + initial Prisma schema — done (2026-09-24). Migrations:
@@ -867,7 +867,8 @@ production.**
      All verified in the DB. Also surfaced: a real order ("necesito 3 macetas") classified
      `internal_order` produced no notification — promoted to a required pre-phase-8 step
      (see Phase order), not merely a known issue anymore.
-8. admin auth — IN PROGRESS on `feat/phase-8-admin-auth`. Approved plan (2026-09-27) + user
+8. admin auth — DONE (2026-09-26), merged to `main`. Branch `feat/phase-8-admin-auth`.
+   Approved plan (2026-09-27) + user
    answers:
    - Deploy for the demo: **option D** (recommended) = everything on the Oracle VM behind
      Caddy, REAL same origin (`/` → Next.js panel, `/api` → API), refresh cookie
@@ -968,8 +969,7 @@ production.**
      `message.ready:<messageId>:review:<reviewItemId>` (`createRunRetrigger`; the emitter got a
      `retrigger` option) → closes the phase 6 known issue. `AppDeps.admin` required; tests use
      `stubAdminDeps`.
-   - M5 minimal panel login — DONE (2026-09-27), STOPPED for the user's tests (login locally,
-     orders from the phone). `apps/admin`: `src/env.ts` (Zod: NEXT_PUBLIC_API_BASE default
+   - M5 minimal panel login — DONE (2026-09-27). `apps/admin`: `src/env.ts` (Zod: NEXT_PUBLIC_API_BASE default
      `/api/v1` = same origin; server-only API_PROXY_TARGET, default http://localhost:4000
      outside production), `next.config.ts` rewrite `/api/*` → API (same origin in dev and
      option A; in option D Caddy routes /api), `src/lib/api-client.ts` (Bearer from memory;
@@ -981,6 +981,15 @@ production.**
      `error.tsx`, `not-found.tsx`, `lang="es"`, noindex kept. zod ^4.6.5 + zustand 5.0.15;
      Vitest in the panel (`test/api-client.test.ts`, root `pnpm test` runs both apps).
      shadcn/ui + TanStack Query arrive with the real screens in phase 9.
+   - User tests — DONE (2026-09-26): login at localhost:3000 (login, reload keeps the session,
+     two tabs, logout, logout-all, wrong password → generic message) all OK. Orders from the
+     real phone (LLM fake, $0): "necesito 3 macetas" → internal_order → order item "Pedido de
+     …"; "¿tienen macetas?" → customer_query; BOTH in one digest, sent as text at the end of
+     the 10-min window and delivered: "SmartOps · 1 pedido. 1 consulta de cliente. Detalle en
+     el panel." Receptor re-imported by the user and exported back (`n8n:export`, sanitized:
+     only node ids/positions changed). Lesson (docs/n8n-setup.md §7): n8n "Import from File"
+     ADDS nodes to the open canvas — clear it first, or you get duplicate nodes and two
+     webhooks on the same path.
 
 ## Known issues (out of scope)
 - **Phase 7 M3:** `wa:optout` (manual/off-WhatsApp) does not send a WhatsApp confirmation
