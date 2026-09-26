@@ -143,6 +143,19 @@ Week 3
    business-initiated message (templates) to that contact; opting back in needs an
    explicit new opt-in. Admin panel shows opted-out contacts.
 8. admin auth — JWT access + refresh, roles `admin` and `operator`. No OAuth.
+   REQUIRED BEFORE PRODUCTION, first sub-step of this phase, before the JWT work (user,
+   2026-09-26, found live during the phase 7 phone test): `internal_order` (and any other
+   customer/internal message asking for something, not just `customer_query`) must route to
+   an actionable notification to the team, exactly like `customer_query` does — today it is
+   classified and silently dropped ("otro (fin)" in the receiver), which for a real client
+   is a lost order. Backend: extend the notification categories (or generalize
+   `customer_query` into a broader "message needs a reply" category) so `/internal/notify`
+   accepts `internal_order`; respects the existing anti-spam rules (digest window, hourly
+   cap) unchanged. n8n: the receiver's route (`Ruta` node) sends `internal_order` down the
+   same branch as `customer_query` to the Notificador sub-workflow — a small, reviewable
+   change to `receiver.json`, re-imported/tested/exported by the user like the phase 6
+   workflows. Does not depend on JWT or the admin UI: it is backend + n8n routing, so it
+   goes BEFORE the auth work, not after.
 9. admin UI — Next.js (noindex), real-time via SSE:
    - Dashboard: messages processed, automation rate, errors, per day
    - Catalog: products by supplier, live updates
@@ -858,7 +871,10 @@ Each one gets an ADR in docs/adr/.
   nothing re-triggers n8n: `extract` + `catalog/ingest` must be called again (done by hand
   in the M5 pass). The panel (phase 9) must re-trigger it (call the internal flow or emit a
   new event). The same applies to other approvals that send a run back to extraction.
-- **Phase 6:** `internal_order` is not routed yet (the receiver sends it to "otro (fin)").
+- **Phase 6:** `internal_order` is not routed yet (the receiver sends it to "otro (fin)") —
+  confirmed live during the phase 7 phone test ("necesito 3 macetas" → classified, no
+  notification, a real order would be lost). Promoted to a REQUIRED BEFORE PRODUCTION
+  first sub-step of phase 8 (see Phase order) — not just a known issue anymore.
 - **Phase 6:** the first notification of a spreadsheet run waiting for `column_mapping` reads
   "Lista procesada: 1 revisión pendiente" without the supplier name (the supplier is not
   resolved until the mapping is approved). Cosmetic.
