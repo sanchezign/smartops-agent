@@ -3,6 +3,7 @@ import { createLogger } from "../../src/common/logger.js";
 import { parseEnv } from "../../src/config/env.js";
 import type { WebhookQueue } from "../../src/jobs/queues.js";
 import type { HealthRepository } from "../../src/modules/health/health.repository.js";
+import type { AdminDeps } from "../../src/modules/admin/admin.routes.js";
 import type { AuthService } from "../../src/modules/auth/auth.service.js";
 import type { InternalDeps } from "../../src/modules/internal/internal.routes.js";
 import type {
@@ -110,6 +111,29 @@ export const stubAuthService: AuthService = {
   authenticate: async () => null,
 };
 
+/** Panel API services that are never reached in tests without Postgres. */
+export const stubAdminDeps: AdminDeps = {
+  reviews: {
+    list: notConfigured,
+    get: notConfigured,
+    approve: notConfigured,
+    reject: notConfigured,
+  },
+  retriggerRun: notConfigured,
+  mode: { status: notConfigured, pause: notConfigured, resume: notConfigured },
+  humanReply: { reply: notConfigured },
+  consent: { find: notConfigured, apply: notConfigured },
+  settings: { getAll: notConfigured, set: notConfigured },
+  users: {
+    list: notConfigured,
+    create: notConfigured,
+    update: notConfigured,
+    resetPassword: notConfigured,
+    unlock: notConfigured,
+  },
+  sessions: { revokeAllForUser: notConfigured },
+};
+
 /** App with stubbed repositories — no Postgres needed. */
 export function buildTestApp(
   options: {
@@ -119,6 +143,7 @@ export function buildTestApp(
     webhookQueue?: WebhookQueue;
     internal?: InternalDeps;
     auth?: AuthService;
+    admin?: AdminDeps;
   } = {},
 ) {
   const env = parseEnv({ ...TEST_ENV_SOURCE, ...options.env });
@@ -131,5 +156,6 @@ export function buildTestApp(
     webhookQueue: options.webhookQueue ?? createFakeWebhookQueue(),
     internal: options.internal ?? stubInternalDeps,
     auth: options.auth ?? stubAuthService,
+    admin: options.admin ?? stubAdminDeps,
   });
 }

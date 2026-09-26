@@ -31,10 +31,18 @@ export type EnqueueDeliveryInTx = (tx: Prisma.TransactionClient, eventId: string
 export type EmitMessageReadyInTx = (
   tx: Prisma.TransactionClient,
   ref: { messageId: string } | { mediaFileId: string },
+  options?: {
+    /**
+     * A deliberate NEW delivery for a message already delivered once (phase 8: a human
+     * approved a review that sends the run back to extraction). Becomes part of the dedupe
+     * key ("message.ready:<id>:<retrigger>"), so each approval re-triggers exactly once.
+     */
+    retrigger?: string;
+  },
 ) => Promise<{ created: boolean; eventId: string | null }>;
 
 export function createEmitMessageReadyInTx(enqueueInTx: EnqueueDeliveryInTx): EmitMessageReadyInTx {
-  return async (tx, ref) => {
+  return async (tx, ref, options = {}) => {
     const message = await tx.message.findFirst({
       where: "messageId" in ref ? { id: ref.messageId } : { mediaFileId: ref.mediaFileId },
       select: {
@@ -49,7 +57,9 @@ export function createEmitMessageReadyInTx(enqueueInTx: EnqueueDeliveryInTx): Em
     });
     if (!message || message.direction !== "inbound") return { created: false, eventId: null };
 
-    const dedupeKey = `${MESSAGE_READY}:${message.id}`;
+    const dedupeKey = options.retrigger
+      ? `${MESSAGE_READY}:${message.id}:${options.retrigger}`
+      : `${MESSAGE_READY}:${message.id}`;
     const [created] = await tx.integrationEvent.createManyAndReturn({
       data: [
         {

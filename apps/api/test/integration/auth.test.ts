@@ -16,6 +16,7 @@ import {
   healthyDb,
   stubInternalDeps,
   TEST_ENV_SOURCE,
+  stubAdminDeps,
 } from "../helpers/build-app.js";
 import { createTestPrisma, testDatabaseUrl } from "./db.js";
 
@@ -67,6 +68,7 @@ describe.skipIf(!testDatabaseUrl)("panel auth over HTTP (Postgres)", () => {
       healthRepository: healthyDb,
       whatsappWebhookRepository: createInMemoryWebhookRepository(),
       webhookQueue: createFakeWebhookQueue(),
+      admin: stubAdminDeps,
       internal: stubInternalDeps,
       auth: createAuthService({
         users: users(),

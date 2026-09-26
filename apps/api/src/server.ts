@@ -12,11 +12,22 @@ import { createPrismaClient } from "./common/db.js";
 import { createLogger } from "./common/logger.js";
 import { loadEnv } from "./config/env.js";
 import {
+  createEnqueueN8nDeliveryInTx,
   createEnqueueOutboundInTx,
   createPgBossWebhookQueue,
+  createScheduleBotResumeInTx,
   createScheduleDigestInTx,
   startBoss,
 } from "./jobs/boss.js";
+import { createRunRetrigger } from "./modules/admin/run-retrigger.js";
+import { createConversationModeRepository } from "./modules/conversations/conversation-mode.repository.js";
+import { createConversationModeService } from "./modules/conversations/conversation-mode.service.js";
+import { createHumanReplyService } from "./modules/conversations/human-reply.service.js";
+import { createEmitMessageReadyInTx } from "./modules/integration/message-ready.js";
+import { createOptOutRepository } from "./modules/optout/optout.repository.js";
+import { createReviewRepository } from "./modules/reviews/review.repository.js";
+import { createReviewService } from "./modules/reviews/review.service.js";
+import { createUsersService } from "./modules/users/users.service.js";
 import { createOutboundRepository } from "./modules/messaging/outbound.repository.js";
 import { createOutboundService } from "./modules/messaging/outbound.service.js";
 import { createNotificationRepository } from "./modules/notifications/notification.repository.js";
@@ -132,16 +143,24 @@ const outbound = createOutboundService({
 });
 // Panel auth (phase 8, ADR-018).
 const sessionsRepository = createSessionsRepository(prisma);
+const usersRepository = createUsersRepository(prisma, {
+  revokeUserSessionsInTx: sessionsRepository.revokeAllForUserInTx,
+});
 const auth = createAuthService({
-  users: createUsersRepository(prisma, {
-    revokeUserSessionsInTx: sessionsRepository.revokeAllForUserInTx,
-  }),
+  users: usersRepository,
   sessions: sessionsRepository,
   tokens: createAccessTokens({
     secret: env.JWT_ACCESS_SECRET,
     ttlSeconds: env.ACCESS_TOKEN_TTL_SECONDS,
   }),
   config: { idleHours: env.SESSION_IDLE_HOURS, maxDays: env.SESSION_MAX_DAYS },
+});
+
+const conversationMode = createConversationModeService({
+  repository: createConversationModeRepository(prisma, {
+    scheduleBotResumeInTx: createScheduleBotResumeInTx(boss),
+  }),
+  settings,
 });
 
 const supplierAck = createSupplierAckService({
@@ -158,6 +177,25 @@ const app = createApp({
   webhookQueue: createPgBossWebhookQueue(boss),
   internal: { ingestion, catalog, settings, notifications, supplierAck },
   auth,
+  // Panel API (phase 8 M4): the same services the CLIs use, behind roles.
+  admin: {
+    reviews: createReviewService({
+      repository: createReviewRepository(prisma),
+      ingest: catalog,
+      settings,
+      catalog: createCatalogRepository(prisma),
+    }),
+    retriggerRun: createRunRetrigger({
+      prisma,
+      emitMessageReadyInTx: createEmitMessageReadyInTx(createEnqueueN8nDeliveryInTx(boss)),
+    }),
+    mode: conversationMode,
+    humanReply: createHumanReplyService({ outbound, mode: conversationMode }),
+    consent: createOptOutRepository(prisma),
+    settings,
+    users: createUsersService({ repository: usersRepository }),
+    sessions: sessionsRepository,
+  },
 });
 const server = app.listen(env.PORT, () => {
   logger.info(

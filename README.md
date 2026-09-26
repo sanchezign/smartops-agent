@@ -265,6 +265,11 @@ Database (API, run with `pnpm --filter @smartops/api <script>`):
 - Every error uses one JSON shape: `{ "error": { "code", "message", "details?", "requestId" } }`.
 - Every response carries `X-Request-Id` (a safe incoming value is reused); it is on every log line.
 - Money (Prisma `Decimal`) is always serialized as a **string** (`"1234.5"`), never a JSON number.
+- Panel API (phase 8, ADR-018): `/api/v1/auth/*` (login, refresh with rotation, logout,
+  logout-all, me) and `/api/v1/admin/*` (reviews, bot pause/resume, reply as a person, manual
+  opt-out/opt-in, settings, users) — every admin route requires a Bearer token and a role
+  (operator: line reviews, conversations, opt-out; admin: also run gates, catalog-wide
+  proposals, opt-in, settings writes, users).
 - Internal API for n8n (`X-Internal-Api-Key`, never used by the frontend), all idempotent:
   `POST /api/v1/internal/classify {messageId}`, `POST /api/v1/internal/extract {runId}`,
   `POST /api/v1/internal/catalog/ingest {runId}`, `GET /api/v1/internal/runs/:id` (status to

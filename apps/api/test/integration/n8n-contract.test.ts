@@ -55,6 +55,7 @@ import {
   TEST_ENV_SOURCE,
   TEST_INTERNAL_API_KEY,
   stubAuthService,
+  stubAdminDeps,
 } from "../helpers/build-app.js";
 import { createTestPrisma, resetWhatsAppTables, testDatabaseUrl } from "./db.js";
 
@@ -150,6 +151,7 @@ describe.skipIf(!testDatabaseUrl)("contract: backend ↔ fake n8n orchestrator (
       whatsappWebhookRepository: createInMemoryWebhookRepository(),
       webhookQueue: createFakeWebhookQueue(),
       auth: stubAuthService,
+      admin: stubAdminDeps,
       internal: {
         ingestion: createIngestionService({
           repository: createIngestionRepository(prisma),

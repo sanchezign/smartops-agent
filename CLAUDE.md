@@ -953,6 +953,21 @@ production.**
      `crypto.argon2`. Also FIXED a phase 7 bug: the API's OutboundService (which sends the
      supplier ack) was built without `settings`, so the opt-out instruction footer never
      applied — now injected in server.ts.
+   - M4 authorization + panel API — DONE (2026-09-27). `src/modules/auth/permissions.ts`
+     (`canResolveReview`: admin everything, operator only `scope: line`; `requireRole`).
+     `src/modules/admin/admin.routes.ts`: /api/v1/admin/* built from a DECLARATIVE table
+     (`adminRouteTable`) behind requireAuth + requireRole + Zod validation, no-store:
+     reviews list/get/approve/reject (item-level role check; the actor is the user), conversations
+     :id mode/pause/resume/reply (reply returns `optedOut` for the panel warning), contacts :id
+     consent/opt-out (both roles, reason required)/opt-in (admin), settings GET (both) / PUT :key
+     (admin, validated with the key's Zod schema, audited `setting.updated` from→to, updatedById),
+     users list/create/patch/reset-password/unlock/revoke-sessions (admin). Route-inventory test
+     (test/e2e/admin-routes.test.ts): the mounted router equals the table, every route → 401
+     without a token, every admin-only route → 403 for an operator. Approving a review whose run
+     goes back to "pending"/"classified" re-emits `message.ready` with dedupe key
+     `message.ready:<messageId>:review:<reviewItemId>` (`createRunRetrigger`; the emitter got a
+     `retrigger` option) → closes the phase 6 known issue. `AppDeps.admin` required; tests use
+     `stubAdminDeps`.
 
 ## Known issues (out of scope)
 - **Phase 7 M3:** `wa:optout` (manual/off-WhatsApp) does not send a WhatsApp confirmation
@@ -963,7 +978,7 @@ production.**
 - **Phase 7 M3:** the opt-out instruction footer only applies when `OutboundService` is
   built with `settings` (the API and worker instances do since phase 8 M3); CLI scripts
   (`wa:send`) do not inject it — acceptable for a dev tool.
-- **Phase 6:** approving a `column_mapping` review moves the run back to `classified`, but
+- **Phase 6 (RESOLVED in phase 8 M4 for approvals made through the panel API):** approving a `column_mapping` review moves the run back to `classified`, but
   nothing re-triggers n8n: `extract` + `catalog/ingest` must be called again (done by hand
   in the M5 pass). The panel (phase 9) must re-trigger it (call the internal flow or emit a
   new event). The same applies to other approvals that send a run back to extraction.

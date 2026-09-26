@@ -54,6 +54,7 @@ export interface ReviewResult {
 
 export interface ReviewService {
   list(filter: ReviewListFilter): Promise<ReviewItemRecord[]>;
+  get(id: string): Promise<ReviewItemRecord | null>;
   approve(id: string, input: unknown, actor: ReviewActor, log: Logger): Promise<ReviewResult>;
   reject(id: string, input: unknown, actor: ReviewActor, log: Logger): Promise<ReviewResult>;
 }
@@ -345,6 +346,7 @@ export function createReviewService(deps: {
 
   return {
     list: (filter) => deps.repository.list(filter),
+    get: (id) => deps.repository.getItem(id),
 
     async approve(id, rawInput, actor, log) {
       const parsed = approveReviewSchema.safeParse(rawInput ?? {});

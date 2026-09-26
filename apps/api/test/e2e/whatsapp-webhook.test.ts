@@ -16,6 +16,7 @@ import {
   TEST_WHATSAPP_APP_SECRET,
   TEST_WHATSAPP_VERIFY_TOKEN,
   stubAuthService,
+  stubAdminDeps,
 } from "../helpers/build-app.js";
 import { whatsappFixture } from "../helpers/fixtures.js";
 
@@ -231,6 +232,7 @@ describe("POST /api/v1/webhooks/whatsapp", () => {
       whatsappWebhookRepository: createInMemoryWebhookRepository(),
       webhookQueue: createFakeWebhookQueue(),
       auth: stubAuthService,
+      admin: stubAdminDeps,
       internal: stubInternalDeps,
     });
     const body = whatsappFixture("message-text");

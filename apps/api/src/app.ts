@@ -9,6 +9,7 @@ import type { Env } from "./config/env.js";
 import type { WebhookQueue } from "./jobs/queues.js";
 import type { HealthRepository } from "./modules/health/health.repository.js";
 import { createHealthRouter } from "./modules/health/health.routes.js";
+import { createAdminRouter, type AdminDeps } from "./modules/admin/admin.routes.js";
 import { createAuthRouter } from "./modules/auth/auth.routes.js";
 import type { AuthService } from "./modules/auth/auth.service.js";
 import { createInternalRouter, type InternalDeps } from "./modules/internal/internal.routes.js";
@@ -25,6 +26,8 @@ export interface AppDeps {
   internal: InternalDeps;
   /** Panel auth (/api/v1/auth/*, phase 8). */
   auth: AuthService;
+  /** Panel API (/api/v1/admin/*, phase 8 M4): every route behind a role. */
+  admin: AdminDeps;
 }
 
 /** Builds the Express app without listening (server.ts listens; Supertest uses it directly). */
@@ -36,6 +39,7 @@ export function createApp({
   webhookQueue,
   internal,
   auth,
+  admin,
 }: AppDeps): Express {
   const app = express();
 
@@ -84,6 +88,7 @@ export function createApp({
     }),
   );
   v1.use("/auth", createAuthRouter({ service: auth, env, logger }));
+  v1.use("/admin", createAdminRouter({ deps: admin, authenticate: auth.authenticate, logger }));
   app.use("/api/v1", v1);
 
   app.use(notFoundHandler);
