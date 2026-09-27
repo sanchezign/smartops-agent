@@ -104,13 +104,20 @@ instead of billing (see the settings checklist).
   pattern.
 - Release PRs opened by `GITHUB_TOKEN` trigger **no CI checks** (GitHub rule). That is expected:
   the diff is only versions and the changelog. If checks are wanted, run CI by hand on the
-  `release-please--branches--main` branch.
+  release PR's branch (shown on the PR; release-please names it).
+- Merge phase PRs with **rebase-merge**, never squash: a squash would drop the individual
+  Conventional Commit types and any `Release-As:` footer the changelog and version rely on.
 - Images: `ghcr.io/sanchezign/smartops-api` and `ghcr.io/sanchezign/smartops-admin`, tags
   `X.Y.Z`, `X.Y` and `sha-xxxxxxx` (no `latest`: deploys pin a version). Built natively on
   amd64 and arm64 runners (the Oracle VM of phase 12 is ARM), every architecture checked
   BEFORE the push (secrets check, container smoke test, Trivy), pushed by digest with SBOM and
   provenance, merged into one multi-arch tag. **Private while the repository is private**
   (re-decided in phase 12). Nothing is deployed by CI yet (phase 12).
+- **If an image build fails during a release** (the tag and GitHub release already exist): use
+  **Re-run failed jobs** on THAT release run — it keeps the release-please outputs. A new
+  manual run of `release.yml` would not rebuild anything (`release_created` is false then). The
+  arm64 images are first built and tested in the release run itself (`ci.yml` builds amd64
+  only), so watch the first release closely.
 - API image: one image, three commands — `node dist/server.js` (default), `node
 dist/worker.js`, `node node_modules/prisma/build/index.js migrate deploy` (release step).
   Configuration only through environment variables. Panel image: Next.js `standalone`
