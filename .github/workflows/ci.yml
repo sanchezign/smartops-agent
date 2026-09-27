@@ -1,9 +1,12 @@
-# CI (phase 11). Suites and budget: docs/ci-cd.md.
+# CI (phase 11). Suites, triggers and minutes budget: docs/ci-cd.md.
 # - quick: every push to any branch (its check is attached to the commit, so it also shows on
 #   the pull request without running twice). Pull requests from forks run it too.
+# - plan → integration-coverage + e2e: pull requests to main, the nightly run and manual runs,
+#   following the E2E_POLICY repository variable (apps/api/scripts/ci/e2e-policy.ts).
 # - main-guard: soft enforcement while branch protection is unavailable (private repo on
 #   GitHub Free): a push to main must come from a merged pull request.
 # Every action is pinned to a full commit SHA (version in the comment); Renovate updates them.
+# No real key is ever used: the tests and the E2E run with fake values (DEMO_MODE forces fakes).
 name: CI
 
 on:
@@ -11,6 +14,9 @@ on:
     branches: ["**"]
   pull_request:
     branches: [main]
+  schedule:
+    # 03:00 America/Montevideo (UTC-3, no DST) = 06:00 UTC. Runs only if main changed in 24 h.
+    - cron: "0 6 * * *"
   workflow_dispatch:
 
 permissions: {}
@@ -22,7 +28,9 @@ concurrency:
 jobs:
   quick:
     name: quick
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    if: >-
+      github.event_name == 'push' || github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -62,6 +70,141 @@ jobs:
       # API unit + HTTP e2e (stubbed deps) and panel logic. Includes the n8n contract freshness,
       # the CLAUDE.md guard (vs origin/main) and the coverage-ratchet guard.
       - run: pnpm test:fast
+
+  plan:
+    name: plan
+    if: github.event_name != 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      code: ${{ steps.changes.outputs.code }}
+      e2e: ${{ steps.policy.outputs.run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Docs-only change? (skipped jobs report success, so required checks never hang)
+        id: changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -qvE '(\.md$|^docs/)'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+            echo "Only documentation changed: the slow suite is skipped."
+          fi
+
+      - name: E2E policy (repository variable E2E_POLICY = private | public)
+        id: policy
+        env:
+          E2E_POLICY: ${{ vars.E2E_POLICY }}
+        run: |
+          NEW_COMMITS=$(git log --since="24 hours ago" --oneline origin/main | wc -l)
+          export NEW_COMMITS
+          node apps/api/scripts/ci/e2e-policy.ts
+
+  integration-coverage:
+    name: integration-coverage
+    needs: plan
+    if: >-
+      needs.plan.outputs.code == 'true' &&
+      (github.event_name != 'schedule' || needs.plan.outputs.e2e == 'true')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    services:
+      postgres:
+        # Throw-away database for this job only (fake credentials, never a real one).
+        image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 20
+    env:
+      # The name must end in _test (the integration global setup refuses anything else).
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/smartops_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Unit + integration (real Postgres, pg-boss, migrations from scratch, startup smoke) +
+      # panel, with the coverage-ratchet thresholds as the gate.
+      - run: pnpm test:coverage
+      - run: pnpm build
+
+  e2e:
+    name: e2e
+    needs: plan
+    if: needs.plan.outputs.code == 'true' && needs.plan.outputs.e2e == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 20
+    env:
+      # The E2E derives its own <db>_e2e_demo database from this (apps/admin/e2e/env.ts).
+      E2E_BASE_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/smartops
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @smartops/api db:generate
+      # No browser cache on purpose (Playwright docs: restoring takes about as long as the
+      # download, and the OS dependencies are not cacheable) — user decision, phase 11.
+      - run: pnpm --filter @smartops/admin exec playwright install --with-deps chromium webkit
+      # CI=true: one retry, and a test that only passes on the retry is reported as flaky.
+      - run: pnpm test:e2e
+      - name: Upload the report and traces (failures only, 7 days — artifacts share 500 MB)
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report
+          path: |
+            apps/admin/e2e/report
+            apps/admin/e2e/results
+          retention-days: 7
+          if-no-files-found: ignore
 
   main-guard:
     name: main-guard
