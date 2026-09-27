@@ -36,6 +36,20 @@ describe("refresh rotation decision (RFC 9700 reuse detection)", () => {
     });
   });
 
+  it("the exact-zero-age boundary (same millisecond as the rotation) is still a race, not reuse (mutation finding)", () => {
+    // Stryker survivor: `age >= 0` mutated to `age > 0` would treat this instant — two tabs
+    // refreshing in the very same millisecond — as reuse and revoke the whole session.
+    expect(decideRefresh({ rotatedAt: NOW, isLatestRotated: true }, liveSession, NOW)).toEqual({
+      action: "race",
+    });
+  });
+
+  it("a negative age (clock skew: rotatedAt reads AFTER now) is reuse, never a race", () => {
+    expect(decideRefresh({ rotatedAt: sec(3), isLatestRotated: true }, liveSession, NOW)).toEqual({
+      action: "revoke_reuse",
+    });
+  });
+
   it.each([
     ["rotated 11 s ago", { rotatedAt: sec(-11), isLatestRotated: true }],
     ["an older rotated token, even within 10 s", { rotatedAt: sec(-2), isLatestRotated: false }],

@@ -71,12 +71,20 @@ describe("access token forgery matrix", () => {
     expect(await tokens.verify(token, NOW)).toBeNull();
   });
 
-  // FINDING (phase 10 M6, reported, not changed): verify() does not REQUIRE `exp`, so a token
-  // signed with the real key but without an expiry would never expire. Only exploitable by
-  // someone who already holds JWT_ACCESS_SECRET; fix = jwtVerify({ requiredClaims: ["exp",
-  // "iat", "sub"] }). `it.fails` passes while the gap exists and turns red once it is fixed —
-  // then change it to `it`.
-  it.fails("rejects a token WITHOUT exp (never expiring)", async () => {
+  // FIXED (phase 10, user request 2026-09-27): verify() now requires exp/iat/sub
+  // (jwtVerify requiredClaims) — a token without an expiry, even signed with the real key,
+  // is rejected.
+  it("rejects a token WITHOUT exp (never expiring)", async () => {
     expect(await tokens.verify(await forge({ exp: null }), NOW)).toBeNull();
+  });
+
+  it("rejects a token without iat too (requiredClaims)", async () => {
+    const jwt = new SignJWT({ role: "operator", sid: "s1" })
+      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setSubject("u1")
+      .setIssuer(JWT_ISSUER)
+      .setAudience(JWT_AUDIENCE)
+      .setExpirationTime(iat + 900);
+    expect(await tokens.verify(await jwt.sign(key), NOW)).toBeNull();
   });
 });

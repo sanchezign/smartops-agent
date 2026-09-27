@@ -39,20 +39,41 @@ function localParts(at: Date, timeZone: string): LocalParts {
 }
 
 const toMinutes = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+/** A local wall-clock date+time as a comparable, monotonic-in-the-calendar key. */
+const localKey = (p: { year: number; month: number; day: number; minutes: number }) =>
+  Date.UTC(p.year, p.month - 1, p.day, 0, p.minutes);
+/** Widest known DST jump (a handful of zones use 30 min; most use 60 min) — generous margin. */
+const DST_SCAN_WINDOW_MS = 4 * 60 * MINUTE;
 
-/** A local wall-clock time in `timeZone` → the UTC instant (two correction passes for DST). */
+/**
+ * A local wall-clock time in `timeZone` → the UTC instant (two correction passes for DST).
+ * If that local time does NOT exist — a spring-forward DST gap skips over it — returns the
+ * first instant strictly at or after it, i.e. the moment the clock resumes (phase 10 M9
+ * finding: `nextOpening` used to return an instant that reads as CLOSED because the requested
+ * opening time never happened that day). Verified against America/New_York, America/Santiago
+ * (Southern Hemisphere: gap in September, not March) and Europe/Madrid.
+ */
 export function zonedTimeToUtc(
   local: { year: number; month: number; day: number; minutes: number },
   timeZone: string,
 ): Date {
-  const target = Date.UTC(local.year, local.month - 1, local.day, 0, local.minutes);
+  const target = localKey(local);
   let guess = target;
   for (let i = 0; i < 2; i += 1) {
     const p = localParts(new Date(guess), timeZone);
-    const seen = Date.UTC(p.year, p.month - 1, p.day, 0, p.minutes);
+    const seen = localKey(p);
     guess += target - seen;
   }
-  return new Date(guess);
+  if (localKey(localParts(new Date(guess), timeZone)) === target) return new Date(guess);
+  // The two-pass correction has no exact fixed point for a nonexistent local time: it can
+  // converge to a moment BEFORE the gap. Scan forward in real time (both local clock and
+  // calendar key are monotonic outside of the gap itself) for the first instant whose local
+  // reading has reached or passed the target.
+  for (let t = guess - DST_SCAN_WINDOW_MS; t <= guess + DST_SCAN_WINDOW_MS; t += MINUTE) {
+    if (localKey(localParts(new Date(t), timeZone)) >= target) return new Date(t);
+  }
+  /* c8 ignore next */
+  return new Date(guess); // no known zone has a gap this wide; kept as a safe fallback
 }
 
 export function isOpen(hours: BusinessHours | null, at: Date): boolean {

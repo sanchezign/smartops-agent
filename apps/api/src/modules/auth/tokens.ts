@@ -43,6 +43,9 @@ export function createAccessTokens(config: { secret: string; ttlSeconds: number 
           issuer: JWT_ISSUER,
           audience: JWT_AUDIENCE,
           currentDate: now,
+          // Phase 10 M6 finding: without this, a token signed with the real key but missing
+          // `exp` (or `iat`/`sub`) would verify forever. jose only checks claims it can find.
+          requiredClaims: ["exp", "iat", "sub"],
         });
         const role = payload.role;
         if (

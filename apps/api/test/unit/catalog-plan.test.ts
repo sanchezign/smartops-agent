@@ -106,6 +106,10 @@ describe("percentage arithmetic (Decimal)", () => {
     ["100", "-5", "95"],
     ["45", "6.6667", "48"],
     ["0.0001", "33", "0.0001"],
+    // A whole-number current price (0 actual decimals) with a percentage that does NOT round
+    // evenly at 0 or 1 decimals: the MINIMUM (2 decimals) must still be tried first, or the
+    // result lands on the wrong value (mutation testing finding, phase 10 M9).
+    ["100", "12.34", "112.34"],
   ])("%s %s%% → %s", (current, pct, expected) => {
     expect(applyPercentage(D(current), pct).eq(D(expected))).toBe(true);
   });
@@ -115,6 +119,14 @@ describe("percentage arithmetic (Decimal)", () => {
     expect(applyPercentage(D("12.5"), "7.5").toFixed()).toBe("13.44");
     expect(applyPercentage(D("1.2345"), "10").toFixed()).toBe("1.358");
     expect(() => applyPercentage(D("0"), "10")).toThrow();
+  });
+
+  it("a whole-number current price never starts the search below MIN_PRICE_DECIMALS (mutation finding)", () => {
+    // Stryker survivor: clamping `start` with Math.max(MIN_PRICE_DECIMALS, …) removed would let
+    // the search begin at 0 or 1 decimals for a whole-number price like "100", returning "112.3"
+    // (1 decimal, wrong value) instead of "112.34" the moment a coarser rounding happens to
+    // already satisfy the 0.1 pp tolerance.
+    expect(applyPercentage(D("100"), "12.34").toFixed()).toBe("112.34");
   });
 });
 

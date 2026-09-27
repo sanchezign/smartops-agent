@@ -85,11 +85,14 @@ export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
   },
   {
     name: QUEUES.whatsappMedia,
-    // Media ids live 7 days; backoff 10 s → 30 min over 6 retries (e.g. token renewal).
+    // Media ids live 7 days; backoff 20 s, capped at 10 min per retry, 6 retries → gives up
+    // within ~30 min in total (e.g. token renewal) — verified in queue-definitions.test.ts
+    // against pg-boss's own backoff formula (phase 10 fix: the previous 10 s/30 min-cap
+    // combination never actually reached 30 min in total, only ~10.5–21 min).
     retryLimit: 6,
-    retryDelay: 10,
+    retryDelay: 20,
     retryBackoff: true,
-    retryDelayMax: 1800,
+    retryDelayMax: 600,
     // Two Graph calls + a download of up to MEDIA_DOWNLOAD_TIMEOUT_MS.
     expireInSeconds: 180,
     deadLetter: QUEUES.whatsappMediaDlq,

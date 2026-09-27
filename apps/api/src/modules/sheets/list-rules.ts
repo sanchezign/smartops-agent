@@ -1,3 +1,4 @@
+import { normalizeUntrusted } from "../../common/text-normalize.js";
 import { cellText, type SheetTable } from "../documents/document-types.js";
 
 /**
@@ -18,8 +19,13 @@ const TAX_TRUE = /iva inclu[ií]do|con iva|c\/\s*iva|precios? finales?/i;
 const TAX_FALSE = /\+\s*iva|m[aá]s iva|sin iva|s\/\s*iva|iva no inclu[ií]do|no incluye iva/i;
 const FULL_LIST =
   /lista (de precios )?(completa|vigente)|reemplaza (a )?la (lista )?anterior|cat[aá]logo completo/i;
+// Verb (Spanish + English synonyms: ignorá/desestimá/descartá/olvidá, disregard/forget) + the
+// object it must act on (instrucciones/instructions) — requiring the object avoids flagging
+// ordinary supplier notes like "ignorar la fila 3" or "descartá ese precio" (see the control
+// cases in test/unit/prompt-injection.test.ts). Text is normalizeUntrusted()-ed first (phase 10
+// finding: zero-width characters and full-width forms dodged the plain-ASCII regex).
 const INJECTION =
-  /ignor(a|á|e|ar)\s+(todas\s+)?(las\s+|all\s+|the\s+)?(instrucciones|previous instructions|instructions)|olvid(a|á)\s+(las|todas)|system prompt|you are now|sos un asistente|actu[aá] como/i;
+  /(?:ignor(?:a|á|e|ar)|desestim(?:a|á|e|ar)|descart(?:a|á|e|ar)|disregard|forget)\s+(?:todas\s+)?(?:las\s+|all\s+|the\s+|previous\s+)?(?:instrucciones|previous instructions|instructions)|olvid(?:a|á)\s+(?:las|todas)\s+(?:las\s+)?instruccion(?:es)?|system prompt|you are now|sos un asistente|actu[aá] como/i;
 
 const CURRENCIES: ReadonlyArray<readonly [string, RegExp]> = [
   ["UYU", /pesos uruguayos|\$u\b|\buyu\b/i],
@@ -28,10 +34,11 @@ const CURRENCIES: ReadonlyArray<readonly [string, RegExp]> = [
 ];
 
 export function containsInjection(value: string): boolean {
-  return INJECTION.test(value);
+  return INJECTION.test(normalizeUntrusted(value));
 }
 
-export function listSignals(text: string): ListSignals {
+export function listSignals(rawText: string): ListSignals {
+  const text = normalizeUntrusted(rawText);
   const taxTrue = TAX_TRUE.test(text);
   const taxFalse = TAX_FALSE.test(text);
   const currencies = CURRENCIES.filter(([, re]) => re.test(text)).map(([code]) => code);

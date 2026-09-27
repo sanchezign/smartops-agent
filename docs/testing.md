@@ -212,15 +212,25 @@ Proposed jobs (Linux runners; times measured on the dev PC, CI estimated ×2 + i
   login-lockout, optout-detector, message-status, digest-rules.
 - A SURVIVED mutant = a change to the code that no test notices. The report is used to add the
   missing assertions; there is no threshold that fails a build (user decision).
-- Result (2026-09-27, 29 min, 728 mutants): **79.1 %** (575 killed, 1 timeout, 152 survived).
-  message-status 93.8, session-rules 94.1, login-lockout 90.5, optout-detector 83.8,
-  price-math 79.0, sheet-values 76.3, digest-rules 74.0. Worth a test next: the exact-instant
-  boundaries (lock / session expiry at `now ===` the limit: `>` vs `>=` survive), the
-  lockout level decrement, price-math's first-pass decimals and error message, message-status'
-  guard for non-ranked statuses; sheet-values and digest-rules survivors are mostly regex and
-  text variants (currency tokens, digest wording).
+- Result after the post-review fixes (2026-09-27, ~30 min, 728 mutants): **80.1 %**
+  (582 killed, 1 timeout, 145 survived). session-rules 96.1, login-lockout 95.2,
+  price-math 84.2, message-status 93.8, optout-detector 85.0, sheet-values 76.3,
+  digest-rules 74.7. First pass (before the fixes below): 79.1 % (575 killed, 152 survived).
+- Survivors reviewed by hand (login-lockout, session-rules, price-math; ~50 min budget): 5 real
+  gaps found and closed with new tests (`lockedNow` while already locked, `lockLevel` only
+  increases, refresh-race age boundary at exactly 0 and negative age, a whole-number current
+  price never starts the percentage search below `MIN_PRICE_DECIMALS`). One report entry
+  (price-math's `Math.min(MAX,...)` clamp) was manually re-verified NOT to survive when the
+  mutant is reproduced by hand and run with the exact Stryker command — a tooling/reporting
+  caveat, kept in CLAUDE.md Known issues; the score may slightly undercount. The rest (exact-
+  instant `>` vs `>=` boundaries on multi-day/-hour windows, an error-message string, regex/text
+  variants in sheet-values and digest-rules) are equivalent or negligible — left in the report.
 - Side effect: the mutation run surfaced a real DST bug through the business-hours property
-  (a different random seed) — pinned with `it.fails`, see CLAUDE.md Known issues.
+  (a different random seed): `nextOpening` could return a CLOSED instant when the opening time
+  fell in a spring-forward gap. FIXED in `zonedTimeToUtc` (scans forward to the first valid
+  instant when the requested local time was skipped); regression cases for America/New_York,
+  America/Santiago (Southern Hemisphere: gap in September) and Europe/Madrid. The property now
+  runs unfiltered across 4 time zones with 5000 iterations locally, no counterexample.
 
 ## Real-model evaluation (M10) — manual, never in CI
 

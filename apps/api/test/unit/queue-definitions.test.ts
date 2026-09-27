@@ -90,13 +90,15 @@ describe("queue definitions", () => {
     expect(def(QUEUES.n8nDelivery).retryDelayMax).toBe(3600);
   });
 
-  it("media downloads give up well inside the 7 days a Meta media id lives", () => {
-    // FINDING (phase 10 M3, reported, not changed): the queue comment reads "10 s → 30 min
-    // over 6 retries", but 6 retries add up to 10.5–21 min IN TOTAL (20…640 s each); the
-    // 30-min cap is never reached. A token renewal must happen within ~20 min, or the media
-    // ends failed/retries_exhausted and needs wa:media:retry. Pinned as it is today.
+  it("media downloads give up within ~30 min in total (fixed: the config now matches the comment)", () => {
+    // FIXED (phase 10, user request 2026-09-27): the old 10 s delay / 30 min cap combination
+    // never actually reached 30 min in total (only ~10.5–21 min: the cap was unreachable in
+    // 6 retries). 20 s delay / 10 min cap reaches the cap on the last two retries, landing
+    // the WORST CASE exactly at 30 min — a token renewal must happen within that window, or
+    // the media ends failed/retries_exhausted and needs wa:media:retry.
     const [min, max] = totalBackoffSeconds(def(QUEUES.whatsappMedia));
-    expect([min, max]).toEqual([630, 1260]);
+    expect([min, max]).toEqual([1220, 1800]);
+    expect(max).toBe(30 * 60);
     expect(max).toBeLessThan(7 * 24 * 3600);
   });
 

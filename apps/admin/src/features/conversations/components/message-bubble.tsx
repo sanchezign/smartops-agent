@@ -18,7 +18,10 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
               ? "rounded-br-sm border bg-secondary"
               : "rounded-br-sm bg-primary text-primary-foreground"
             : "rounded-bl-sm border bg-card",
-          failed && "opacity-70",
+          // A failed/canceled reply is marked with a border + icon (below), never by lowering
+          // opacity: that used to compound with the already-translucent footer text
+          // (text-primary-foreground/70,/80) and fail WCAG AA contrast (phase 10 M8 finding).
+          failed && "border-2 border-destructive",
         )}
       >
         {outbound ? (
@@ -60,7 +63,7 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
           {outbound && STATUS_LABEL[message.status] ? (
             <>
               {" · "}
-              {failed ? <AlertCircle className="size-3" aria-hidden /> : null}
+              {failed ? <AlertCircle className="size-3 text-destructive" aria-hidden /> : null}
               {STATUS_LABEL[message.status]}
             </>
           ) : null}

@@ -129,6 +129,27 @@ describe("login lockout (5 in 15 min → 15 min, doubling, capped at 1 h)", () =
     const locked = failTimes(EMPTY_LOCKOUT, 5, t0).state;
     const again = fail(locked, at(5));
     expect(again.next).toEqual(locked);
+    // Mutation testing finding (phase 10 M9): a failed attempt against an ALREADY locked
+    // account must never report lockedNow: true (that would mean "just now locked", which
+    // could trigger a duplicate lock notification / audit entry for every retry).
+    expect(again.lockedNow).toBe(false);
     expect(registerSuccess()).toEqual(EMPTY_LOCKOUT);
+  });
+
+  it("lockLevel only ever increases across consecutive lockouts, doubling the duration each time (mutation finding)", () => {
+    // Stryker survivor: `lockLevel: state.lockLevel + 1` mutated to `- 1` would make the level
+    // go negative and the lock duration SHRINK instead of doubling on repeated lockouts.
+    // The 5th (locking) failure of a batch of `count` lands at `start + (count - 1) * 1000 ms`.
+    const first = failTimes(EMPTY_LOCKOUT, 5, t0);
+    const firstLockedAt = new Date(t0.getTime() + 4 * 1000);
+    expect(first.state.lockLevel).toBe(1);
+    expect(first.state.lockedUntil!.getTime() - firstLockedAt.getTime()).toBe(15 * 60_000);
+
+    // Past the first lock: five more failures trigger the SECOND lockout, doubled.
+    const secondStart = at(16);
+    const second = failTimes(first.state, 5, secondStart);
+    const secondLockedAt = new Date(secondStart.getTime() + 4 * 1000);
+    expect(second.state.lockLevel).toBe(2);
+    expect(second.state.lockedUntil!.getTime() - secondLockedAt.getTime()).toBe(30 * 60_000);
   });
 });

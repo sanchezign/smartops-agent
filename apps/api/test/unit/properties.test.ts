@@ -263,18 +263,16 @@ describe("business hours (quiet hours of the digests)", () => {
     .filter((r) => r.open !== r.close);
   const hoursArb: fc.Arbitrary<BusinessHours> = fc
     .record({
-      timeZone: fc.constantFrom("America/Montevideo", "Europe/Madrid", "America/New_York", "UTC"),
+      timeZone: fc.constantFrom(
+        "America/Montevideo",
+        "Europe/Madrid",
+        "America/New_York",
+        "America/Santiago",
+        "UTC",
+      ),
       days: fc.array(rule, { minLength: 1, maxLength: 5 }),
     })
-    .filter((h) => businessHoursSchema.safeParse(h).success)
-    // KNOWN BUG pinned below (it.fails): an opening at 02:xx in a zone whose DST gap is
-    // 02:00–03:00 does not exist on the spring-forward day. Excluded here so this property
-    // stays deterministic; remove the filter once nextOpening handles the gap.
-    .filter(
-      (h) =>
-        !["Europe/Madrid", "America/New_York"].includes(h.timeZone) ||
-        h.days.every((d) => !d.open.startsWith("02:")),
-    );
+    .filter((h) => businessHoursSchema.safeParse(h).success);
   const instant = fc
     .integer({ min: Date.UTC(2026, 0, 1), max: Date.UTC(2027, 11, 31) })
     .map((ms) => new Date(ms));
@@ -433,18 +431,44 @@ describe("opt-out keywords (case, accents, spacing, polite filler)", () => {
 });
 
 /**
- * FINDING (phase 10 M9, found by the business-hours property during mutation testing;
- * reported, not changed): an opening time inside a DST gap does not exist on the
- * spring-forward day. nextOpening() returns an instant where isOpen() is false, so a digest
- * postponed to it is postponed again (up to a week). Shrunk counterexample below. `it.fails`
- * turns red once fixed — then switch it to `it` and drop the filter in the property above.
+ * FIXED (phase 10, found by the business-hours property during mutation testing, user request
+ * 2026-09-27): an opening time inside a DST gap does not exist on the spring-forward day.
+ * `zonedTimeToUtc` now scans forward to the first valid instant when the requested local time
+ * was skipped, so `nextOpening` never returns a closed instant. Regression cases below (kept
+ * even though the property above now covers every zone/time, since these are the exact
+ * shrunk counterexamples that found the bug).
  */
-it.fails("business hours: an opening inside the DST gap (New York, 02:00 on 2026-03-08)", () => {
-  const hours: BusinessHours = {
-    timeZone: "America/New_York",
-    days: [{ day: 0, open: "02:00", close: "00:00" }],
-  };
-  const at = new Date("2026-03-02T05:00:00.000Z"); // Monday 00:00 EST, closed
-  const next = nextOpening(hours, at)!;
-  expect(isOpen(hours, next)).toBe(true);
+describe("business hours: DST gaps never produce a closed 'next opening'", () => {
+  it("New York: 02:00 does not exist on 2026-03-08 (clocks jump to 03:00)", () => {
+    const hours: BusinessHours = {
+      timeZone: "America/New_York",
+      days: [{ day: 0, open: "02:00", close: "00:00" }],
+    };
+    const at = new Date("2026-03-02T05:00:00.000Z"); // Monday 00:00 EST, closed
+    const next = nextOpening(hours, at)!;
+    expect(isOpen(hours, next)).toBe(true);
+    expect(next.toISOString()).toBe("2026-03-08T07:00:00.000Z"); // = 03:00 EDT, the resume instant
+  });
+
+  it("Santiago (Southern Hemisphere): the gap is in September, not March", () => {
+    const hours: BusinessHours = {
+      timeZone: "America/Santiago",
+      days: [{ day: 0, open: "00:30", close: "23:00" }], // Sunday 2026-09-06: 00:00-01:00 skipped
+    };
+    const at = new Date("2026-08-31T03:00:00.000Z"); // the previous Sunday, closed at that hour
+    const next = nextOpening(hours, at)!;
+    expect(isOpen(hours, next)).toBe(true);
+    expect(next.toISOString()).toBe("2026-09-06T04:00:00.000Z"); // = 01:00 local, the resume instant
+  });
+
+  it("Madrid: 02:00-03:00 does not exist on the last Sunday of March", () => {
+    const hours: BusinessHours = {
+      timeZone: "Europe/Madrid",
+      days: [{ day: 0, open: "02:30", close: "23:00" }],
+    };
+    // 2026-03-29 is the spring-forward Sunday in the EU.
+    const at = new Date("2026-03-22T12:00:00.000Z");
+    const next = nextOpening(hours, at)!;
+    expect(isOpen(hours, next)).toBe(true);
+  });
 });

@@ -1,4 +1,5 @@
 import type { LlmContent } from "../../ai/llm-provider.js";
+import { normalizeUntrusted } from "../../common/text-normalize.js";
 import { normalizeMime } from "../media/media-policy.js";
 
 /**
@@ -23,11 +24,14 @@ export interface MessageForAi {
   supplierName: string | null;
 }
 
+// Whitespace tolerated around "<", "/" and the tag name (phase 10 finding: "< /message_text>"
+// dodged the earlier stricter pattern) — normalizeUntrusted() folds full-width brackets and
+// strips zero-width characters BEFORE this runs, so those evasions never reach here either.
 const OUR_TAGS =
-  /<\/?\s*(message_text|voice_transcript|caption|document_text|catalog|context|sheet_sample|product_names)\b[^>]*>/gi;
+  /<\s*\/?\s*(message_text|voice_transcript|caption|document_text|catalog|context|sheet_sample|product_names)\b[^>]*>/gi;
 
 export function neutralizeTags(untrusted: string): string {
-  return untrusted.replace(OUR_TAGS, "[etiqueta eliminada]");
+  return normalizeUntrusted(untrusted).replace(OUR_TAGS, "[etiqueta eliminada]");
 }
 
 function wrap(tag: string, untrusted: string): string {

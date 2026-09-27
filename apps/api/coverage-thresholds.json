@@ -89,7 +89,7 @@
       "lines": 95,
       "branches": 98,
       "functions": 98,
-      "statements": 95
+      "statements": 96
     },
     "modules/catalog/ingest-plan.ts": {
       "lines": 98,
