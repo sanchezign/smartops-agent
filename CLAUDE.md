@@ -1217,9 +1217,10 @@ a real client.**
      in memory. Payload builders MOVED to `src/modules/demo/wa-payloads.ts` / `wa-ids.ts`
      (simulator files are re-export shims). `demo-injector.ts`: kinds foto, pdf, audio,
      planilla, planilla_nueva, injection → Meta-shaped payload POSTed SIGNED to our webhook (the
-     real pipeline). Assets `apps/api/demo/assets` (fixture copies) + a 5 s Ogg/Opus voice note
-     generated in code (`demo-audio.ts`, Ogg CRC, OpusHead/OpusTags, silent CELT frames; duration
-     reader says 5 s; its sha keys the transcript). Seed (`seedDemo` options `keepAuth`,
+     real pipeline). Assets `apps/api/demo/assets` (fixture copies) + a voice note (first a
+     silent Ogg/Opus generated in code; replaced after the phone tests by real synthetic speech
+     `demo/assets/nota-de-voz.ogg`, see below; the generator was deleted) whose sha keys the
+     transcript. Seed (`seedDemo` options `keepAuth`,
      `assetsDir`, `e2eReviews`): users are UPSERTED (password/role/lockout restored);
      "Distribuidora Demo S.A." catalog from the RECORDED PDF extraction (refs P1..P7 follow
      alphabetical catalog order, so the photo/voice goldens line up); "Distribuidora Ejemplo
@@ -1375,6 +1376,9 @@ a real client.**
 ## Conventions in this project
 - Costs: never create or enable anything that generates charges without asking first
   (see "Cost constraint").
+- Processes (user rule, 2026-09-27): NEVER kill processes you did not start. Record the PIDs
+  of what you launch and stop only those (never "every cloudflared / node" by name) — in phase
+  9 a tunnel of the user was closed by mistake that way.
 - Git / GitHub backup (user rule, 2026-09-24): remote `origin` =
   https://github.com/sanchezign/smartops-agent (private). At the end of EVERY milestone,
   right after its commit, run `git push` of the CURRENT branch (never `--force`).

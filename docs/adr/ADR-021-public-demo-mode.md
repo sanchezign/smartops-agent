@@ -61,8 +61,9 @@ whatever the other variables say:
   - `GET /demo/trace/:wamid` drives the panel's live timeline.
 - **Sample assets** (`apps/api/demo/assets`):
   - the photo, PDF and spreadsheets are the test fixtures;
-  - the voice note is a valid 5 s Ogg/Opus generated in code (`demo-audio.ts`, no binary in
-    the repo).
+  - the voice note is real synthetic speech, Ogg/Opus 11.5 KB (`demo/assets/nota-de-voz.ogg`,
+    provenance in `demo/README.md`). It replaced a silent clip generated in code after the
+    phone tests.
 
   The seed prepares the senders so that the recorded outputs line up:
   - "Distribuidora Demo S.A." with the catalog of the recorded September PDF;
