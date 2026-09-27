@@ -525,8 +525,8 @@ Each one gets an ADR in docs/adr/.
   (actor `cli:<--by>`).
 
 ## Current phase
-**Phase 9 complete (2026-09-27), merged to `main`. Phase 10 (tests) IN PROGRESS on
-`feat/phase-10-tests` (M1–M9, stop for review; M10 dry-run only). M3b (phase 5) and MFA (TOTP) remain recommended/required before
+**Phase 9 complete (2026-09-27), merged to `main`. Phase 10 (tests): M1–M9 DONE + M10 dry-run on
+`feat/phase-10-tests` — WAITING FOR THE USER'S REVIEW (and a decision on the M10 real run). M3b (phase 5) and MFA (TOTP) remain recommended/required before
 a real client.**
 
 1. scaffold — done (2026-09-24).
@@ -1352,8 +1352,24 @@ a real client.**
       private (verified: Actions is free on public repos with standard runners). Flaky check
       `--repeat-each=3`: read-only tests 3/3; data-consuming tests are not repeatable by design;
       found an a11y bug (Known issues). Coverage API 90.7 % lines / 80.8 % branches (ratchet +7).
+    - M9 mutation testing — DONE (2026-09-27), report only. Stryker 10.0.0 with the COMMAND runner
+      (`stryker.config.mjs`, `vitest.stryker.config.ts`; vitest-runner removed: broken on Vitest 5,
+      stryker-js#6210). 728 mutants, 29 min, score 79.1 % (per file in docs/testing.md; survivors =
+      boundary instants, a few guards, regex/text variants). A property run found a real DST bug in
+      `nextOpening` (Known issues, `it.fails`).
+    - M10 real-model eval — DRY-RUN ONLY (2026-09-27). `scripts/ai-eval.ts` (`ai:eval`): our 8-case
+      injection set (2 controls) through the extractor; `--dry-run` (free count_tokens): expected
+      $0.1143, worst $0.1943 (≤ $0.30, no cache discount), $0 spent. `--confirm-spend` only with the
+      user's OK; refuses to run when CI is set.
 
 ## Known issues (out of scope)
+- **Phase 10 M9 finding (reported, not changed; pinned with `it.fails` in properties.test.ts):**
+  `nextOpening` returns a closed instant when an opening time falls in a DST gap (e.g. New York
+  02:00 on the spring-forward Sunday): a quiet-hours digest can be postponed again, up to a week.
+  Only zones with DST; Montevideo has none today. Found by the business-hours property.
+- **Tooling (phase 10 M9):** `@stryker-mutator/vitest-runner` 10.0.0 runs ZERO tests per mutant on
+  Vitest 5 (stryker-js#6210, fix unreleased on 2026-09-27) → mutation testing uses Stryker's
+  command runner (whole unit suite per mutant, slower). Switch back when a release has the fix.
 - **Phase 10 M8 finding (a11y, reported, not changed):** a failed / canceled HUMAN reply bubble in the
   chat (`message-bubble.tsx`: `bg-primary` + `opacity-70`) fails WCAG AA color contrast (axe). Found by
   the E2E flaky check on phones. Suggested fix: mark failures with a border + icon instead of

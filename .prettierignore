@@ -18,3 +18,7 @@ apps/admin/e2e/results/
 apps/admin/e2e/report/
 apps/admin/e2e/screens/
 apps/admin/.next-e2e/
+
+# Mutation testing (phase 10 M9)
+apps/api/reports/
+apps/api/.stryker-tmp/

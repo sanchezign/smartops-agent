@@ -4,7 +4,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist/**", "coverage/**", "src/generated/**"] },
+  { ignores: ["dist/**", "coverage/**", "src/generated/**", "reports/**", ".stryker-tmp/**"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

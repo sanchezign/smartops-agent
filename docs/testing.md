@@ -204,13 +204,23 @@ Proposed jobs (Linux runners; times measured on the dev PC, CI estimated ×2 + i
 
 ## Mutation testing (M9) — report only, no gate
 
-- Stryker 10.0.0 (`@stryker-mutator/core` + `@stryker-mutator/vitest-runner`, pinned exactly):
-  `pnpm --filter @smartops/api mutation`. Config `apps/api/stryker.config.json`, runner config
-  `apps/api/vitest.stryker.config.ts` (unit tests only, no database). Reports in
+- Stryker 10.0.0 (`@stryker-mutator/core`, pinned exactly): `pnpm --filter @smartops/api mutation`.
+  Config `apps/api/stryker.config.mjs` (COMMAND runner: the vitest-runner 10.0.0 runs zero tests per
+  mutant on Vitest 5 — stryker-js#6210, fix unreleased), runner config
+  `apps/api/vitest.stryker.config.ts` (unit tests that live inside apps/api, no database). Reports in
   `apps/api/reports/mutation/` (gitignored). Mutated: price-math, sheet-values, session-rules,
   login-lockout, optout-detector, message-status, digest-rules.
 - A SURVIVED mutant = a change to the code that no test notices. The report is used to add the
   missing assertions; there is no threshold that fails a build (user decision).
+- Result (2026-09-27, 29 min, 728 mutants): **79.1 %** (575 killed, 1 timeout, 152 survived).
+  message-status 93.8, session-rules 94.1, login-lockout 90.5, optout-detector 83.8,
+  price-math 79.0, sheet-values 76.3, digest-rules 74.0. Worth a test next: the exact-instant
+  boundaries (lock / session expiry at `now ===` the limit: `>` vs `>=` survive), the
+  lockout level decrement, price-math's first-pass decimals and error message, message-status'
+  guard for non-ranked statuses; sheet-values and digest-rules survivors are mostly regex and
+  text variants (currency tokens, digest wording).
+- Side effect: the mutation run surfaced a real DST bug through the business-hours property
+  (a different random seed) — pinned with `it.fails`, see CLAUDE.md Known issues.
 
 ## Real-model evaluation (M10) — manual, never in CI
 

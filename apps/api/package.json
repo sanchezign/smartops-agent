@@ -36,12 +36,14 @@
     "wa:transcription:retry": "tsx --env-file-if-exists=.env scripts/transcription-retry.ts",
     "wa:fixtures:capture": "tsx --env-file-if-exists=.env scripts/capture-whatsapp-fixtures.ts",
     "ai:record-golden": "tsx --env-file-if-exists=.env scripts/ai-record-golden.ts",
+    "ai:eval": "tsx --env-file-if-exists=.env scripts/ai-eval.ts",
     "n8n:replay": "tsx --env-file-if-exists=.env scripts/n8n-replay.ts",
     "n8n:export": "tsx scripts/n8n/export.ts",
     "n8n:contract": "tsx scripts/n8n/contract.ts",
     "claude-md:baseline": "tsx scripts/claude-md-baseline.ts",
     "users": "tsx --env-file-if-exists=.env scripts/users.ts",
-    "demo:seed": "tsx --env-file-if-exists=.env scripts/demo/seed.ts"
+    "demo:seed": "tsx --env-file-if-exists=.env scripts/demo/seed.ts",
+    "mutation": "stryker run stryker.config.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
@@ -65,6 +67,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "@stryker-mutator/core": "10.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^24.13.6",

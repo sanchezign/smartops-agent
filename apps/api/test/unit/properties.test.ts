@@ -266,7 +266,15 @@ describe("business hours (quiet hours of the digests)", () => {
       timeZone: fc.constantFrom("America/Montevideo", "Europe/Madrid", "America/New_York", "UTC"),
       days: fc.array(rule, { minLength: 1, maxLength: 5 }),
     })
-    .filter((h) => businessHoursSchema.safeParse(h).success);
+    .filter((h) => businessHoursSchema.safeParse(h).success)
+    // KNOWN BUG pinned below (it.fails): an opening at 02:xx in a zone whose DST gap is
+    // 02:00–03:00 does not exist on the spring-forward day. Excluded here so this property
+    // stays deterministic; remove the filter once nextOpening handles the gap.
+    .filter(
+      (h) =>
+        !["Europe/Madrid", "America/New_York"].includes(h.timeZone) ||
+        h.days.every((d) => !d.open.startsWith("02:")),
+    );
   const instant = fc
     .integer({ min: Date.UTC(2026, 0, 1), max: Date.UTC(2027, 11, 31) })
     .map((ms) => new Date(ms));
@@ -422,4 +430,21 @@ describe("opt-out keywords (case, accents, spacing, polite filler)", () => {
       opts,
     );
   });
+});
+
+/**
+ * FINDING (phase 10 M9, found by the business-hours property during mutation testing;
+ * reported, not changed): an opening time inside a DST gap does not exist on the
+ * spring-forward day. nextOpening() returns an instant where isOpen() is false, so a digest
+ * postponed to it is postponed again (up to a week). Shrunk counterexample below. `it.fails`
+ * turns red once fixed — then switch it to `it` and drop the filter in the property above.
+ */
+it.fails("business hours: an opening inside the DST gap (New York, 02:00 on 2026-03-08)", () => {
+  const hours: BusinessHours = {
+    timeZone: "America/New_York",
+    days: [{ day: 0, open: "02:00", close: "00:00" }],
+  };
+  const at = new Date("2026-03-02T05:00:00.000Z"); // Monday 00:00 EST, closed
+  const next = nextOpening(hours, at)!;
+  expect(isOpen(hours, next)).toBe(true);
 });
