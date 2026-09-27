@@ -39,6 +39,22 @@ const messageBody = z.object({ messageId: z.uuid() }).strict();
 const runBody = z.object({ runId: z.uuid() }).strict();
 const runParams = z.object({ id: z.uuid() });
 
+/**
+ * The request schemas of every internal route, keyed "METHOD /path" (relative to
+ * /api/v1/internal). Source of the n8n contract (scripts/n8n/contract.ts → n8n/contract.json,
+ * phase 10 M4): a test fails if this table and the mounted routes ever differ.
+ */
+export const INTERNAL_ROUTE_SCHEMAS = {
+  "POST /classify": { body: messageBody },
+  "POST /extract": { body: runBody },
+  "POST /catalog/ingest": { body: runBody },
+  "GET /runs/:id": { params: runParams },
+  "POST /notifications": { body: notifySchema },
+  "POST /n8n/errors": { body: n8nErrorSchema },
+  "POST /messages/ack": { body: ackSchema },
+  "GET /rules": {},
+} as const;
+
 export function createInternalRouter(
   deps: InternalDeps & {
     apiKey: string;
@@ -53,46 +69,62 @@ export function createInternalRouter(
   const log = (req: Parameters<RequestHandler>[0]) =>
     (req.log as Logger | undefined) ?? deps.logger;
 
-  router.post("/classify", validate({ body: messageBody }), async (req, res) => {
+  router.post("/classify", validate(INTERNAL_ROUTE_SCHEMAS["POST /classify"]), async (req, res) => {
     const { messageId } = getValidated<typeof messageBody>(res, "body");
     res.json(await deps.ingestion.classify(messageId, log(req)));
   });
 
-  router.post("/extract", validate({ body: runBody }), async (req, res) => {
+  router.post("/extract", validate(INTERNAL_ROUTE_SCHEMAS["POST /extract"]), async (req, res) => {
     const { runId } = getValidated<typeof runBody>(res, "body");
     res.json(await deps.ingestion.extract(runId, log(req)));
   });
 
-  router.post("/catalog/ingest", validate({ body: runBody }), async (req, res) => {
-    const { runId } = getValidated<typeof runBody>(res, "body");
-    res.json(await deps.catalog.ingest(runId, log(req)));
-  });
+  router.post(
+    "/catalog/ingest",
+    validate(INTERNAL_ROUTE_SCHEMAS["POST /catalog/ingest"]),
+    async (req, res) => {
+      const { runId } = getValidated<typeof runBody>(res, "body");
+      res.json(await deps.catalog.ingest(runId, log(req)));
+    },
+  );
 
-  router.get("/runs/:id", validate({ params: runParams }), async (req, res) => {
+  router.get("/runs/:id", validate(INTERNAL_ROUTE_SCHEMAS["GET /runs/:id"]), async (req, res) => {
     const { id } = getValidated<typeof runParams>(res, "params");
     res.set("Cache-Control", "no-store");
     res.json(await deps.ingestion.getRun(id));
   });
 
-  router.post("/notifications", validate({ body: notifySchema }), async (req, res) => {
-    res.json(
-      await deps.notifications.notify(getValidated<typeof notifySchema>(res, "body"), log(req)),
-    );
-  });
+  router.post(
+    "/notifications",
+    validate(INTERNAL_ROUTE_SCHEMAS["POST /notifications"]),
+    async (req, res) => {
+      res.json(
+        await deps.notifications.notify(getValidated<typeof notifySchema>(res, "body"), log(req)),
+      );
+    },
+  );
 
-  router.post("/n8n/errors", validate({ body: n8nErrorSchema }), async (req, res) => {
-    res.json(
-      await deps.notifications.recordN8nError(
-        getValidated<typeof n8nErrorSchema>(res, "body"),
-        log(req),
-      ),
-    );
-  });
+  router.post(
+    "/n8n/errors",
+    validate(INTERNAL_ROUTE_SCHEMAS["POST /n8n/errors"]),
+    async (req, res) => {
+      res.json(
+        await deps.notifications.recordN8nError(
+          getValidated<typeof n8nErrorSchema>(res, "body"),
+          log(req),
+        ),
+      );
+    },
+  );
 
-  router.post("/messages/ack", validate({ body: ackSchema }), async (req, res) => {
-    const { runId } = getValidated<typeof ackSchema>(res, "body");
-    res.json(await deps.supplierAck.ack(runId, log(req)));
-  });
+  router.post(
+    "/messages/ack",
+    validate(INTERNAL_ROUTE_SCHEMAS["POST /messages/ack"]),
+    async (req, res) => {
+      const { runId } = getValidated<typeof ackSchema>(res, "body");
+      res.json(await deps.supplierAck.ack(runId, log(req)));
+    },
+  );
 
   router.get("/rules", async (req, res) => {
     res.set("Cache-Control", "no-store");

@@ -38,6 +38,7 @@
     "ai:record-golden": "tsx --env-file-if-exists=.env scripts/ai-record-golden.ts",
     "n8n:replay": "tsx --env-file-if-exists=.env scripts/n8n-replay.ts",
     "n8n:export": "tsx scripts/n8n/export.ts",
+    "n8n:contract": "tsx scripts/n8n/contract.ts",
     "claude-md:baseline": "tsx scripts/claude-md-baseline.ts",
     "users": "tsx --env-file-if-exists=.env scripts/users.ts",
     "demo:seed": "tsx --env-file-if-exists=.env scripts/demo/seed.ts"

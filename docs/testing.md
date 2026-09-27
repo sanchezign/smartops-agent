@@ -97,3 +97,18 @@ Panel logic (68 tests): **78.8 % lines, 69.5 % branches.** Gaps: `lib/format.ts`
   the signal travels through `support/signal-bridge.mjs` because Windows has no POSIX signals).
 - `server.ts` / `worker.ts` stay at 0 % in the coverage report: they run as child processes in the
   smoke test, which V8 coverage of the test process does not see.
+
+## n8n contract (M4)
+
+- `n8n/contract.json` is GENERATED (`pnpm --filter @smartops/api n8n:contract`) from
+  `INTERNAL_ROUTE_SCHEMAS` (the table the internal router validates with) and
+  `messageReadyPayloadSchema` (Zod → JSON Schema with `z.toJSONSchema`). Never edit it by hand:
+  `test/unit/n8n-contract.test.ts` fails when it is stale.
+- The same test checks the table equals the routes mounted under `/api/v1/internal`, and
+  dry-runs the EXPORTED workflows (`test/helpers/n8n-contract-check.ts`): trigger inputs → Set
+  nodes → HTTP nodes evaluated with their real expressions → method + path must be a contract
+  route, credential "SmartOps API", body accepted by the API's Zod schema. Negative cases prove
+  it catches a renamed field, a wrong path or method, another credential, an unknown kind, a
+  reference to a missing node.
+- `test/integration/n8n-contract.test.ts` also validates every REAL `message.ready` payload the
+  outbox sends against the contract schema.

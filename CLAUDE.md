@@ -1315,6 +1315,15 @@ a real client.**
       FINDING (reported, not changed): the `whatsapp-media` comment says "10 s → 30 min over 6
       retries", but 6 retries add up to 10.5–21 min in total (cap never reached) — pinned in
       `queue-definitions.test.ts`.
+    - M4 n8n contract — DONE (2026-09-27). `INTERNAL_ROUTE_SCHEMAS` (internal.routes.ts; the
+      router validates WITH it) + `messageReadyPayloadSchema` (Zod, strict; the TS type derives
+      from it) → `scripts/n8n/contract.ts` (`n8n:contract`) writes `n8n/contract.json` (JSON
+      Schema via `z.toJSONSchema`, prettier-ignored, byte-compared by a test). `test/unit/
+      n8n-contract.test.ts` + `test/helpers/n8n-contract-check.ts`: dry-run of the exported
+      workflows with their real expressions (Set / If / Switch / Execute Workflow / HTTP), every
+      HTTP node validated with the API's own Zod schemas; notifier inputs = run, customer_query,
+      order; only `GET /internal/rules` is unused. Real payloads checked in the integration
+      contract test.
 
 ## Known issues (out of scope)
 - **Phase 10 M3 finding:** `whatsapp-media` retries give up after 10.5–21 min in total (pg-boss
@@ -1439,6 +1448,8 @@ a real client.**
 - Prompts: `apps/api/src/ai/prompts/*.md`
 - n8n workflows: `n8n/workflows/{receiver,processor,notifier,errors}.json`, exported ONLY with
   `pnpm --filter @smartops/api n8n:export` (sanitized) — never hand-copy exports with pinData.
+  After changing an internal route schema or the message.ready payload, run
+  `pnpm --filter @smartops/api n8n:contract` (n8n/contract.json is generated; a test checks it).
 - Team phone numbers (`notifications.whatsappRecipients`) live in the DB only, never in the repo.
 - Internal API for n8n: `/api/v1/internal/*` with `X-Internal-Api-Key`
 - Real-time events to the panel: SSE at `/api/v1/events`

@@ -26,6 +26,7 @@ import { createIngestionService } from "../../src/modules/extraction/ingestion.s
 import { createIntegrationEventRepository } from "../../src/modules/integration/integration-event.repository.js";
 import {
   createEmitMessageReadyInTx,
+  messageReadyPayloadSchema,
   type MessageReadyPayload,
 } from "../../src/modules/integration/message-ready.js";
 import {
@@ -81,6 +82,7 @@ describe.skipIf(!testDatabaseUrl)("contract: backend ↔ fake n8n orchestrator (
   let n8n: Server;
   let n8nUrl: string;
   let executions: Promise<Step[]>[] = [];
+  const payloads: boolean[] = [];
 
   /** What the three workflows do, as plain HTTP calls with the Header Auth credential. */
   async function orchestrate(event: MessageReadyPayload): Promise<Step[]> {
@@ -190,6 +192,8 @@ describe.skipIf(!testDatabaseUrl)("contract: backend ↔ fake n8n orchestrator (
           return;
         }
         res.writeHead(200).end('{"message":"Workflow was started"}'); // Respond: Immediately
+        // Phase 10 M4: every REAL payload matches the contract schema (strict: no extra field).
+        payloads.push(messageReadyPayloadSchema.safeParse(JSON.parse(body)).success);
         executions.push(orchestrate(JSON.parse(body) as MessageReadyPayload));
       });
     });
@@ -197,6 +201,8 @@ describe.skipIf(!testDatabaseUrl)("contract: backend ↔ fake n8n orchestrator (
     n8nUrl = `http://127.0.0.1:${(n8n.address() as AddressInfo).port}/webhook/smartops-message-ready`;
   });
   afterAll(async () => {
+    expect(payloads.length, "real message.ready payloads seen").toBeGreaterThan(0);
+    expect(payloads.every(Boolean), "message.ready payloads match the contract").toBe(true);
     await new Promise<void>((r) => n8n?.close(() => r()));
     await new Promise<void>((r) => api?.close(() => r()));
     await boss?.stop({ graceful: false, close: true });

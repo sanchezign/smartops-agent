@@ -1,4 +1,6 @@
+import { z } from "zod";
 import type { Prisma } from "../../generated/prisma/client.js";
+import { ContactKind, MessageType } from "../../generated/prisma/enums.js";
 
 /**
  * "message.ready" outbox events (phase 6, ADR-015). A message is READY when nothing else
@@ -13,18 +15,24 @@ import type { Prisma } from "../../generated/prisma/client.js";
 export const MESSAGE_READY = "message.ready";
 export const MESSAGE_READY_VERSION = 1;
 
-/** What n8n receives: ids and routing facts only, never the message content (PII). */
-export interface MessageReadyPayload {
-  version: typeof MESSAGE_READY_VERSION;
-  type: typeof MESSAGE_READY;
-  eventId: string;
-  messageId: string;
-  conversationId: string;
-  contactId: string;
-  contactKind: string;
-  messageType: string;
-  receivedAt: string;
-}
+/**
+ * What n8n receives: ids and routing facts only, never the message content (PII). Also the
+ * schema of the backend → n8n side of n8n/contract.json (phase 10 M4).
+ */
+export const messageReadyPayloadSchema = z
+  .object({
+    version: z.literal(MESSAGE_READY_VERSION),
+    type: z.literal(MESSAGE_READY),
+    eventId: z.uuid(),
+    messageId: z.uuid(),
+    conversationId: z.uuid(),
+    contactId: z.uuid(),
+    contactKind: z.enum(ContactKind),
+    messageType: z.enum(MessageType),
+    receivedAt: z.iso.datetime(),
+  })
+  .strict();
+export type MessageReadyPayload = z.infer<typeof messageReadyPayloadSchema>;
 
 export type EnqueueDeliveryInTx = (tx: Prisma.TransactionClient, eventId: string) => Promise<void>;
 
