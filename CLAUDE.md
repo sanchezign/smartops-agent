@@ -525,8 +525,8 @@ Each one gets an ADR in docs/adr/.
   (actor `cli:<--by>`).
 
 ## Current phase
-**Phase 9 complete (2026-09-27), merged to `main`. Next: phase 10 (tests) on
-`feat/phase-10-tests` — plan not written yet (the user asks for it). M3b (phase 5) and MFA (TOTP) remain recommended/required before
+**Phase 9 complete (2026-09-27), merged to `main`. Phase 10 (tests) IN PROGRESS on
+`feat/phase-10-tests` (M1–M9, stop for review; M10 dry-run only). M3b (phase 5) and MFA (TOTP) remain recommended/required before
 a real client.**
 
 1. scaffold — done (2026-09-24).
@@ -1272,8 +1272,55 @@ a real client.**
      5. Operator on an admin-only review: "Solo un administrador puede resolver esta revisión"
         exactly where the buttons would be (pinned at the bottom on phones; E2E checks it is in
         the viewport).
+10. tests — IN PROGRESS on `feat/phase-10-tests`. Approved plan (2026-09-27) + user answers:
+    coverage ratchet (threshold = measured − 2, only goes up; 80 % API / 95-90 % critical pure
+    modules / 90 % panel logic are goals, not blocks); DB down/up with a TCP proxy inside the
+    test; versioned generated `n8n/contract.json` + staleness test; CI designed for a private repo
+    (E2E on PRs to main + nightly only with new commits) and a public one (E2E on every PR),
+    switched by ONE variable; Stryker 2 h, no gate; load smoke moved to phase 12 (VM); real-LLM
+    eval = free dry-run only, never in CI; extracted logic + E2E, no React Testing Library; own
+    prompt-injection set (OWASP LLM Top 10 as a guide, no copied corpus). Addenda: A) startup
+    smoke of server.ts / worker.ts with SIGTERM; B) scratch databases derived from the `_test` one
+    and dropped at the end, never `smartops` / `smartops_demo`; C) no log carries tokens,
+    passwords, keys or full phones. vitest + @vitest/coverage-v8 pinned to the same exact version.
+    Details and timings: `docs/testing.md`.
+    - M1 tooling + baseline + ratchet — DONE (2026-09-27). `scripts/coverage-ratchet.mjs`,
+      `apps/*/coverage-thresholds.json`, guard `test/unit/coverage-thresholds.test.ts` (vs HEAD and
+      origin/main). Baseline API 84.1 % lines / 77.8 % branches; panel logic 78.8 / 69.5.
+    - M2 authorization matrix — DONE (2026-09-27). `app.ts` records every `mount()` →
+      `listRoutes(app)` = the routes REALLY served (61 incl. DEMO_MODE and the demo Graph API);
+      `test/e2e/authz-matrix.test.ts` × anonymous / operator / admin vs
+      `test/fixtures/authz-matrix.json` (regenerate only with `AUTHZ_RECORD=1` and review the diff)
+      + invariants (anonymous only reaches health and demo/info; internal, webhook and demo Graph
+      never open with a panel token; admin table roles). Panel `canResolve` = API
+      `canResolveReview` for every role × scope × kind.
+    - M3 real Postgres — DONE (2026-09-27). `test/integration/scratch-db.ts` (names derived from
+      TEST_DATABASE_URL: `<test>_shadow_test`, `<test>_demo`; guard on create AND drop; Prisma CLI
+      run with node, DATABASE_URL explicit). `migrations.test.ts`: every migration from scratch,
+      second deploy no-op, `migrate diff --from-config-datasource --to-schema --exit-code` empty
+      (verified to fail on an unmigrated field), hand-written CHECKs / triggers / partial indexes /
+      STORAGE EXTERNAL listed EXACTLY (a new one must be added there on purpose).
+      `demo-seed.test.ts` (real ingest, deterministic, reset keeps users + sessions only).
+      `realtime-events`: every trigger + LISTEN killed with pg_terminate_backend → reconnect,
+      resync, delivery (pg_stat_activity filtered by current_database(): never another DB's
+      backend). `job-workers.test.ts` (real pg-boss: queue options applied, crons scheduled,
+      error recorded → retry → DLQ handler for webhook / media / transcription / conversion / n8n
+      / digest; bot resume fails without DLQ by design). `test/unit/queue-definitions.test.ts`
+      (DLQ order, 30-day DLQ retention, n8n ≈ 24 h with pg-boss 12.34's backoff formula).
+      `startup-smoke.test.ts`: real `server.ts` and `worker.ts` (env only from the test, Graph URL
+      unreachable) → health 200, SIGTERM → exit 0, LISTEN and pools closed, the worker FINISHES
+      its in-flight n8n delivery (Windows: signal via the IPC preload `support/signal-bridge.mjs`).
+      Concurrent processing of the SAME webhook event: every row once (item-level idempotency).
+      Coverage API 90.5 % lines / 80.3 % branches (jobs 31 → 82 %); integration suite ~140 s.
+      FINDING (reported, not changed): the `whatsapp-media` comment says "10 s → 30 min over 6
+      retries", but 6 retries add up to 10.5–21 min in total (cap never reached) — pinned in
+      `queue-definitions.test.ts`.
 
 ## Known issues (out of scope)
+- **Phase 10 M3 finding:** `whatsapp-media` retries give up after 10.5–21 min in total (pg-boss
+  backoff: 20…640 s per retry), not "→ 30 min" as its comment suggests. A token renewal slower
+  than ~20 min leaves media `failed/retries_exhausted` (recover with `wa:media:retry`). Decide
+  whether to raise retryLimit / retryDelay before a real client.
 - **Phase 9 M8:** demo media lives in the API's memory: after an API restart, older demo
   messages show "no se pudo descargar" until the next reset. Demo content other than the six
   samples gets the fake responders (low confidence → review), never a real model.

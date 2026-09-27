@@ -307,6 +307,29 @@ describe.skipIf(!testDatabaseUrl)("WhatsApp ingestion against Postgres", () => {
       expect(await prisma.mediaFile.count()).toBe(1);
     });
 
+    // Phase 10 M3: pg-boss singletonKey is throttling, not uniqueness — two workers can hold
+    // the same event (e.g. an expired job re-run while the first is still alive). The event
+    // guard ("received" → skip) is only a shortcut; the guarantee is per ITEM (unique wamid,
+    // (wamid, status), echo wamid) — every side effect happens once.
+    it("workers processing the SAME event at once create every row once", async () => {
+      const id = await storeEvent("message-image", "3");
+      const mediaBefore = enqueuedMedia.length;
+      const results = await Promise.all(
+        Array.from({ length: 4 }, () => service().processEvent(id, log)),
+      );
+      const created = results.reduce((n, r) => n + r.messagesCreated, 0);
+      const duplicates = results.reduce((n, r) => n + r.duplicateMessages, 0);
+      const skipped = results.filter((r) => r.outcome === "skipped").length;
+      expect(created).toBe(1);
+      expect(created + duplicates + skipped).toBe(4);
+      expect(await prisma.message.count()).toBe(1);
+      expect(await prisma.mediaFile.count()).toBe(1);
+      expect(enqueuedMedia.length - mediaBefore).toBe(1);
+      expect(await prisma.webhookEvent.findUniqueOrThrow({ where: { id } })).toMatchObject({
+        status: "processed",
+      });
+    });
+
     it("marks the Meta dashboard sample as ignored without creating rows", async () => {
       const id = await storeEvent("dashboard-test-message", "2");
 

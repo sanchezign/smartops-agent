@@ -1,0 +1,126 @@
+import { fileURLToPath } from "node:url";
+import { pino } from "pino";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createPrismaClient, type PrismaClient } from "../../src/common/db.js";
+import { createCatalogIngestService } from "../../src/modules/catalog/catalog-ingest.service.js";
+import { createCatalogRepository } from "../../src/modules/catalog/catalog.repository.js";
+import { seedDemo, type SeedResult } from "../../src/modules/demo/demo-seed.js";
+import {
+  createSettingsRepository,
+  createSettingsService,
+} from "../../src/modules/settings/settings.service.js";
+import { testDatabaseUrl } from "./db.js";
+import {
+  createScratchDatabase,
+  databaseExists,
+  prismaCli,
+  type ScratchDatabase,
+} from "./scratch-db.js";
+
+/**
+ * The demo seed on a real, freshly migrated `<test>_demo` database (phase 10 M3): derived from
+ * TEST_DATABASE_URL (never smartops / smartops_demo) and dropped at the end. Checks that the
+ * seed runs through the REAL catalog ingest, is deterministic, and that the periodic reset
+ * (keepAuth) keeps visitors logged in without keeping any other row.
+ */
+
+const NOW = new Date("2026-09-20T15:00:00.000Z");
+const ASSETS = fileURLToPath(new URL("../../demo", import.meta.url));
+const log = pino({ level: "silent" });
+
+describe.skipIf(!testDatabaseUrl)("demo seed (Postgres, <test>_demo)", () => {
+  let demo: ScratchDatabase;
+  let prisma: PrismaClient;
+
+  beforeAll(async () => {
+    demo = await createScratchDatabase(testDatabaseUrl!, "demo");
+    const deploy = prismaCli(demo.url, ["migrate", "deploy"]);
+    expect(deploy.status, deploy.output).toBe(0);
+    prisma = createPrismaClient(demo.url, log);
+  }, 120_000);
+
+  afterAll(async () => {
+    await prisma?.$disconnect();
+    if (demo) {
+      await demo.drop();
+      expect(await databaseExists(testDatabaseUrl!, demo.name)).toBe(false);
+    }
+  }, 60_000); // DROP … WITH (FORCE) can be slow under coverage
+
+  const seed = (keepAuth = false): Promise<SeedResult> => {
+    const settings = createSettingsService({ repository: createSettingsRepository(prisma) });
+    return seedDemo({
+      prisma,
+      catalog: createCatalogIngestService({
+        repository: createCatalogRepository(prisma),
+        settings,
+      }),
+      users: {
+        operator: {
+          email: "operador@demo.smartops",
+          password: "una frase pública de la demo",
+          name: "Operador demo",
+        },
+      },
+      logger: log,
+      now: NOW,
+      keepAuth,
+      assetsDir: ASSETS,
+    });
+  };
+
+  const snapshot = async () => ({
+    products: (
+      await prisma.product.findMany({ select: { name: true }, orderBy: { name: "asc" } })
+    ).map((p) => p.name),
+    suppliers: await prisma.supplier.count(),
+    reviews: await prisma.reviewItem.groupBy({
+      by: ["kind"],
+      _count: true,
+      orderBy: { kind: "asc" },
+    }),
+  });
+
+  it("seeds through the real ingest, deterministically, without a real WhatsApp recipient", async () => {
+    const first = await seed();
+    expect(first.suppliers).toBeGreaterThanOrEqual(3);
+    expect(first.products).toBeGreaterThan(30);
+    expect(first.priceChanges).toBeGreaterThan(0);
+    expect(first.reviewItems).toBeGreaterThan(0);
+    const before = await snapshot();
+
+    // Only the demo operator: no admin without DEMO_ADMIN_PASSWORD (phase 12 rule).
+    expect(await prisma.user.findMany({ select: { role: true } })).toEqual([{ role: "operator" }]);
+    const recipients = await prisma.setting.findUnique({
+      where: { key: "notifications.whatsappRecipients" },
+    });
+    expect(recipients?.value).toEqual([]);
+    // Every price came from the ingest: each product has at least one PriceChange row.
+    const orphan = await prisma.product.count({ where: { priceChanges: { none: {} } } });
+    expect(orphan).toBe(0);
+
+    const second = await seed();
+    expect(second).toEqual(first);
+    expect(await snapshot()).toEqual(before);
+  }, 120_000);
+
+  it("the reset keeps users and their sessions, and everything else is rebuilt", async () => {
+    const user = await prisma.user.findFirstOrThrow();
+    const session = await prisma.authSession.create({
+      data: {
+        userId: user.id,
+        idleExpiresAt: new Date(NOW.getTime() + 3_600_000),
+        expiresAt: new Date(NOW.getTime() + 86_400_000),
+      },
+    });
+    const extra = await prisma.supplier.create({
+      data: { name: "Dejado por un visitante", normalizedName: "dejado por un visitante" },
+    });
+
+    await seed(true);
+
+    expect((await prisma.user.findFirstOrThrow()).id).toBe(user.id);
+    expect(await prisma.authSession.findUnique({ where: { id: session.id } })).not.toBeNull();
+    expect(await prisma.supplier.findUnique({ where: { id: extra.id } })).toBeNull();
+  }, 120_000);
+});

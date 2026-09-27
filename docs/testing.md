@@ -80,3 +80,20 @@ Panel logic (68 tests): **78.8 % lines, 69.5 % branches.** Gaps: `lib/format.ts`
   then review the diff.
 - `test/unit/review-permissions-sync.test.ts`: the panel's copy of the review rule
   (`canResolve`) equals the API's `canResolveReview` for every role × scope × kind.
+
+## Real Postgres (M3)
+
+- Scratch databases (`test/integration/scratch-db.ts`): derived from TEST_DATABASE_URL (which must
+  end in `_test`) as `<test>_shadow_test` and `<test>_demo`; every CREATE and DROP goes through the
+  same name guard, so `smartops` and `smartops_demo` can never be touched. Both are dropped in
+  `afterAll` (and a leftover of an interrupted run is dropped before re-creating it).
+- `migrations.test.ts`: all migrations from zero, drift check (`prisma migrate diff
+--from-config-datasource --to-schema prisma/schema.prisma --exit-code`), and the exact list of
+  hand-written CHECKs, triggers, partial unique indexes and STORAGE EXTERNAL. Adding one of those
+  means adding it to the list.
+- `demo-seed.test.ts`, `realtime-events.test.ts` (every trigger + LISTEN reconnect after
+  `pg_terminate_backend`), `job-workers.test.ts` (real pg-boss: retry → DLQ handlers, crons, queue
+  options), `startup-smoke.test.ts` (real `server.ts` / `worker.ts`, SIGTERM → exit 0; on Windows
+  the signal travels through `support/signal-bridge.mjs` because Windows has no POSIX signals).
+- `server.ts` / `worker.ts` stay at 0 % in the coverage report: they run as child processes in the
+  smoke test, which V8 coverage of the test process does not see.
