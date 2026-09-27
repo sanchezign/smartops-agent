@@ -1338,6 +1338,12 @@ a real client.**
       (`createLogger` got an optional destination = test seam; `buildTestApp` a `logger` option),
       `prompt-injection` (own set: framing, keyword detector, output rules / Zod, digest). Findings
       pinned with `it.fails` + Known issues (JWT without exp; tag / keyword evasions).
+    - M7 properties — DONE (2026-09-27). fast-check 4.10.2 (exact, both apps, no release-age
+      exclusion needed). API 19 properties (prices, percentages, supplier names, statuses, 24 h
+      window, business hours in 4 time zones, neutralize, webhook signature, opt-out keywords),
+      panel 5 (number round trips). `FC_RUNS` (default 300; 5000 locally: no counterexample).
+      Invisible characters in test sources must be written as escapes (the Write tool turns them
+      into literal characters — scan new test files for them).
 
 ## Known issues (out of scope)
 - **Phase 10 M6 findings (reported, not changed; pinned with `it.fails`):** (1) `tokens.verify`

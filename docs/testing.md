@@ -51,21 +51,21 @@ Panel logic (68 tests): **78.8 % lines, 69.5 % branches.** Gaps: `lib/format.ts`
 
 ## Critical paths (status before phase 10)
 
-| Path                                    | Covered by                                                         | Gap closed in                                   |
-| --------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------- |
-| Webhook signature                       | unit + HTTP e2e (invalid → 401)                                    | M7 (properties)                                 |
-| Idempotency (webhook body, waMessageId) | integration                                                        | M3 (two workers at once)                        |
-| Outbox + retries + DLQ                  | outbox integration                                                 | M3 (queue configs, DLQ handlers), M5 (n8n down) |
-| Price parsing                           | examples                                                           | M7 (properties)                                 |
-| Opt-out / opt-in                        | unit + integration                                                 | M7 (accents / case)                             |
-| Bot / human modes                       | state machine + integration                                        | —                                               |
-| Digests                                 | unit + integration                                                 | M7 (`neutralize`)                               |
-| Auth / sessions                         | unit + integration (rotation, reuse, CSRF, tampered JWT, alg none) | M6                                              |
-| Authorization                           | route inventory (401 / 403 admin-only)                             | M2 (full matrix) — done                         |
-| Demo mode safety                        | unit (no Meta at any layer)                                        | —                                               |
-| n8n contract                            | static tests on the exported workflows                             | M4 (generated contract)                         |
-| Resilience                              | outbox retries, fake Graph faults                                  | M5                                              |
-| Startup / shutdown                      | —                                                                  | M3 (smoke of server.ts and worker.ts)           |
+| Path                                    | Covered by                                                         | Gap closed in                                |
+| --------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------- |
+| Webhook signature                       | unit + HTTP e2e (invalid → 401)                                    | M7 (properties) — done                       |
+| Idempotency (webhook body, waMessageId) | integration                                                        | M3 (two workers at once) — done              |
+| Outbox + retries + DLQ                  | outbox integration                                                 | M3 + M5 — done                               |
+| Price parsing                           | examples                                                           | M7 (properties) — done                       |
+| Opt-out / opt-in                        | unit + integration                                                 | M7 (accents / case) — done                   |
+| Bot / human modes                       | state machine + integration                                        | —                                            |
+| Digests                                 | unit + integration                                                 | M7 (`neutralize`) — done                     |
+| Auth / sessions                         | unit + integration (rotation, reuse, CSRF, tampered JWT, alg none) | M6 — done                                    |
+| Authorization                           | route inventory (401 / 403 admin-only)                             | M2 (full matrix) — done                      |
+| Demo mode safety                        | unit (no Meta at any layer)                                        | —                                            |
+| n8n contract                            | static tests on the exported workflows                             | M4 (generated contract) — done               |
+| Resilience                              | outbox retries, fake Graph faults                                  | M5 — done                                    |
+| Startup / shutdown                      | —                                                                  | M3 (smoke of server.ts and worker.ts) — done |
 
 ## Authorization matrix (M2)
 
@@ -147,3 +147,17 @@ Panel logic (68 tests): **78.8 % lines, 69.5 % branches.** Gaps: `lib/format.ts`
 - Known gaps pinned with `it.fails` (green while the gap exists, red once fixed): JWT without
   `exp` accepted; `< /tag>` and full-width brackets not neutralized; keyword detector misses
   zero-width characters and synonyms. Reported in CLAUDE.md "Known issues".
+
+## Properties (M7)
+
+fast-check 4.10.2 (pinned in both apps). `apps/api/test/unit/properties.test.ts` (19) and
+`apps/admin/test/properties.test.ts` (5): spreadsheet prices (es-UY / en text, numeric cells,
+never a wrong-looking result, "12.50" in a decimal-comma table never read as decimals),
+`applyPercentage` (direction, ≤ 4 decimals, within 0.1 pp for prices ≥ 1), supplier names
+(idempotent, case / accents / punctuation), outbound statuses (never backwards, read and failed
+final, order-independent without failures), the 24 h window, business hours (next opening is
+open, later, nothing opens in between — 4 time zones incl. DST), `neutralize`, the webhook
+signature (any body; any flipped bit / other secret rejected), opt-out keywords (case, accents,
+filler), panel number round trips (pre-filled price, displayed price, rules numbers, percentages).
+Default 300 runs per property (fast suite); `FC_RUNS=5000` for a deeper local pass (done: no
+counterexample). A failure prints the seed and the shrunk input.
