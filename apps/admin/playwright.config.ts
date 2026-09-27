@@ -16,10 +16,16 @@ export default defineConfig({
   testMatch: /.*\.spec\.ts/,
   fullyParallel: false,
   workers: 1,
+  // CI: one retry; a test that only passes on the retry is reported as FLAKY (list summary +
+  // a GitHub annotation), never silently green. Locally: no retries (fix it, do not retry it).
   retries: process.env.CI ? 1 : 0,
   timeout: 60_000,
   expect: { timeout: 10_000 },
-  reporter: [["list"], ["html", { open: "never", outputFolder: "e2e/report" }]],
+  reporter: [
+    ["list"],
+    ["html", { open: "never", outputFolder: "e2e/report" }],
+    ...(process.env.CI ? ([["github"]] as const) : []),
+  ],
   outputDir: "e2e/results",
   use: {
     baseURL: E2E.panelUrl,
@@ -87,5 +93,20 @@ function apiEnv(): Record<string, string> {
     N8N_DELIVERY_ENABLED: "true",
     N8N_RECEIVER_WEBHOOK_URL: "http://127.0.0.1:4110/webhook/smartops-message-ready",
     N8N_WEBHOOK_SECRET: "e2e-fake-n8n-secret-0000000000000000",
+    // Self-contained (phase 10 M8): the E2E never needs — nor inherits — the developer's real
+    // keys from apps/api/.env (these win over the env file), so it runs in CI as-is. DEMO_MODE
+    // forces the fake LLM / transcriber and blocks every Meta host anyway.
+    WHATSAPP_PHONE_NUMBER_ID: "100000000000001",
+    WHATSAPP_WABA_ID: "200000000000002",
+    WHATSAPP_ACCESS_TOKEN: "e2e-fake-whatsapp-access-token",
+    WHATSAPP_APP_SECRET: "e2e-fake-whatsapp-app-secret-00",
+    WHATSAPP_VERIFY_TOKEN: "e2e-fake-verify-token-000000",
+    INTERNAL_API_KEY: "e2e-fake-internal-api-key-000000000000",
+    JWT_ACCESS_SECRET: "e2e-fake-jwt-access-secret-00000000000",
+    AI_PROVIDER: "fake",
+    TRANSCRIPTION_PROVIDER: "fake",
+    // Empty = unset (optionalString): real provider keys of the .env never reach the E2E API.
+    ANTHROPIC_API_KEY: "",
+    TRANSCRIPTION_API_KEY: "",
   };
 }

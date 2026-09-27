@@ -1344,8 +1344,20 @@ a real client.**
       panel 5 (number round trips). `FC_RUNS` (default 300; 5000 locally: no counterexample).
       Invisible characters in test sources must be written as escapes (the Write tool turns them
       into literal characters — scan new test files for them).
+    - M8 CI readiness — DONE (2026-09-27). `apps/api/scripts/ci/e2e-policy.ts` (repo variable
+      `E2E_POLICY` private | public; nightly only with new commits on main; unit-tested). Playwright:
+      `github` reporter in CI (a retry-pass is reported flaky). E2E self-contained (no
+      `apps/api/.env` needed: `E2E_BASE_DATABASE_URL`, fake secrets, real provider keys blanked) —
+      it could not have started in CI before. Budget ≈ 750 of the 2,000 free minutes / month while
+      private (verified: Actions is free on public repos with standard runners). Flaky check
+      `--repeat-each=3`: read-only tests 3/3; data-consuming tests are not repeatable by design;
+      found an a11y bug (Known issues). Coverage API 90.7 % lines / 80.8 % branches (ratchet +7).
 
 ## Known issues (out of scope)
+- **Phase 10 M8 finding (a11y, reported, not changed):** a failed / canceled HUMAN reply bubble in the
+  chat (`message-bubble.tsx`: `bg-primary` + `opacity-70`) fails WCAG AA color contrast (axe). Found by
+  the E2E flaky check on phones. Suggested fix: mark failures with a border + icon instead of
+  lowering the opacity.
 - **Phase 10 M6 findings (reported, not changed; pinned with `it.fails`):** (1) `tokens.verify`
   does not require `exp` — a JWT signed with the real key but without expiry never expires (fix:
   `requiredClaims: ["exp","iat","sub"]`); (2) `neutralizeTags` misses `< /message_text>` (space

@@ -161,3 +161,62 @@ signature (any body; any flipped bit / other secret rejected), opt-out keywords 
 filler), panel number round trips (pre-filled price, displayed price, rules numbers, percentages).
 Default 300 runs per property (fast suite); `FC_RUNS=5000` for a deeper local pass (done: no
 counterexample). A failure prints the seed and the shrunk input.
+
+## CI readiness (M8) — the GitHub Actions YAML itself is phase 11
+
+Proposed jobs (Linux runners; times measured on the dev PC, CI estimated ×2 + install):
+
+| Job                    | Runs                     | Command                                                                                                                                        | Local            | CI estimate |
+| ---------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ----------- |
+| fast                   | every PR / push          | `pnpm lint && pnpm typecheck && pnpm test:fast && pnpm build`                                                                                  | ~1 min           | 4–5 min     |
+| integration + coverage | every PR                 | Postgres service (`postgres:17-alpine`, db `smartops_test`) → `pnpm test:coverage` (API unit + integration + panel, ratchet thresholds = gate) | ~3 min           | 6–7 min     |
+| e2e                    | per `E2E_POLICY` (below) | `pnpm exec playwright install --with-deps chromium webkit` → `pnpm test:e2e`                                                                   | ~3.5 min + build | 12–15 min   |
+
+- Env in CI: `TEST_DATABASE_URL` (integration) and `E2E_BASE_DATABASE_URL` (the E2E derives
+  `<db>_e2e_demo` from it). **No secret is needed**: the API test env and the E2E are
+  self-contained with fake values (DEMO_MODE forces fakes and blocks Meta). The Anthropic key never
+  goes to GitHub; the real-LLM evaluation is a manual script (M10).
+- **One variable switches the E2E policy** — repository variable `E2E_POLICY`, read by
+  `apps/api/scripts/ci/e2e-policy.ts` (unit-tested):
+  - `private` (default): PRs to `main`, manual runs, and a nightly run only when `main` got new
+    commits in the last 24 h;
+  - `public`: every PR (Actions is free for public repos on standard runners), manual, nightly with
+    the same new-commits rule.
+- Budget while private (GitHub Free: 2,000 Linux minutes / month): e.g. 30 PR updates × ~11 min
+  (fast + integration) ≈ 330, 8 PRs to main × ~15 min E2E ≈ 120, 20 nightly runs × ~15 min ≈ 300 →
+  **≈ 750 min / month**, well inside the quota. Verify the rounding / current quota in phase 11.
+- Coverage gate: CI runs `pnpm test:coverage`; thresholds come from `coverage-thresholds.json`
+  (ratchet). Raising them is a local step (`pnpm --filter <app> coverage:ratchet`) committed with
+  the change; the guard test forbids lowering them.
+- Flaky control: CI retries a failed E2E test once and reports it as **flaky** (list summary +
+  GitHub annotation via the `github` reporter) — never silently green. Locally: no retries.
+- Flaky check done (2026-09-27): `pnpm test:e2e -- --repeat-each=3` (333 runs, 13 min). Every
+  read-only test passed 3/3 in the three browsers. Failures were NOT flakiness:
+  - tests that consume seed data (approve / reject with the bottom buttons, create a user) cannot
+    repeat on the same database — their first run passed; `--repeat-each` is only meaningful for
+    read-only specs (CI runs each test once on a fresh seed);
+  - the mobile chat-photo test failed its axe check on every repeat because the repeated desktop
+    replies left a failed/canceled human bubble in that chat: **real accessibility bug** (see
+    CLAUDE.md Known issues), deterministic once the data exists; the spec passes on a fresh seed.
+- The E2E is self-contained for CI: `E2E_BASE_DATABASE_URL` instead of `apps/api/.env`, and fake
+  values for every required secret in `playwright.config.ts` (real provider keys are blanked, so
+  a developer's keys never reach the E2E API either).
+
+## Mutation testing (M9) — report only, no gate
+
+- Stryker 10.0.0 (`@stryker-mutator/core` + `@stryker-mutator/vitest-runner`, pinned exactly):
+  `pnpm --filter @smartops/api mutation`. Config `apps/api/stryker.config.json`, runner config
+  `apps/api/vitest.stryker.config.ts` (unit tests only, no database). Reports in
+  `apps/api/reports/mutation/` (gitignored). Mutated: price-math, sheet-values, session-rules,
+  login-lockout, optout-detector, message-status, digest-rules.
+- A SURVIVED mutant = a change to the code that no test notices. The report is used to add the
+  missing assertions; there is no threshold that fails a build (user decision).
+
+## Real-model evaluation (M10) — manual, never in CI
+
+- `pnpm --filter @smartops/api ai:eval --dry-run` (FREE: `count_tokens`) prints the exact input
+  tokens and the expected / worst-case cost of our own injection set (8 cases: 2 controls,
+  direct and indirect injection, excessive agency, prompt leakage, output handling).
+- `--confirm-spend` runs it through the production AiClient (budget caps + ai_usages ledger) and
+  prints PASS / FAIL per case. Only with the user's explicit OK; the script refuses to run when
+  `CI` is set, and the Anthropic key never goes to GitHub.
