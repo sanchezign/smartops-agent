@@ -95,6 +95,7 @@ jobs:
       contents: read
     outputs:
       code: ${{ steps.changes.outputs.code }}
+      docker: ${{ steps.changes.outputs.docker }}
       e2e: ${{ steps.policy.outputs.run }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -113,9 +114,18 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
-            echo "code=true" >> "$GITHUB_OUTPUT"; exit 0
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            # Images are validated on manual runs and on pull requests that touch them.
+            if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then docker=true; else docker=false; fi
+            echo "docker=$docker" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          if git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -qvE '(\.md$|^docs/)'; then
+          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          if echo "$changed" | grep -qE '(^|/)Dockerfile$|^\.dockerignore$|(^|/)package\.json$|^pnpm-lock\.yaml$|^apps/admin/next\.config\.ts$|^apps/api/prisma/|^scripts/ci/'; then
+            echo "docker=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docker=false" >> "$GITHUB_OUTPUT"
+          fi
+          if echo "$changed" | grep -qvE '(\.md$|^docs/)'; then
             echo "code=true" >> "$GITHUB_OUTPUT"
           else
             echo "code=false" >> "$GITHUB_OUTPUT"
@@ -220,6 +230,40 @@ jobs:
             apps/admin/e2e/results
           retention-days: 7
           if-no-files-found: ignore
+
+  images:
+    name: images
+    needs: plan
+    if: needs.plan.outputs.docker == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # amd64 only and never pushed: releases build both architectures natively (release.yml).
+      - name: Build the API image
+        run: docker build -f apps/api/Dockerfile -t smartops-api:ci .
+      - name: Build the panel image
+        run: docker build -f apps/admin/Dockerfile -t smartops-admin:ci .
+      - name: No .env, keys or secrets inside the images
+        run: |
+          scripts/ci/image-secrets-check.sh smartops-api:ci /app
+          scripts/ci/image-secrets-check.sh smartops-admin:ci /app
+      - name: API container smoke test (migrations, health, SIGTERM — fake values only)
+        run: scripts/ci/api-container-smoke.sh smartops-api:ci
+      - name: Panel container smoke test (login page, SIGTERM)
+        run: scripts/ci/admin-container-smoke.sh smartops-admin:ci
+      - name: OS-package vulnerabilities (Trivy 0.74.0; fixable HIGH/CRITICAL block, npm deps are the audit gate)
+        run: |
+          for img in smartops-api:ci smartops-admin:ci; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+              aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969 \
+              image --quiet --scanners vuln --pkg-types os --severity HIGH,CRITICAL \
+              --ignore-unfixed --exit-code 1 "$img"
+          done
 
   main-guard:
     name: main-guard

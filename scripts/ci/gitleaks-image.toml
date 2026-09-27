@@ -1,0 +1,23 @@
+# gitleaks config for scanning built IMAGES (phase 11 M4, scripts/ci/image-secrets-check.sh).
+# Default rules, plus two exact exceptions for keys that Next.js generates at random on EVERY
+# build: Draft/Preview Mode keys (prerender-manifest.json) and the Server Actions encryption
+# key (server-reference-manifest.json). The panel uses neither feature — enforced by
+# apps/admin/test/next-build-keys.test.ts — so these keys protect nothing. If a later phase
+# adopts either feature, remove these exceptions and provide the keys at runtime instead.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Next.js per-build Draft/Preview Mode keys (feature not used)"
+condition = "AND"
+paths = ['''apps/admin/\.next/prerender-manifest\.json$''']
+regexTarget = "match"
+regexes = ['''previewMode(Id|SigningKey|EncryptionKey)''']
+
+[[allowlists]]
+description = "Next.js per-build Server Actions encryption key (feature not used)"
+condition = "AND"
+paths = ['''apps/admin/\.next/server/server-reference-manifest\.json$''']
+regexTarget = "match"
+regexes = ['''encryptionKey''']

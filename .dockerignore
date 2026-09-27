@@ -1,0 +1,24 @@
+# Build context = repository root (phase 11 M4). Never send secrets, local data or build output.
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.demo.example
+**/.sim
+**/node_modules
+**/dist
+**/.next
+**/.next-*
+**/coverage
+**/reports
+**/.stryker-tmp
+**/*.tsbuildinfo
+.git
+.github
+# Tests stay in the context (the type-checks include them); only build stages see them.
+apps/admin/e2e/results
+apps/admin/e2e/report
+apps/admin/e2e/screens
+apps/api/src/generated
+docs
+n8n
+CLAUDE.md

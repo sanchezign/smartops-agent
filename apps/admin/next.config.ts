@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import type { NextConfig } from "next";
 import { serverEnv } from "./src/env";
 
@@ -5,6 +6,13 @@ const { API_PROXY_TARGET } = serverEnv();
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Docker image (phase 11 M4): a self-contained server in .next/standalone, traced from the
+  // monorepo root (pnpm links dependencies outside apps/admin). Only when NEXT_OUTPUT=standalone
+  // (set by apps/admin/Dockerfile): on Windows without symlink rights the standalone copy step
+  // fails, so local builds, `next dev` and the E2E (`next start`) keep the default output.
+  ...(process.env.NEXT_OUTPUT === "standalone"
+    ? { output: "standalone" as const, outputFileTracingRoot: resolve(process.cwd(), "../..") }
+    : {}),
   // E2E builds into their own folder so they never clobber a running `next dev` (.next).
   ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   // Same origin without Caddy (local dev, or deploy option A): the browser calls /api/* on the
