@@ -1,0 +1,13 @@
+#!/bin/sh
+# Local guard (phase 11, user decision): `main` only changes through a GitHub pull request
+# (rebase-merge). While the repository is private on GitHub Free, branch protection is not
+# available, so this hook + the `main-guard` CI job are the soft enforcement.
+# Install once per clone: pnpm hooks:install. Emergency override: ALLOW_PUSH_TO_MAIN=1 git push …
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ] && [ "${ALLOW_PUSH_TO_MAIN:-0}" != "1" ]; then
+    echo "pre-push: direct pushes to main are not allowed — open a pull request instead." >&2
+    echo "pre-push: (emergency only: ALLOW_PUSH_TO_MAIN=1 git push …)" >&2
+    exit 1
+  fi
+done
+exit 0

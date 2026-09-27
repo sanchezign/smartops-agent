@@ -1,0 +1,87 @@
+# CI (phase 11). Suites and budget: docs/ci-cd.md.
+# - quick: every push to any branch (its check is attached to the commit, so it also shows on
+#   the pull request without running twice). Pull requests from forks run it too.
+# - main-guard: soft enforcement while branch protection is unavailable (private repo on
+#   GitHub Free): a push to main must come from a merged pull request.
+# Every action is pinned to a full commit SHA (version in the comment); Renovate updates them.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quick:
+    name: quick
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout (full history — the ratchet and CLAUDE.md guards compare with origin/main)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Lint the workflows (actionlint 1.7.12, pinned by digest)
+        run: >-
+          docker run --rm -v "$PWD:/repo:ro" -w /repo
+          rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+          -color
+
+      - name: Audit the workflows (zizmor 1.30.1, pinned by digest)
+        run: >-
+          docker run --rm -v "$PWD:/repo:ro" -w /repo
+          ghcr.io/zizmorcore/zizmor@sha256:a2eb396d886c053073405c7a980f2139ba2248ec172243cfa3841e57196e8101
+          --offline --min-severity=low .github/workflows
+
+      - name: Set up pnpm (version from package.json packageManager)
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node (from .nvmrc) with the pnpm store cache
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      # API unit + HTTP e2e (stubbed deps) and panel logic. Includes the n8n contract freshness,
+      # the CLAUDE.md guard (vs origin/main) and the coverage-ratchet guard.
+      - run: pnpm test:fast
+
+  main-guard:
+    name: main-guard
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: The pushed commit must belong to a merged pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          prs=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/commits/$SHA/pulls" | jq '[.[] | select(.merged_at != null)] | length')
+          if [ "$prs" -eq 0 ]; then
+            echo "::error::Direct push to main ($SHA): main only changes through a merged pull request."
+            exit 1
+          fi
+          echo "OK: $SHA comes from $prs merged pull request(s)."

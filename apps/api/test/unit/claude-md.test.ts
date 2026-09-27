@@ -86,4 +86,23 @@ describe("CLAUDE.md guard", () => {
     const headLines = head.split(/\r?\n/).length;
     expect(lines.length).toBeGreaterThanOrEqual(Math.floor(headLines * 0.85));
   });
+
+  // CI counterpart (phase 11): compare with the base branch the change will land on. The
+  // workflow checks out the full history (fetch-depth: 0); a missing base ref in CI is a
+  // FAILURE, never a silent skip — otherwise this gate would pass without checking anything.
+  it.runIf(Boolean(process.env.CI))("does not drop more than 15 % of the base branch (CI)", () => {
+    const base = `origin/${process.env.GITHUB_BASE_REF || "main"}`;
+    let baseText: string;
+    try {
+      baseText = execFileSync("git", ["show", `${base}:CLAUDE.md`], {
+        cwd: ROOT,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      });
+    } catch {
+      throw new Error(`${base}:CLAUDE.md not found — the CI checkout needs fetch-depth: 0`);
+    }
+    const baseLines = baseText.split(/\r?\n/).length;
+    expect(lines.length).toBeGreaterThanOrEqual(Math.floor(baseLines * 0.85));
+  });
 });

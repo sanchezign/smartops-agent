@@ -49,7 +49,15 @@ describe.each(FILES)("%s", (path) => {
 
   it.each(["HEAD", "origin/main"])("no threshold is lower than in %s (ratchet)", (ref) => {
     const before = atRef(ref, path);
-    if (!before) return;
+    if (!before) {
+      // Locally (a fresh file, no remote yet) there may be nothing to compare with. In CI a
+      // missing ref means a shallow checkout: fail loudly instead of silently passing
+      // (phase 11; the workflow uses fetch-depth: 0). A thresholds file that is simply new
+      // on this branch (origin/main exists, the file does not) is accepted.
+      if (process.env.CI && ref === "origin/main" && atRef("origin/main", "package.json") === null)
+        throw new Error("origin/main is not available — the CI checkout needs fetch-depth: 0");
+      return;
+    }
     const now = flatten(current);
     for (const [key, value] of flatten(before)) {
       expect(now.has(key), `${key} was removed`).toBe(true);
