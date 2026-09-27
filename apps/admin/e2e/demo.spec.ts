@@ -64,6 +64,19 @@ test.describe("every sample goes through the real pipeline (desktop: shared demo
 
   test("Reiniciar demo brings the sample data back and keeps the session", async ({ page }) => {
     await loginWithDemoCard(page);
+    // Open screens before the reset: a chat (stable id) and a review (recreated → new id).
+    await page.goto("/conversaciones");
+    await page.getByLabel("Buscar por nombre, proveedor o teléfono").fill("Luis");
+    await page
+      .getByRole("list", { name: "Conversaciones" })
+      .getByRole("link", { name: /Luis Fernández/ })
+      .click();
+    await expect(page.getByRole("heading", { name: "Luis Fernández" })).toBeVisible();
+    const chatUrl = page.url();
+    await page.goto("/revisiones");
+    await page.getByRole("list", { name: "Revisiones" }).getByText("Aumento general").click();
+    await expect(page.getByRole("heading", { name: "Aumento general" })).toBeVisible();
+    const reviewUrl = page.url();
     await page.goto("/probar");
     await page.getByRole("button", { name: "Reiniciar demo" }).click();
     await page.getByRole("button", { name: "Reiniciar", exact: true }).click();
@@ -72,5 +85,15 @@ test.describe("every sample goes through the real pipeline (desktop: shared demo
     const list = page.getByRole("list", { name: "Revisiones" });
     await expect(list.getByText("Lista Distribuidora Norte.xlsx")).toBeVisible();
     await expect(list.getByText("Precios Mayorista del Este.xlsx")).toHaveCount(0);
+
+    // The chat link survives the reset; the old review says it no longer exists.
+    await page.goto(chatUrl);
+    await expect(page.getByRole("heading", { name: "Luis Fernández" })).toBeVisible();
+    await page.goto(reviewUrl);
+    await expect(
+      page.getByText("Esto ya no existe (la demo se pudo haber reiniciado)"),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "Volver a Revisiones" }).click();
+    await expect(page.getByRole("heading", { name: "Revisiones", level: 1 })).toBeVisible();
   });
 });

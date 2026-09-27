@@ -32,7 +32,10 @@ test.describe("review queue (phase 9 M2)", () => {
     await openReviews(page, isMobile);
     await page.getByRole("list", { name: "Revisiones" }).getByText("Mensaje sospechoso").click();
     await expect(page.getByRole("heading", { name: "Mensaje sospechoso" })).toBeVisible();
-    await expect(page.getByText("la resuelve un administrador")).toBeVisible();
+    // Where the buttons would be (pinned at the bottom on phones): no hunting for buttons.
+    const notice = page.getByText("Solo un administrador puede resolver esta revisión.");
+    await expect(notice).toBeVisible();
+    if (isMobile) await expect(notice).toBeInViewport();
     await expect(page.getByRole("button", { name: "Procesar igual" })).toHaveCount(0);
     await expectAccessible(page);
   });

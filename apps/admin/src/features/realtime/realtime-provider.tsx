@@ -12,12 +12,13 @@ import {
   type PanelEvent,
   type QueryKeyPrefix,
 } from "./invalidation";
-import { useRealtimeStore } from "./store";
+import { DEGRADED_POLL_MS, READY_TIMEOUT_MS, statusAfterFailure, useRealtimeStore } from "./store";
 
 const FLUSH_MS = 200;
 
 /**
- * Keeps ONE event stream per tab (GET /api/v1/events, ADR-020) and turns events into query
+ * Keeps ONE event stream per tab (POST /api/v1/events, ADR-020 — POST because Cloudflare's
+ * edge holds GET streams) and turns events into query
  * invalidations. Reconnects with backoff; on every RE-connection (or a server "resync") every
  * query is refetched, since events may have been missed meanwhile. A "session" event (logout
  * elsewhere, expiry, role change) triggers a refresh: success → reconnect with the new token /
@@ -58,37 +59,55 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       });
 
     async function connectOnce(): Promise<string | null> {
-      controller = new AbortController();
+      const attemptController = new AbortController();
+      controller = attemptController;
       let sessionEnd: string | null = null;
-      const res = await api.stream("/events", {
-        signal: controller.signal,
-        headers: { accept: "text/event-stream" },
-      });
-      const parser = createSseParser({
-        onFrame(frame) {
-          if (frame.event === "ready") {
-            setStatus("live");
-            if (hadConnection) void queryClient.invalidateQueries();
-            hadConnection = true;
-            attempt = 0;
-          } else if (frame.event === "events") {
-            const events = JSON.parse(frame.data) as PanelEvent[];
-            invalidate(events.flatMap(keysFor));
-          } else if (frame.event === "resync") {
-            void queryClient.invalidateQueries();
-          } else if (frame.event === "session") {
-            sessionEnd = (JSON.parse(frame.data) as { reason: string }).reason;
-          }
-        },
-      });
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        parser.push(decoder.decode(value, { stream: true }));
+      let ready = false;
+      // No "ready" in time (a proxy holding the stream): degraded mode + retry later.
+      const readyTimer = setTimeout(() => {
+        if (ready) return;
+        setStatus("degraded");
+        attemptController.abort();
+      }, READY_TIMEOUT_MS);
+      try {
+        return await readStream();
+      } finally {
+        clearTimeout(readyTimer);
       }
-      return sessionEnd;
+
+      async function readStream(): Promise<string | null> {
+        const res = await api.stream("/events", {
+          method: "POST",
+          signal: attemptController.signal,
+          headers: { accept: "text/event-stream" },
+        });
+        const parser = createSseParser({
+          onFrame(frame) {
+            if (frame.event === "ready") {
+              ready = true;
+              setStatus("live");
+              if (hadConnection) void queryClient.invalidateQueries();
+              hadConnection = true;
+              attempt = 0;
+            } else if (frame.event === "events") {
+              const events = JSON.parse(frame.data) as PanelEvent[];
+              invalidate(events.flatMap(keysFor));
+            } else if (frame.event === "resync") {
+              void queryClient.invalidateQueries();
+            } else if (frame.event === "session") {
+              sessionEnd = (JSON.parse(frame.data) as { reason: string }).reason;
+            }
+          },
+        });
+        const reader = res.body!.getReader();
+        const decoder = new TextDecoder();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          parser.push(decoder.decode(value, { stream: true }));
+        }
+        return sessionEnd;
+      }
     }
 
     async function run() {
@@ -103,7 +122,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
           if (err instanceof ApiError && err.status === 429) attempt = Math.max(attempt, 4);
         }
         if (stopped) return;
-        setStatus("offline");
+        setStatus(statusAfterFailure(useRealtimeStore.getState().status));
         if (reason === "ended" || reason === "role_changed") {
           if (!(await api.refresh())) return;
           attempt = 0;
@@ -114,10 +133,19 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Back on screen / back online: retry now instead of waiting for the backoff.
+    // Back on screen / back online: refresh what is on screen and retry the stream now.
     const retryNow = () => {
-      if (document.visibilityState === "visible") wake?.();
+      if (document.visibilityState !== "visible") return;
+      void queryClient.invalidateQueries({ type: "active" });
+      wake?.();
     };
+    // Not live (degraded / reconnecting): refresh the screen periodically, so nothing ever
+    // needs a browser restart.
+    const poll = setInterval(() => {
+      if (useRealtimeStore.getState().status === "live") return;
+      if (document.visibilityState === "visible")
+        void queryClient.invalidateQueries({ type: "active" });
+    }, DEGRADED_POLL_MS);
     document.addEventListener("visibilitychange", retryNow);
     window.addEventListener("online", retryNow);
     setStatus("connecting");
@@ -125,6 +153,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
     return () => {
       stopped = true;
+      clearInterval(poll);
       controller?.abort();
       wake?.();
       if (flushTimer) clearTimeout(flushTimer);

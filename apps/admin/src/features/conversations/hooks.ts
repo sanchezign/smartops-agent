@@ -4,7 +4,6 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/features/auth/api";
-import { useFallbackInterval } from "@/features/realtime/store";
 import { useApiQuery } from "@/hooks/use-api";
 import { ApiError } from "@/lib/api-client";
 import type {
@@ -15,11 +14,7 @@ import type {
   OptedOutContact,
 } from "./types";
 
-/** Only while the real-time stream is down (ADR-020): then the chat and the inbox poll. */
-const FALLBACK_POLL_MS = 30_000;
-
 export function useInbox(filter: InboxFilter, q: string) {
-  const refetchInterval = useFallbackInterval(FALLBACK_POLL_MS);
   return useInfiniteQuery({
     queryKey: ["conversations", "inbox", filter, q],
     initialPageParam: null as string | null,
@@ -33,22 +28,18 @@ export function useInbox(filter: InboxFilter, q: string) {
       );
     },
     getNextPageParam: (last) => last.nextCursor,
-    refetchInterval,
   });
 }
 
 export function useConversation(id: string) {
-  const refetchInterval = useFallbackInterval(FALLBACK_POLL_MS);
   return useApiQuery<{ conversation: ConversationHeader }>(
     ["conversations", "header", id],
     `/admin/conversations/${id}`,
-    { refetchInterval },
   );
 }
 
 /** Chat history: pages go BACKWARDS (older) — `before` = oldest message already loaded. */
 export function useMessages(id: string) {
-  const refetchInterval = useFallbackInterval(FALLBACK_POLL_MS);
   return useInfiniteQuery({
     queryKey: ["conversations", "messages", id],
     initialPageParam: null as string | null,
@@ -61,7 +52,6 @@ export function useMessages(id: string) {
       );
     },
     getNextPageParam: (last) => (last.hasMore ? (last.items[0]?.id ?? null) : null),
-    refetchInterval,
   });
 }
 

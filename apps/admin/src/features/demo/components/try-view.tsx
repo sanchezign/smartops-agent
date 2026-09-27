@@ -10,6 +10,7 @@ import {
   Loader2,
   Mic,
   OctagonAlert,
+  PauseCircle,
   RotateCcw,
   ShieldAlert,
   Table2,
@@ -195,7 +196,9 @@ function TraceCard({ sent }: { sent: Sent }) {
                 <CheckCircle2 className="size-4 text-emerald-600" aria-hidden />
               ) : step.state === "active" ? (
                 <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden />
-              ) : step.state === "stopped" ? (
+              ) : step.state === "held" ? (
+                <PauseCircle className="size-4 text-amber-600" aria-hidden />
+              ) : step.state === "failed" ? (
                 <OctagonAlert className="size-4 text-destructive" aria-hidden />
               ) : (
                 <Circle className="size-4 text-muted-foreground/60" aria-hidden />
@@ -208,7 +211,8 @@ function TraceCard({ sent }: { sent: Sent }) {
                   {
                     done: "(listo)",
                     active: "(en curso)",
-                    stopped: "(frenado)",
+                    held: "(frenado para revisión)",
+                    failed: "(falló)",
                     waiting: "(pendiente)",
                   }[step.state]
                 }
@@ -225,7 +229,7 @@ function TraceCard({ sent }: { sent: Sent }) {
                 "border-emerald-600/40 bg-emerald-50 dark:bg-emerald-950/30",
               view.outcome.tone === "review" &&
                 "border-amber-500/40 bg-amber-50 dark:bg-amber-950/30",
-              view.outcome.tone === "stopped" && "border-destructive/40 bg-destructive/5",
+              view.outcome.tone === "failed" && "border-destructive/40 bg-destructive/5",
             )}
           >
             <span className="flex items-center gap-2">

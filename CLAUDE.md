@@ -202,6 +202,11 @@ Week 4
     SECURITY (user, 2026-09-26): the n8n editor must NEVER be publicly exposed — reachable only
     through a tunnel/VPN or an allow-listed IP, on top of the n8n login. Only the webhook paths
     the backend calls may be reachable (and in the single-VM compose they stay internal).
+    CHECKLIST (user, 2026-09-27, after the phase 9 phone tests): verify SSE end to end through
+    Caddy on the VM (first event in ms, not at the end — Cloudflare held GET streams); the
+    PUBLIC demo server must not load ANY real key (Meta, Anthropic, Groq) — DEMO_MODE forces
+    fakes, but the keys must not even be present; there must be NO demo admin with a public
+    password there (DEMO_ADMIN_PASSWORD unset or secret; only the public operator).
 13. docs — README: problem, architecture diagram, flow, setup with Meta test
     number, env var table, demo GIF, cost estimate, ADR list.
 
@@ -520,8 +525,8 @@ Each one gets an ADR in docs/adr/.
   (actor `cli:<--by>`).
 
 ## Current phase
-**Phase 8 complete (2026-09-26), merged to `main`. Phase 9 (admin UI): M1–M8 DONE on
-`feat/phase-9-admin-panel`, waiting for the user's phone tests before closing and merging. M3b (phase 5) and MFA (TOTP) remain recommended/required before
+**Phase 9 complete (2026-09-27), merged to `main`. Next: phase 10 (tests) on
+`feat/phase-10-tests` — plan not written yet (the user asks for it). M3b (phase 5) and MFA (TOTP) remain recommended/required before
 a real client.**
 
 1. scaffold — done (2026-09-24).
@@ -990,7 +995,7 @@ a real client.**
      only node ids/positions changed). Lesson (docs/n8n-setup.md §7): n8n "Import from File"
      ADDS nodes to the open canvas — clear it first, or you get duplicate nodes and two
      webhooks on the same path.
-9. admin UI — IN PROGRESS on `feat/phase-9-admin-panel`. Approved plan (2026-09-27) + user
+9. admin UI — DONE (2026-09-27), merged to `main`. Branch `feat/phase-9-admin-panel`. Approved plan (2026-09-27) + user
    answers: shadcn/ui (new-york, Tailwind v4, React 19) + TanStack Query + Recharts (shadcn chart);
    MOBILE FIRST (375 px first; bottom nav on phones, sidebar from tablet; 44 px targets; tables
    become cards); consistent loading/empty/error/403/expired states; WCAG 2.1 AA (axe);
@@ -1196,8 +1201,7 @@ a real client.**
      `referrer: no-referrer`): one item → redirect, several → list; only in-panel paths are
      followed (`digests/paths.ts`). Demo seed: two sent digests to a fake team number with
      tokens (E2E reads them from the E2E DB through the API package's `pg`).
-   - M8 public demo (DEMO_MODE) — DONE (2026-09-27), ADR-021. WAITING FOR THE USER'S PHONE
-     TESTS; phase 9 not closed/merged yet. `applyDemoMode` in `parseEnv` (before validation,
+   - M8 public demo (DEMO_MODE) — DONE (2026-09-27), ADR-021. `applyDemoMode` in `parseEnv` (before validation,
      whatever the rest says): AI_PROVIDER=fake with `demo/golden` (byte-identical copies of the
      test goldens — tested), TRANSCRIPTION_PROVIDER=fake with `demo/transcripts`,
      WHATSAPP_GRAPH_BASE_URL = `DEMO_GRAPH_URL` (default http://127.0.0.1:PORT); production
@@ -1240,6 +1244,33 @@ a real client.**
      (`mobile-reviews.spec.ts`, in-viewport check on phones). Lessons: in node edit scripts, JS
      string escapes eat backslashes (`\/` → `/`) — write regexes with the Edit/Write tools; the
      Edit tool turned ` ` escapes into real characters (built with fromCharCode instead).
+   - User phone tests (2026-09-27, local demo through a cloudflared quick tunnel, Android) —
+     OK: demo login with "Usar estos datos", the six "Probar el sistema" samples (correct
+     outcomes), approve / reject with the bottom buttons, chat photo, transcript, pause / reply /
+     resume, catalog + chart, "Reiniciar demo", and as admin: column picker of the new
+     spreadsheet, saving Rules, Users (own role not editable). FIXED after the tests:
+     1. Intentional stops ("planilla nueva", prompt injection) are "Frenado para revisión" with
+        an amber pause icon (trace state `held`); red (`failed`) only for real failures.
+     2. Real time through the tunnel: headers arrived but zero bytes. Measured: Cloudflare's
+        edge holds GET streams (charset irrelevant; cloudflared flushes by content-type
+        prefix) while POST streams in ~75 ms → `/api/v1/events` accepts POST and the panel uses
+        it (ADR-020 amendment). Degraded mode: no `ready` in 10 s → "Actualización cada 30 s",
+        every active query refreshed every 30 s while it keeps retrying; refresh on tab
+        return and on reconnect (per-screen polling removed). E2E with a hung stream.
+     3. The demo voice note is a real synthetic voice (`demo/assets/nota-de-voz.ogg`, 11.5 KB,
+        5.5 s, Opus mono 16 kb/s, "El tornillo de 6 milímetros sube a 14 pesos desde el lunes"
+        — Echogarden 3.4.0 + eSpeak NG, run once via npx, not a dependency; Windows voices
+        rejected: redistribution terms unclear). Its transcript stays the phase 5 one with the
+        ASR error "de lunas" (on purpose → review). Provenance in `demo/README.md`.
+     4. 404s: `NotFoundState` "Esto ya no existe (la demo se pudo haber reiniciado)" + a back
+        link on every detail screen (conversation, review, product, digest link);
+        `GET /admin/conversations/:id/messages` → 404 for an unknown conversation. Seeded
+        suppliers, contacts, conversations and digest tokens get STABLE ids (`demoUuid`), so an
+        open chat survives the reset; rows created by the real ingest (products, reviews) keep
+        random ids by design.
+     5. Operator on an admin-only review: "Solo un administrador puede resolver esta revisión"
+        exactly where the buttons would be (pinned at the bottom on phones; E2E checks it is in
+        the viewport).
 
 ## Known issues (out of scope)
 - **Phase 9 M8:** demo media lives in the API's memory: after an API restart, older demo

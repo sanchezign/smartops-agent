@@ -165,12 +165,17 @@ describe.skipIf(!testDatabaseUrl)("conversation query (Postgres)", () => {
       lastInboundMinutesAgo: 1,
       messages: 5,
     });
-    const last = await repo().messages(conversation.id, { limit: 2 });
+    const last = (await repo().messages(conversation.id, { limit: 2 }))!;
     expect(last.items.map((m) => m.text)).toEqual(["mensaje 4", "mensaje 5"]);
     expect(last.hasMore).toBe(true);
-    const before = await repo().messages(conversation.id, { limit: 3, before: last.items[0]!.id });
+    const before = (await repo().messages(conversation.id, {
+      limit: 3,
+      before: last.items[0]!.id,
+    }))!;
     expect(before.items.map((m) => m.text)).toEqual(["mensaje 1", "mensaje 2", "mensaje 3"]);
     expect(before.hasMore).toBe(false);
+    // An unknown conversation is null (→ 404), not an empty chat.
+    expect(await repo().messages("01a0dc63-e4b1-716c-a982-fbceaa90e2ba", { limit: 2 })).toBeNull();
   });
 
   it("header with the window and the opted-out list with how it happened", async () => {

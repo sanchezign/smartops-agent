@@ -67,7 +67,9 @@ describe("timeline", () => {
       media: null,
       run: run({ status: "needs_review", reason: "suspicious_instructions" }),
     });
-    expect(injection.steps.at(-1)!.state).toBe("stopped");
+    // Stopped ON PURPOSE: amber "held", never the red failure state.
+    expect(injection.steps.at(-1)).toEqual({ label: "Frenado para revisión", state: "held" });
+    expect(injection.outcome!.tone).toBe("review");
     expect(injection.outcome!.text).toMatch(/órdenes al sistema/);
     const sheet = timeline("planilla_nueva", {
       received: true,
@@ -75,6 +77,18 @@ describe("timeline", () => {
       media: { status: "stored", transcription: null, conversion: "done" },
       run: run({ status: "needs_review", reason: "column_mapping_required" }),
     });
-    expect(sheet.outcome).toMatchObject({ linkText: "Elegir la columna" });
+    expect(sheet.outcome).toMatchObject({ linkText: "Elegir la columna", tone: "review" });
+    expect(sheet.steps.at(-1)!.state).toBe("held");
+  });
+
+  it("only a real failure is red", () => {
+    const failed = timeline("pdf", {
+      received: true,
+      message: { ...message, type: "document" },
+      media: { status: "stored", transcription: null, conversion: null },
+      run: run({ status: "failed" }),
+    });
+    expect(failed.steps.at(-1)!.state).toBe("failed");
+    expect(failed.outcome!.tone).toBe("failed");
   });
 });

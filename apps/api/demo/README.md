@@ -1,0 +1,15 @@
+# Demo assets (DEMO_MODE, ADR-021)
+
+Runtime files of the public demo ("Probar el sistema"). Read by the API in DEMO_MODE
+(`DEMO_ASSETS_DIR`, default `demo`).
+
+| Path | What | Origin |
+|---|---|---|
+| `assets/lista-precios-foto.jpg`, `assets/lista-prueba.pdf` | Sample price lists | Project test fixtures (`test/fixtures/extraction`), made for this project |
+| `assets/precios-multiples*.xlsx` | Sample spreadsheets | Project test fixtures (`test/fixtures/sheets`, built by `scripts/fixtures/build-sheet-fixtures.ts`) |
+| `assets/injection-message.txt` | Prompt-injection sample | Project test fixture |
+| `assets/nota-de-voz.ogg` | Voice note, Ogg/Opus mono 16 kb/s, 5.5 s, ~11 KB. It says "El tornillo de 6 milímetros sube a 14 pesos desde el lunes." | Synthesized for this project (2026-09-27) with [Echogarden](https://github.com/echogarden-project/echogarden) 3.4.0 and its eSpeak NG engine (Spanish voice, speed 0.95), encoded with ffmpeg/libopus (`-ac 1 -b:a 16k -application voip`, metadata stripped). Synthetic speech: no recorded person, no third-party recording rights. The tools were only run to generate the file; they are not project dependencies. |
+| `golden/**` | Recorded LLM outputs | Byte-identical copies of `test/fixtures/extraction/golden` (a unit test enforces it) |
+| `transcripts/<sha256>.txt` | Recorded transcript of the voice note, keyed by the SHA-256 of the audio | Copy of `test/fixtures/extraction/voice-transcript.txt`: the real transcript of phase 5, including its speech-recognition error ("de lunas" instead of "desde el lunes"). The demo shows it on purpose: the doubtful value goes to review. |
+
+If you replace the voice note, write its transcript under the NEW hash (a unit test checks it).

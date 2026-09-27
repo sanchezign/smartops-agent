@@ -35,7 +35,11 @@ export function ChatView({ id }: { id: string }) {
       {header.isPending ? (
         <LoadingState rows={4} />
       ) : header.isError ? (
-        <ErrorState error={header.error} onRetry={() => void header.refetch()} />
+        <ErrorState
+          error={header.error}
+          onRetry={() => void header.refetch()}
+          back={{ href: "/conversaciones", label: "Volver a Conversaciones" }}
+        />
       ) : (
         <>
           <ChatHeader conversation={header.data.conversation} />
@@ -100,7 +104,14 @@ function MessageList({ id }: { id: string }) {
   }, [id]);
 
   if (query.isPending) return <LoadingState rows={4} label="Cargando mensajes…" />;
-  if (query.isError) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />;
+  if (query.isError)
+    return (
+      <ErrorState
+        error={query.error}
+        onRetry={() => void query.refetch()}
+        back={{ href: "/conversaciones", label: "Volver a Conversaciones" }}
+      />
+    );
 
   let lastDay = "";
   return (

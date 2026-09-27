@@ -100,6 +100,17 @@ describe("GET /api/v1/events", () => {
     ]);
   });
 
+  it("POST streams too (the panel uses it: Cloudflare holds GET streams until they end)", async () => {
+    const { hub, base } = await start({});
+    const res = await fetch(base, { method: "POST", headers: { authorization: "Bearer good" } });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("text/event-stream; charset=utf-8");
+    setTimeout(() => hub.publish({ type: "run.changed", runId: ID, status: "ingested" }), 50);
+    const frames = await readUntil(res, (f) => f.some((x) => x.includes("event: events")));
+    expect(frames.some((f) => f.includes("event: ready"))).toBe(true);
+    expect((await fetch(base, { method: "POST" })).status).toBe(401);
+  });
+
   it("per-user cap → 429 TOO_MANY_STREAMS", async () => {
     const { base, hub } = await start({ maxPerUser: 1 });
     const first = await fetch(base, { headers: { authorization: "Bearer good" } });

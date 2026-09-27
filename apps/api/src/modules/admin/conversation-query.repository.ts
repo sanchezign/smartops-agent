@@ -224,7 +224,9 @@ export function createConversationQueryRepository(
     async messages(
       conversationId: string,
       input: { before?: string; limit: number },
-    ): Promise<{ items: ChatMessage[]; hasMore: boolean }> {
+    ): Promise<{ items: ChatMessage[]; hasMore: boolean } | null> {
+      // An unknown conversation is a 404 (like the header), never an empty chat.
+      if ((await prisma.conversation.count({ where: { id: conversationId } })) === 0) return null;
       const rows = await prisma.message.findMany({
         where: { conversationId },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],

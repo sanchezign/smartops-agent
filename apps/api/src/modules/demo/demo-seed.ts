@@ -8,7 +8,6 @@ import { Prisma } from "../../generated/prisma/client.js";
 import { hashPassword } from "../auth/password.js";
 import type { CatalogIngestService } from "../catalog/catalog-ingest.service.js";
 import { renderDigest, type ItemData } from "../notifications/digest-rules.js";
-import { newLinkToken } from "../notifications/notification.repository.js";
 import { demoListPng } from "./demo-image.js";
 import { normalizeSupplierName } from "../catalog/supplier-name.js";
 import { convertDocument } from "../documents/convert.js";
@@ -72,6 +71,18 @@ function prng(seed: number) {
 
 const DAY = 86_400_000;
 const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+/**
+ * Stable ids for what the seed itself creates (suppliers, contacts, conversations): a chat or
+ * link open on a phone survives the automatic reset (phase 9 phone tests). Rows created by
+ * the REAL ingest (products, price changes, reviews) keep random ids — the panel shows
+ * "Esto ya no existe" for those after a reset.
+ */
+export function demoUuid(key: string): string {
+  const h = createHash("sha256").update(`smartops-demo:${key}`).digest("hex");
+  const variant = ((parseInt(h[16]!, 16) & 0x3) | 0x8).toString(16);
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-${variant}${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
+
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export interface DemoUser {
@@ -179,6 +190,7 @@ export async function seedDemo(deps: {
   ) {
     const contact = await prisma.contact.create({
       data: {
+        id: demoUuid(`contact:${waId}`),
         waId,
         name,
         kind,
@@ -187,7 +199,9 @@ export async function seedDemo(deps: {
         optInSource: "inbound",
       },
     });
-    const conversation = await prisma.conversation.create({ data: { contactId: contact.id } });
+    const conversation = await prisma.conversation.create({
+      data: { id: demoUuid(`conversation:${waId}`), contactId: contact.id },
+    });
     return { contactId: contact.id, conversationId: conversation.id };
   }
 
@@ -397,6 +411,7 @@ export async function seedDemo(deps: {
   for (const [index, supplier] of DEMO_SUPPLIERS.entries()) {
     const dbSupplier = await prisma.supplier.create({
       data: {
+        id: demoUuid(`supplier:${supplier.name}`),
         name: supplier.name,
         normalizedName: normalizeSupplierName(supplier.name),
         taxIncluded: supplier.taxIncluded,
@@ -592,6 +607,7 @@ export async function seedDemo(deps: {
     const sender = DEMO_SAMPLE_SENDERS[key];
     const supplier = await prisma.supplier.create({
       data: {
+        id: demoUuid(`supplier:${sender.supplierName}`),
         name: sender.supplierName,
         normalizedName: normalizeSupplierName(sender.supplierName),
         taxIncluded,
@@ -696,6 +712,7 @@ export async function seedDemo(deps: {
       const name = `Proveedor E2E ${project}`;
       const supplier = await prisma.supplier.create({
         data: {
+          id: demoUuid(`supplier:${name}`),
           name,
           normalizedName: normalizeSupplierName(name),
           taxIncluded: true,
@@ -902,7 +919,8 @@ export async function seedDemo(deps: {
         sentAt,
         channel: "text",
         text: renderDigest(seeded.items),
-        linkToken: newLinkToken(),
+        // Deterministic (the WhatsApp link of a seeded digest survives resets); still login-only.
+        linkToken: createHash("sha256").update(`smartops-demo:digest:${n}`).digest("base64url"),
         createdAt: sentAt,
       },
     });

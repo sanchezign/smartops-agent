@@ -6,7 +6,7 @@ import type { AuthService } from "../auth/auth.service.js";
 import { TooManyStreamsError, type EventHub, type HubMessage } from "./event-hub.js";
 
 /**
- * GET /api/v1/events — Server-Sent Events for the panel (phase 9 M4, ADR-020).
+ * GET|POST /api/v1/events — Server-Sent Events for the panel (phase 9 M4, ADR-020).
  *
  * The panel opens it with fetch() and the in-memory Bearer (EventSource cannot send headers).
  * The stream carries event TYPES and ids only; the panel refetches what changed through the
@@ -23,7 +23,7 @@ export function createEventsRouter(options: {
   const router = express.Router();
   router.use(createRequireAuth(options.auth.authenticate));
 
-  router.get("/", (req, res, next) => {
+  const stream: express.RequestHandler = (req, res, next) => {
     const user = currentUser(res);
     let seq = 0;
     const write = (event: string, data: unknown) => {
@@ -83,7 +83,13 @@ export function createEventsRouter(options: {
     }, options.heartbeatMs);
 
     req.on("close", () => close(null));
-  });
+  };
+
+  // GET for plain clients; the panel uses POST: Cloudflare's edge (quick tunnels) holds GET
+  // responses until they end, while POST responses are streamed (measured 2026-09-27, see
+  // ADR-020). Bearer-only, no cookie → POST adds no CSRF surface.
+  router.get("/", stream);
+  router.post("/", stream);
 
   return router;
 }

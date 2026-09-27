@@ -23,12 +23,13 @@ export interface DemoTrace {
 
 export interface TimelineStep {
   label: string;
-  state: "done" | "active" | "waiting" | "stopped";
+  /** held = stopped ON PURPOSE for a person (amber); failed = a real failure (red). */
+  state: "done" | "active" | "waiting" | "held" | "failed";
 }
 
 export interface TimelineOutcome {
   text: string;
-  tone: "success" | "review" | "stopped";
+  tone: "success" | "review" | "failed";
   /** Panel screen to see it. */
   href: string;
   linkText: string;
@@ -67,14 +68,15 @@ export function timeline(
   const conversation = `/conversaciones/${trace.message.conversationId}`;
   if (run.status === "needs_review") {
     const last = steps.at(-1)!;
-    last.state = "stopped";
+    last.state = "held";
+    last.label = "Frenado para revisión";
     if (run.reason === "suspicious_instructions") {
       return {
         steps,
         finished: true,
         outcome: {
-          text: "Frenado: el mensaje intenta darle órdenes al sistema. No se tocó el catálogo.",
-          tone: "stopped",
+          text: "Frenado para revisión: el mensaje intenta darle órdenes al sistema. No se tocó el catálogo.",
+          tone: "review",
           href: "/revisiones",
           linkText: "Ver en Revisiones",
         },
@@ -129,13 +131,13 @@ export function timeline(
       },
     };
   }
-  steps.at(-1)!.state = "stopped";
+  steps.at(-1)!.state = "failed";
   return {
     steps,
     finished: true,
     outcome: {
       text: "No se pudo procesar.",
-      tone: "stopped",
+      tone: "failed",
       href: conversation,
       linkText: "Ver la conversación",
     },

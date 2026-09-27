@@ -66,6 +66,7 @@ test.describe("digest deep link (phase 9 M7)", () => {
   test("an unknown token says so (same answer as a malformed one)", async ({ page }) => {
     await page.goto(`/d/${"x".repeat(43)}`);
     await loginHere(page);
-    await expect(page.getByText("Este enlace no existe o ya no está disponible")).toBeVisible();
+    await expect(page.getByText(/Esto ya no existe/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Ir al inicio" })).toBeVisible();
   });
 });

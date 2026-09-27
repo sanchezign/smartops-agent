@@ -38,7 +38,11 @@ export function ReviewDetail({ id }: { id: string }) {
       {query.isPending ? (
         <LoadingState rows={3} />
       ) : query.isError ? (
-        <ErrorState error={query.error} onRetry={() => void query.refetch()} />
+        <ErrorState
+          error={query.error}
+          onRetry={() => void query.refetch()}
+          back={{ href: "/revisiones", label: "Volver a Revisiones" }}
+        />
       ) : (
         <DetailBody
           item={query.data.item}
@@ -86,12 +90,6 @@ function DetailBody({
 
       <SourceCard item={item} />
 
-      {item.status === "pending" && readOnly ? (
-        <p className="mb-4 flex items-center gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
-          <Lock className="size-4 shrink-0" aria-hidden />
-          Esta revisión afecta una lista entera o todo el catálogo: la resuelve un administrador.
-        </p>
-      ) : null}
       {item.status !== "pending" && item.resolvedAt ? (
         <p className="mb-4 rounded-lg border bg-muted/40 p-3 text-sm">
           {STATUS_LABEL[item.status]} el {formatDateTime(item.resolvedAt)}.
@@ -111,6 +109,22 @@ function DetailBody({
       ) : (
         <GateResolver {...props} />
       )}
+      {item.status === "pending" && readOnly ? (
+        // Exactly where the approve / reject buttons would be (pinned at the bottom on phones):
+        // an operator must not wonder where the buttons went (user, phase 9 phone tests).
+        <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 mt-6 border-t bg-background/95 px-4 py-3 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:backdrop-blur-none">
+          <p
+            role="note"
+            className="flex items-start gap-2 rounded-lg border bg-muted/60 p-3 text-sm"
+          >
+            <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <span>
+              <strong>Solo un administrador puede resolver esta revisión.</strong> Afecta una lista
+              entera o todo el catálogo.
+            </span>
+          </p>
+        </div>
+      ) : null}
     </>
   );
 }

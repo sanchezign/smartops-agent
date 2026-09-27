@@ -52,6 +52,43 @@ test("a mode change made elsewhere appears live in the open chat", async ({ page
   await ctx.dispose();
 });
 
+test("if the stream never answers: 'Actualización cada 30 s' and the screen still refreshes", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, "one browser is enough for the fallback");
+  test.setTimeout(120_000);
+  // A proxy that holds the stream forever (like Cloudflare did with GET): never answer it.
+  await page.route("**/api/v1/events", () => {});
+  await login(page, "operator");
+  await expect(page.getByRole("status").filter({ hasText: "Actualización cada 30 s" })).toBeVisible(
+    {
+      timeout: 15_000,
+    },
+  );
+  await page.getByRole("link", { name: "Conversaciones", exact: true }).click();
+  await page.getByLabel("Buscar por nombre, proveedor o teléfono").fill("Carolina");
+  await page
+    .getByRole("list", { name: "Conversaciones" })
+    .getByRole("link", { name: /Carolina/ })
+    .click();
+  await expect(page.getByRole("heading", { name: "Carolina (depósito)" })).toBeVisible();
+  const conversationId = new URL(page.url()).pathname.split("/").pop()!;
+  const human = await page.getByRole("button", { name: "Reactivar el bot" }).isVisible();
+  const { ctx, call } = await adminApi();
+  const changed = await (human
+    ? call("post", `/conversations/${conversationId}/resume`)
+    : call("post", `/conversations/${conversationId}/pause`, { minutes: 30 }));
+  expect(changed.ok()).toBe(true);
+  // The periodic refresh (30 s) brings it in without reloading.
+  await expect(
+    page.getByText(human ? "Responde el bot" : "Atiende una persona").first(),
+  ).toBeVisible({
+    timeout: 45_000,
+  });
+  await ctx.dispose();
+});
+
 test("a review resolved elsewhere leaves the open queue live", async ({ page, isMobile }) => {
   test.skip(isMobile, "resolves shared demo data: desktop only");
   await login(page);

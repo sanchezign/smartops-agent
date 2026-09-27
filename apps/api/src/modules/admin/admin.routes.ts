@@ -367,12 +367,12 @@ function buildRoutes(deps: AdminDeps): AdminRoute[] {
       roles: ALL_ROLES,
       schemas: { params: idParams, query: messagesQuery },
       handler: async (_req, res) => {
-        res.json(
-          await deps.conversationQuery.messages(
-            getValidated<typeof idParams>(res, "params").id,
-            getValidated<typeof messagesQuery>(res, "query"),
-          ),
+        const page = await deps.conversationQuery.messages(
+          getValidated<typeof idParams>(res, "params").id,
+          getValidated<typeof messagesQuery>(res, "query"),
         );
+        if (!page) throw errors.notFound("Conversation not found");
+        res.json(page);
       },
     },
     {

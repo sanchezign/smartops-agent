@@ -2,8 +2,18 @@
 
 import { create } from "zustand";
 
-/** State of the real-time connection (phase 9 M4). "live" turns polling off. */
-export type RealtimeStatus = "connecting" | "live" | "offline";
+/**
+ * State of the real-time connection (phase 9 M4; degraded mode after the phone tests):
+ * - connecting: first attempt, waiting for "ready" (up to READY_TIMEOUT_MS);
+ * - live: events arrive, no polling;
+ * - offline: a live stream dropped, reconnecting;
+ * - degraded: no "ready" in time (e.g. a proxy that holds the stream) → every screen is
+ *   refreshed every DEGRADED_POLL_MS while it keeps retrying in the background.
+ */
+export type RealtimeStatus = "connecting" | "live" | "offline" | "degraded";
+
+export const READY_TIMEOUT_MS = 10_000;
+export const DEGRADED_POLL_MS = 30_000;
 
 export const useRealtimeStore = create<{
   status: RealtimeStatus;
@@ -13,8 +23,7 @@ export const useRealtimeStore = create<{
   setStatus: (status) => set({ status }),
 }));
 
-/** Fallback polling interval for a query: none while live, `ms` otherwise. */
-export function useFallbackInterval(ms: number): number | false {
-  const status = useRealtimeStore((s) => s.status);
-  return status === "live" ? false : ms;
+/** After an attempt fails: a live stream is "reconnecting"; otherwise it stays as it was. */
+export function statusAfterFailure(current: RealtimeStatus): RealtimeStatus {
+  return current === "live" ? "offline" : current;
 }

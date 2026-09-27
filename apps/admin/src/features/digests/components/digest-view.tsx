@@ -5,9 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { PageHeader } from "@/components/page-header";
-import { EmptyState, ErrorState, LoadingState } from "@/components/states";
+import { ErrorState, LoadingState } from "@/components/states";
 import { useApiQuery } from "@/hooks/use-api";
-import { ApiError } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
 import { isPanelPath } from "../paths";
 
@@ -37,13 +36,12 @@ export function DigestView({ token }: { token: string }) {
 
   if (query.isPending || only) return <LoadingState rows={3} label="Abriendo el resumen…" />;
   if (query.isError) {
-    return query.error instanceof ApiError && query.error.status === 404 ? (
-      <EmptyState
-        title="Este enlace no existe o ya no está disponible"
-        description="Los detalles están igual en Revisiones, Conversaciones y Alertas."
+    return (
+      <ErrorState
+        error={query.error}
+        onRetry={() => void query.refetch()}
+        back={{ href: "/", label: "Ir al inicio" }}
       />
-    ) : (
-      <ErrorState error={query.error} onRetry={() => void query.refetch()} />
     );
   }
   const digest = query.data.digest;

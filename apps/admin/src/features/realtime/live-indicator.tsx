@@ -7,6 +7,7 @@ const TEXT = {
   live: "En vivo",
   connecting: "Conectando…",
   offline: "Reconectando…",
+  degraded: "Actualización cada 30 s",
 } as const;
 
 /** Small status of the real-time connection in the top bar (announced politely). */

@@ -5,7 +5,6 @@ import express from "express";
 import { pino } from "pino";
 import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { demoVoiceNoteOgg } from "../../src/modules/demo/demo-audio.js";
 import {
   createDemoGraphRouter,
   createDemoMediaStore,
@@ -37,11 +36,12 @@ describe("demo assets", () => {
     }
   });
 
-  it("the generated voice note is a real Ogg/Opus of 5 s and keys its recorded transcript", () => {
-    const ogg = demoVoiceNoteOgg();
+  it("the voice note is a real, small Ogg/Opus (5,5 s) and keys its recorded transcript", () => {
+    const ogg = new Uint8Array(readFileSync("demo/assets/nota-de-voz.ogg"));
+    expect(ogg.byteLength).toBeLessThan(20_000);
     expect(contentMatchesMime("audio/ogg", ogg)).toBe(true);
-    expect(planMedia("audio", "audio/ogg; codecs=opus").action).not.toBe("reject");
-    expect(audioDurationSeconds(ogg, "audio/ogg")).toBe(5);
+    expect(planMedia("audio", "audio/ogg; codecs=opus").action).toBe("download");
+    expect(audioDurationSeconds(ogg, "audio/ogg")).toBeCloseTo(5.54, 1);
     const sha = createHash("sha256").update(ogg).digest("hex");
     expect(readFileSync(join("demo/transcripts", `${sha}.txt`), "utf8")).toBe(
       readFileSync("test/fixtures/extraction/voice-transcript.txt", "utf8"),
@@ -189,5 +189,16 @@ describe("/api/v1/demo routes", () => {
     expect((await request(demoApp).post("/api/v1/demo/reset")).status).toBe(401);
     expect((await request(demoApp).get("/api/v1/demo/trace/wamid.ABCDEFGHIJ")).status).toBe(401);
     expect(inject).not.toHaveBeenCalled();
+  });
+});
+
+describe("demoUuid (stable ids of seeded rows)", () => {
+  it("valid UUIDs, stable per key, different per key", async () => {
+    const { demoUuid } = await import("../../src/modules/demo/demo-seed.js");
+    const { z } = await import("zod");
+    const a = demoUuid("conversation:59899200002");
+    expect(z.uuid().safeParse(a).success).toBe(true);
+    expect(demoUuid("conversation:59899200002")).toBe(a);
+    expect(demoUuid("conversation:59899200003")).not.toBe(a);
   });
 });

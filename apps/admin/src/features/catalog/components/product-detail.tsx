@@ -43,7 +43,11 @@ export function ProductDetail({ id }: { id: string }) {
       {query.isPending ? (
         <LoadingState rows={3} />
       ) : query.isError ? (
-        <ErrorState error={query.error} onRetry={() => void query.refetch()} />
+        <ErrorState
+          error={query.error}
+          onRetry={() => void query.refetch()}
+          back={{ href: "/catalogo", label: "Volver al Catálogo" }}
+        />
       ) : (
         <Body product={query.data.product} />
       )}

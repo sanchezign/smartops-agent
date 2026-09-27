@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Logger } from "../../common/logger.js";
 import { signWhatsAppBody } from "../whatsapp/whatsapp-signature.js";
-import { demoVoiceNoteOgg } from "./demo-audio.js";
 import { DEMO_SAMPLE_SENDERS } from "./demo-data.js";
 import type { DemoMediaStore } from "./demo-graph.js";
 import { buildInboundMessage, type SimBusiness, type SimMessage } from "./wa-payloads.js";
@@ -59,7 +58,7 @@ const SAMPLES: Record<DemoSampleKind, Sample> = {
     sender: "demo",
     type: "audio",
     media: {
-      bytes: () => demoVoiceNoteOgg(),
+      file: "nota-de-voz.ogg",
       mimeType: "audio/ogg; codecs=opus",
       filename: null,
       voice: true,

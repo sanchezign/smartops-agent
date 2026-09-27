@@ -69,6 +69,27 @@ addendum 3):
   - Caddy flushes `text/event-stream` responses immediately, whatever `flush_interval` is set
     to (Caddy `reverse_proxy` docs).
 
+## Amendment (2026-09-27, phone tests through a Cloudflare quick tunnel)
+
+On the phone, through `cloudflared tunnel --url`, the stream got 200 and `text/event-stream` but
+zero bytes. Measured with a minimal SSE server behind a quick tunnel (pings every 2 s):
+
+- **GET:** no bytes in 12 s, with and without `; charset=utf-8`.
+- **POST:** the first event in 73–103 ms.
+
+cloudflared itself flushes any content type that starts with `text/event-stream` (charset
+irrelevant, `connection/connection.go`). The hold is on Cloudflare's edge for GET, as reported
+in cloudflare/cloudflared#1449. Changes:
+
+- `/api/v1/events` also accepts **POST** (same handler, Bearer only, no cookie: no CSRF
+  surface), and the panel uses POST.
+- **Degraded mode:** if `ready` does not arrive in 10 s, the indicator shows "Actualización cada
+  30 s", every active query is refreshed every 30 s while the stream keeps retrying in the
+  background, and the per-screen polling was removed.
+- Returning to the tab or reconnecting refreshes everything, so the panel never needs a
+  browser restart.
+- Phase 12 must still verify SSE end to end through Caddy on the VM.
+
 ## Consequences
 
 - Real time costs one Postgres connection per API process plus one socket per open tab, with
