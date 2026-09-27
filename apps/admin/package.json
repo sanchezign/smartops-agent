@@ -9,6 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "coverage:ratchet": "node ../../scripts/coverage-ratchet.mjs .",
     "e2e": "playwright test"
   },
   "dependencies": {
@@ -36,11 +38,12 @@
     "@types/node": "^24.13.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@vitest/coverage-v8": "5.0.1",
     "eslint": "^9.39.5",
     "eslint-config-next": "15.5.26",
     "eslint-config-prettier": "^10.1.8",
     "tailwindcss": "^4.3.3",
     "typescript": "~5.9.3",
-    "vitest": "^5.0.1"
+    "vitest": "5.0.1"
   }
 }

@@ -13,6 +13,10 @@
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
+    "test:fast": "pnpm --filter @smartops/api test:unit && pnpm --filter @smartops/admin test",
+    "test:integration": "pnpm --filter @smartops/api test:integration",
+    "test:coverage": "pnpm --filter @smartops/api test:coverage && pnpm --filter @smartops/admin test:coverage",
+    "test:e2e": "pnpm --filter @smartops/admin e2e",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

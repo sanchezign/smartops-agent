@@ -1,0 +1,131 @@
+{
+  "$comment": "Coverage ratchet (phase 10): measured - 2, only goes up (scripts/coverage-ratchet.mjs, guard test). Targets: 80 % lines global, 95/90 % lines/branches for critical pure modules.",
+  "global": {
+    "lines": 82,
+    "branches": 75,
+    "functions": 82,
+    "statements": 80
+  },
+  "files": {
+    "modules/catalog/price-math.ts": {
+      "lines": 98,
+      "branches": 98,
+      "functions": 98,
+      "statements": 98
+    },
+    "modules/sheets/sheet-values.ts": {
+      "lines": 98,
+      "branches": 85,
+      "functions": 98,
+      "statements": 87
+    },
+    "modules/auth/session-rules.ts": {
+      "lines": 98,
+      "branches": 98,
+      "functions": 98,
+      "statements": 98
+    },
+    "modules/auth/login-lockout.ts": {
+      "lines": 98,
+      "branches": 98,
+      "functions": 98,
+      "statements": 98
+    },
+    "modules/auth/password-policy.ts": {
+      "lines": 98,
+      "branches": 98,
+      "functions": 98,
+      "statements": 98
+    },
+    "modules/auth/tokens.ts": {
+      "lines": 91,
+      "branches": 85,
+      "functions": 98,
+      "statements": 91
+    },
+    "modules/optout/optout-detector.ts": {
+      "lines": 98,
+      "branches": 98,
+      "functions": 98,
+      "statements": 98
+    },
+    "modules/whatsapp/message-status.ts": {
+      "lines": 98,
+      "branches": 81,
+      "functions": 98,
+      "statements": 90
+    },
+    "modules/whatsapp/whatsapp-signature.ts": {
+      "lines": 98,
+      "branches": 98,
+      "functions": 98,
+      "statements": 98
+    },
+    "modules/whatsapp/customer-service-window.ts": {
+      "lines": 98,
+      "branches": 98,
+      "functions": 98,
+      "statements": 98
+    },
+    "modules/notifications/digest-rules.ts": {
+      "lines": 92,
+      "branches": 81,
+      "functions": 98,
+      "statements": 92
+    },
+    "modules/media/media-policy.ts": {
+      "lines": 93,
+      "branches": 79,
+      "functions": 98,
+      "statements": 94
+    },
+    "modules/conversations/conversation-mode.ts": {
+      "lines": 98,
+      "branches": 98,
+      "functions": 98,
+      "statements": 98
+    },
+    "modules/settings/business-hours.ts": {
+      "lines": 95,
+      "branches": 94,
+      "functions": 98,
+      "statements": 95
+    },
+    "modules/catalog/ingest-plan.ts": {
+      "lines": 98,
+      "branches": 93,
+      "functions": 98,
+      "statements": 96
+    },
+    "modules/catalog/supplier-name.ts": {
+      "lines": 98,
+      "branches": 98,
+      "functions": 98,
+      "statements": 98
+    },
+    "modules/catalog/normalize.ts": {
+      "lines": 98,
+      "branches": 98,
+      "functions": 98,
+      "statements": 98
+    },
+    "modules/admin/media-response.ts": {
+      "lines": 98,
+      "branches": 98,
+      "functions": 98,
+      "statements": 98
+    },
+    "modules/events/panel-events.ts": {
+      "lines": 98,
+      "branches": 98,
+      "functions": 98,
+      "statements": 98
+    },
+    "modules/events/event-hub.ts": {
+      "lines": 98,
+      "branches": 75,
+      "functions": 98,
+      "statements": 92
+    }
+  }
+}
