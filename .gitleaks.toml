@@ -1,0 +1,25 @@
+# gitleaks configuration (phase 11 M3). Extends the default rules; every exception is a
+# single FILE + VALUE pair (condition AND), never a whole folder: a real secret added to the
+# same test file, or the same fake value copied elsewhere, is still reported.
+# Full-history scan of 2026-09-27: 3 findings, all three below (fake test constants).
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Fake internal API key of the API test helpers (never a real key)"
+condition = "AND"
+paths = ['''^apps/api/test/helpers/build-app\.ts$''']
+regexes = ['''test-internal-api-key-0123456789abcdef''']
+
+[[allowlists]]
+description = "Known common password the password-policy test expects to be REJECTED"
+condition = "AND"
+paths = ['''^apps/api/test/unit/auth-passwords\.test\.ts$''']
+regexes = ['''1q2w3e4r5t6y7u8i9o0p''']
+
+[[allowlists]]
+description = "Deliberately wrong internal key used by the log-safety test"
+condition = "AND"
+paths = ['''^apps/api/test/e2e/log-safety\.test\.ts$''']
+regexes = ['''a-wrong-key-guess-1234567890''']

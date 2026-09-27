@@ -1,0 +1,59 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Renovate (phase 11 M3, ADR-022): dependency update PRs. Dependabot stays on for ALERTS only (it does not support pnpm 12). Renovate does not read pnpm's minimumReleaseAge, so it is set here, above pnpm's 1-day default — never add a release-age exclusion without asking (CLAUDE.md).",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigestsToSemver", ":semanticCommits"],
+  "timezone": "America/Montevideo",
+  "schedule": ["before 6am on monday"],
+  "minimumReleaseAge": "3 days",
+  "internalChecksFilter": "strict",
+  "prConcurrentLimit": 3,
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "One weekly PR for everything that is not a major version (saves CI minutes).",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest", "pinDigest"],
+      "groupName": "non-major dependencies"
+    },
+    {
+      "description": "Pinned on purpose (CLAUDE.md): Prisma 7.10 (8 only with a plan), ESLint 9 (eslint-config-next 15.5), Next 15.5 / React 19.1. Majors never proposed automatically.",
+      "matchPackageNames": [
+        "prisma",
+        "@prisma/client",
+        "@prisma/adapter-pg",
+        "eslint",
+        "next",
+        "eslint-config-next",
+        "react",
+        "react-dom"
+      ],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "Base images in the Dockerfiles and the CI services stay on Node 24 / Postgres 17 majors.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["node", "postgres"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    }
+  ],
+  "customManagers": [
+    {
+      "description": "Tool images run with `docker run image:tag@sha256:…` inside workflow steps (actionlint, zizmor, gitleaks).",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "(?<depName>(?:ghcr\\.io/)?[a-z0-9._-]+/[a-z0-9._-]+):(?<currentValue>v?\\d+\\.\\d+\\.\\d+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on the first day of the month"]
+  },
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "minimumReleaseAge": "1 day"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "$comment": "Accepted HIGH/CRITICAL production advisories (phase 11 M3). Each entry needs a GHSA id, the package, a justification and an expiry date (YYYY-MM-DD); an expired entry blocks CI again. Checked by apps/api/scripts/security/audit-gate.ts.",
+  "exceptions": [
+    {
+      "advisory": "GHSA-6g55-p6wh-862q",
+      "package": "postcss",
+      "reason": "postcss 8.4.31 is pinned by next 15.5 and only processes our own CSS at build time; the file read needs an attacker-controlled sourceMappingURL in CSS, which never reaches it.",
+      "expires": "2026-10-31",
+      "addedAt": "2026-09-27"
+    },
+    {
+      "advisory": "GHSA-r28c-9q8g-f849",
+      "package": "postcss",
+      "reason": "Same dependency path as above (next > postcss 8.4.31): only our own, build-time CSS is processed; no untrusted CSS input exists in the product.",
+      "expires": "2026-10-31",
+      "addedAt": "2026-09-27"
+    },
+    {
+      "advisory": "GHSA-ggr8-5vv4-36mx",
+      "package": "deepmerge-ts",
+      "reason": "Only inside the Prisma CLI config loader (@prisma/config), which merges only our own prisma.config.ts; the stack exhaustion needs an attacker-supplied recursive object graph, which never reaches it. Prisma is pinned at 7.10.0 (ADR / CLAUDE.md).",
+      "expires": "2026-10-31",
+      "addedAt": "2026-09-27"
+    },
+    {
+      "advisory": "GHSA-3f6p-5ww8-9rcr",
+      "package": "mysql2",
+      "reason": "Transitive dependency of the Prisma CLI; SmartOps uses PostgreSQL only, the MySQL driver is never loaded.",
+      "expires": "2026-10-31",
+      "addedAt": "2026-09-27"
+    }
+  ]
+}

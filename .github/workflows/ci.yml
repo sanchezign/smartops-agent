@@ -45,13 +45,13 @@ jobs:
       - name: Lint the workflows (actionlint 1.7.12, pinned by digest)
         run: >-
           docker run --rm -v "$PWD:/repo:ro" -w /repo
-          rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+          rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
           -color
 
       - name: Audit the workflows (zizmor 1.30.1, pinned by digest)
         run: >-
           docker run --rm -v "$PWD:/repo:ro" -w /repo
-          ghcr.io/zizmorcore/zizmor@sha256:a2eb396d886c053073405c7a980f2139ba2248ec172243cfa3841e57196e8101
+          ghcr.io/zizmorcore/zizmor:1.30.1@sha256:a2eb396d886c053073405c7a980f2139ba2248ec172243cfa3841e57196e8101
           --offline --min-severity=low .github/workflows
 
       - name: Set up pnpm (version from package.json packageManager)
@@ -63,7 +63,22 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
+      - name: Scan the new commits for secrets (gitleaks 8.30.1, pinned by digest)
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # New branch, force push or pull request: everything not yet on main.
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]             || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            range="origin/main..HEAD"
+          else
+            range="$BEFORE..HEAD"
+          fi
+          echo "gitleaks range: $range"
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/repo:ro"             ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f             git /repo --config /repo/.gitleaks.toml --redact --no-banner --log-opts="$range"
+
       - run: pnpm install --frozen-lockfile
+      - name: Dependency audit gate (high/critical in production, security/audit-exceptions.json)
+        run: node apps/api/scripts/security/audit-gate.ts
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
