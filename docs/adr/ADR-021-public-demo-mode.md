@@ -35,6 +35,7 @@ whatever the other variables say:
     `http://127.0.0.1:PORT`).
 
   With DEMO_MODE, the production "no fakes" rules do not apply. That is the ONLY exception.
+
 - **No real WhatsApp, at every layer (tested):**
   - `GraphApiConfig.blockMeta`: `graphRequest` refuses Meta hosts (facebook.com, fbsbx.com,
     fbcdn.net, whatsapp.com/.net, meta.com and their subdomains) BEFORE any network call.
@@ -43,6 +44,7 @@ whatever the other variables say:
 
   Tests cover a careless deploy that leaves Meta/Anthropic/Groq variables set:
   `test/unit/demo-mode.test.ts`.
+
 - **A \*_demo database is required** (`DATABASE_URL` name must end in `_demo`), because the demo
   resets its data.
 - **The demo's own Graph API**, served by the API (`demo/demo-graph.ts`):
@@ -70,6 +72,7 @@ whatever the other variables say:
   - "Distribuidora Ejemplo S.R.L." with its spreadsheet format ALREADY APPROVED (fast $0
     path, no mapper);
   - "Mayorista del Este" without a format (column review).
+
 - **Access:**
   - `GET /api/v1/demo/info` (public, only in DEMO_MODE) gives the demo operator's PUBLIC
     credentials to the login screen.

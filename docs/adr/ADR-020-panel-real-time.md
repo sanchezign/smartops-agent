@@ -27,6 +27,7 @@ addendum 3):
   Payload = event type + ids + status. **Never content** (no text, names or phone numbers), so
   it stays far under NOTIFY's 8,000-byte limit. Prisma does not model triggers: keep them when
   editing these tables.
+
 - **One listener per API process** (`events/pg-listener.ts`): a dedicated `pg.Client` outside
   the pool, `LISTEN smartops_events`. It reconnects with backoff from 1 s to 30 s. Events sent
   while it was down are lost, so after reconnecting it tells every stream to **resync**.

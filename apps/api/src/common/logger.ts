@@ -29,9 +29,7 @@ export function createLogger(
         }
       : {}),
   };
-  return destination && env.NODE_ENV !== "development"
-    ? pino(options, destination)
-    : pino(options);
+  return destination && env.NODE_ENV !== "development" ? pino(options, destination) : pino(options);
 }
 
 export type { Logger };
