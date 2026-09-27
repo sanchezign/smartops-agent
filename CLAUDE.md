@@ -229,6 +229,11 @@ Alert · Setting/Rule · User (admin|operator) · AuditLog
 - Deploy target: $0 custom target (Oracle Cloud Always Free VM + Caddy, or Render free
   + Supabase; admin on Vercel Hobby) instead of `render` — cost constraint of the
   portfolio demo (2026-09-24). ADR in phase 12 (supersedes ADR-007).
+- CI/CD tools beyond "GitHub Actions" (phase 11, approved 2026-09-27, ADR-022): Renovate
+  (dependency PRs; Dependabot cannot update pnpm 12), gitleaks (secret scanning while private),
+  release-please (single version + changelog), Trivy (image OS vulnerabilities), actionlint +
+  zizmor (workflow lint). All free, pinned by SHA / digest. Docker images for API and panel
+  (GHCR, private while the repo is private).
 Each one gets an ADR in docs/adr/.
 
 ## Architecture decisions
@@ -523,12 +528,60 @@ Each one gets an ADR in docs/adr/.
   team_notification. Queue `conversation-bot-resume` (startAfter = humanUntil; stale jobs
   no-op) + cron `conversation-mode-sweeper` */5. CLI `wa:conversation status|pause|resume`
   (actor `cli:<--by>`).
+- 2026-09-27 (phase 11) CI/CD (ADR-022, `docs/ci-cd.md`). GitHub Free + private repo → no
+  branch protection / rulesets, CodeQL, GitHub secret scanning, dependency-review or
+  attestations API; free substitutes instead. Workflows: `ci.yml` (`quick` on every push:
+  actionlint + zizmor `--offline`, gitleaks on new commits, audit gate, format, lint,
+  typecheck, test:fast; `plan` → `integration-coverage` (Postgres service, coverage ratchet =
+  gate, build), `e2e` (per `E2E_POLICY`, browsers installed every run, no cache), `images`
+  (only when Docker inputs change); `main-guard` on push to main (commit must belong to a merged
+  PR); nightly 06:00 UTC = 03:00 Montevideo only with new commits), `release.yml`
+  (release-please + images), `security.yml` (weekly full-history gitleaks + audit).
+  Every action pinned by full SHA (version comment), tool images `image:tag@sha256` (Renovate
+  regex manager), `permissions: {}` + minimum per job, `persist-credentials: false`, values into
+  `run:` only through `env:`, no Actions cache in release.yml.
+- Guards in CI: `claude-md.test.ts` and `coverage-thresholds.test.ts` compare with
+  `origin/<base>` and THROW if it is missing (checkout fetch-depth 0).
+- gitleaks: `.gitleaks.toml` extends the default rules; allowlists are exact path + value pairs
+  (condition AND) — never a folder. Full history scanned 2026-09-27: 74 commits, only 3 fake test
+  constants (allowlisted); phone-like numbers in the history are invented (user confirmed).
+- Audit gate `apps/api/scripts/security/audit-gate.ts` (`pnpm audit --prod --json`, runs with
+  Node's type stripping, no install): HIGH/CRITICAL block unless in
+  `security/audit-exceptions.json` (GHSA + package + reason + expires; expired → blocks again).
+- Renovate (`renovate.json`): Mondays before 06:00 Montevideo, minimumReleaseAge 3 days (1 for
+  vulnerability alerts), grouped non-major, majors disabled for prisma, eslint, next,
+  eslint-config-next, react, react-dom and the node / postgres images; lock file maintenance
+  monthly. Dependabot = alerts only.
+- Local pre-push hook `scripts/git-hooks/pre-push` (`pnpm hooks:install` sets core.hooksPath):
+  refuses pushes to main unless `ALLOW_PUSH_TO_MAIN=1`.
+- Docker: root `.dockerignore` (no .env*, .sim, .git, docs, n8n, CLAUDE.md). `apps/api/Dockerfile`:
+  node 24.21 bookworm-slim by digest, `pnpm fetch` + offline install + `pnpm deploy --prod`
+  (`prisma` moved to dependencies), non-root, HEALTHCHECK via Node fetch; ONE image, three
+  commands (server default, `node dist/worker.js`, `node node_modules/prisma/build/index.js
+  migrate deploy`). `apps/admin/Dockerfile`: `NEXT_OUTPUT=standalone` (only there: Windows
+  cannot build standalone without symlink rights), `NEXT_PUBLIC_API_BASE` build arg (default
+  /api/v1). `scripts/ci/image-secrets-check.sh` (image Env names, .env / keys / .sim anywhere,
+  gitleaks over the app files with `gitleaks-image.toml`: Next's per-build preview/encryption
+  keys allowlisted — the panel uses neither "use server" nor draft mode, guarded by
+  `apps/admin/test/next-build-keys.test.ts`), `api-container-smoke.sh` (DEMO_MODE + fake values:
+  migrations, health, SIGTERM exit 0 for API and worker), `admin-container-smoke.sh`, Trivy
+  (OS packages, fixable HIGH/CRITICAL).
+- Releases: release-please (`release-please-config.json`, root package only, tags `vX.Y.Z`,
+  bootstrap ad17cef, `extra-files` bump both apps; guard `test/unit/release-config.test.ts`:
+  versions in lockstep, NO `release-as` in the config). First release forced to 0.11.0 by the
+  empty commit `chore: release 0.11.0` + body `Release-As: 0.11.0`. CHANGELOG heading
+  `[Before v0.11.0]` matches release-please's header regex (entries go above it). CHANGELOG.md
+  and the manifest are prettier-ignored. Images: native amd64 (`ubuntu-24.04`) + arm64
+  (`ubuntu-24.04-arm`) → local build → secrets check + smoke + Trivy → push by digest (same
+  builder, SBOM + provenance max) → `imagetools create` tags X.Y.Z, X.Y, sha-xxxxxxx (no latest).
+  `ghcr.io/sanchezign/smartops-{api,admin}`.
 
 ## Current phase
-**Phase 10 (tests) COMPLETE (2026-09-27): M1–M10 done, all 5 post-review findings fixed, merged
-`--ff-only` to `main`. Phase 11 (CI/CD) starts on `feat/phase-11-ci-cd` — plan not written yet
-(the user asks for it next). M3b (phase 5) and MFA (TOTP) remain recommended/required before
-a real client.**
+**Phase 10 (tests) COMPLETE (2026-09-27), merged `--ff-only` to `main`. Phase 11 (CI/CD): M1–M6
+DONE on `feat/phase-11-ci-cd` — WAITING for the user to run the slow suite on GitHub (draft PR to
+`main`) and to apply the GitHub settings (docs/ci-cd.md); then close via PR + rebase-merge ONLY
+when the user says so (needs `gh`, the user installs/authenticates it). M3b (phase 5) and MFA
+(TOTP) remain recommended/required before a real client.**
 
 1. scaffold — done (2026-09-24).
 2. config/env/logging + initial Prisma schema — done (2026-09-24). Migrations:
@@ -1273,7 +1326,7 @@ a real client.**
      5. Operator on an admin-only review: "Solo un administrador puede resolver esta revisión"
         exactly where the buttons would be (pinned at the bottom on phones; E2E checks it is in
         the viewport).
-10. tests — IN PROGRESS on `feat/phase-10-tests`. Approved plan (2026-09-27) + user answers:
+10. tests — DONE (2026-09-27), merged to `main`. Branch `feat/phase-10-tests`. Approved plan (2026-09-27) + user answers:
     coverage ratchet (threshold = measured − 2, only goes up; 80 % API / 95-90 % critical pure
     modules / 90 % panel logic are goals, not blocks); DB down/up with a TCP proxy inside the
     test; versioned generated `n8n/contract.json` + staleness test; CI designed for a private repo
@@ -1407,8 +1460,49 @@ a real client.**
       whole-number current price never starts the percentage search below `MIN_PRICE_DECIMALS`.
       The rest of the ~150 survivors stay in the report (boundary instants on multi-day/-hour
       windows, error-message text, regex/text variants — no further real gaps found).
+11. CI/CD — M1–M6 DONE (2026-09-27) on `feat/phase-11-ci-cd`, NOT merged yet. Approved plan
+    (2026-09-27) + user answers: (1) soft enforcement of main now (main-guard job + pre-push hook);
+    going public only after a SEPARATE full security audit; (2) rebase-merge, phase PR opened with
+    `gh`, merged only when the user says so; (3) no Playwright browser cache; (4) one version for
+    the repo from v0.11.0, CHANGELOG with a phases 1–10 summary, v1.0.0 = deployed + audited
+    public demo; (5) native amd64 + arm64 images; (6) panel image with Next standalone without
+    breaking dev / E2E; (7) the 5 unformatted files fixed in a chore commit; (8) Renovate,
+    gitleaks, release-please, Trivy, actionlint, zizmor approved (pinned + checksum), audit blocks
+    only HIGH/CRITICAL prod with an exceptions file; (9) templates in English; (10) images private
+    while the repo is private (+ test: no .env / secrets in images); (11) nightly 03:00
+    Montevideo. GitHub settings: the USER applies them step by step (docs/ci-cd.md checklist);
+    CI never changes repo settings. Cero claves reales en la CI.
+    - M1 quick workflow + least privilege + workflow lint + main guard — DONE (f78be5f, 23ca38e).
+      First GitHub run (700bcc9): quick 1 m 53 s, 1056 + 73 tests, the rest skipped (push).
+    - M2 slow suite — DONE (700bcc9): Postgres service, coverage gate, build, E2E by policy,
+      nightly. Locally against a fresh Postgres: coverage 163 s, build 25 s, E2E 203 s (76 passed).
+    - M3 security — DONE (bf57eed): full-history gitleaks shown to and approved by the user,
+      audit gate + 4 exceptions (expire 2026-10-31), Renovate (validated with renovate 44.107.0
+      strict), SECURITY.md (no email), weekly security workflow.
+    - M4 Docker images — DONE (aa6af29): API 864 MB, panel 418 MB; secrets check verified with a
+      negative test; both smoke tests pass locally.
+    - M5 releases — DONE (f4704f0, cfaf3c2, 79eb7a6 = `Release-As: 0.11.0`): release-please +
+      release.yml (native multi-arch, checks before push, GHCR private). No release exists yet:
+      the first release PR appears after the phase PR is merged.
+    - M6 docs — DONE: PR template + issue forms (blank issues off, security → SECURITY.md),
+      docs/ci-cd.md (workflows, E2E policy, manual runs, budget ≈ 1,000 min / month, releases,
+      supply chain, settings checklist), ADR-022, README "CI/CD" section, this file.
+    - NEXT (user): open a DRAFT PR `feat/phase-11-ci-cd` → `main` in the GitHub UI — "Run
+      workflow" does not exist until ci.yml is on main — and report the slow-suite result; apply
+      the settings checklist; install `gh` for the close. At close: update the measured timings
+      in docs/ci-cd.md, check `main-guard` green after the merge, then the release PR (0.11.0).
 
 ## Known issues (out of scope)
+- **Phase 11:** the 4 accepted audit exceptions (postcss ×2 via next 15.5, deepmerge-ts,
+  mysql2 — see `security/audit-exceptions.json`) EXPIRE 2026-10-31: from that day `quick` fails
+  until the dependency is updated or the exception renewed with a new justification.
+- **Phase 11:** the API image is 864 MB (full prod node_modules incl. Prisma CLI for migrations,
+  Debian slim). Slimming (separate migrations image, distroless) left for phase 12 if it matters.
+- **Phase 11:** `main` is protected only by convention (main-guard detects, does not prevent)
+  until the repo is public and a ruleset is created. Release PRs opened by `GITHUB_TOKEN` get no
+  CI checks (GitHub rule).
+- **Phase 11:** `release-please` has only been validated statically (schema keys, guard test);
+  the first real release PR appears after the phase merge — review it before merging.
 - **Tooling caveat (phase 10 M9):** one Stryker JSON report entry (`price-math.ts`, the
   `Math.min(MAX_PRICE_DECIMALS, Math.max(MIN_PRICE_DECIMALS, …))` clamp mutated to
   `Math.min(MIN_PRICE_DECIMALS, …)`) was reported "Survived", but manually re-applying that exact
@@ -1534,6 +1628,13 @@ a real client.**
   Any other push — other branches, force pushes, tags, deleting remote branches — must
   be asked first. Run the secrets audit (no `.env`/`.sim` tracked, no real tokens)
   before pushing.
+- Phase close (user, 2026-09-27, from phase 11 on): open a PR `feat/phase-N-…` → `main` with
+  `gh`, wait for the checks, and merge with **rebase-merge ONLY when the user says so** (no more
+  local `merge --ff-only` + push to main; the pre-push hook refuses it). Commits must be
+  Conventional Commits — the changelog is generated from them (`feat`/`fix` bump the version).
+- CI: never add a real key / secret to GitHub Actions; `ai:eval` never runs in CI. New actions
+  are pinned by full SHA with a version comment, tool images by `tag@sha256`; lint workflows with
+  actionlint + zizmor (see docs/ci-cd.md). The user applies GitHub repository settings by hand.
 - WhatsApp fixtures: `apps/api/test/fixtures/whatsapp/`
 - Local WhatsApp without Meta: `wa:simulate` + `wa:fake-graph` (README "Desarrollo
   sin Meta"). New WhatsApp features must work against the fake Graph API; extend

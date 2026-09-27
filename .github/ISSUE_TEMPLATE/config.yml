@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/sanchezign/smartops-agent/blob/main/SECURITY.md
+    about: Report it privately as described in SECURITY.md — never in a public issue.

@@ -317,6 +317,25 @@ Database (API, run with `pnpm --filter @smartops/api <script>`):
 
 `build`, `typecheck` and `test` run `prisma generate` first.
 
+## CI/CD (phase 11)
+
+Details, timings, budget and the GitHub settings checklist: [docs/ci-cd.md](docs/ci-cd.md)
+(decision: [ADR-022](docs/adr/ADR-022-ci-cd.md)).
+
+- **CI** (`.github/workflows/ci.yml`): every push runs `quick` (workflow lint, gitleaks on
+  new commits, dependency audit gate, format, lint, typecheck, fast tests). Pull requests to
+  `main`, manual runs and a nightly run add the coverage gate against a real Postgres, the
+  build, the Playwright E2E (per the `E2E_POLICY` variable) and the Docker image checks.
+- **Releases** (`release.yml`): release-please keeps a release PR; merging it tags
+  `vX.Y.Z` and publishes the API and panel images (amd64 + arm64) to GHCR, each checked
+  before the push. Changelog: [CHANGELOG.md](CHANGELOG.md). Nothing is deployed yet.
+- **Security** (`security.yml`): weekly full-history secret scan + audit. Policy:
+  [SECURITY.md](SECURITY.md).
+- **Local guard**: `pnpm hooks:install` once per clone — the pre-push hook refuses a direct
+  push to `main` (changes land through pull requests).
+- **Docker**: `docker build -f apps/api/Dockerfile -t smartops-api .` and
+  `docker build -f apps/admin/Dockerfile -t smartops-admin .` from the repository root.
+
 ## API conventions
 
 - All routes under `/api/v1/`. Health: `GET /api/v1/health` → 200 `{status:"ok",db:"up"}` / 503 when the DB is down.
@@ -426,3 +445,4 @@ demo and any real client) must enable ZDR in the Groq console → Settings → D
 - [ADR-019](docs/adr/ADR-019-panel-media-auth.md) — Chat media fetched with the Bearer, shown from blob: URLs
 - [ADR-020](docs/adr/ADR-020-panel-real-time.md) — Panel real time: DB triggers → one LISTEN per API process → SSE
 - [ADR-021](docs/adr/ADR-021-public-demo-mode.md) — Public demo: DEMO_MODE with the real pipeline, fakes and no Meta
+- [ADR-022](docs/adr/ADR-022-ci-cd.md) — CI/CD on GitHub Actions for a private repo on GitHub Free

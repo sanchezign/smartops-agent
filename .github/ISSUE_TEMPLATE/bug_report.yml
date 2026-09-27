@@ -1,0 +1,50 @@
+name: Bug report
+description: Something does not work as expected.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste secrets, tokens, `.env` contents, phone numbers or customer messages.**
+        Security problems: follow SECURITY.md instead of opening a public issue.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - API (webhook, worker, internal API)
+        - Admin panel
+        - n8n workflows
+        - AI extraction / transcription
+        - CI/CD / Docker images
+        - Docs
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. …
+        2. …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.11.0 / sha-1a2b3c4
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / request id
+      description: The `requestId` of the error response helps. Redact anything sensitive.
+      render: text

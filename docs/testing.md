@@ -164,6 +164,9 @@ counterexample). A failure prints the seed and the shrunk input.
 
 ## CI readiness (M8) — the GitHub Actions YAML itself is phase 11
 
+> Implemented in phase 11: see [ci-cd.md](ci-cd.md) for the real workflows, triggers and
+> measured timings. The table below is the phase 10 estimate, kept for reference.
+
 Proposed jobs (Linux runners; times measured on the dev PC, CI estimated ×2 + install):
 
 | Job                    | Runs                     | Command                                                                                                                                        | Local            | CI estimate |
