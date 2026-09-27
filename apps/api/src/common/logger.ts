@@ -1,4 +1,4 @@
-import { pino, type Logger } from "pino";
+import { pino, type DestinationStream, type Logger } from "pino";
 import type { Env } from "../config/env.js";
 
 /** Headers that must never reach the logs. */
@@ -13,8 +13,10 @@ export const REDACTED_PATHS = [
 export function createLogger(
   env: Pick<Env, "LOG_LEVEL" | "NODE_ENV">,
   service: "api" | "worker" = "api",
+  /** Tests only: capture the JSON lines (same redaction). Ignored in development (pretty). */
+  destination?: DestinationStream,
 ): Logger {
-  return pino({
+  const options = {
     level: env.LOG_LEVEL,
     base: { service },
     redact: { paths: REDACTED_PATHS, censor: "[redacted]" },
@@ -26,7 +28,10 @@ export function createLogger(
           },
         }
       : {}),
-  });
+  };
+  return destination && env.NODE_ENV !== "development"
+    ? pino(options, destination)
+    : pino(options);
 }
 
 export type { Logger };

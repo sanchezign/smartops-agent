@@ -126,3 +126,24 @@ Panel logic (68 tests): **78.8 % lines, 69.5 % branches.** Gaps: `lib/format.ts`
   **Retry-After is not honoured**: the queue backoff applies (documented choice, not a bug).
 - LLM timeout end to end (`ingestion.test.ts`): ledger row `error / timeout` at $0, 503 so n8n
   retries (then its error workflow raises an alert), the run never stays in `extracting`.
+
+## Security (M6)
+
+- `security-tokens.test.ts`: access-token forgery matrix signed with the RIGHT key (issuer,
+  audience, HS512, missing sub / sid, unknown role, nbf, expiry, malformed input) → all rejected.
+- `security-limits.test.ts`: every limiter (global, webhook, internal, demo inject / reset)
+  answers 429 in the error shape; budgets are independent (a panel flood never blocks Meta's
+  webhook nor n8n; the internal limiter runs BEFORE the key check). Login limiter, SSE caps and
+  lockout doubling (capped at 1 h) were already covered.
+- Logs (user addendum C): `log-safety.test.ts` drives the API through every door a secret
+  comes in by (passwords, Bearer, refresh cookie, internal key, Meta signature and verify
+  token, broken / oversized bodies, 429, a crashing handler) and
+  `log-safety-worker.test.ts` processes every WhatsApp fixture — both with the PRODUCTION logger
+  factory at `trace` (`test/helpers/log-capture.ts`). No secret, full phone, BSUID, message text
+  or media URL may appear. Verified to fail when the verify-token URL redaction is removed.
+- `prompt-injection.test.ts`: our own set (OWASP LLM Top 10 as a guide, no copied corpus) against
+  the deterministic layers — input framing, keyword detector, output validation / rules, digest
+  neutralization.
+- Known gaps pinned with `it.fails` (green while the gap exists, red once fixed): JWT without
+  `exp` accepted; `< /tag>` and full-width brackets not neutralized; keyword detector misses
+  zero-width characters and synonyms. Reported in CLAUDE.md "Known issues".

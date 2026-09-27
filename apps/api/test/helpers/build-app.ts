@@ -1,6 +1,6 @@
 import type { Router } from "express";
 import { createApp } from "../../src/app.js";
-import { createLogger } from "../../src/common/logger.js";
+import { createLogger, type Logger } from "../../src/common/logger.js";
 import { parseEnv } from "../../src/config/env.js";
 import type { WebhookQueue } from "../../src/jobs/queues.js";
 import type { HealthRepository } from "../../src/modules/health/health.repository.js";
@@ -173,12 +173,14 @@ export function buildTestApp(
     admin?: AdminDeps;
     events?: { hub: EventHub; heartbeatMs: number };
     demo?: { graphRouter: Router; router: Router };
+    /** Capture logs (test/helpers/log-capture.ts); default: createLogger(env). */
+    logger?: Logger;
   } = {},
 ) {
   const env = parseEnv({ ...TEST_ENV_SOURCE, ...options.env });
   return createApp({
     env,
-    logger: createLogger(env),
+    logger: options.logger ?? createLogger(env),
     healthRepository: options.healthRepository ?? healthyDb,
     whatsappWebhookRepository:
       options.whatsappWebhookRepository ?? createInMemoryWebhookRepository(),

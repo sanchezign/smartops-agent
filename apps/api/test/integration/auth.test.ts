@@ -184,6 +184,7 @@ describe.skipIf(!testDatabaseUrl)("panel auth over HTTP (Postgres)", () => {
       .set("cookie", cookiePair(cookieOf(s1)))
       .expect(204);
     await refresh(cookiePair(cookieOf(s1))).expect(401);
+    await me(s1.body.accessToken).expect(401); // phase 10 M6: its live JWT dies with the session
     await me(s2.body.accessToken).expect(200);
 
     const s3 = await login().expect(200);

@@ -1331,8 +1331,21 @@ a real client.**
       typed errors within the timeout, transient = retryable; the SDK retries a timeout once, never
       loops), LLM timeout on classify and extract (ledger `error/timeout` $0, 503, run retriable).
       Retry-After is not honoured (queue backoff applies) — documented.
+    - M6 security — DONE (2026-09-27). `security-tokens` (forgery matrix with the right key),
+      `security-limits` (every limiter, independent budgets), access token of a logged-out session
+      → 401 at once, `log-safety` (API, every secret door incl. error paths) +
+      `log-safety-worker` (every WhatsApp fixture) with the production logger at trace
+      (`createLogger` got an optional destination = test seam; `buildTestApp` a `logger` option),
+      `prompt-injection` (own set: framing, keyword detector, output rules / Zod, digest). Findings
+      pinned with `it.fails` + Known issues (JWT without exp; tag / keyword evasions).
 
 ## Known issues (out of scope)
+- **Phase 10 M6 findings (reported, not changed; pinned with `it.fails`):** (1) `tokens.verify`
+  does not require `exp` — a JWT signed with the real key but without expiry never expires (fix:
+  `requiredClaims: ["exp","iat","sub"]`); (2) `neutralizeTags` misses `< /message_text>` (space
+  after `<`) and full-width brackets; (3) the spreadsheet keyword detector misses zero-width
+  characters, leetspeak and synonyms (desestimá, disregard). The model flag + review gate stay the
+  first line; these are hardening items.
 - **Phase 10 M3 finding:** `whatsapp-media` retries give up after 10.5–21 min in total (pg-boss
   backoff: 20…640 s per retry), not "→ 30 min" as its comment suggests. A token renewal slower
   than ~20 min leaves media `failed/retries_exhausted` (recover with `wa:media:retry`). Decide
