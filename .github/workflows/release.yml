@@ -23,8 +23,10 @@ jobs:
     name: release-please
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    # As documented by release-please-action (issues: the autorelease labels on its PRs).
     permissions:
       contents: write
+      issues: write
       pull-requests: write
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}

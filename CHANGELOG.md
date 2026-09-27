@@ -6,7 +6,7 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
-## Before versioning — phases 1–10 (2026-09-24 → 2026-09-27)
+## [Before v0.11.0] — phases 1–10 (2026-09-24 → 2026-09-27)
 
 Summary of the work before the first release (details: `CLAUDE.md`, `docs/adr/`).
 

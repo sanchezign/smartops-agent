@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 /**
  * One version for the whole repository (phase 11 M5, user decision): release-please bumps the
  * root package.json and, through `extra-files`, both apps. This guard keeps them in lockstep
- * and catches a forgotten `release-as` (it would re-release the same version forever).
+ * and forbids a `release-as` pin in the config: it would propose the same version forever. The
+ * first release (0.11.0) is forced by a commit body `Release-As: 0.11.0` instead (one-shot).
  */
 
 const ROOT = new URL("../../../../", import.meta.url);
@@ -22,13 +23,6 @@ interface Config {
 const config = readJson<Config>("release-please-config.json");
 const manifest = readJson<Record<string, string>>(".release-please-manifest.json");
 const version = (path: string) => readJson<{ version: string }>(path).version;
-
-const semver = (v: string) => v.split(".").map(Number) as [number, number, number];
-const greater = (a: string, b: string) => {
-  const [x, y] = [semver(a), semver(b)];
-  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i]! > y[i]!;
-  return false;
-};
 
 describe("release-please configuration", () => {
   it("is a single root package whose tags are plain vX.Y.Z", () => {
@@ -55,9 +49,7 @@ describe("release-please configuration", () => {
     expect(version("apps/admin/package.json")).toBe(current);
   });
 
-  it("a release-as pin is only allowed while it is ahead of the current version", () => {
-    // After the forced first release (0.11.0) remove `release-as` from the config.
-    const pin = config.packages["."]!["release-as"];
-    if (pin !== undefined) expect(greater(pin, manifest["."]!)).toBe(true);
+  it("never pins release-as in the config (use a Release-As commit footer)", () => {
+    expect(JSON.stringify(config)).not.toContain("release-as");
   });
 });
