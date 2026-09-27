@@ -1324,6 +1324,13 @@ a real client.**
       HTTP node validated with the API's own Zod schemas; notifier inputs = run, customer_query,
       order; only `GET /internal/rules` is unused. Real payloads checked in the integration
       contract test.
+    - M5 resilience — DONE (2026-09-27). `db-outage.test.ts` (in-test TCP proxy: health
+      200 → 503 → 200, LISTEN reconnect + resync, pg-boss resumes and runs the job queued during
+      the outage; stable 3/3), `resilience-http.test.ts` (real local peers that hang / are slow /
+      stall mid-body / 429 / 5xx for the n8n, Graph media, Graph send and Anthropic clients:
+      typed errors within the timeout, transient = retryable; the SDK retries a timeout once, never
+      loops), LLM timeout on classify and extract (ledger `error/timeout` $0, 503, run retriable).
+      Retry-After is not honoured (queue backoff applies) — documented.
 
 ## Known issues (out of scope)
 - **Phase 10 M3 finding:** `whatsapp-media` retries give up after 10.5–21 min in total (pg-boss

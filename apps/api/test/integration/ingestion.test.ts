@@ -327,6 +327,47 @@ describe.skipIf(!testDatabaseUrl)("ingestion: classify + extract (Postgres, fake
     expect((await svc.extract(runId, log)).status).toBe("extracted");
   });
 
+  // Phase 10 M5: a model that times out (AI_TIMEOUT_MS) is TRANSIENT everywhere: the ledger
+  // keeps an "error / timeout" row (latency logged, $0 without usage), the API answers 503 so
+  // n8n retries (3 × 5 s) and then its error workflow raises an alert; the run is never lost
+  // nor stuck in "extracting".
+  it("an LLM timeout on classify and on extract: ledger row, 503, run retriable", async () => {
+    const message = await inbound({ type: "text", text: "Tornillo 6mm 12 UYU" });
+    const { LlmError } = await import("../../src/ai/llm-provider.js");
+    let failNext: "classify" | "extract" | null = "classify";
+    const slow: LlmProvider = {
+      name: "fake",
+      generateStructured: async (req) => {
+        if (req.task === failNext) {
+          failNext = failNext === "classify" ? "extract" : null;
+          throw new LlmError("timeout", true, "Request timed out.");
+        }
+        return createFakeLlmProvider({ responders: FAKE_RESPONDERS }).generateStructured(req);
+      },
+    };
+    const svc = service({ provider: slow });
+
+    await expect(svc.classify(message.id, log)).rejects.toMatchObject({
+      code: "SERVICE_UNAVAILABLE",
+    });
+    const { runId } = await svc.classify(message.id, log);
+    await expect(svc.extract(runId, log)).rejects.toMatchObject({ code: "SERVICE_UNAVAILABLE" });
+    expect((await prisma.ingestionRun.findUniqueOrThrow({ where: { id: runId } })).status).toBe(
+      "classified",
+    );
+    expect((await svc.extract(runId, log)).status).toBe("extracted");
+
+    const errorsInLedger = await prisma.aiUsage.findMany({
+      where: { status: "error" },
+      orderBy: { createdAt: "asc" },
+    });
+    expect(errorsInLedger.map((u) => [u.task, u.reason])).toEqual([
+      ["classify", "timeout"],
+      ["extract", "timeout"],
+    ]);
+    expect(errorsInLedger.every((u) => Number(u.costUsd) === 0 && u.latencyMs !== null)).toBe(true);
+  });
+
   it("does not extract messages classified as something else", async () => {
     const message = await inbound({ type: "text", text: "hola, buen día" });
     const svc = service();

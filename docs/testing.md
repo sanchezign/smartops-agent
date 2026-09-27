@@ -112,3 +112,17 @@ Panel logic (68 tests): **78.8 % lines, 69.5 % branches.** Gaps: `lib/format.ts`
   reference to a missing node.
 - `test/integration/n8n-contract.test.ts` also validates every REAL `message.ready` payload the
   outbox sends against the contract schema.
+
+## Resilience (M5)
+
+- `test/integration/db-outage.test.ts`: a TCP proxy INSIDE the test sits between the API-side
+  connections and Postgres (the container is never stopped). Cut → `/health` 503, the LISTEN
+  connection drops, pg-boss logs errors and keeps polling; restore → `/health` 200, the listener
+  reconnects and resyncs, the job queued during the outage runs, new events arrive.
+- `test/unit/resilience-http.test.ts`: real local HTTP peers that never answer, answer late,
+  stall a download mid-body, rate-limit (429 + retry-after) or fail (5xx) — n8n client, Graph
+  media client, Graph send client, Anthropic provider. Every case ends in a typed error inside
+  its timeout; transient ones are retryable (pg-boss retries), permanent ones stay permanent.
+  **Retry-After is not honoured**: the queue backoff applies (documented choice, not a bug).
+- LLM timeout end to end (`ingestion.test.ts`): ledger row `error / timeout` at $0, 503 so n8n
+  retries (then its error workflow raises an alert), the run never stays in `extracting`.
