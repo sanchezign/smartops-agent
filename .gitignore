@@ -21,6 +21,7 @@ apps/api/.sim/
 .env
 .env.*
 !.env.example
+!.env.demo.example
 
 # logs
 *.log

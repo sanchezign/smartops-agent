@@ -76,6 +76,8 @@ try {
         : {}),
     },
     logger,
+    assetsDir: env.DEMO_ASSETS_DIR,
+    e2eReviews: env.DEMO_E2E_REVIEWS,
   });
   process.stdout.write(`demo seeded: ${JSON.stringify(result)}\n`);
 } finally {

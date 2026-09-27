@@ -181,6 +181,43 @@ Notes:
 Security details (rotation and reuse detection, CSRF, lockout, roles, deploy modes):
 [ADR-018](docs/adr/ADR-018-panel-auth.md).
 
+## Panel (fase 9)
+
+Mobile first (bottom bar on phones, sidebar from tablets), es-UY numbers and dates, WCAG 2.1 AA
+(axe in the E2E). Screens: **Inicio** (dashboard), **Revisiones** (one resolver per kind,
+including the spreadsheet price-column picker), **Conversaciones** (🤖 bot / 👤 persona /
+⛔ dado de baja, pause / resume, reply as a person, opt-out / opt-in, chat media),
+**Catálogo** (price history chart), **Alertas**, **Reglas** (no-code settings, business hours,
+global bot switch) and **Usuarios** (admins).
+
+- Real time: Postgres triggers → ONE `LISTEN` connection per API process → SSE
+  (`/api/v1/events`, [ADR-020](docs/adr/ADR-020-panel-real-time.md)).
+- Chat media is fetched with the session and shown from `blob:` URLs — no token in URLs
+  ([ADR-019](docs/adr/ADR-019-panel-media-auth.md)).
+- WhatsApp digests to the team end with `PANEL_PUBLIC_URL/d/<token>` (login required, the
+  token is random and the URL carries no content).
+- Browser E2E (Chromium desktop, Pixel 7, iPhone 15 / WebKit): `pnpm --filter @smartops/admin e2e`
+  (own `*_e2e_demo` database, API in DEMO_MODE on :4100, the real worker, an n8n stand-in,
+  a production build of the panel on :3100). `SCREENS=1` also takes screenshots.
+
+## Demo pública (DEMO_MODE)
+
+A $0 public demo with no WhatsApp account and no AI spend
+([ADR-021](docs/adr/ADR-021-public-demo-mode.md)):
+
+1. Create and seed the demo database (name must end in `_demo`):
+   `DEMO_DATABASE_URL=…/smartops_demo pnpm --filter @smartops/api demo:seed`.
+2. Run the API **and** the worker with `DATABASE_URL=<the demo database>` and `DEMO_MODE=true`
+   (n8n with the published workflows orchestrates, as in production).
+3. Open the panel: the login screen shows the public demo operator; the "Probar el sistema"
+   page sends a photo, a PDF, a voice note, a known and a new spreadsheet and a prompt
+   injection through the real pipeline, live.
+
+DEMO_MODE forces the fake LLM (recorded outputs in `apps/api/demo/golden`), the fake
+transcriber and the demo's own Graph API (the Graph client refuses Meta hosts — tested), and
+refuses any database that is not `*_demo`. Data resets every `DEMO_RESET_INTERVAL_MINUTES`
+(and with "Reiniciar demo"); users and sessions are kept.
+
 ## Coexistence & opt-out (phase 7)
 
 - **Human takeover (ADR-016):** a human reply — from the panel or, on a real coexistence
@@ -386,3 +423,6 @@ demo and any real client) must enable ZDR in the Groq console → Settings → D
 - [ADR-016](docs/adr/ADR-016-human-takeover.md) — Human takeover pauses only automatic replies to the contact
 - [ADR-017](docs/adr/ADR-017-opt-out.md) — Deterministic opt-out, gated at the outbound service
 - [ADR-018](docs/adr/ADR-018-panel-auth.md) — Panel auth: rotating refresh sessions, Argon2id, same-origin deploy
+- [ADR-019](docs/adr/ADR-019-panel-media-auth.md) — Chat media fetched with the Bearer, shown from blob: URLs
+- [ADR-020](docs/adr/ADR-020-panel-real-time.md) — Panel real time: DB triggers → one LISTEN per API process → SSE
+- [ADR-021](docs/adr/ADR-021-public-demo-mode.md) — Public demo: DEMO_MODE with the real pipeline, fakes and no Meta

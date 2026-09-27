@@ -27,6 +27,7 @@ const config: GraphApiConfig = {
   version: env.WHATSAPP_GRAPH_API_VERSION,
   accessToken: env.WHATSAPP_ACCESS_TOKEN,
   timeoutMs: env.WHATSAPP_API_TIMEOUT_MS,
+  blockMeta: env.DEMO_MODE,
 };
 const path = `${env.WHATSAPP_WABA_ID}/subscribed_apps`;
 

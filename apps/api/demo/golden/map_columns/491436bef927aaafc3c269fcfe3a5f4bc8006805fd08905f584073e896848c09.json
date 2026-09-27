@@ -1,0 +1,52 @@
+{
+  "tables": [
+    {
+      "table": "T1",
+      "isPriceTable": true,
+      "headerRow": 2,
+      "nameColumn": 1,
+      "unitColumn": 2,
+      "skuColumn": 0,
+      "currencyColumn": null,
+      "stockColumn": null,
+      "availableColumn": null,
+      "pctColumn": null,
+      "priceColumns": [
+        {
+          "column": 3,
+          "header": "Precio s/IVA",
+          "taxIncluded": false,
+          "kind": "list"
+        },
+        {
+          "column": 4,
+          "header": "Precio c/IVA",
+          "taxIncluded": true,
+          "kind": "list"
+        },
+        {
+          "column": 5,
+          "header": "Mayorista",
+          "taxIncluded": null,
+          "kind": "wholesale"
+        },
+        {
+          "column": 6,
+          "header": "Contado",
+          "taxIncluded": null,
+          "kind": "cash"
+        }
+      ],
+      "recommendedPriceColumn": 4,
+      "priceFormat": "decimal_dot",
+      "currency": "UYU",
+      "confidence": "high"
+    }
+  ],
+  "supplierName": "DISTRIBUIDORA EJEMPLO S.R.L.",
+  "warnings": [
+    "Filas de categoría (SEGURIDAD, HERRAJES, ELECTRICIDAD) sin datos, no son productos.",
+    "Varias columnas de precio: se recomienda confirmar cuál usar como principal."
+  ],
+  "suspiciousInstructions": false
+}

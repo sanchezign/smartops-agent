@@ -1,5 +1,6 @@
 import {
   Bell,
+  FlaskConical,
   ClipboardCheck,
   LayoutDashboard,
   MessagesSquare,
@@ -17,6 +18,8 @@ export interface NavItem {
   /** Shown in the phone's bottom bar (the rest go under "Más"). */
   primary: boolean;
   adminOnly?: boolean;
+  /** Only in the public demo (DEMO_MODE, phase 9 M8). */
+  demoOnly?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -27,10 +30,19 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/alertas", label: "Alertas", icon: Bell, primary: false },
   { href: "/reglas", label: "Reglas", icon: SlidersHorizontal, primary: false },
   { href: "/usuarios", label: "Usuarios", icon: Users, primary: false, adminOnly: true },
+  {
+    href: "/probar",
+    label: "Probar el sistema",
+    icon: FlaskConical,
+    primary: false,
+    demoOnly: true,
+  },
 ];
 
-export function navFor(user: SessionUser | null): NavItem[] {
-  return NAV_ITEMS.filter((item) => !item.adminOnly || user?.role === "admin");
+export function navFor(user: SessionUser | null, demo = false): NavItem[] {
+  return NAV_ITEMS.filter(
+    (item) => (!item.adminOnly || user?.role === "admin") && (!item.demoOnly || demo),
+  );
 }
 
 export function isActive(pathname: string, href: string): boolean {

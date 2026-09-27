@@ -1,0 +1,5 @@
+{
+  "classification": "price_update_partial",
+  "confidence": 0.75,
+  "reason": "Informa el aumento de precio de un producto puntual, no una lista completa."
+}

@@ -14,6 +14,7 @@ const PAGES = [
   "/alertas",
   "/reglas",
   "/usuarios",
+  "/probar",
 ];
 
 const REVIEWS: [string, string][] = [
@@ -27,6 +28,9 @@ test.skip(!process.env.SCREENS, "set SCREENS=1 to take screenshots");
 
 test("screenshots", async ({ page }, info) => {
   test.setTimeout(240_000);
+  await page.goto("/login");
+  await page.getByText("Demo pública.").waitFor();
+  await page.screenshot({ path: `e2e/screens/${info.project.name}-login.png`, fullPage: true });
   await login(page);
   for (const path of PAGES) {
     await page.goto(path);

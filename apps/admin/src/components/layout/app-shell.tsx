@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { isActive, navFor } from "./nav-items";
 import { LiveIndicator } from "@/features/realtime/live-indicator";
 import { StatusChips } from "@/features/realtime/status-chips";
+import { useDemoInfo } from "@/features/demo/hooks";
 import { UserMenu } from "./user-menu";
 
 /**
@@ -20,7 +21,8 @@ import { UserMenu } from "./user-menu";
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
-  const items = navFor(user);
+  const demo = useDemoInfo().data ?? null;
+  const items = navFor(user, demo !== null);
   const primary = items.filter((i) => i.primary);
   const more = items.filter((i) => !i.primary);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -34,6 +36,15 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         Saltar al contenido
       </a>
+
+      {demo ? (
+        <div className="relative z-40 bg-amber-100 px-4 py-1.5 text-center text-xs text-amber-950 md:ml-60 dark:bg-amber-950 dark:text-amber-100">
+          <strong>Modo demo</strong>: datos de ejemplo, sin WhatsApp real y sin costo.{" "}
+          <Link href="/probar" className="font-medium underline underline-offset-2">
+            Probar el sistema
+          </Link>
+        </div>
+      ) : null}
 
       {/* Sidebar (tablet / desktop) */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r bg-sidebar md:flex">

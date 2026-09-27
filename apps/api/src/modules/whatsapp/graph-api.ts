@@ -9,6 +9,33 @@ export interface GraphApiConfig {
   version: string;
   accessToken: string;
   timeoutMs: number;
+  /**
+   * DEMO_MODE (phase 9 M8, ADR-021): refuse any request to Meta, whatever baseUrl says — the
+   * last line of defence that guarantees no real WhatsApp message leaves the public demo.
+   */
+  blockMeta?: boolean;
+}
+
+const META_DOMAINS = [
+  "facebook.com",
+  "fbsbx.com",
+  "fbcdn.net",
+  "whatsapp.com",
+  "whatsapp.net",
+  "meta.com",
+];
+
+/** Hosts that belong to Meta (Graph API, media CDN, WhatsApp). */
+export function isMetaHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/\.$/, "");
+  return META_DOMAINS.some((domain) => host === domain || host.endsWith(`.${domain}`));
+}
+
+export class DemoModeBlockedError extends Error {
+  constructor() {
+    super("DEMO_MODE: refusing to call Meta (no real WhatsApp traffic in the demo)");
+    this.name = "DemoModeBlockedError";
+  }
 }
 
 /** Error returned by the Graph API (`{ error: { message, type, code, error_subcode, fbtrace_id } }`). */
@@ -45,6 +72,7 @@ export async function graphRequest<T>(
   body?: unknown,
 ): Promise<T> {
   const url = `${config.baseUrl}/${config.version}/${path.replace(/^\//, "")}`;
+  if (config.blockMeta && isMetaHost(new URL(url).hostname)) throw new DemoModeBlockedError();
   const response = await fetch(url, {
     method,
     headers: {

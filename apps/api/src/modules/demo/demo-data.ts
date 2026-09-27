@@ -160,3 +160,28 @@ export const DEMO_NORTE_SHEET_MAPPER = {
   currency: "UYU",
   confidence: "high" as const,
 };
+
+/**
+ * Senders of the "Probar el sistema" buttons (phase 9 M8). Their suppliers are seeded so the
+ * recorded LLM outputs line up with the catalog:
+ * - demo: the September PDF catalog (7 products, the photo / voice goldens refer to it);
+ * - ejemplo: its spreadsheet format ALREADY APPROVED (fast $0 path, no mapper call);
+ * - mayorista: no approved format (the same spreadsheet goes to the column review).
+ */
+export const DEMO_SAMPLE_SENDERS = {
+  demo: {
+    waId: "59899400001",
+    contactName: "Distribuidora Demo",
+    supplierName: "Distribuidora Demo S.A.",
+  },
+  ejemplo: {
+    waId: "59899400002",
+    contactName: "Distribuidora Ejemplo",
+    supplierName: "Distribuidora Ejemplo S.R.L.",
+  },
+  mayorista: {
+    waId: "59899400003",
+    contactName: "Mayorista del Este",
+    supplierName: "Mayorista del Este",
+  },
+} as const;

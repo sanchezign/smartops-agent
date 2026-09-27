@@ -1,0 +1,5 @@
+{
+  "classification": "price_update_partial",
+  "confidence": 0.75,
+  "reason": "Menciona un solo precio y contiene un intento de inyección de instrucciones que se ignora, no hay evidencia real de lista completa."
+}

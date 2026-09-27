@@ -164,6 +164,32 @@ export const envSchema = z.object({
       .transform((url) => url.replace(/\/+$/, "")),
   ),
 
+  // ─── Public demo (phase 9 M8, ADR-021) ───
+  /**
+   * DEMO_MODE: the public $0 demo. FORCES the fake LLM and transcriber, points the WhatsApp
+   * Graph client at the fake Graph API served by this API (never Meta), enables /api/v1/demo/*
+   * and the "Probar el sistema" page, and requires a *_demo database.
+   */
+  DEMO_MODE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+  /** Where the worker reaches the API's fake Graph API (default http://127.0.0.1:PORT). */
+  DEMO_GRAPH_URL: optionalString(
+    z.string().refine(isBaseUrl, { message: "must be an http(s) URL without path" }),
+  ),
+  /** Demo data is reset automatically every N minutes (0 = never; "Reiniciar demo" always works). */
+  DEMO_RESET_INTERVAL_MINUTES: z.coerce.number().int().min(0).max(10_080).default(60),
+  /** Demo buttons per IP per 10 minutes. */
+  DEMO_RATE_LIMIT_MAX: z.coerce.number().int().min(1).max(1_000).default(20),
+  /** Demo assets (sample files, recorded LLM outputs, transcripts), relative to the API package. */
+  DEMO_ASSETS_DIR: z.string().min(1).default("demo"),
+  /** E2E only: the seed adds one review per Playwright project to approve / reject. */
+  DEMO_E2E_REVIEWS: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+
   // ─── Demo data (phase 9) ───
   /** Separate demo database (name MUST end in "_demo"): demo:seed / demo:reset. */
   DEMO_DATABASE_URL: optionalString(
@@ -243,7 +269,21 @@ function crossFieldIssues(source: Record<string, string | undefined>): string[] 
   if (source.NODE_ENV === "production" && !source.CORS_ORIGINS?.replaceAll(",", "").trim()) {
     issues.push("CORS_ORIGINS: is required in production");
   }
+  const demo = source.DEMO_MODE === "true";
+  if (demo) {
+    // The demo resets its data: it must never run on a real database.
+    const name = (() => {
+      try {
+        return decodeURIComponent(new URL(source.DATABASE_URL ?? "").pathname.replace(/^\//, ""));
+      } catch {
+        return "";
+      }
+    })();
+    if (!name.endsWith("_demo"))
+      issues.push("DEMO_MODE: DATABASE_URL must point to a *_demo database");
+  }
   if (
+    !demo &&
     source.NODE_ENV === "production" &&
     source.WHATSAPP_GRAPH_BASE_URL !== undefined &&
     source.WHATSAPP_GRAPH_BASE_URL.replace(/\/+$/, "") !== META_GRAPH_BASE_URL
@@ -258,14 +298,14 @@ function crossFieldIssues(source: Record<string, string | undefined>): string[] 
     issues.push("PANEL_PUBLIC_URL: must use https:// in production");
   }
   const provider = source.TRANSCRIPTION_PROVIDER ?? "fake";
-  if (source.NODE_ENV === "production" && provider === "fake") {
+  if (source.NODE_ENV === "production" && provider === "fake" && !demo) {
     issues.push("TRANSCRIPTION_PROVIDER: the fake provider is not allowed in production");
   }
   if (source.N8N_DELIVERY_ENABLED === "true" && !source.N8N_WEBHOOK_SECRET?.trim()) {
     issues.push("N8N_WEBHOOK_SECRET: is required when N8N_DELIVERY_ENABLED=true");
   }
   const aiProvider = source.AI_PROVIDER ?? "fake";
-  if (source.NODE_ENV === "production" && aiProvider === "fake") {
+  if (source.NODE_ENV === "production" && aiProvider === "fake" && !demo) {
     issues.push("AI_PROVIDER: the fake provider is not allowed in production");
   }
   if (aiProvider === "anthropic" && !source.ANTHROPIC_API_KEY?.trim()) {
@@ -301,7 +341,29 @@ export class EnvValidationError extends Error {
   }
 }
 
-export function parseEnv(source: Record<string, string | undefined>): Env {
+/**
+ * DEMO_MODE (phase 9 M8) is applied BEFORE validation, whatever the other variables say: fake
+ * LLM + fake transcriber ($0), the fake Graph API of this API (no real WhatsApp can leave),
+ * recorded outputs and transcripts from the demo assets.
+ */
+export function applyDemoMode(
+  source: Record<string, string | undefined>,
+): Record<string, string | undefined> {
+  if (source.DEMO_MODE !== "true") return source;
+  const assets = (source.DEMO_ASSETS_DIR ?? "demo").replace(/\/+$/, "");
+  return {
+    ...source,
+    AI_PROVIDER: "fake",
+    TRANSCRIPTION_PROVIDER: "fake",
+    WHATSAPP_GRAPH_BASE_URL:
+      source.DEMO_GRAPH_URL?.trim() || `http://127.0.0.1:${source.PORT ?? "4000"}`,
+    AI_FAKE_GOLDEN_DIR: `${assets}/golden`,
+    TRANSCRIPTION_FAKE_DIR: `${assets}/transcripts`,
+  };
+}
+
+export function parseEnv(input: Record<string, string | undefined>): Env {
+  const source = applyDemoMode(input);
   const result = envSchema.safeParse(source);
   const issues = [
     ...(result.success

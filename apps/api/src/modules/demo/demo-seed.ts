@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import * as XLSX from "xlsx";
 import type { PrismaClient } from "../../common/db.js";
 import type { Logger } from "../../common/logger.js";
@@ -17,7 +19,8 @@ import {
   sheetPreview,
   type ColumnMappingProposal,
 } from "../sheets/sheet-extraction.js";
-import { normalizeMapperTable } from "../sheets/sheet-mapping.js";
+import { choosePriceColumn, normalizeMapperTable } from "../sheets/sheet-mapping.js";
+import { saveSheetFormatInTx } from "../sheets/sheet-format.repository.js";
 import { headerFingerprint } from "../sheets/sheet-values.js";
 import type { ExtractionOutput } from "../extraction/extraction.schemas.js";
 import type { StoredExtraction } from "../extraction/ingestion.service.js";
@@ -27,6 +30,7 @@ import {
   DEMO_CUSTOMERS,
   DEMO_NORTE_SHEET,
   DEMO_NORTE_SHEET_MAPPER,
+  DEMO_SAMPLE_SENDERS,
   DEMO_SUPPLIERS,
   type DemoSupplier,
 } from "./demo-data.js";
@@ -67,11 +71,18 @@ function prng(seed: number) {
 }
 
 const DAY = 86_400_000;
+const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+export interface DemoUser {
+  email: string;
+  password: string;
+  name: string;
+}
+
 export interface DemoUsers {
-  operator: { email: string; password: string; name: string };
-  admin?: { email: string; password: string; name: string };
+  operator: DemoUser;
+  admin?: DemoUser;
 }
 
 export interface SeedResult {
@@ -88,6 +99,15 @@ export async function seedDemo(deps: {
   users: DemoUsers;
   logger: Logger;
   now?: Date;
+  /**
+   * "Reiniciar demo" / automatic reset (phase 9 M8): keep users, sessions and refresh tokens
+   * (visitors stay logged in); the demo users get their public password back.
+   */
+  keepAuth?: boolean;
+  /** Demo assets (recorded outputs, sample files): the sample senders' catalogs. */
+  assetsDir?: string;
+  /** E2E only: one review per Playwright project to approve and one to reject. */
+  e2eReviews?: boolean;
 }): Promise<SeedResult> {
   const { prisma, logger } = deps;
   const now = deps.now ?? new Date();
@@ -104,9 +124,13 @@ export async function seedDemo(deps: {
   const tables = await prisma.$queryRaw<{ tablename: string }[]>`
     SELECT tablename FROM pg_tables
      WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'`;
-  if (tables.length > 0) {
+  const kept = deps.keepAuth
+    ? new Set(["users", "auth_sessions", "refresh_tokens"])
+    : new Set<string>();
+  const wiped = tables.filter((t) => !kept.has(t.tablename));
+  if (wiped.length > 0) {
     await prisma.$executeRawUnsafe(
-      `TRUNCATE TABLE ${tables.map((t) => `"${t.tablename}"`).join(", ")} RESTART IDENTITY CASCADE`,
+      `TRUNCATE TABLE ${wiped.map((t) => `"${t.tablename}"`).join(", ")} RESTART IDENTITY CASCADE`,
     );
   }
 
@@ -120,26 +144,28 @@ export async function seedDemo(deps: {
   });
 
   // ── Users ──────────────────────────────────────────────────────────────────
-  const operator = await prisma.user.create({
-    data: {
-      email: deps.users.operator.email,
-      name: deps.users.operator.name,
-      role: "operator",
-      passwordHash: await hashPassword(deps.users.operator.password),
+  // Upsert: a reset keeps the accounts (and their sessions) but restores the public password
+  // and the role, and clears any lockout a visitor may have caused.
+  const upsertUser = async (u: DemoUser, role: "admin" | "operator") => {
+    const data = {
+      name: u.name,
+      role,
+      active: true,
+      passwordHash: await hashPassword(u.password),
       passwordChangedAt: now,
-    },
-  });
-  if (deps.users.admin) {
-    await prisma.user.create({
-      data: {
-        email: deps.users.admin.email,
-        name: deps.users.admin.name,
-        role: "admin",
-        passwordHash: await hashPassword(deps.users.admin.password),
-        passwordChangedAt: now,
-      },
+      failedLoginCount: 0,
+      loginWindowStartedAt: null,
+      lockedUntil: null,
+      lockLevel: 0,
+    };
+    return prisma.user.upsert({
+      where: { email: u.email },
+      create: { email: u.email, ...data },
+      update: data,
     });
-  }
+  };
+  const operator = await upsertUser(deps.users.operator, "operator");
+  if (deps.users.admin) await upsertUser(deps.users.admin, "admin");
 
   let waSeq = 0;
   const wamid = () => `wamid.DEMO${String(++waSeq).padStart(8, "0")}`;
@@ -556,6 +582,160 @@ export async function seedDemo(deps: {
     }),
     { suspicious: true },
   );
+
+  // ── "Probar el sistema" senders (phase 9 M8) ───────────────────────────────
+  const assetsDir = deps.assetsDir ?? "demo";
+  const sampleSupplier = async (
+    key: keyof typeof DEMO_SAMPLE_SENDERS,
+    taxIncluded: boolean | null,
+  ) => {
+    const sender = DEMO_SAMPLE_SENDERS[key];
+    const supplier = await prisma.supplier.create({
+      data: {
+        name: sender.supplierName,
+        normalizedName: normalizeSupplierName(sender.supplierName),
+        taxIncluded,
+        taxIncludedAt: taxIncluded === null ? null : at(20),
+      },
+    });
+    return {
+      ...(await conversationFor(sender.waId, sender.contactName, "supplier", supplier.id)),
+      supplierId: supplier.id,
+    };
+  };
+  const asSupplier = (name: string, taxIncluded: boolean) =>
+    ({ key: name, name, waId: "", contactName: name, taxIncluded, products: [] }) as DemoSupplier;
+
+  // Distribuidora Demo S.A.: the September PDF catalog, from its RECORDED extraction, so the
+  // photo / voice note buttons (recorded against it) point at the right products.
+  const pdfExtraction = readdirSync(join(assetsDir, "golden", "extract"))
+    .map(
+      (f) =>
+        JSON.parse(
+          readFileSync(join(assetsDir, "golden", "extract", f), "utf8"),
+        ) as ExtractionOutput,
+    )
+    .find(
+      (o) => o.listKind === "full_list" && o.supplierName === DEMO_SAMPLE_SENDERS.demo.supplierName,
+    );
+  if (!pdfExtraction)
+    throw new Error(`demo assets: no recorded PDF extraction in ${assetsDir}/golden`);
+  const demoIds = await sampleSupplier("demo", true);
+  await ingestList(
+    asSupplier(DEMO_SAMPLE_SENDERS.demo.supplierName, true),
+    demoIds,
+    at(20),
+    "Lista de precios septiembre",
+    pdfExtraction,
+  );
+
+  // Distribuidora Ejemplo S.R.L.: November spreadsheet prices + its format ALREADY APPROVED
+  // (user 2026-09-26): its next spreadsheet is read without AI.
+  const ejemploIds = await sampleSupplier("ejemplo", true);
+  const november: [string, string, number][] = [
+    ["Candado bronce 40mm", "unidad", 310.5],
+    ["Cerradura de embutir", "unidad", 245],
+    ["Bisagra 3 pulgadas", "unidad", 455],
+    ["Tarugo 8mm x100", "caja", 144],
+    ["Pegamento de contacto 250ml", "lata", 44],
+    ["Cinta aisladora 20m", "rollo", 100],
+    ["Guante de nitrilo talle M", "par", 115],
+  ];
+  await ingestList(
+    asSupplier(DEMO_SAMPLE_SENDERS.ejemplo.supplierName, true),
+    ejemploIds,
+    at(30),
+    "Lista noviembre",
+    list(
+      asSupplier(DEMO_SAMPLE_SENDERS.ejemplo.supplierName, true),
+      november.map(([name, unit, p]) => item(name, p, { unit })),
+      { listKind: "full_list", fullListEvidence: "LISTA DE PRECIOS NOVIEMBRE" },
+    ),
+  );
+  {
+    const bytes = new Uint8Array(readFileSync(join(assetsDir, "assets", "precios-multiples.xlsx")));
+    const converted = await convertDocument(
+      { bytes, mimeType: XLSX_MIME, filename: "precios.xlsx" },
+      DEFAULT_CONVERSION_LIMITS,
+    );
+    if (!converted.ok) throw new Error(`demo spreadsheet conversion failed: ${converted.reason}`);
+    const mapper = JSON.parse(
+      readFileSync(
+        join(
+          assetsDir,
+          "golden",
+          "map_columns",
+          readdirSync(join(assetsDir, "golden", "map_columns"))[0]!,
+        ),
+        "utf8",
+      ),
+    ) as { tables: Parameters<typeof normalizeMapperTable>[0][] };
+    const answer = mapper.tables[0]!;
+    const table = converted.tables[0]!;
+    const header = table.rows[answer.headerRow]!;
+    const { mapping } = normalizeMapperTable(answer, header.length);
+    await prisma.$transaction((tx) =>
+      saveSheetFormatInTx(tx, {
+        supplierId: ejemploIds.supplierId,
+        fingerprint: headerFingerprint(header)!,
+        headerCells: header.map(cellText),
+        sheetName: table.name,
+        format: { isPriceTable: true, mapping: choosePriceColumn(mapping, 4) },
+        approvedById: operator.id,
+        reviewItemId: null,
+      }),
+    );
+  }
+
+  // Mayorista del Este: no approved format → its spreadsheet goes to the column review.
+  await sampleSupplier("mayorista", null);
+
+  // E2E only (user, after M2): each Playwright project approves and rejects ITS OWN reviews.
+  if (deps.e2eReviews) {
+    for (const project of ["desktop", "pixel", "iphone"]) {
+      const name = `Proveedor E2E ${project}`;
+      const supplier = await prisma.supplier.create({
+        data: {
+          name,
+          normalizedName: normalizeSupplierName(name),
+          taxIncluded: true,
+          taxIncludedAt: at(10),
+        },
+      });
+      const ids = {
+        ...(await conversationFor(
+          `598994100${["desktop", "pixel", "iphone"].indexOf(project)}0`,
+          name,
+          "supplier",
+          supplier.id,
+        )),
+        supplierId: supplier.id,
+      };
+      const e2eSupplier = asSupplier(name, true);
+      const products = [`Martillo ${project}`, `Serrucho ${project}`];
+      await ingestList(
+        e2eSupplier,
+        ids,
+        at(10),
+        "Lista inicial",
+        list(
+          e2eSupplier,
+          products.map((p) => item(p, 100)),
+        ),
+      );
+      // +200 %: over the outlier limit → one line review each (resolvable by an operator).
+      await ingestList(
+        e2eSupplier,
+        ids,
+        at(1),
+        "Aumento",
+        list(
+          e2eSupplier,
+          products.map((p) => item(p, 300)),
+        ),
+      );
+    }
+  }
 
   // ── Customers: queries and orders (deterministic pre-filter, no LLM) ───────
   const customerIds: { contactId: string; conversationId: string }[] = [];

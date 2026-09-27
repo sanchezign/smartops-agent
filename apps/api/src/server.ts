@@ -22,6 +22,11 @@ import {
 import { createDigestLinkRepository } from "./modules/admin/digest-link.repository.js";
 import { createCatalogQueryRepository } from "./modules/admin/catalog-query.repository.js";
 import { createConversationQueryRepository } from "./modules/admin/conversation-query.repository.js";
+import { createDemoGraphRouter, createDemoMediaStore } from "./modules/demo/demo-graph.js";
+import { createDemoInjector } from "./modules/demo/demo-injector.js";
+import { createDemoReset } from "./modules/demo/demo-reset.js";
+import { createDemoTraceRepository } from "./modules/demo/demo-trace.repository.js";
+import { createDemoRouter } from "./modules/demo/demo.routes.js";
 import { createEventHub } from "./modules/events/event-hub.js";
 import { createPgListener } from "./modules/events/pg-listener.js";
 import { createReviewQueryRepository } from "./modules/admin/review-query.repository.js";
@@ -144,6 +149,7 @@ const outbound = createOutboundService({
       version: env.WHATSAPP_GRAPH_API_VERSION,
       accessToken: env.WHATSAPP_ACCESS_TOKEN,
       timeoutMs: env.WHATSAPP_API_TIMEOUT_MS,
+      blockMeta: env.DEMO_MODE,
     },
     phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID,
   }),
@@ -177,6 +183,76 @@ const supplierAck = createSupplierAckService({
   settings,
   outbound,
 });
+
+// ─── Public demo (DEMO_MODE, phase 9 M8, ADR-021) ───
+const demo = env.DEMO_MODE
+  ? (() => {
+      const store = createDemoMediaStore();
+      const business = {
+        phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID,
+        wabaId: env.WHATSAPP_WABA_ID,
+        displayPhoneNumber: "59800000000",
+      };
+      // Everything goes through our own signed webhook: the real pipeline.
+      const webhook = {
+        url: `http://127.0.0.1:${env.PORT}/api/v1/webhooks/whatsapp`,
+        appSecret: env.WHATSAPP_APP_SECRET,
+      };
+      const reset = createDemoReset({
+        prisma,
+        catalog,
+        users: {
+          operator: {
+            email: env.DEMO_OPERATOR_EMAIL,
+            password: env.DEMO_OPERATOR_PASSWORD,
+            name: "Operador demo",
+          },
+          ...(env.DEMO_ADMIN_PASSWORD
+            ? {
+                admin: {
+                  email: env.DEMO_ADMIN_EMAIL,
+                  password: env.DEMO_ADMIN_PASSWORD,
+                  name: "Admin demo",
+                },
+              }
+            : {}),
+        },
+        assetsDir: env.DEMO_ASSETS_DIR,
+        store,
+        logger,
+        intervalMinutes: env.DEMO_RESET_INTERVAL_MINUTES,
+        e2eReviews: env.DEMO_E2E_REVIEWS,
+      });
+      return {
+        reset,
+        graphRouter: createDemoGraphRouter({
+          store,
+          outbox: { sent: [] },
+          accessToken: env.WHATSAPP_ACCESS_TOKEN,
+          baseUrl: env.WHATSAPP_GRAPH_BASE_URL,
+          business,
+          webhook,
+          logger,
+        }),
+        router: createDemoRouter({
+          operator: { email: env.DEMO_OPERATOR_EMAIL, password: env.DEMO_OPERATOR_PASSWORD },
+          injector: createDemoInjector({
+            assetsDir: env.DEMO_ASSETS_DIR,
+            store,
+            business,
+            webhook,
+            logger,
+          }),
+          trace: createDemoTraceRepository(prisma),
+          reset,
+          auth,
+          rateLimit: { windowMs: 10 * 60_000, injectMax: env.DEMO_RATE_LIMIT_MAX, resetMax: 5 },
+          logger,
+        }),
+      };
+    })()
+  : undefined;
+if (demo) logger.warn("DEMO_MODE: fake LLM, fake transcriber, fake Graph API — no real WhatsApp");
 
 const eventHub = createEventHub({
   maxPerUser: env.SSE_MAX_STREAMS_PER_USER,
@@ -221,6 +297,7 @@ const app = createApp({
     sessions: sessionsRepository,
   },
   events: { hub: eventHub, heartbeatMs: env.SSE_HEARTBEAT_SECONDS * 1000 },
+  ...(demo ? { demo: { graphRouter: demo.graphRouter, router: demo.router } } : {}),
 });
 // Real time (ADR-020): ONE LISTEN connection for this process → in-memory hub → SSE streams.
 const listener = createPgListener({
@@ -230,6 +307,7 @@ const listener = createPgListener({
   logger,
 });
 await listener.start();
+demo?.reset.start();
 
 const server = app.listen(env.PORT, () => {
   logger.info(
@@ -252,6 +330,7 @@ function shutdown(reason: string, exitCode: number): void {
 
   // Open SSE streams would keep server.close() waiting: end them (the panel reconnects).
   eventHub.close();
+  demo?.reset.stop();
   void listener.stop();
   server.close(() => {
     boss

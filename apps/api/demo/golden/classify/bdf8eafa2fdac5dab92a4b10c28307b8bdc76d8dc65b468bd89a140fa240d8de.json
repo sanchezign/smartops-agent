@@ -1,0 +1,5 @@
+{
+  "classification": "price_update_partial",
+  "confidence": 0.55,
+  "reason": "Menciona 'Lista septiembre' pero solo da dos productos, sin señal explícita de que sea la lista completa."
+}

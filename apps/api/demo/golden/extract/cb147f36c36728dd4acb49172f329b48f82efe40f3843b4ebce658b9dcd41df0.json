@@ -1,0 +1,30 @@
+{
+  "isPriceList": true,
+  "listKind": "partial_update",
+  "fullListEvidence": null,
+  "supplierName": "Distribuidora Demo S.A.",
+  "currency": "UYU",
+  "validFrom": null,
+  "taxIncluded": null,
+  "globalChangePct": null,
+  "items": [
+    {
+      "name": "Tornillo 6mm",
+      "sku": null,
+      "unit": "unidad",
+      "price": "14",
+      "priceChangePct": null,
+      "currency": null,
+      "available": null,
+      "stock": null,
+      "catalogRef": "P6",
+      "matchConfidence": "high",
+      "uncertain": true,
+      "note": "Transcripción de voz con frase poco clara ('de lunas'), se interpretó el precio como 14 pesos."
+    }
+  ],
+  "warnings": [
+    "La transcripción contiene una frase ambigua ('de lunas') que no se pudo interpretar con certeza; se asumió que se refiere solo al precio."
+  ],
+  "suspiciousInstructions": false
+}

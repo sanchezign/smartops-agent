@@ -152,6 +152,8 @@ const graph = {
   version: env.WHATSAPP_GRAPH_API_VERSION,
   accessToken: env.WHATSAPP_ACCESS_TOKEN,
   timeoutMs: env.WHATSAPP_API_TIMEOUT_MS,
+  // DEMO_MODE (ADR-021): the client refuses Meta hosts, whatever the base URL says.
+  blockMeta: env.DEMO_MODE,
 };
 
 const mediaStorage = createPostgresMediaStorage(prisma);
@@ -175,7 +177,8 @@ await registerWhatsAppMediaWorkers(boss, {
       graph,
       phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID,
       downloadTimeoutMs: env.MEDIA_DOWNLOAD_TIMEOUT_MS,
-      production: env.NODE_ENV === "production",
+      // The public demo runs as production but downloads from its own fake Graph API.
+      production: env.NODE_ENV === "production" && !env.DEMO_MODE,
     }),
     maxBytes: env.MEDIA_MAX_BYTES,
   }),

@@ -32,7 +32,8 @@ export interface SaveSheetFormatInput {
   sheetName: string | null;
   format: StoredSheetFormat;
   approvedById: string | null;
-  reviewItemId: string;
+  /** The column_mapping review that approved it (null: seeded demo format). */
+  reviewItemId: string | null;
 }
 
 /**

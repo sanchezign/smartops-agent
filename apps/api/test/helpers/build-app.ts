@@ -1,3 +1,4 @@
+import type { Router } from "express";
 import { createApp } from "../../src/app.js";
 import { createLogger } from "../../src/common/logger.js";
 import { parseEnv } from "../../src/config/env.js";
@@ -171,6 +172,7 @@ export function buildTestApp(
     auth?: AuthService;
     admin?: AdminDeps;
     events?: { hub: EventHub; heartbeatMs: number };
+    demo?: { graphRouter: Router; router: Router };
   } = {},
 ) {
   const env = parseEnv({ ...TEST_ENV_SOURCE, ...options.env });
@@ -188,5 +190,6 @@ export function buildTestApp(
       hub: createEventHub({ maxPerUser: 5, maxTotal: 50, flushMs: 10, logger: createLogger(env) }),
       heartbeatMs: 60_000,
     },
+    ...(options.demo ? { demo: options.demo } : {}),
   });
 }

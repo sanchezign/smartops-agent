@@ -9,6 +9,8 @@ import { E2E } from "./e2e/env";
  *
  *   pnpm --filter @smartops/admin e2e
  */
+const API_ENV = apiEnv();
+
 export default defineConfig({
   testDir: "./e2e",
   testMatch: /.*\.spec\.ts/,
@@ -38,23 +40,16 @@ export default defineConfig({
       url: `http://localhost:${E2E.apiPort}/api/v1/health`,
       reuseExistingServer: false,
       timeout: 240_000,
-      env: {
-        DATABASE_URL: E2E.databaseUrl,
-        DEMO_DATABASE_URL: E2E.databaseUrl,
-        DEMO_OPERATOR_EMAIL: E2E.operator.email,
-        DEMO_OPERATOR_PASSWORD: E2E.operator.password,
-        DEMO_ADMIN_EMAIL: E2E.admin.email,
-        DEMO_ADMIN_PASSWORD: E2E.admin.password,
-        PORT: String(E2E.apiPort),
-        CORS_ORIGINS: E2E.panelUrl,
-        LOG_LEVEL: "warn",
-        LOGIN_RATE_LIMIT_MAX: "1000",
-        // Every browser project hits the API from one IP in a few minutes (not a real-world load).
-        RATE_LIMIT_MAX: "100000",
-        N8N_DELIVERY_ENABLED: "false",
-        AI_PROVIDER: "fake",
-        TRANSCRIPTION_PROVIDER: "fake",
-      },
+      env: API_ENV,
+    },
+    {
+      // Plays n8n (the exported workflows, over HTTP) and runs the REAL worker (phase 9 M8).
+      command: "pnpm exec tsx --env-file-if-exists=.env scripts/demo/e2e-n8n.ts",
+      cwd: "../api",
+      url: "http://127.0.0.1:4110/health",
+      reuseExistingServer: false,
+      timeout: 300_000,
+      env: { ...API_ENV, API_URL: `http://127.0.0.1:${E2E.apiPort}`, N8N_FAKE_PORT: "4110" },
     },
     {
       // Production build (deterministic, like the deploy), in its own dist dir.
@@ -69,3 +64,28 @@ export default defineConfig({
     },
   ],
 });
+
+/** The E2E API runs the PUBLIC DEMO (DEMO_MODE) on its own *_demo database. */
+function apiEnv(): Record<string, string> {
+  return {
+    DATABASE_URL: E2E.databaseUrl,
+    DEMO_DATABASE_URL: E2E.databaseUrl,
+    DEMO_OPERATOR_EMAIL: E2E.operator.email,
+    DEMO_OPERATOR_PASSWORD: E2E.operator.password,
+    DEMO_ADMIN_EMAIL: E2E.admin.email,
+    DEMO_ADMIN_PASSWORD: E2E.admin.password,
+    PORT: String(E2E.apiPort),
+    CORS_ORIGINS: E2E.panelUrl,
+    LOG_LEVEL: "warn",
+    LOGIN_RATE_LIMIT_MAX: "1000",
+    // Every browser project hits the API from one IP in a few minutes (not a real-world load).
+    RATE_LIMIT_MAX: "100000",
+    DEMO_MODE: "true",
+    DEMO_E2E_REVIEWS: "true",
+    DEMO_RESET_INTERVAL_MINUTES: "0",
+    DEMO_RATE_LIMIT_MAX: "1000",
+    N8N_DELIVERY_ENABLED: "true",
+    N8N_RECEIVER_WEBHOOK_URL: "http://127.0.0.1:4110/webhook/smartops-message-ready",
+    N8N_WEBHOOK_SECRET: "e2e-fake-n8n-secret-0000000000000000",
+  };
+}

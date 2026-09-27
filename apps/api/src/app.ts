@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Router } from "express";
 import helmet from "helmet";
 import { createErrorHandler, notFoundHandler } from "./common/errors/error-handler.js";
 import { decimalJsonReplacer } from "./common/json.js";
@@ -35,6 +35,11 @@ export interface AppDeps {
    * LISTEN connection in server.ts). Omitted in tests: a hub nobody publishes to.
    */
   events?: { hub: EventHub; heartbeatMs: number };
+  /**
+   * DEMO_MODE only (phase 9 M8, ADR-021): the fake Graph API (root paths /v{n}/…,
+   * /media-download/…) and /api/v1/demo/*. Absent → those routes do not exist.
+   */
+  demo?: { graphRouter: Router; router: Router };
 }
 
 /** Builds the Express app without listening (server.ts listens; Supertest uses it directly). */
@@ -48,6 +53,7 @@ export function createApp({
   auth,
   admin,
   events,
+  demo,
 }: AppDeps): Express {
   const app = express();
 
@@ -84,6 +90,8 @@ export function createApp({
   );
   app.use(express.json({ limit: "1mb" }));
 
+  if (demo) app.use(demo.graphRouter);
+
   const v1 = express.Router();
   v1.use(createHealthRouter({ repository: healthRepository, logger }));
   v1.use(
@@ -113,6 +121,7 @@ export function createApp({
       logger,
     }),
   );
+  if (demo) v1.use("/demo", demo.router);
   app.use("/api/v1", v1);
 
   app.use(notFoundHandler);

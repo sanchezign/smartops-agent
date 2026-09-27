@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { graphRequest, GraphApiError, type GraphApiConfig } from "./graph-api.js";
+import { graphRequest, GraphApiError, type GraphApiConfig, isMetaHost } from "./graph-api.js";
 
 /**
  * WhatsApp media download (Meta docs: business-phone-numbers/media):
@@ -49,13 +49,19 @@ const META_DOWNLOAD_HOSTS = ["graph.facebook.com", "lookaside.fbsbx.com"];
  */
 export function isAllowedDownloadUrl(
   url: string,
-  options: { graphBaseUrl: string; production: boolean },
+  options: { graphBaseUrl: string; production: boolean; demoMode?: boolean },
 ): boolean {
   let parsed: URL;
   try {
     parsed = new URL(url);
   } catch {
     return false;
+  }
+  if (options.demoMode) {
+    // DEMO_MODE (ADR-021): only the fake Graph API of the demo, never Meta.
+    if (isMetaHost(parsed.hostname)) return false;
+    const graph = new URL(options.graphBaseUrl);
+    return parsed.hostname === graph.hostname && parsed.port === graph.port;
   }
   const metaHost =
     META_DOWNLOAD_HOSTS.includes(parsed.hostname) || parsed.hostname.endsWith(".fbsbx.com");
@@ -119,6 +125,7 @@ export function createWhatsAppMediaClient(deps: {
         !isAllowedDownloadUrl(url, {
           graphBaseUrl: deps.graph.baseUrl,
           production: deps.production,
+          demoMode: deps.graph.blockMeta === true,
         })
       ) {
         // Do not include the URL: it carries signed parameters.

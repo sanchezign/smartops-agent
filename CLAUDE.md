@@ -520,8 +520,8 @@ Each one gets an ADR in docs/adr/.
   (actor `cli:<--by>`).
 
 ## Current phase
-**Phase 8 complete (2026-09-26), merged to `main`. Phase 9 (admin UI) IN PROGRESS on
-`feat/phase-9-admin-panel`. M3b (phase 5) and MFA (TOTP) remain recommended/required before
+**Phase 8 complete (2026-09-26), merged to `main`. Phase 9 (admin UI): M1–M8 DONE on
+`feat/phase-9-admin-panel`, waiting for the user's phone tests before closing and merging. M3b (phase 5) and MFA (TOTP) remain recommended/required before
 a real client.**
 
 1. scaffold — done (2026-09-24).
@@ -1196,8 +1196,57 @@ a real client.**
      `referrer: no-referrer`): one item → redirect, several → list; only in-panel paths are
      followed (`digests/paths.ts`). Demo seed: two sent digests to a fake team number with
      tokens (E2E reads them from the E2E DB through the API package's `pg`).
+   - M8 public demo (DEMO_MODE) — DONE (2026-09-27), ADR-021. WAITING FOR THE USER'S PHONE
+     TESTS; phase 9 not closed/merged yet. `applyDemoMode` in `parseEnv` (before validation,
+     whatever the rest says): AI_PROVIDER=fake with `demo/golden` (byte-identical copies of the
+     test goldens — tested), TRANSCRIPTION_PROVIDER=fake with `demo/transcripts`,
+     WHATSAPP_GRAPH_BASE_URL = `DEMO_GRAPH_URL` (default http://127.0.0.1:PORT); production
+     fake rules and the Meta-only graph rule are skipped ONLY in DEMO_MODE; DEMO_MODE refuses a
+     DATABASE_URL not ending in `_demo`. No real WhatsApp (tested at every layer,
+     `test/unit/demo-mode.test.ts`): `GraphApiConfig.blockMeta` → `graphRequest` throws
+     `DemoModeBlockedError` for Meta hosts (`isMetaHost`: facebook.com, fbsbx.com, fbcdn.net,
+     whatsapp.com/.net, meta.com + subdomains) before fetch; `isAllowedDownloadUrl` demoMode =
+     only the demo host; worker media client `production` false in demo. Demo Graph API
+     (`demo/demo-graph.ts`, mounted at the app root only in demo): media metadata + HMAC-signed
+     5-min download URLs from an in-memory store (`createDemoMediaStore`, 200 items), POST
+     messages → wamid + signed status webhooks (sent/delivered/read) to our own webhook, outbox
+     in memory. Payload builders MOVED to `src/modules/demo/wa-payloads.ts` / `wa-ids.ts`
+     (simulator files are re-export shims). `demo-injector.ts`: kinds foto, pdf, audio,
+     planilla, planilla_nueva, injection → Meta-shaped payload POSTed SIGNED to our webhook (the
+     real pipeline). Assets `apps/api/demo/assets` (fixture copies) + a 5 s Ogg/Opus voice note
+     generated in code (`demo-audio.ts`, Ogg CRC, OpusHead/OpusTags, silent CELT frames; duration
+     reader says 5 s; its sha keys the transcript). Seed (`seedDemo` options `keepAuth`,
+     `assetsDir`, `e2eReviews`): users are UPSERTED (password/role/lockout restored);
+     "Distribuidora Demo S.A." catalog from the RECORDED PDF extraction (refs P1..P7 follow
+     alphabetical catalog order, so the photo/voice goldens line up); "Distribuidora Ejemplo
+     S.R.L." with November prices + its spreadsheet format ALREADY APPROVED
+     (`saveSheetFormatInTx`, fingerprint of header row 2, mapper golden, price column 4;
+     `SaveSheetFormatInput.reviewItemId` now nullable); "Mayorista del Este" without a format;
+     E2E only: "Proveedor E2E <project>" with Martillo/Serrucho outlier reviews per Playwright
+     project. Routes `/api/v1/demo/*` only in demo: GET /info (public: operator creds,
+     nextResetAt), POST /inject (login + `DEMO_RATE_LIMIT_MAX` per 10 min), GET /trace/:wamid,
+     POST /reset (login, 5 per 10 min). `demo-reset.ts`: one at a time, keepAuth, clears the
+     media store, automatic reset every `DEMO_RESET_INTERVAL_MINUTES` (setTimeout rescheduled
+     after each reset, manual too). Panel: login card with the public operator credentials +
+     "Usar estos datos" (only when /demo/info exists), "Modo demo" banner, nav item + page
+     `/probar` (six cards, live timeline per sent sample from `features/demo/trace.ts` — pure,
+     tested —, "Reiniciar demo" with confirm). Local: `apps/api/.env.demo` (NOT versioned;
+     `.env.demo.example` is, via a gitignore exception) + `pnpm --filter @smartops/api dev:demo`
+     (API + worker, `.env` then `.env.demo`; Node gives the LAST env file precedence).
+     E2E: the Playwright API runs in DEMO_MODE (+ DEMO_E2E_REVIEWS, reset interval 0, n8n
+     delivery on) and `scripts/demo/e2e-n8n.ts` waits for the API, starts the REAL worker and
+     plays the three workflows over HTTP; every sample tested end to end in the browser; each
+     browser project approves/rejects its own reviews with the pinned bottom buttons
+     (`mobile-reviews.spec.ts`, in-viewport check on phones). Lessons: in node edit scripts, JS
+     string escapes eat backslashes (`\/` → `/`) — write regexes with the Edit/Write tools; the
+     Edit tool turned ` ` escapes into real characters (built with fromCharCode instead).
 
 ## Known issues (out of scope)
+- **Phase 9 M8:** demo media lives in the API's memory: after an API restart, older demo
+  messages show "no se pudo descargar" until the next reset. Demo content other than the six
+  samples gets the fake responders (low confidence → review), never a real model.
+- **Phase 9:** the global rate limit (RATE_LIMIT_MAX 300/min per IP) is shared by every panel
+  user behind one NAT; raise it for a client office with many users.
 - **Phase 7 M3:** `wa:optout` (manual/off-WhatsApp) does not send a WhatsApp confirmation
   (only the in-band keyword flow does, since that is a direct reply to the contact's own
   message) — the panel (phase 9) should probably confirm to the operator instead.
