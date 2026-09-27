@@ -42,6 +42,29 @@ export interface AppDeps {
   demo?: { graphRouter: Router; router: Router };
 }
 
+export interface RouteMount {
+  prefix: string;
+  router: Router;
+}
+
+/** Every "METHOD /path" the app serves (from the recorded mounts; phase 10 M2). */
+export function listRoutes(app: Express): string[] {
+  const out = new Set<string>();
+  for (const { prefix, router } of app.locals.routeMounts as RouteMount[]) {
+    for (const layer of (
+      router as unknown as {
+        stack: { route?: { path: string; methods: Record<string, boolean> } }[];
+      }
+    ).stack) {
+      if (!layer.route) continue;
+      const path = `${prefix}${layer.route.path === "/" ? "" : layer.route.path}` || "/";
+      for (const [method, on] of Object.entries(layer.route.methods))
+        if (on && method !== "_all") out.add(`${method.toUpperCase()} ${path}`);
+    }
+  }
+  return [...out].sort();
+}
+
 /** Builds the Express app without listening (server.ts listens; Supertest uses it directly). */
 export function createApp({
   env,
@@ -77,8 +100,19 @@ export function createApp({
     }),
   );
 
+  // Every router is mounted through mount(): the list feeds the authorization matrix test
+  // (phase 10 M2), so a new router cannot appear without an entry in the matrix.
+  const routeMounts: RouteMount[] = [];
+  const mount = (parent: Express | Router, base: string, prefix: string, router: Router) => {
+    if (prefix) (parent as Router).use(prefix, router);
+    else (parent as Router).use(router);
+    routeMounts.push({ prefix: `${base}${prefix}`, router });
+  };
+
   // Webhooks need the RAW body for signature checks: mounted BEFORE express.json.
-  app.use(
+  mount(
+    app,
+    "",
     "/api/v1/webhooks/whatsapp",
     createWhatsAppWebhookRouter({
       repository: whatsappWebhookRepository,
@@ -90,11 +124,14 @@ export function createApp({
   );
   app.use(express.json({ limit: "1mb" }));
 
-  if (demo) app.use(demo.graphRouter);
+  if (demo) mount(app, "", "", demo.graphRouter);
 
   const v1 = express.Router();
-  v1.use(createHealthRouter({ repository: healthRepository, logger }));
-  v1.use(
+  const V1 = "/api/v1";
+  mount(v1, V1, "", createHealthRouter({ repository: healthRepository, logger }));
+  mount(
+    v1,
+    V1,
     "/internal",
     createInternalRouter({
       ...internal,
@@ -103,9 +140,16 @@ export function createApp({
       rateLimit: { windowMs: env.RATE_LIMIT_WINDOW_MS, limit: env.INTERNAL_RATE_LIMIT_MAX },
     }),
   );
-  v1.use("/auth", createAuthRouter({ service: auth, env, logger }));
-  v1.use("/admin", createAdminRouter({ deps: admin, authenticate: auth.authenticate, logger }));
-  v1.use(
+  mount(v1, V1, "/auth", createAuthRouter({ service: auth, env, logger }));
+  mount(
+    v1,
+    V1,
+    "/admin",
+    createAdminRouter({ deps: admin, authenticate: auth.authenticate, logger }),
+  );
+  mount(
+    v1,
+    V1,
     "/events",
     createEventsRouter({
       hub:
@@ -121,8 +165,9 @@ export function createApp({
       logger,
     }),
   );
-  if (demo) v1.use("/demo", demo.router);
-  app.use("/api/v1", v1);
+  if (demo) mount(v1, V1, "/demo", demo.router);
+  app.use(V1, v1);
+  app.locals.routeMounts = routeMounts;
 
   app.use(notFoundHandler);
   app.use(createErrorHandler({ isProduction: env.NODE_ENV === "production" }));

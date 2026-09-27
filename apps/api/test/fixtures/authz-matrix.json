@@ -1,0 +1,302 @@
+{
+  "GET /:version/:mediaId": {
+    "anonymous": 401,
+    "operator": 401,
+    "admin": 401
+  },
+  "GET /api/v1/admin/alerts": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/catalog/products": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/catalog/products/:id": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/catalog/suppliers": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/contacts/:id/consent": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/contacts/opted-out": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/conversations": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/conversations/:id": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/conversations/:id/messages": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/conversations/:id/mode": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/dashboard": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/digests/:token": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/media/:id": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/reviews": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/reviews/:id": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/reviews/summary": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/settings": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/status": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/suppliers": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/users": {
+    "anonymous": 401,
+    "operator": 403,
+    "admin": "allow"
+  },
+  "GET /api/v1/auth/me": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/demo/info": {
+    "anonymous": "allow",
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/demo/trace/:wamid": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/events": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/health": {
+    "anonymous": "allow",
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/internal/rules": {
+    "anonymous": 401,
+    "operator": 401,
+    "admin": 401
+  },
+  "GET /api/v1/internal/runs/:id": {
+    "anonymous": 401,
+    "operator": 401,
+    "admin": 401
+  },
+  "GET /api/v1/webhooks/whatsapp": {
+    "anonymous": 403,
+    "operator": 403,
+    "admin": 403
+  },
+  "GET /media-download/:mediaId": {
+    "anonymous": 401,
+    "operator": 401,
+    "admin": 401
+  },
+  "PATCH /api/v1/admin/catalog/suppliers/:id": {
+    "anonymous": 401,
+    "operator": 403,
+    "admin": "allow"
+  },
+  "PATCH /api/v1/admin/users/:id": {
+    "anonymous": 401,
+    "operator": 403,
+    "admin": "allow"
+  },
+  "POST /:version/:phoneNumberId/messages": {
+    "anonymous": 401,
+    "operator": 401,
+    "admin": 401
+  },
+  "POST /api/v1/admin/alerts/:id/acknowledge": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "POST /api/v1/admin/contacts/:id/opt-in": {
+    "anonymous": 401,
+    "operator": 403,
+    "admin": "allow"
+  },
+  "POST /api/v1/admin/contacts/:id/opt-out": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "POST /api/v1/admin/conversations/:id/pause": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "POST /api/v1/admin/conversations/:id/reply": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "POST /api/v1/admin/conversations/:id/resume": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "POST /api/v1/admin/reviews/:id/approve": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "POST /api/v1/admin/reviews/:id/reject": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "POST /api/v1/admin/users": {
+    "anonymous": 401,
+    "operator": 403,
+    "admin": "allow"
+  },
+  "POST /api/v1/admin/users/:id/reset-password": {
+    "anonymous": 401,
+    "operator": 403,
+    "admin": "allow"
+  },
+  "POST /api/v1/admin/users/:id/revoke-sessions": {
+    "anonymous": 401,
+    "operator": 403,
+    "admin": "allow"
+  },
+  "POST /api/v1/admin/users/:id/unlock": {
+    "anonymous": 401,
+    "operator": 403,
+    "admin": "allow"
+  },
+  "POST /api/v1/auth/login": {
+    "anonymous": 403,
+    "operator": 403,
+    "admin": 403
+  },
+  "POST /api/v1/auth/logout": {
+    "anonymous": 403,
+    "operator": 403,
+    "admin": 403
+  },
+  "POST /api/v1/auth/logout-all": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "POST /api/v1/auth/refresh": {
+    "anonymous": 403,
+    "operator": 403,
+    "admin": 403
+  },
+  "POST /api/v1/demo/inject": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "POST /api/v1/demo/reset": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "POST /api/v1/events": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "POST /api/v1/internal/catalog/ingest": {
+    "anonymous": 401,
+    "operator": 401,
+    "admin": 401
+  },
+  "POST /api/v1/internal/classify": {
+    "anonymous": 401,
+    "operator": 401,
+    "admin": 401
+  },
+  "POST /api/v1/internal/extract": {
+    "anonymous": 401,
+    "operator": 401,
+    "admin": 401
+  },
+  "POST /api/v1/internal/messages/ack": {
+    "anonymous": 401,
+    "operator": 401,
+    "admin": 401
+  },
+  "POST /api/v1/internal/n8n/errors": {
+    "anonymous": 401,
+    "operator": 401,
+    "admin": 401
+  },
+  "POST /api/v1/internal/notifications": {
+    "anonymous": 401,
+    "operator": 401,
+    "admin": 401
+  },
+  "POST /api/v1/webhooks/whatsapp": {
+    "anonymous": 401,
+    "operator": 401,
+    "admin": 401
+  },
+  "PUT /api/v1/admin/settings/:key": {
+    "anonymous": 401,
+    "operator": 403,
+    "admin": "allow"
+  }
+}
