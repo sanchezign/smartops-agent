@@ -1,0 +1,13 @@
+[Unit]
+Description=SmartOps demo: after a boot, confirm the containers came back and the demo answers
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/smartops/current/bin/boot-check.sh
+TimeoutStartSec=15min
+
+[Install]
+WantedBy=multi-user.target

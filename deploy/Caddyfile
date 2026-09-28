@@ -1,0 +1,52 @@
+# Public demo edge (phase 12, ADR-023): automatic HTTPS (Let's Encrypt; `localhost` gets
+# Caddy's internal CA for local tests) and ONE origin for panel + API (ADR-018, option D):
+# the refresh cookie stays SameSite=Strict and the SSE stream is direct.
+{
+	# TCP only: the OCI security list opens 80/443 TCP, no UDP for HTTP/3.
+	servers {
+		protocols h1 h2
+	}
+}
+
+{$DEMO_DOMAIN} {
+	encode zstd gzip
+
+	request_body {
+		max_size 5MB
+	}
+
+	# Security headers (user addendum C). ">" = set after the upstream answered (always ours);
+	# "?" = only when the upstream did not set one (the API's own CSP for media / JSON wins).
+	header {
+		>Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		>X-Content-Type-Options "nosniff"
+		?Referrer-Policy "strict-origin-when-cross-origin"
+		?X-Frame-Options "DENY"
+		?Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		?Cross-Origin-Opener-Policy "same-origin"
+		# Next.js (App Router) hydrates with inline scripts and the charts use inline styles:
+		# 'unsafe-inline' is needed there; everything else is same-origin only, no framing.
+		?Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+		-Server
+		-X-Powered-By
+	}
+
+	handle /api/* {
+		# Never public: n8n's internal API (API key) and Meta's webhook (the demo has no Meta).
+		# Inside this block on purpose: `handle` runs before a top-level `respond`.
+		@private path /api/v1/internal /api/v1/internal/* /api/v1/webhooks /api/v1/webhooks/*
+		respond @private 404
+
+		# text/event-stream is flushed immediately by reverse_proxy (Caddy docs): SSE is live.
+		reverse_proxy api:4000
+	}
+
+	handle {
+		reverse_proxy admin:3000
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

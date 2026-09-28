@@ -44,6 +44,20 @@ echo "== migrations"
 docker run --rm --network "$net" "${envs[@]}" "$image" \
   node node_modules/prisma/build/index.js migrate deploy
 
+echo "== demo seed (the production entry deploy.sh runs)"
+docker run --rm --network "$net" "${envs[@]}" "$image" node dist/demo-seed.js >/dev/null
+
+echo "== deploy bundle (phase 12): present, executable, n8n workflows render"
+docker run --rm --network none --entrypoint sh \
+  -e INTERNAL_API_KEY=smoke-fake-internal-api-key-0000000000000 \
+  -e N8N_WEBHOOK_SECRET=smoke-fake-n8n-webhook-secret-00000000000 \
+  "$image" -c 'set -e
+    test -f /opt/smartops-deploy/compose.yaml && test -f /opt/smartops-deploy/Caddyfile
+    test -x /opt/smartops-deploy/bin/deploy.sh && test -x /opt/smartops-deploy/bin/fetch-bundle.sh
+    node /opt/smartops-deploy/lib/render-n8n.mjs --workflows /opt/smartops-deploy/n8n/workflows \
+      --out /tmp/n8n --api-base-url http://api:4000/api/v1 | wc -l | grep -qx 4
+    echo "bundle OK"'
+
 echo "== api + worker"
 docker run -d --name "$net-api" --network "$net" "${envs[@]}" "$image" >/dev/null
 docker run -d --name "$net-worker" --network "$net" "${envs[@]}" "$image" node dist/worker.js >/dev/null

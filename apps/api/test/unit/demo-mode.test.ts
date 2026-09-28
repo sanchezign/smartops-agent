@@ -45,12 +45,17 @@ describe("configuration", () => {
     expect(env.TRANSCRIPTION_FAKE_DIR).toBe("demo/transcripts");
   });
 
+  // The public demo server as deployed (phase 12): production, and not a single real key.
+  const publicDemo = {
+    ...demoSource,
+    NODE_ENV: "production",
+    CORS_ORIGINS: "https://demo.x.uy",
+    ANTHROPIC_API_KEY: "",
+    TRANSCRIPTION_API_KEY: "",
+  };
+
   it("runs as production (fakes allowed only because DEMO_MODE is explicit)", () => {
-    const env = parseEnv({
-      ...demoSource,
-      NODE_ENV: "production",
-      CORS_ORIGINS: "https://demo.x.uy",
-    });
+    const env = parseEnv(publicDemo);
     expect(env.NODE_ENV).toBe("production");
     expect(() =>
       parseEnv({
@@ -61,6 +66,45 @@ describe("configuration", () => {
         AI_PROVIDER: "fake",
       }),
     ).toThrow(/fake provider is not allowed/);
+  });
+
+  it("the public demo refuses to start while ANY real key is present, or with a demo admin", () => {
+    const refused = (extra: Record<string, string>, message: RegExp) => {
+      let error: unknown;
+      try {
+        parseEnv({ ...publicDemo, ...extra });
+      } catch (err) {
+        error = err;
+      }
+      expect(String(error)).toMatch(message);
+      // The offending value is never echoed back (logs, crash reports).
+      for (const value of Object.values(extra)) expect(String(error)).not.toContain(value);
+    };
+    refused(
+      { ANTHROPIC_API_KEY: "sk-ant-api03-not-a-real-key-0000" },
+      /ANTHROPIC_API_KEY: must be empty/,
+    );
+    refused(
+      { TRANSCRIPTION_API_KEY: "gsk_not_a_real_key_000000" },
+      /TRANSCRIPTION_API_KEY: must be empty/,
+    );
+    refused({ DEMO_ADMIN_PASSWORD: "una contraseña de admin larguísima" }, /no admin account/);
+    // A real key hidden under another name (a careless copy of a real .env).
+    refused(
+      { WHATSAPP_ACCESS_TOKEN: `EAA${"B".repeat(40)}` },
+      /WHATSAPP_ACCESS_TOKEN: looks like a Meta access token/,
+    );
+    refused(
+      { SOME_OTHER_VAR: "sk-ant-api03-another-not-real-key" },
+      /SOME_OTHER_VAR: looks like an Anthropic API key/,
+    );
+    refused(
+      { SOME_OTHER_VAR: "gsk_another_not_real_key_00" },
+      /SOME_OTHER_VAR: looks like a Groq API key/,
+    );
+    // Local demo (development): the developer's .env may hold real keys; DEMO_MODE still forces
+    // the fakes, so it keeps working there.
+    expect(() => parseEnv(demoSource)).not.toThrow();
   });
 
   it("refuses to start on a database that is not *_demo (the demo resets its data)", () => {

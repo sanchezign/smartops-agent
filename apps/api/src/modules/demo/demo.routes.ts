@@ -26,7 +26,13 @@ export function createDemoRouter(options: {
   trace: DemoTraceRepository;
   reset: DemoReset;
   auth: Pick<AuthService, "authenticate">;
-  rateLimit: { windowMs: number; injectMax: number; resetMax: number };
+  rateLimit: {
+    windowMs: number;
+    injectMax: number;
+    resetMax: number;
+    /** Samples per hour for ALL visitors together (phase 12, public demo). */
+    injectGlobalPerHour: number;
+  };
   logger: Logger;
 }): Router {
   const router = express.Router();
@@ -45,6 +51,12 @@ export function createDemoRouter(options: {
     windowMs: options.rateLimit.windowMs,
     limit: options.rateLimit.injectMax,
   });
+  // Every visitor is the same public operator, from many IPs: cap the total work too.
+  const injectGlobalLimiter = createRateLimiter({
+    windowMs: 60 * 60_000,
+    limit: options.rateLimit.injectGlobalPerHour,
+    global: true,
+  });
   const resetLimiter = createRateLimiter({
     windowMs: options.rateLimit.windowMs,
     limit: options.rateLimit.resetMax,
@@ -58,6 +70,7 @@ export function createDemoRouter(options: {
     "/inject",
     requireAuth,
     injectLimiter,
+    injectGlobalLimiter,
     validate({ body: injectBody }),
     async (_req, res) => {
       const user = currentUser(res);

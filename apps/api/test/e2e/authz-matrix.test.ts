@@ -79,7 +79,12 @@ beforeAll(async () => {
         trace: { byWamid: async () => ({ received: false as const }) },
         reset: { reset: vi.fn(), nextResetAt: () => null, start: vi.fn(), stop: vi.fn() },
         auth,
-        rateLimit: { windowMs: 60_000, injectMax: 1_000, resetMax: 1_000 },
+        rateLimit: {
+          windowMs: 60_000,
+          injectMax: 1_000,
+          resetMax: 1_000,
+          injectGlobalPerHour: 1_000,
+        },
         logger: pino({ level: "silent" }),
       }),
     },

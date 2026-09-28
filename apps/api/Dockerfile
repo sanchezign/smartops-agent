@@ -25,10 +25,23 @@ RUN pnpm install --offline --frozen-lockfile --filter @smartops/api \
   && cp apps/api/prisma.config.ts /out/ \
   && cp -r apps/api/dist /out/dist
 
+# Deploy bundle (phase 12, ADR-023): compose, Caddyfile, server scripts, systemd units and the
+# n8n workflows travel INSIDE the image of their version — the server extracts them with
+# deploy/bin/fetch-bundle.sh and needs no other credential than the read-only GHCR token.
+FROM ${NODE_IMAGE} AS bundle
+COPY deploy /opt/smartops-deploy
+COPY n8n/workflows /opt/smartops-deploy/n8n/workflows
+# Modes set explicitly: the same bundle whatever OS builds it (Windows contexts mark all +x).
+RUN find /opt/smartops-deploy -type d -exec chmod 755 {} + \
+  && find /opt/smartops-deploy -type f -exec chmod 644 {} + \
+  && chmod 755 /opt/smartops-deploy/bin/*.sh /opt/smartops-deploy/postgres-init/*.sh \
+  && chmod 644 /opt/smartops-deploy/bin/lib.sh
+
 FROM ${NODE_IMAGE} AS runtime
 ENV NODE_ENV=production PORT=4000
 WORKDIR /app
 COPY --from=build --chown=node:node /out ./
+COPY --from=bundle /opt/smartops-deploy /opt/smartops-deploy
 USER node
 EXPOSE 4000
 # No curl in the slim image: Node's fetch checks the health route (DB included).

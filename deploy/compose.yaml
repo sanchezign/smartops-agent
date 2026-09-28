@@ -1,0 +1,207 @@
+# SmartOps — PUBLIC DEMO stack (phase 12, ADR-023). One VM, one origin behind Caddy:
+#   https://<DEMO_DOMAIN>/      → panel (Next.js standalone)
+#   https://<DEMO_DOMAIN>/api/* → API (Express), except /api/v1/internal/* and /webhooks/* (404)
+# DEMO_MODE: fake LLM, fake transcriber, fake Graph API inside the API — no real WhatsApp, no
+# real key anywhere on this server (the API refuses to start if one is present).
+#
+# Run ONLY through deploy/bin/deploy.sh (it passes --env-file /etc/smartops/demo.env, the
+# version and the project name). Secrets are interpolated from that file (root, mode 600);
+# each container only receives the variables listed here.
+#
+# Networks: "edge" (Caddy ↔ panel ↔ API, internet for ACME) and "backend" (internal: no
+# internet) for Postgres, API, worker and n8n. Only Caddy publishes ports (80/443). Postgres
+# and n8n are never published; n8n has no editor (N8N_DISABLE_UI) and no telemetry.
+
+name: smartops-demo
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+
+x-app-env: &app-env
+  NODE_ENV: production
+  PORT: "4000"
+  LOG_LEVEL: info
+  DATABASE_URL: postgresql://smartops:${POSTGRES_APP_PASSWORD:?}@postgres:5432/smartops_demo
+  # Behind Caddy (one hop): rate limits and logs see the real client IP.
+  TRUST_PROXY: "1"
+  CORS_ORIGINS: https://${DEMO_DOMAIN:?}
+  PANEL_PUBLIC_URL: https://${DEMO_DOMAIN:?}
+  # Public demo (ADR-021): forces the fakes and the API's own Graph API.
+  DEMO_MODE: "true"
+  DEMO_GRAPH_URL: http://api:4000
+  DEMO_RESET_INTERVAL_MINUTES: ${DEMO_RESET_INTERVAL_MINUTES:-60}
+  DEMO_OPERATOR_EMAIL: ${DEMO_OPERATOR_EMAIL:-demo@ferreteria.demo}
+  DEMO_OPERATOR_PASSWORD: ${DEMO_OPERATOR_PASSWORD:-probá el panel sin miedo}
+  DEMO_RATE_LIMIT_MAX: ${DEMO_RATE_LIMIT_MAX:-20}
+  DEMO_GLOBAL_INJECT_PER_HOUR: ${DEMO_GLOBAL_INJECT_PER_HOUR:-120}
+  AI_PROVIDER: fake
+  TRANSCRIPTION_PROVIDER: fake
+  # Required by the env schema; random values that only the fake Graph API knows.
+  WHATSAPP_PHONE_NUMBER_ID: "100000000000001"
+  WHATSAPP_WABA_ID: "200000000000002"
+  WHATSAPP_ACCESS_TOKEN: ${DEMO_FAKE_WHATSAPP_TOKEN:?}
+  WHATSAPP_APP_SECRET: ${DEMO_FAKE_WHATSAPP_APP_SECRET:?}
+  WHATSAPP_VERIFY_TOKEN: ${DEMO_FAKE_WHATSAPP_VERIFY_TOKEN:?}
+  INTERNAL_API_KEY: ${INTERNAL_API_KEY:?}
+  JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?}
+  N8N_DELIVERY_ENABLED: "true"
+  N8N_RECEIVER_WEBHOOK_URL: http://n8n:5678/webhook/smartops-message-ready
+  N8N_WEBHOOK_SECRET: ${N8N_WEBHOOK_SECRET:?}
+
+services:
+  postgres:
+    <<: *hardening
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?}
+      POSTGRES_DB: postgres
+      # Consumed by postgres-init/ (first volume creation only).
+      APP_DB_PASSWORD: ${POSTGRES_APP_PASSWORD:?}
+      N8N_DB_PASSWORD: ${N8N_DB_PASSWORD:?}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    networks: [backend]
+    mem_limit: 768m
+    shm_size: 128m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d smartops_demo"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  # One-off: `prisma migrate deploy` (deploy.sh runs it before starting the new version).
+  migrate:
+    <<: *hardening
+    restart: "no"
+    image: ${SMARTOPS_IMAGE_PREFIX:-ghcr.io/sanchezign}/smartops-api:${SMARTOPS_VERSION:?}
+    command: ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://smartops:${POSTGRES_APP_PASSWORD:?}@postgres:5432/smartops_demo
+    networks: [backend]
+    profiles: [tools]
+    cap_drop: [ALL]
+
+  # One-off: (re)seeds the demo data after the migrations; users and live sessions are kept.
+  seed:
+    <<: *hardening
+    restart: "no"
+    image: ${SMARTOPS_IMAGE_PREFIX:-ghcr.io/sanchezign}/smartops-api:${SMARTOPS_VERSION:?}
+    command: ["node", "dist/demo-seed.js"]
+    environment: *app-env
+    networks: [backend]
+    profiles: [tools]
+    cap_drop: [ALL]
+
+  api:
+    <<: *hardening
+    image: ${SMARTOPS_IMAGE_PREFIX:-ghcr.io/sanchezign}/smartops-api:${SMARTOPS_VERSION:?}
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [edge, backend]
+    mem_limit: 512m
+    cap_drop: [ALL]
+    stop_grace_period: 20s
+
+  worker:
+    <<: *hardening
+    image: ${SMARTOPS_IMAGE_PREFIX:-ghcr.io/sanchezign}/smartops-api:${SMARTOPS_VERSION:?}
+    command: ["node", "dist/worker.js"]
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [backend]
+    mem_limit: 512m
+    cap_drop: [ALL]
+    stop_grace_period: 40s
+    healthcheck:
+      disable: true
+
+  admin:
+    <<: *hardening
+    image: ${SMARTOPS_IMAGE_PREFIX:-ghcr.io/sanchezign}/smartops-admin:${SMARTOPS_VERSION:?}
+    networks: [edge]
+    mem_limit: 384m
+    cap_drop: [ALL]
+
+  n8n:
+    <<: *hardening
+    image: docker.n8n.io/n8nio/n8n:2.40.6@sha256:9c7871d5cc4fc2565bb905e4df5bf7d6a5a4bf2f4313fb99a2b3fa380f331d7c
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: "5432"
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: n8n
+      DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD:?}
+      # Must stay fixed: it encrypts the credentials stored in the n8n database.
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?}
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://n8n:5678/
+      GENERIC_TIMEZONE: America/Montevideo
+      TZ: America/Montevideo
+      # User addendum D: no editor (workflows arrive by CLI, deploy/bin/n8n-import.sh), no
+      # telemetry, no templates / banners / version checks, no public API.
+      N8N_DISABLE_UI: "true"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+      N8N_TEMPLATES_ENABLED: "false"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      N8N_HIRING_BANNER_ENABLED: "false"
+      N8N_PUBLIC_API_DISABLED: "true"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks: [backend]
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5678/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  caddy:
+    <<: *hardening
+    image: caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
+    environment:
+      DEMO_DOMAIN: ${DEMO_DOMAIN:?}
+    ports:
+      # CADDY_BIND_ADDRESS: 127.0.0.1 in the local test harness only (never exposed to the LAN).
+      - "${CADDY_BIND_ADDRESS:-0.0.0.0}:80:80"
+      - "${CADDY_BIND_ADDRESS:-0.0.0.0}:443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge]
+    mem_limit: 128m
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    depends_on: [api, admin]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:2019/config/ > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  edge: {}
+  backend:
+    internal: true
+
+volumes:
+  postgres_data:
+  n8n_data:
+  caddy_data:
+  caddy_config:

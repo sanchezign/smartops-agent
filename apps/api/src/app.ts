@@ -13,6 +13,7 @@ import { createAdminRouter, type AdminDeps } from "./modules/admin/admin.routes.
 import { createAuthRouter } from "./modules/auth/auth.routes.js";
 import { createEventHub, type EventHub } from "./modules/events/event-hub.js";
 import { createEventsRouter } from "./modules/events/events.routes.js";
+import { createPublicAccount } from "./modules/demo/public-account.js";
 import type { AuthService } from "./modules/auth/auth.service.js";
 import { createInternalRouter, type InternalDeps } from "./modules/internal/internal.routes.js";
 import type { WhatsAppWebhookRepository } from "./modules/whatsapp/whatsapp-webhook.repository.js";
@@ -163,6 +164,10 @@ export function createApp({
       auth,
       heartbeatMs: events?.heartbeatMs ?? env.SSE_HEARTBEAT_SECONDS * 1000,
       logger,
+      publicAccount: createPublicAccount({
+        demoMode: env.DEMO_MODE,
+        operatorEmail: env.DEMO_OPERATOR_EMAIL,
+      }),
     }),
   );
   if (demo) mount(v1, V1, "/demo", demo.router);

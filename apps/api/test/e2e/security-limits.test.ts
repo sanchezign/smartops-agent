@@ -1,4 +1,5 @@
 import { pino } from "pino";
+import express from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { createDemoRouter } from "../../src/modules/demo/demo.routes.js";
@@ -81,7 +82,10 @@ describe("rate limiters", () => {
     );
   });
 
-  it("demo: inject and reset have their own small budgets", async () => {
+  const demoApp = (
+    rateLimit: { injectMax: number; resetMax: number; injectGlobalPerHour: number },
+    env: Record<string, string> = {},
+  ) => {
     const auth: AuthService = {
       ...stubAuthService,
       authenticate: async () => ({
@@ -92,10 +96,11 @@ describe("rate limiters", () => {
         sessionId: ID,
       }),
     };
-    const app = buildTestApp({
+    return buildTestApp({
       auth,
+      env,
       demo: {
-        graphRouter: (await import("express")).Router(),
+        graphRouter: express.Router(),
         router: createDemoRouter({
           operator: { email: "d@x.demo", password: "clave pública de la demo" },
           injector: { inject: vi.fn(async () => ({ wamid: "wamid.X" })) },
@@ -113,21 +118,39 @@ describe("rate limiters", () => {
             stop: vi.fn(),
           },
           auth,
-          rateLimit: { windowMs: 60_000, injectMax: 2, resetMax: 1 },
+          rateLimit: { windowMs: 60_000, ...rateLimit },
           logger: pino({ level: "silent" }),
         }),
       },
     });
-    const inject = () =>
-      request(app)
-        .post("/api/v1/demo/inject")
-        .set("authorization", "Bearer t")
-        .send({ kind: "foto" });
-    expect((await inject()).status).toBeLessThan(400);
-    expect((await inject()).status).toBeLessThan(400);
-    limited(await inject());
+  };
+  const injectFrom = (app: ReturnType<typeof buildTestApp>, ip?: string) => {
+    const req = request(app).post("/api/v1/demo/inject").set("authorization", "Bearer t");
+    return (ip ? req.set("x-forwarded-for", ip) : req).send({ kind: "foto" });
+  };
+
+  it("demo: inject and reset have their own small budgets", async () => {
+    const app = demoApp({ injectMax: 2, resetMax: 1, injectGlobalPerHour: 1_000 });
+    expect((await injectFrom(app)).status).toBeLessThan(400);
+    expect((await injectFrom(app)).status).toBeLessThan(400);
+    limited(await injectFrom(app));
     const reset = () => request(app).post("/api/v1/demo/reset").set("authorization", "Bearer t");
     expect((await reset()).status).toBeLessThan(400);
     limited(await reset());
+  });
+
+  // Phase 12 (public demo): every visitor is the same public operator. Behind Caddy
+  // (TRUST_PROXY=1) the per-IP budget follows the real client, and a global hourly cap bounds
+  // what all visitors together can trigger.
+  it("demo inject: per real client IP behind the proxy, plus one global cap for everybody", async () => {
+    const app = demoApp(
+      { injectMax: 1, resetMax: 1, injectGlobalPerHour: 3 },
+      { TRUST_PROXY: "1" },
+    );
+    expect((await injectFrom(app, "203.0.113.1")).status).toBe(202);
+    limited(await injectFrom(app, "203.0.113.1")); // per-IP budget of 1 spent
+    expect((await injectFrom(app, "203.0.113.2")).status).toBe(202); // another visitor
+    expect((await injectFrom(app, "203.0.113.3")).status).toBe(202);
+    limited(await injectFrom(app, "203.0.113.4")); // fresh IP, but the global cap (3) is spent
   });
 });

@@ -26,6 +26,11 @@ export function createRateLimiter(options: {
   skipPaths?: readonly string[];
   /** Path prefixes with their own limiter (e.g. "/internal/"). */
   skipPrefixes?: readonly string[];
+  /**
+   * One shared budget for EVERY client instead of one per IP (phase 12: the public demo caps
+   * the total work strangers can trigger, whatever IPs they come from).
+   */
+  global?: boolean;
 }): RequestHandler {
   const skip = new Set(options.skipPaths ?? []);
   const prefixes = options.skipPrefixes ?? [];
@@ -35,6 +40,7 @@ export function createRateLimiter(options: {
     standardHeaders: "draft-8",
     legacyHeaders: false,
     skip: (req) => skip.has(req.path) || prefixes.some((prefix) => req.path.startsWith(prefix)),
+    ...(options.global ? { keyGenerator: () => "global" } : {}),
     handler: (_req, _res, next) => next(errors.rateLimited()),
   });
 }

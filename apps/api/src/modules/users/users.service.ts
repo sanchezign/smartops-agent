@@ -4,6 +4,11 @@ import type { UserRole } from "../../generated/prisma/enums.js";
 import { EMPTY_LOCKOUT } from "../auth/login-lockout.js";
 import { hashPassword } from "../auth/password.js";
 import { checkPassword, PASSWORD_ISSUE_TEXT } from "../auth/password-policy.js";
+import {
+  NO_PUBLIC_ACCOUNT,
+  PUBLIC_ACCOUNT_REFUSED,
+  type PublicAccount,
+} from "../demo/public-account.js";
 import type { AuditActor, PublicUser, UsersRepository } from "./users.repository.js";
 
 /**
@@ -28,12 +33,27 @@ export function assertPasswordPolicy(
   }
 }
 
-export function createUsersService(deps: { repository: UsersRepository }) {
+export function createUsersService(deps: {
+  repository: UsersRepository;
+  /** The shared public demo operator (DEMO_MODE): not modifiable from the panel. */
+  publicAccount?: PublicAccount;
+}) {
   const { repository } = deps;
+  const publicAccount = deps.publicAccount ?? NO_PUBLIC_ACCOUNT;
 
   async function mustFind(id: string) {
     const user = await repository.findById(id);
     if (!user) throw errors.notFound("User not found");
+    return user;
+  }
+
+  /**
+   * The public demo operator is shared by every visitor (phase 12): a role / active / password
+   * change or a session revocation would hit all of them and outlive the demo reset.
+   */
+  async function assertModifiable(id: string) {
+    const user = await mustFind(id);
+    if (publicAccount.isPublic(user.email)) throw errors.forbidden(PUBLIC_ACCOUNT_REFUSED);
     return user;
   }
 
@@ -56,8 +76,11 @@ export function createUsersService(deps: { repository: UsersRepository }) {
       );
     },
 
+    assertModifiable,
+
     async update(id: string, change: { role?: UserRole; active?: boolean }, actor: AuditActor) {
       if (change.role !== undefined) roleSchema.parse(change.role);
+      if (publicAccount.email !== null) await assertModifiable(id);
       // Nobody changes their own role or deactivates themselves (user rule, phase 9 M6): another
       // admin has to do it, so a mistake cannot lock the only person who could fix it.
       if (actor.userId === id && (change.role !== undefined || change.active === false)) {
@@ -71,7 +94,7 @@ export function createUsersService(deps: { repository: UsersRepository }) {
     },
 
     async resetPassword(id: string, password: string, actor: AuditActor) {
-      const user = await mustFind(id);
+      const user = await assertModifiable(id);
       assertPasswordPolicy(password, { email: user.email, name: user.name });
       const revokedSessions = await repository.setPassword(
         id,

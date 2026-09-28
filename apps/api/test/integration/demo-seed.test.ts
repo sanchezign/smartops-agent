@@ -113,6 +113,24 @@ describe.skipIf(!testDatabaseUrl)("demo seed (Postgres, <test>_demo)", () => {
         expiresAt: new Date(NOW.getTime() + 86_400_000),
       },
     });
+    // Ended sessions of the shared public operator (phase 12) must not pile up across resets.
+    const ended = await Promise.all(
+      [
+        { revokedAt: NOW, revokeReason: "logout" }, // logged out
+        { idleExpiresAt: new Date(NOW.getTime() - 1) }, // idle too long
+        { expiresAt: new Date(NOW.getTime() - 1) }, // past the absolute end
+      ].map((extraFields) =>
+        prisma.authSession.create({
+          data: {
+            userId: user.id,
+            idleExpiresAt: new Date(NOW.getTime() + 3_600_000),
+            expiresAt: new Date(NOW.getTime() + 86_400_000),
+            ...extraFields,
+            refreshTokens: { create: { tokenHash: `ended-${crypto.randomUUID()}` } },
+          },
+        }),
+      ),
+    );
     const extra = await prisma.supplier.create({
       data: { name: "Dejado por un visitante", normalizedName: "dejado por un visitante" },
     });
@@ -121,6 +139,12 @@ describe.skipIf(!testDatabaseUrl)("demo seed (Postgres, <test>_demo)", () => {
 
     expect((await prisma.user.findFirstOrThrow()).id).toBe(user.id);
     expect(await prisma.authSession.findUnique({ where: { id: session.id } })).not.toBeNull();
+    expect(await prisma.authSession.count({ where: { id: { in: ended.map((s) => s.id) } } })).toBe(
+      0,
+    );
+    expect(
+      await prisma.refreshToken.count({ where: { tokenHash: { startsWith: "ended-" } } }),
+    ).toBe(0);
     expect(await prisma.supplier.findUnique({ where: { id: extra.id } })).toBeNull();
   }, 120_000);
 });

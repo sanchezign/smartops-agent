@@ -27,6 +27,7 @@ import { createDemoInjector } from "./modules/demo/demo-injector.js";
 import { createDemoReset } from "./modules/demo/demo-reset.js";
 import { createDemoTraceRepository } from "./modules/demo/demo-trace.repository.js";
 import { createDemoRouter } from "./modules/demo/demo.routes.js";
+import { createPublicAccount } from "./modules/demo/public-account.js";
 import { createEventHub } from "./modules/events/event-hub.js";
 import { createPgListener } from "./modules/events/pg-listener.js";
 import { createReviewQueryRepository } from "./modules/admin/review-query.repository.js";
@@ -161,7 +162,13 @@ const sessionsRepository = createSessionsRepository(prisma);
 const usersRepository = createUsersRepository(prisma, {
   revokeUserSessionsInTx: sessionsRepository.revokeAllForUserInTx,
 });
+// The shared public demo operator (DEMO_MODE, phase 12): never locked, not modifiable.
+const publicAccount = createPublicAccount({
+  demoMode: env.DEMO_MODE,
+  operatorEmail: env.DEMO_OPERATOR_EMAIL,
+});
 const auth = createAuthService({
+  publicAccount,
   users: usersRepository,
   sessions: sessionsRepository,
   tokens: createAccessTokens({
@@ -246,7 +253,12 @@ const demo = env.DEMO_MODE
           trace: createDemoTraceRepository(prisma),
           reset,
           auth,
-          rateLimit: { windowMs: 10 * 60_000, injectMax: env.DEMO_RATE_LIMIT_MAX, resetMax: 5 },
+          rateLimit: {
+            windowMs: 10 * 60_000,
+            injectMax: env.DEMO_RATE_LIMIT_MAX,
+            resetMax: 5,
+            injectGlobalPerHour: env.DEMO_GLOBAL_INJECT_PER_HOUR,
+          },
           logger,
         }),
       };
@@ -293,7 +305,7 @@ const app = createApp({
     humanReply: createHumanReplyService({ outbound, mode: conversationMode }),
     consent: createOptOutRepository(prisma),
     settings,
-    users: createUsersService({ repository: usersRepository }),
+    users: createUsersService({ repository: usersRepository, publicAccount }),
     sessions: sessionsRepository,
   },
   events: { hub: eventHub, heartbeatMs: env.SSE_HEARTBEAT_SECONDS * 1000 },

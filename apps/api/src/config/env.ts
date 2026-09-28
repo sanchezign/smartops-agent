@@ -182,6 +182,8 @@ export const envSchema = z.object({
   DEMO_RESET_INTERVAL_MINUTES: z.coerce.number().int().min(0).max(10_080).default(60),
   /** Demo buttons per IP per 10 minutes. */
   DEMO_RATE_LIMIT_MAX: z.coerce.number().int().min(1).max(1_000).default(20),
+  /** Demo buttons per hour for ALL visitors together (phase 12: the operator is public). */
+  DEMO_GLOBAL_INJECT_PER_HOUR: z.coerce.number().int().min(1).max(10_000).default(120),
   /** Demo assets (sample files, recorded LLM outputs, transcripts), relative to the API package. */
   DEMO_ASSETS_DIR: z.string().min(1).default("demo"),
   /** E2E only: the seed adds one review per Playwright project to approve / reject. */
@@ -281,6 +283,7 @@ function crossFieldIssues(source: Record<string, string | undefined>): string[] 
     })();
     if (!name.endsWith("_demo"))
       issues.push("DEMO_MODE: DATABASE_URL must point to a *_demo database");
+    if (source.NODE_ENV === "production") issues.push(...publicDemoIssues(source));
   }
   if (
     !demo &&
@@ -330,6 +333,34 @@ function crossFieldIssues(source: Record<string, string | undefined>): string[] 
   }
   if (provider !== "fake" && !source.TRANSCRIPTION_API_KEY?.trim()) {
     issues.push(`TRANSCRIPTION_API_KEY: is required when TRANSCRIPTION_PROVIDER=${provider}`);
+  }
+  return issues;
+}
+
+/**
+ * The PUBLIC demo server (DEMO_MODE in production, phase 12) must not even HOLD a real key:
+ * DEMO_MODE forces the fakes, but a key that is present can leak (a dump of the environment, a
+ * future bug). No demo admin either: its password would be the only thing between a visitor
+ * and the settings / users screens. Values are never echoed back.
+ */
+const REAL_KEY_PATTERNS: readonly [string, RegExp][] = [
+  ["an Anthropic API key", /^sk-ant-/],
+  ["a Groq API key", /^gsk_/],
+  ["an OpenAI API key", /^sk-(proj-)?[A-Za-z0-9_-]{20,}$/],
+  ["a Meta access token", /^EAA[A-Za-z0-9]{20,}$/],
+];
+
+function publicDemoIssues(source: Record<string, string | undefined>): string[] {
+  const issues: string[] = [];
+  for (const key of ["ANTHROPIC_API_KEY", "TRANSCRIPTION_API_KEY"]) {
+    if (source[key]?.trim()) issues.push(`${key}: must be empty on the public demo (DEMO_MODE)`);
+  }
+  if (source.DEMO_ADMIN_PASSWORD?.trim()) {
+    issues.push("DEMO_ADMIN_PASSWORD: the public demo has no admin account (leave it unset)");
+  }
+  for (const [key, value] of Object.entries(source)) {
+    const found = REAL_KEY_PATTERNS.find(([, pattern]) => value && pattern.test(value.trim()));
+    if (found) issues.push(`${key}: looks like ${found[0]} — never on the public demo`);
   }
   return issues;
 }

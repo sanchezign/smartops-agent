@@ -32,8 +32,10 @@ async function start(options: {
   session?: () => { userId: string; role: "admin" | "operator" } | null;
   heartbeatMs?: number;
   maxPerUser?: number;
+  env?: Record<string, string>;
+  user?: AuthenticatedUser;
 }) {
-  const env = parseEnv(TEST_ENV_SOURCE);
+  const env = parseEnv({ ...TEST_ENV_SOURCE, ...options.env });
   const hub: EventHub = createEventHub({
     maxPerUser: options.maxPerUser ?? 5,
     maxTotal: 50,
@@ -42,11 +44,15 @@ async function start(options: {
   });
   const auth: AuthService = {
     ...stubAuthService,
-    authenticate: async (token) => (token === "good" ? user : null),
+    authenticate: async (token) => (token === "good" ? (options.user ?? user) : null),
     checkSession: async () =>
       options.session ? options.session() : { userId: ID, role: "operator" },
   };
-  const app = buildTestApp({ auth, events: { hub, heartbeatMs: options.heartbeatMs ?? 60_000 } });
+  const app = buildTestApp({
+    auth,
+    env: options.env ?? {},
+    events: { hub, heartbeatMs: options.heartbeatMs ?? 60_000 },
+  });
   server = app.listen(0);
   await new Promise((r) => server!.once("listening", r));
   const base = `http://127.0.0.1:${(server!.address() as AddressInfo).port}/api/v1/events`;
@@ -123,6 +129,42 @@ describe("GET /api/v1/events", () => {
     await first.body!.cancel();
     await new Promise((r) => setTimeout(r, 50));
     expect(hub.stats().total).toBe(0); // the closed stream freed its slot
+  });
+
+  // Phase 12 (user addendum A): in DEMO_MODE every visitor is the same public operator. A cap
+  // per USER would leave the 6th visitor without real time, so for that account it is per IP.
+  describe("the shared public demo operator", () => {
+    const demoEnv = {
+      DEMO_MODE: "true",
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/smartops_demo",
+      DEMO_OPERATOR_EMAIL: "demo@ferreteria.demo",
+      TRUST_PROXY: "1",
+    };
+    const open = (base: string, ip: string) =>
+      fetch(base, { headers: { authorization: "Bearer good", "x-forwarded-for": ip } });
+
+    it("its stream cap counts per client IP, not per user", async () => {
+      const { base } = await start({
+        maxPerUser: 1,
+        env: demoEnv,
+        user: { ...user, email: "Demo@Ferreteria.demo" },
+      });
+      const a = await open(base, "203.0.113.10");
+      expect(a.status).toBe(200);
+      expect((await open(base, "203.0.113.10")).status).toBe(429); // same visitor, over the cap
+      const b = await open(base, "203.0.113.11"); // another visitor still gets real time
+      expect(b.status).toBe(200);
+      await a.body!.cancel();
+      await b.body!.cancel();
+    });
+
+    it("any other account keeps the per-user cap, whatever its IPs", async () => {
+      const { base } = await start({ maxPerUser: 1, env: demoEnv });
+      const a = await open(base, "203.0.113.10");
+      expect(a.status).toBe(200);
+      expect((await open(base, "203.0.113.11")).status).toBe(429);
+      await a.body!.cancel();
+    });
   });
 
   it.each([

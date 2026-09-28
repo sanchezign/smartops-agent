@@ -23,11 +23,18 @@ audit (user decision, 2026-09-27).
   the commit, so it also shows on the pull request without running twice:
   actionlint + zizmor on the workflows, gitleaks on the NEW commits, `pnpm install
 --frozen-lockfile`, the dependency audit gate, `format:check`, `lint`, `typecheck`,
-  `test:fast` (API unit + e2e with Supertest, panel logic).
+  `test:fast` (API unit + e2e with Supertest, panel logic), and the **deploy bundle** checks
+  (phase 12, `scripts/ci/check-deploy-bundle.sh`: shellcheck on every server / CI script,
+  `caddy validate` + `caddy fmt`, `docker compose config` of `deploy/compose.yaml` with fake
+  values and its invariants — only Caddy publishes ports, Postgres / n8n / worker on the
+  internal network, n8n without editor or telemetry, demo without any real key, third-party
+  images pinned by digest).
 - **plan** — pull requests, nightly and manual runs. Decides:
-  - `code`: false for docs-only changes (then the slow jobs skip);
+  - `code`: false for docs-only changes and for release-please's PRs (then the slow jobs skip);
   - `docker`: Dockerfiles, `.dockerignore`, any `package.json`, the lockfile, Prisma,
-    `apps/admin/next.config.ts` or `scripts/ci/` changed (always on manual runs, never nightly);
+    `apps/admin/next.config.ts`, `scripts/ci/`, `deploy/` or `n8n/workflows/` changed (the
+    deploy bundle and the workflows ship inside the API image) — always on manual runs, never
+    nightly;
   - `e2e`: `apps/api/scripts/ci/e2e-policy.ts` with the repository variable `E2E_POLICY`.
 - **integration-coverage** — Postgres 17 service container → `pnpm test:coverage` (API unit +
   integration against the real DB + panel; the coverage ratchet thresholds are the gate) →
@@ -132,9 +139,14 @@ now run plain `node` + `exec`, with `gracefulShutdown` and a 12 min step timeout
   (`chore: release 0.11.0`, empty): release-please proposed 0.1.1 from the `fix` commits. The
   version was forced again by the docs fix that added this note (PR `fix/release-as-0.11.0`).
   The first release's compare link (`v0.1.0...`) is broken — no `v0.1.0` tag exists; accepted.
-- Release PRs opened by `GITHUB_TOKEN` trigger **no CI checks** (GitHub rule). That is expected:
-  the diff is only versions and the changelog. If checks are wanted, run CI by hand on the
-  release PR's branch (shown on the PR; release-please names it).
+- Release PRs are opened / updated with `GITHUB_TOKEN`. Since June 2026 GitHub runs workflows on
+  such bot PRs **only after a person approves them** (GitHub changelog 2026-06-11): the CI run
+  shows "action_required" until you press _Approve workflows to run_ on the PR. `plan` then
+  skips the slow suite for `release-please--*` branches (the diff is versions + CHANGELOG only).
+  Seen once on v0.11.0: when release-please updated the PR while the first run was still
+  waiting for approval, the new run failed at startup with 0 jobs ("workflow file issue") —
+  cause not confirmed; watch the next release. Avoiding the approval entirely needs a GitHub App
+  or PAT token for release-please — the first real secret in CI, not adopted.
 - Merge phase PRs with **rebase-merge**, never squash: a squash would drop the individual
   Conventional Commit types and any `Release-As:` footer the changelog and version rely on.
   Rebase-merge keeps each commit, but not EMPTY ones (see above).

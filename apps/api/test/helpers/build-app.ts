@@ -157,6 +157,7 @@ export const stubAdminDeps: AdminDeps = {
     update: notConfigured,
     resetPassword: notConfigured,
     unlock: notConfigured,
+    assertModifiable: notConfigured,
   },
   sessions: { revokeAllForUser: notConfigured },
 };

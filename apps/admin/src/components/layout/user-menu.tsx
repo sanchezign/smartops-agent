@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/features/auth/api";
 import { useAuthStore } from "@/features/auth/store";
+import { useDemoInfo } from "@/features/demo/hooks";
+import { isPublicDemoAccount } from "@/features/demo/public-account";
 
 const ROLE_LABEL = { admin: "Administrador", operator: "Operador" } as const;
 
@@ -24,6 +26,8 @@ export function UserMenu() {
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+  // The public demo operator is shared by every visitor: no account-wide actions (phase 12).
+  const shared = isPublicDemoAccount(useDemoInfo().data, user?.email);
 
   async function logout() {
     await api.logout();
@@ -72,9 +76,11 @@ export function UserMenu() {
         <DropdownMenuItem onSelect={logout}>
           <LogOut aria-hidden /> Cerrar sesión
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={logoutAll}>
-          <LogOut aria-hidden /> Cerrar todas mis sesiones
-        </DropdownMenuItem>
+        {!shared && (
+          <DropdownMenuItem onSelect={logoutAll}>
+            <LogOut aria-hidden /> Cerrar todas mis sesiones
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

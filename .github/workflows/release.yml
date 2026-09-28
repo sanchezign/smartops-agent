@@ -88,7 +88,10 @@ jobs:
       - name: No .env, keys or secrets inside the image
         env:
           APP: ${{ matrix.app }}
-        run: scripts/ci/image-secrets-check.sh "smartops-${APP}:release" /app
+        run: |
+          dirs=(/app)
+          [ "$APP" = api ] && dirs+=(/opt/smartops-deploy) # the deploy bundle (phase 12)
+          scripts/ci/image-secrets-check.sh "smartops-${APP}:release" "${dirs[@]}"
       - name: Container smoke test (fake values only)
         env:
           APP: ${{ matrix.app }}

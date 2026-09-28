@@ -1,5 +1,10 @@
 import { errors } from "../../common/errors/app-error.js";
 import type { Logger } from "../../common/logger.js";
+import {
+  NO_PUBLIC_ACCOUNT,
+  PUBLIC_ACCOUNT_REFUSED,
+  type PublicAccount,
+} from "../demo/public-account.js";
 import type { UsersRepository } from "../users/users.repository.js";
 import { emailSchema } from "../users/users.service.js";
 import { isLocked, registerFailure, registerSuccess } from "./login-lockout.js";
@@ -51,8 +56,11 @@ export function createAuthService(deps: {
   tokens: AccessTokens;
   config: SessionConfig;
   now?: () => Date;
+  /** The shared public demo operator (DEMO_MODE): never locked, no logout-all. */
+  publicAccount?: PublicAccount;
 }) {
   const now = deps.now ?? (() => new Date());
+  const publicAccount = deps.publicAccount ?? NO_PUBLIC_ACCOUNT;
 
   async function issue(
     user: SessionUser,
@@ -106,10 +114,13 @@ export function createAuthService(deps: {
       }
 
       const check = await verifyPassword(user.passwordHash, input.password);
-      const locked = isLocked(user.lockout, at);
+      // The shared public demo account is never locked: a lock would hit every visitor
+      // (5 wrong passwords = a trivial DoS). The per-IP login limiter protects it instead.
+      const shared = publicAccount.isPublic(user.email);
+      const locked = !shared && isLocked(user.lockout, at);
       if (!user.active || locked || !check.ok) {
         const reason = !user.active ? "inactive" : locked ? "locked" : "wrong_password";
-        if (reason === "wrong_password") {
+        if (reason === "wrong_password" && !shared) {
           const { next, lockedNow } = registerFailure(user.lockout, at);
           await deps.users.saveLockout(user.id, next);
           if (lockedNow) {
@@ -188,7 +199,10 @@ export function createAuthService(deps: {
       }
     },
 
-    async logoutAll(userId: string, meta: RequestMeta) {
+    async logoutAll(user: { userId: string; email: string }, meta: RequestMeta) {
+      // It would end every OTHER visitor's session of the shared public demo account.
+      if (publicAccount.isPublic(user.email)) throw errors.forbidden(PUBLIC_ACCOUNT_REFUSED);
+      const userId = user.userId;
       const count = await deps.sessions.revokeAllForUser(userId, "logout_all");
       await audit("auth.logout_all", meta, { userId, data: { sessions: count } });
       return count;

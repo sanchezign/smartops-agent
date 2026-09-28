@@ -1,0 +1,8 @@
+[Unit]
+Description=SmartOps demo: disk, memory, containers and HTTPS health check
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/smartops/current/bin/monitor.sh

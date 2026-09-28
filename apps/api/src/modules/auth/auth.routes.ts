@@ -104,7 +104,7 @@ export function createAuthRouter(deps: {
   });
 
   router.post("/logout-all", requireAuth, async (req, res) => {
-    const sessions = await deps.service.logoutAll(currentUser(res).userId, requestMeta(req));
+    const sessions = await deps.service.logoutAll(currentUser(res), requestMeta(req));
     clearRefreshCookie(res, cookie);
     res.json({ sessions });
   });

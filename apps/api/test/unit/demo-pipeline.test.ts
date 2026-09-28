@@ -175,7 +175,7 @@ describe("/api/v1/demo routes", () => {
           trace: { byWamid: async () => ({ received: false as const }) },
           reset: { reset: vi.fn(), nextResetAt: () => null, start: vi.fn(), stop: vi.fn() },
           auth: stubAuthService,
-          rateLimit: { windowMs: 60_000, injectMax: 5, resetMax: 1 },
+          rateLimit: { windowMs: 60_000, injectMax: 5, resetMax: 1, injectGlobalPerHour: 1_000 },
           logger: log,
         }),
       },

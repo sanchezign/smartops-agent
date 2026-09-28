@@ -2,6 +2,7 @@ import express, { type Router } from "express";
 import { errors } from "../../common/errors/app-error.js";
 import type { Logger } from "../../common/logger.js";
 import { createRequireAuth, currentUser } from "../auth/auth-http.js";
+import { NO_PUBLIC_ACCOUNT, type PublicAccount } from "../demo/public-account.js";
 import type { AuthService } from "../auth/auth.service.js";
 import { TooManyStreamsError, type EventHub, type HubMessage } from "./event-hub.js";
 
@@ -19,7 +20,10 @@ export function createEventsRouter(options: {
   auth: Pick<AuthService, "authenticate" | "checkSession">;
   heartbeatMs: number;
   logger: Logger;
+  /** The shared public demo operator: its stream cap counts per IP (phase 12). */
+  publicAccount?: PublicAccount;
 }): Router {
+  const publicAccount = options.publicAccount ?? NO_PUBLIC_ACCOUNT;
   const router = express.Router();
   router.use(createRequireAuth(options.auth.authenticate));
 
@@ -35,6 +39,9 @@ export function createEventsRouter(options: {
     try {
       unsubscribe = options.hub.subscribe({
         userId: user.userId,
+        ...(publicAccount.isPublic(user.email)
+          ? { limitKey: `${user.userId}|ip:${req.ip ?? "unknown"}` }
+          : {}),
         send: (message: HubMessage) =>
           message.kind === "resync" ? write("resync", {}) : write("events", message.events),
         end: () => close("server_restart"),

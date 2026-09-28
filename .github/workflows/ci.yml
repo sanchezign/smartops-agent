@@ -85,6 +85,8 @@ jobs:
       # API unit + HTTP e2e (stubbed deps) and panel logic. Includes the n8n contract freshness,
       # the CLAUDE.md guard (vs origin/main) and the coverage-ratchet guard.
       - run: pnpm test:fast
+      - name: Deploy bundle (shellcheck, Caddyfile, compose invariants — tools pinned by digest)
+        run: scripts/ci/check-deploy-bundle.sh
 
   plan:
     name: plan
@@ -112,7 +114,16 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REF: ${{ github.head_ref }}
         run: |
+          # release-please's PR only bumps versions and the CHANGELOG; since June 2026 GitHub also
+          # makes such bot PRs wait for an approval (docs/ci-cd.md). Once approved, nothing to test.
+          if [[ "$GITHUB_EVENT_NAME" = "pull_request" && "$HEAD_REF" == release-please--* ]]; then
+            echo "code=false" >> "$GITHUB_OUTPUT"
+            echo "docker=false" >> "$GITHUB_OUTPUT"
+            echo "release-please PR (versions + CHANGELOG only): the slow suite is skipped."
+            exit 0
+          fi
           if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
             echo "code=true" >> "$GITHUB_OUTPUT"
             # Images are validated on manual runs and on pull requests that touch them.
@@ -120,7 +131,7 @@ jobs:
             echo "docker=$docker" >> "$GITHUB_OUTPUT"; exit 0
           fi
           changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
-          if echo "$changed" | grep -qE '(^|/)Dockerfile$|^\.dockerignore$|(^|/)package\.json$|^pnpm-lock\.yaml$|^apps/admin/next\.config\.ts$|^apps/api/prisma/|^scripts/ci/'; then
+          if echo "$changed" | grep -qE '(^|/)Dockerfile$|^\.dockerignore$|(^|/)package\.json$|^pnpm-lock\.yaml$|^apps/admin/next\.config\.ts$|^apps/api/prisma/|^scripts/ci/|^deploy/|^n8n/workflows/'; then
             echo "docker=true" >> "$GITHUB_OUTPUT"
           else
             echo "docker=false" >> "$GITHUB_OUTPUT"
@@ -256,7 +267,7 @@ jobs:
         run: docker build -f apps/admin/Dockerfile -t smartops-admin:ci .
       - name: No .env, keys or secrets inside the images
         run: |
-          scripts/ci/image-secrets-check.sh smartops-api:ci /app
+          scripts/ci/image-secrets-check.sh smartops-api:ci /app /opt/smartops-deploy
           scripts/ci/image-secrets-check.sh smartops-admin:ci /app
       - name: API container smoke test (migrations, health, SIGTERM — fake values only)
         run: scripts/ci/api-container-smoke.sh smartops-api:ci

@@ -144,6 +144,20 @@ export async function seedDemo(deps: {
       `TRUNCATE TABLE ${wiped.map((t) => `"${t.tablename}"`).join(", ")} RESTART IDENTITY CASCADE`,
     );
   }
+  if (deps.keepAuth) {
+    // Every visitor logs in as the same public operator (phase 12): sessions would pile up
+    // forever across resets. Live sessions stay (visitors keep their login); ended ones go,
+    // with their refresh tokens (ON DELETE CASCADE).
+    await prisma.authSession.deleteMany({
+      where: {
+        OR: [
+          { revokedAt: { not: null } },
+          { expiresAt: { lte: now } },
+          { idleExpiresAt: { lte: now } },
+        ],
+      },
+    });
+  }
 
   // ── Settings for a lively demo (never a real WhatsApp recipient) ───────────
   await prisma.setting.createMany({

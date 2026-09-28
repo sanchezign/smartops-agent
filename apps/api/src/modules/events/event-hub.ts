@@ -15,6 +15,11 @@ export type HubMessage =
 
 export interface Subscriber {
   userId: string;
+  /**
+   * What the per-user cap counts (default: the user id). The shared public demo account
+   * counts per IP instead (phase 12): its visitors are different people.
+   */
+  limitKey?: string;
   send(message: HubMessage): void;
   /** Ends the stream (shutdown): the browser reconnects to another / the restarted process. */
   end(): void;
@@ -73,19 +78,20 @@ export function createEventHub(options: {
   return {
     subscribe(subscriber) {
       if (entries.size >= options.maxTotal) throw new TooManyStreamsError("total");
-      const count = perUser.get(subscriber.userId) ?? 0;
+      const limitKey = subscriber.limitKey ?? subscriber.userId;
+      const count = perUser.get(limitKey) ?? 0;
       if (count >= options.maxPerUser) throw new TooManyStreamsError("user");
       const entry: Entry = { subscriber, pending: new Map() };
       entries.add(entry);
-      perUser.set(subscriber.userId, count + 1);
+      perUser.set(limitKey, count + 1);
       let active = true;
       return () => {
         if (!active) return;
         active = false;
         entries.delete(entry);
-        const left = (perUser.get(subscriber.userId) ?? 1) - 1;
-        if (left <= 0) perUser.delete(subscriber.userId);
-        else perUser.set(subscriber.userId, left);
+        const left = (perUser.get(limitKey) ?? 1) - 1;
+        if (left <= 0) perUser.delete(limitKey);
+        else perUser.set(limitKey, left);
       };
     },
 

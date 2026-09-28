@@ -60,7 +60,10 @@ export interface AdminDeps {
   humanReply: Pick<HumanReplyService, "reply">;
   consent: Pick<OptOutRepository, "find" | "apply">;
   settings: Pick<SettingsService, "getAll" | "set">;
-  users: Pick<UsersService, "list" | "create" | "update" | "resetPassword" | "unlock">;
+  users: Pick<
+    UsersService,
+    "list" | "create" | "update" | "resetPassword" | "unlock" | "assertModifiable"
+  >;
   sessions: { revokeAllForUser(userId: string, reason: string): Promise<number> };
 }
 
@@ -615,6 +618,7 @@ function buildRoutes(deps: AdminDeps): AdminRoute[] {
       schemas: { params: idParams },
       handler: async (_req, res) => {
         const { id } = getValidated<typeof idParams>(res, "params");
+        await deps.users.assertModifiable(id);
         res.json({ sessions: await deps.sessions.revokeAllForUser(id, "revoked_by_admin") });
       },
     },

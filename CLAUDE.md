@@ -234,6 +234,12 @@ Alert · Setting/Rule · User (admin|operator) · AuditLog
   release-please (single version + changelog), Trivy (image OS vulnerabilities), actionlint +
   zizmor (workflow lint). All free, pinned by SHA / digest. Docker images for API and panel
   (GHCR, private while the repo is private).
+- Phase 12 deploy tooling (plan approved 2026-09-28; ADR-023 at the phase close): Oracle Cloud
+  Always Free (home region São Paulo, Santiago second; A1 VM, Bastion, Object Storage,
+  Budgets), Caddy 2.11 (HTTPS + one origin), DuckDNS (free subdomain, reserved IP), age (backup
+  encryption, private key only on the owner's PC), OCI CLI container (instance principal
+  uploads), Healthchecks.io + UptimeRobot (monitoring), shellcheck in CI. The real WhatsApp
+  instance is OUT of phase 12 (the VM only runs the public demo, without real keys).
 Each one gets an ADR in docs/adr/.
 
 ## Architecture decisions
@@ -580,10 +586,11 @@ Each one gets an ADR in docs/adr/.
   `ghcr.io/sanchezign/smartops-{api,admin}`.
 
 ## Current phase
-**Phase 11 (CI/CD) COMPLETE (2026-09-28): **v0.11.0 released** (tag + GitHub release + multi-arch
-images in GHCR). Phase 12 (deploy) branch `feat/phase-12-deploy` created from `main` — plan NOT
-written yet (the user asks for it next). M3b (phase 5) and MFA (TOTP) remain
-recommended/required before a real client.**
+**Phase 11 (CI/CD) COMPLETE (2026-09-28): v0.11.0 released. Phase 12 (deploy $0, branch
+`feat/phase-12-deploy`): plan approved; M0 DONE (code + deploy bundle + local harness) — WAITING
+for the user to do M1 (Oracle account / region / budget / VCN / VM / Bastion test / DuckDNS)
+with a step-by-step guide. M3b (phase 5) and MFA (TOTP) remain recommended/required before a
+real client.**
 
 1. scaffold — done (2026-09-24).
 2. config/env/logging + initial Prisma schema — done (2026-09-24). Migrations:
@@ -1541,8 +1548,95 @@ recommended/required before a real client.**
       EMPTY commits — a `Release-As` footer must ride on a commit that changes files; (3) sonner's
       default light rich colors fail WCAG AA — keep the override in globals.css; (4) timing-heavy
       unit tests need headroom on 2-vCPU runners with coverage (size the data, per-test timeout).
+12. deploy ($0) — IN PROGRESS on `feat/phase-12-deploy`. Approved plan (2026-09-28) + user answers:
+    region São Paulo (Santiago second, chosen by the user at signup); the VM runs ONLY the public
+    demo (real WhatsApp instance out of this phase); SSH via OCI Bastion (plan B: 22 only to the
+    user's /32 if the M1 test fails); DuckDNS subdomain + reserved public IP, record set once by
+    hand, the DuckDNS token NEVER on the VM; demo n8n = real n8n WITHOUT editor, workflows by
+    CLI, telemetry off; unattended security updates with 04:00 reboot + a post-boot check;
+    deploy scripts shipped inside the API image; monitoring UptimeRobot + Healthchecks.io; if
+    Oracle fails, retry for some days, then decide together (Supabase free pauses after 7 idle
+    days, Render free sleeps); releases v0.12.0 at M3 and another at the close. Addenda: A)
+    shared public operator (no lockout → per-IP limit, SSE cap per IP, no logout-all / password /
+    role changes; review other per-user limits); B) restore test on the owner's PC (private age
+    key never on the VM), monthly reminder = a Healthchecks check, no VM timer needing the key;
+    C) Caddy security headers (HSTS, nosniff, Referrer-Policy, frame-ancestors / XFO, CSP if it
+    does not break the panel), verified externally in M3; D) n8n editor disabled + telemetry off.
+    Milestones: M0 code + bundle + local test (me) → M1 Oracle console (user, guide) → M2 host
+    hardening (user runs my scripts) → M3 v0.12.0 + first deploy + external checks → M4 backups
+    + real restore → M5 monitoring + load smoke + abuse checks → M7 docs/ADR-023/close (M6 real
+    instance dropped from this phase). I do NOT get SSH access to the VM.
+    - Minor (user, 2026-09-28): the CI run on release PR #3 that failed with 0 jobs — cause:
+      since June 2026 GitHub requires an approval to run workflows on PRs created/updated by
+      GITHUB_TOKEN (first run "action_required"); the second update's run failed at startup
+      ("workflow file issue", not confirmed why). `plan` now skips the slow suite on
+      `release-please--*` branches; docs/ci-cd.md explains the approval. Watch the next release.
+    - M0 — DONE (2026-09-28):
+      1. Addendum A (`src/modules/demo/public-account.ts`, `createPublicAccount` from DEMO_MODE +
+         DEMO_OPERATOR_EMAIL): AuthService never locks the shared account (failures still
+         audited; the per-IP login limiter protects it) and refuses its logout-all (403);
+         UsersService.update / resetPassword / `assertModifiable` (admin revoke-sessions route)
+         refuse it (403); the event hub counts that account's streams per `userId|ip`
+         (`Subscriber.limitKey`); the panel hides "Cerrar todas mis sesiones" for it
+         (`features/demo/public-account.ts`). Other per-user state reviewed: the demo reset now
+         deletes ENDED sessions (revoked / idle / absolute) — they piled up forever with a shared
+         account; login limiter, inject limiter and all other limits were already per IP.
+         Tests: integration `demo-public-account.test.ts` (Postgres), e2e events per-IP cap,
+         e2e demo limits, demo-seed ended sessions, panel unit.
+      2. `/demo/inject` global cap `DEMO_GLOBAL_INJECT_PER_HOUR` (120/h for ALL visitors,
+         `createRateLimiter({ global: true })`) on top of the per-IP one; per-IP now needs
+         `TRUST_PROXY=1` behind Caddy (tested with X-Forwarded-For).
+      3. Public demo guard (env.ts `publicDemoIssues`, DEMO_MODE + NODE_ENV=production): refuses
+         ANTHROPIC_API_KEY / TRANSCRIPTION_API_KEY / DEMO_ADMIN_PASSWORD and ANY variable that
+         looks like a real key (sk-ant-, gsk_, sk-proj-, EAA…) — values never echoed. Local
+         dev:demo (development) keeps working with a developer .env.
+      4. `src/demo-seed.ts` → `node dist/demo-seed.js` (the prod image has no scripts/): deploy
+         re-seeds the demo (keepAuth), compose service `seed`.
+      5. Deploy bundle `deploy/` (ships in the API image at /opt/smartops-deploy, Dockerfile stage
+         `bundle`, modes set explicitly): compose.yaml (project smartops-demo; networks edge +
+         backend internal; only Caddy publishes 80/443; mem limits; no-new-privileges;
+         cap_drop ALL on node services; third-party images by digest: postgres 17-alpine, n8n
+         2.40.6, caddy 2.11.4-alpine), Caddyfile (h1/h2 only, security headers with `>`/`?`,
+         CSP with 'unsafe-inline' for Next hydration, `/api/v1/internal*` and `/webhooks*` → 404
+         INSIDE `handle /api/*` — a top-level `respond` loses to `handle`), postgres-init (roles
+         smartops + n8n), systemd units (backup 03:30, monitor 5 min, boot-check), scripts in
+         `deploy/bin` (lib, host-setup, init-secrets, fetch-bundle, deploy, rollback, n8n-import,
+         backup, restore-test, monitor, boot-check, status, install-units).
+      6. n8n by CLI (verified against 2.40.6): `deploy/lib/render-n8n.mjs` restores the ids the
+         exports reference (Execute Workflow nodes by cachedResultName, errorWorkflow via the
+         Error Trigger workflow, others `stableId(name)`), points Config.apiBaseUrl at
+         http://api:4000/api/v1 and builds the two Header Auth credentials from the server's
+         secrets; `n8n-import.sh` streams a tar from the API image straight into a one-off n8n
+         container (`import:credentials`, `import:workflow --separate`, `publish:workflow`) —
+         secrets never on the host disk; re-import is idempotent (same ids). Files written by
+         root were unreadable by n8n's uid 1000 (first attempt) — hence the stream.
+      7. CI: quick runs `scripts/ci/check-deploy-bundle.sh` (shellcheck 0.11.0, caddy validate +
+         fmt, compose config + invariants `check-deploy-compose.mjs` — mutation-checked);
+         `plan` docker paths += deploy/, n8n/workflows/; image-secrets-check takes several dirs
+         (api: /app + /opt/smartops-deploy); api-container-smoke runs the seed entry and checks
+         the bundle (render of the 4 workflows).
+      8. Local harness `scripts/deploy/local-harness.sh` + `local-smoke.mjs` (SMARTOPS_LOCAL=1:
+         no root / mode checks, local tags, no pulls; project smartops-m0test; 127.0.0.1 only)
+         — PASSED in 4m44s: deploy (1m08s), headers + blocked routes, public operator login,
+         logout-all 403, SSE through Caddy first frame 5–7 ms (GET and POST), live event 1 s
+         after a sample, the sample ingested through the REAL n8n workflows, second deploy with
+         pre-deploy backup, restore test (23 migrations, 53 products, 146 messages, 4 workflows,
+         2 credentials; wrong key → fails), rollback, newer-schema refusal + accept flag. No CSP
+         violation browsing every panel screen in Chromium (charts, blob: chat photo). Measured
+         RAM of the whole demo stack ≈ 700 MB (n8n 343, API 105, Postgres 99, worker 85, panel
+         51, Caddy 15).
+      9. docs/runbook.md (first version, Spanish), deploy/README.md, docs/ci-cd.md.
 
 ## Known issues (out of scope)
+- **Phase 12 M0 — decision pending (user):** "Reiniciar demo" (POST /demo/reset) is an action of
+  the shared public operator that affects EVERY visitor (their open screens lose the data). It
+  is rate limited (5 / 10 min per IP) and designed in phase 9; addendum A says actions that
+  affect other visitors are disabled for that account → keep it, make it admin-only (= no one
+  on the public demo, only the hourly automatic reset), or keep it with a global cap.
+- **Phase 12 M0 — idle reclamation risk:** the demo stack uses ≈ 0.7 GB (+ OS). Oracle deems an
+  A1 idle when, over 7 days, CPU p95, network AND memory are all < 20 %. On a 6 GB VM, 20 % =
+  1.2 GB: memory may stay below. Options for M1: a smaller shape (1 OCPU / 4 GB → 0.8 GB
+  threshold) and measure in M3 with the OCI memory metric + the 25 % alarm; never artificial load.
 - **Phase 11:** the 4 accepted audit exceptions (postcss ×2 via next 15.5, deepmerge-ts,
   mysql2 — see `security/audit-exceptions.json`) EXPIRE 2026-10-31: from that day `quick` fails
   until the dependency is updated or the exception renewed with a new justification.
@@ -1672,6 +1766,10 @@ recommended/required before a real client.**
 ## Conventions in this project
 - Costs: never create or enable anything that generates charges without asking first
   (see "Cost constraint").
+- Deploy (phase 12): the server only runs `deploy/bin/*.sh` of a RELEASED version (the bundle
+  inside its API image); `SMARTOPS_LOCAL=1` exists ONLY for `scripts/deploy/local-harness.sh`.
+  Secrets live in `/etc/smartops/*.env` (600) generated on the VM — never in the repo, images,
+  CI or a command line. I have no SSH access to the VM: the user runs the scripts.
 - Processes (user rule, 2026-09-27): NEVER kill processes you did not start. Record the PIDs
   of what you launch and stop only those (never "every cloudflared / node" by name) — in phase
   9 a tunnel of the user was closed by mistake that way.

@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
 # Image secrets check (phase 11 M4, user rule): an image must never contain a .env file, a
 # private key or a secret-looking variable, and its application files must pass gitleaks.
-#   scripts/ci/image-secrets-check.sh <image> <app dir inside the image, e.g. /app>
+#   scripts/ci/image-secrets-check.sh <image> <dir inside the image> [<dir> …]
+#   e.g. smartops-api:ci /app /opt/smartops-deploy   (the deploy bundle, phase 12)
 set -euo pipefail
+export MSYS_NO_PATHCONV=1 # local Windows runs (Git Bash); harmless on Linux
 
 image="$1"
-appdir="$2"
+shift
+appdirs=("$@")
+[ "${#appdirs[@]}" -gt 0 ] || {
+  echo "usage: image-secrets-check.sh <image> <dir> [<dir> …]" >&2
+  exit 2
+}
 gitleaks_image="ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f"
 fail=0
 work="$(mktemp -d)"
@@ -34,12 +41,14 @@ fi
 
 # 3. The application files (not node_modules: third-party test fixtures would be noise).
 mkdir -p "$work/app"
-docker export "$cid" | tar -x -C "$work/app" --exclude='node_modules' "${appdir#/}"
+docker export "$cid" | tar -x -C "$work/app" --exclude='node_modules' "${appdirs[@]#/}"
+for dir in "${appdirs[@]}"; do
+  if [ "$(find "$work/app/${dir#/}" -type f 2>/dev/null | wc -l)" -eq 0 ]; then
+    echo "::error::$image: nothing extracted from $dir — the check would be empty"
+    exit 1
+  fi
+done
 count="$(find "$work/app" -type f | wc -l)"
-if [ "$count" -eq 0 ]; then
-  echo "::error::$image: nothing extracted from $appdir — the check would be empty"
-  exit 1
-fi
 echo "scanning $count application files"
 mkdir -p "$work/app/.cfg" && cp "$(dirname "$0")/gitleaks-image.toml" "$work/app/.cfg/"
 mount="$work/app"
