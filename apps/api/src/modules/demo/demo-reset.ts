@@ -67,6 +67,8 @@ export function createDemoReset(deps: {
 
   return {
     reset,
+    /** When the data was last reset (manual or automatic); null = not since this process started. */
+    lastResetAt: (): Date | null => lastResetAt,
     /** When the next automatic reset happens (null = automatic reset off). */
     nextResetAt(): Date | null {
       if (deps.intervalMinutes === 0) return null;

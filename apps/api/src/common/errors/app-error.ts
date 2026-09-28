@@ -28,6 +28,8 @@ export type ErrorCode =
   | "RATE_LIMITED"
   /** Panel real time: too many open event streams for this user (ADR-020). */
   | "TOO_MANY_STREAMS"
+  /** Public demo: "Reiniciar demo" again too soon — one reset per interval for EVERYONE. */
+  | "DEMO_RECENTLY_RESET"
   | "SERVICE_UNAVAILABLE"
   | "INTERNAL_ERROR";
 

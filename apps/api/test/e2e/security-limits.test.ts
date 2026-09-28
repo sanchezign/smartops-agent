@@ -83,8 +83,14 @@ describe("rate limiters", () => {
   });
 
   const demoApp = (
-    rateLimit: { injectMax: number; resetMax: number; injectGlobalPerHour: number },
+    rateLimit: {
+      injectMax: number;
+      resetMax: number;
+      injectGlobalPerHour: number;
+      resetMinIntervalMs?: number;
+    },
     env: Record<string, string> = {},
+    clock: { now?: () => number; lastResetAt?: () => Date | null } = {},
   ) => {
     const auth: AuthService = {
       ...stubAuthService,
@@ -114,16 +120,62 @@ describe("rate limiters", () => {
               messages: 0,
             })),
             nextResetAt: () => null,
+            lastResetAt: clock.lastResetAt ?? (() => null),
             start: vi.fn(),
             stop: vi.fn(),
           },
           auth,
           rateLimit: { windowMs: 60_000, ...rateLimit },
+          ...(clock.now ? { now: clock.now } : {}),
           logger: pino({ level: "silent" }),
         }),
       },
     });
   };
+  const resetFrom = (app: ReturnType<typeof buildTestApp>, ip: string) =>
+    request(app)
+      .post("/api/v1/demo/reset")
+      .set("authorization", "Bearer t")
+      .set("x-forwarded-for", ip);
+
+  // Phase 12 (user decision): "Reiniciar demo" changes every visitor's screens, so on top of the
+  // per-IP limit there is ONE reset per 10 minutes for everybody — automatic resets included —
+  // and the answer says when the last one happened (the panel shows "hace X min").
+  it("demo reset: one per 10 minutes for EVERYONE, with the time of the last one", async () => {
+    let clockMs = Date.parse("2026-09-28T12:00:00Z");
+    const app = demoApp(
+      { injectMax: 5, resetMax: 100, injectGlobalPerHour: 100 },
+      { TRUST_PROXY: "1" },
+      { now: () => clockMs },
+    );
+    expect((await resetFrom(app, "203.0.113.20")).status).toBe(200);
+    clockMs += 3 * 60_000;
+    const refused = await resetFrom(app, "203.0.113.21"); // another visitor, 3 min later
+    expect(refused.status).toBe(429);
+    expect(refused.body.error).toMatchObject({
+      code: "DEMO_RECENTLY_RESET",
+      details: { lastResetAt: "2026-09-28T12:00:00.000Z", retryAfterSeconds: 420 },
+    });
+    expect(refused.headers["retry-after"]).toBe("420");
+    clockMs += 7 * 60_000;
+    expect((await resetFrom(app, "203.0.113.21")).status).toBe(200);
+  });
+
+  it("demo reset: an automatic reset a moment ago counts too", async () => {
+    const clockMs = Date.parse("2026-09-28T12:00:00Z");
+    const app = demoApp(
+      { injectMax: 5, resetMax: 100, injectGlobalPerHour: 100 },
+      { TRUST_PROXY: "1" },
+      { now: () => clockMs, lastResetAt: () => new Date(clockMs - 60_000) },
+    );
+    const refused = await resetFrom(app, "203.0.113.30");
+    expect(refused.status).toBe(429);
+    expect(refused.body.error.details).toEqual({
+      lastResetAt: "2026-09-28T11:59:00.000Z",
+      retryAfterSeconds: 540,
+    });
+  });
+
   const injectFrom = (app: ReturnType<typeof buildTestApp>, ip?: string) => {
     const req = request(app).post("/api/v1/demo/inject").set("authorization", "Bearer t");
     return (ip ? req.set("x-forwarded-for", ip) : req).send({ kind: "foto" });

@@ -1,6 +1,6 @@
 import express, { type Router } from "express";
 import { z } from "zod";
-import { errors } from "../../common/errors/app-error.js";
+import { AppError, errors } from "../../common/errors/app-error.js";
 import type { Logger } from "../../common/logger.js";
 import { validate, getValidated } from "../../common/middleware/validate.js";
 import { createRateLimiter } from "../../common/middleware/security.js";
@@ -32,7 +32,14 @@ export function createDemoRouter(options: {
     resetMax: number;
     /** Samples per hour for ALL visitors together (phase 12, public demo). */
     injectGlobalPerHour: number;
+    /**
+     * "Reiniciar demo": at most one reset per this interval for EVERYONE (phase 12 — every
+     * visitor is the same public operator and a reset changes every visitor's screens).
+     * Automatic resets count too. Default 10 minutes.
+     */
+    resetMinIntervalMs?: number;
   };
+  now?: () => number;
   logger: Logger;
 }): Router {
   const router = express.Router();
@@ -86,7 +93,21 @@ export function createDemoRouter(options: {
     res.set("cache-control", "no-store").json(await options.trace.byWamid(wamid));
   });
 
+  const now = options.now ?? Date.now;
+  const resetMinIntervalMs = options.rateLimit.resetMinIntervalMs ?? 10 * 60_000;
+  let resetAcceptedAt = 0; // a reset accepted but still running also counts
   router.post("/reset", requireAuth, resetLimiter, async (_req, res) => {
+    const last = Math.max(options.reset.lastResetAt()?.getTime() ?? 0, resetAcceptedAt);
+    const elapsed = now() - last;
+    if (last > 0 && elapsed < resetMinIntervalMs) {
+      const retryAfterSeconds = Math.ceil((resetMinIntervalMs - elapsed) / 1000);
+      res.set("retry-after", String(retryAfterSeconds));
+      throw new AppError(429, "DEMO_RECENTLY_RESET", "The demo was reset a few minutes ago", {
+        lastResetAt: new Date(last).toISOString(),
+        retryAfterSeconds,
+      });
+    }
+    resetAcceptedAt = now();
     const user = currentUser(res);
     options.logger.info({ userId: user.userId }, "demo reset requested");
     const result = await options.reset.reset("manual");

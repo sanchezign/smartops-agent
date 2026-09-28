@@ -77,7 +77,13 @@ beforeAll(async () => {
         operator: { email: "demo@x.demo", password: "clave pública de la demo" },
         injector: { inject: vi.fn(async () => ({ wamid: "wamid.X" })) },
         trace: { byWamid: async () => ({ received: false as const }) },
-        reset: { reset: vi.fn(), nextResetAt: () => null, start: vi.fn(), stop: vi.fn() },
+        reset: {
+          reset: vi.fn(),
+          nextResetAt: () => null,
+          lastResetAt: () => null,
+          start: vi.fn(),
+          stop: vi.fn(),
+        },
         auth,
         rateLimit: {
           windowMs: 60_000,

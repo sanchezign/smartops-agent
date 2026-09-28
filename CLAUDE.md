@@ -1626,17 +1626,30 @@ real client.**
          RAM of the whole demo stack ≈ 700 MB (n8n 343, API 105, Postgres 99, worker 85, panel
          51, Caddy 15).
       9. docs/runbook.md (first version, Spanish), deploy/README.md, docs/ci-cd.md.
+    - After M0 (user decisions, 2026-09-28): (1) "Reiniciar demo" stays for visitors with ONE
+      reset per 10 minutes for EVERYONE (automatic resets count; a reset accepted but still
+      running counts) + the per-IP limit → 429 `DEMO_RECENTLY_RESET` with details
+      {lastResetAt, retryAfterSeconds} + Retry-After; the panel says "La demo se reinició hace X
+      min. Vas a poder reiniciarla de nuevo en Y min." (`features/demo/reset-message.ts`). Tests:
+      e2e security-limits (two visitors, clock, automatic reset counts), panel unit. (2) VM
+      1 OCPU / 3 GB. (3) local test images deleted at the close.
+    - M1 guide — WRITTEN (2026-09-28): `docs/deploy/m1-oracle-setup.md` (Spanish, step by step:
+      account in São Paulo, budget USD 1 with actual + forecast alerts at 1 %, compartment
+      `smartops`, VCN by hand without NAT / service gateway, security list 80/443 from anywhere +
+      22 only from 10.0.0.0/24, reserved public IP, VM A1.Flex 1/3 Ubuntu 24.04 (not Minimal)
+      without ephemeral IP, Bastion port-forwarding session + plan B 22 to the user's /32, DuckDNS
+      set by hand, zero-cost checks). Reserved-IP cost: announced free by Oracle but NOT verified
+      on an official price page (403) — the budget + Cost Analysis check covers it. WAITING for the
+      user to run M1 and report region, IPs, DuckDNS name, Bastion result.
 
 ## Known issues (out of scope)
-- **Phase 12 M0 — decision pending (user):** "Reiniciar demo" (POST /demo/reset) is an action of
-  the shared public operator that affects EVERY visitor (their open screens lose the data). It
-  is rate limited (5 / 10 min per IP) and designed in phase 9; addendum A says actions that
-  affect other visitors are disabled for that account → keep it, make it admin-only (= no one
-  on the public demo, only the hourly automatic reset), or keep it with a global cap.
-- **Phase 12 M0 — idle reclamation risk:** the demo stack uses ≈ 0.7 GB (+ OS). Oracle deems an
-  A1 idle when, over 7 days, CPU p95, network AND memory are all < 20 %. On a 6 GB VM, 20 % =
-  1.2 GB: memory may stay below. Options for M1: a smaller shape (1 OCPU / 4 GB → 0.8 GB
-  threshold) and measure in M3 with the OCI memory metric + the 25 % alarm; never artificial load.
+- **Phase 12 — idle reclamation risk (open until M3):** the demo stack uses ≈ 0.7 GB (+ OS).
+  Oracle deems an A1 idle when, over 7 days, CPU p95, network AND memory are all < 20 %. User
+  decision (2026-09-28): VM of **1 OCPU / 3 GB** (threshold 0.6 GB); measure in M3 with the OCI
+  memory metric + the 25 % alarm and resize if needed — never artificial load. Note: the compose
+  mem_limits add up to ~3.1 GB (caps, not reservations) — revisit after measuring.
+- **Phase 12 — at the phase close:** delete the local test images
+  `smartops-local/smartops-{api,admin}:m0a|m0b` (user, 2026-09-28).
 - **Phase 11:** the 4 accepted audit exceptions (postcss ×2 via next 15.5, deepmerge-ts,
   mysql2 — see `security/audit-exceptions.json`) EXPIRE 2026-10-31: from that day `quick` fails
   until the dependency is updated or the exception renewed with a new justification.

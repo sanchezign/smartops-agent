@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { clientEnv } from "@/env";
 import { api } from "@/features/auth/api";
 import { ApiError } from "@/lib/api-client";
+import { isRecentlyResetDetails, recentlyResetMessage } from "./reset-message";
 import type { DemoSampleKind, DemoTrace } from "./trace";
 
 export interface DemoInfo {
@@ -69,9 +70,13 @@ export function useResetDemo(onDone: () => void) {
     },
     onError: (error) =>
       toast.error(
-        error instanceof ApiError && error.status === 429
-          ? "Se reinició hace poco: probá en unos minutos."
-          : "No se pudo reiniciar la demo.",
+        error instanceof ApiError &&
+          error.code === "DEMO_RECENTLY_RESET" &&
+          isRecentlyResetDetails(error.details)
+          ? recentlyResetMessage(error.details)
+          : error instanceof ApiError && error.status === 429
+            ? "Se reinició hace poco: probá en unos minutos."
+            : "No se pudo reiniciar la demo.",
       ),
   });
 }
