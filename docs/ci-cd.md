@@ -70,25 +70,34 @@ executes `quick`, `plan`, `integration-coverage`, `e2e` and `images` on that bra
 ## Timings and minutes budget
 
 GitHub Free, private: 2,000 Linux minutes / month; every job is rounded UP to the minute;
-arm64 standard runners (`ubuntu-24.04-arm`) also consume the included minutes. Measured so
-far on GitHub: `quick` 1 m 53 s. The slow jobs are **pending the first real run** (local
-reference on the dev PC: coverage 163 s, build 25 s, E2E 203 s + browser install; CI is
-expected 2–3× slower) — update this table after it.
+arm64 standard runners (`ubuntu-24.04-arm`) also consume the included minutes.
 
-| Job                  | Runs                              | GitHub (measured)     |
-| -------------------- | --------------------------------- | --------------------- |
-| quick                | every push                        | ~2 min                |
-| integration-coverage | PR to main, manual, nightly*      | pending the first run |
-| e2e                  | per `E2E_POLICY`                  | pending the first run |
-| images               | PR/manual when Docker inputs move | pending the first run |
-| release (4 builds)   | once per release                  | pending the first run |
+Measured on GitHub (2026-09-28, PR #2, run 36366205273 — all green, 0 flaky; `quick` from the
+push run 36366200541). The jobs of one run execute in parallel: a PR to `main` is green
+~7 min after the push.
 
-\* Nightly only when `main` got commits in the last 24 h.
+| Job                  | Runs                              | Wall time | Billed | Main steps                                                                     |
+| -------------------- | --------------------------------- | --------- | ------ | ------------------------------------------------------------------------------ |
+| quick                | every push                        | 2 m 00 s  | 2 min  | install, audit, format, lint, typecheck, 1,139 fast tests                      |
+| plan                 | PR, manual, nightly               | 6 s       | 1 min  | docs-only / Docker / E2E decisions                                             |
+| integration-coverage | PR to main, manual, nightly       | 5 m 14 s  | 6 min  | `test:coverage` 210 s (real Postgres), `build` 46 s, install 16 s              |
+| e2e                  | per `E2E_POLICY`                  | 6 m 58 s  | 7 min  | browsers + OS deps 42 s, build + 76 tests 322 s (Playwright exits right after) |
+| images               | PR/manual when Docker inputs move | 4 m 06 s  | 5 min  | builds 64 s + 90 s, secrets check 35 s, smoke tests 16 s, Trivy 33 s           |
+| release (4 builds)   | once per release                  | pending   | —      | measured on the first release (arm64 builds run there for the first time)      |
 
-Rough monthly estimate while private (to be re-checked with the real timings): 60 pushes ×
-2 min + 8 PRs to `main` × ~30 min + ~15 nightly runs × ~25 min + 2 releases × ~40 min ≈
-**1,000 min / month**, half the quota. Set the Actions budget to **$0** so an overrun stops
-instead of billing (see the settings checklist).
+Nightly runs happen only when `main` got commits in the last 24 h.
+
+Monthly estimate while private, with the billed minutes above: 60 pushes × 2 + 8 PRs to
+`main` × 3 runs × ~19 (plan + integration + e2e + images) + ~15 nightly runs × 14 + 2
+releases × ~20 ≈ **830 min / month**, well under half the quota. Set the Actions budget to
+**$0** so an overrun stops instead of billing (see the settings checklist).
+
+First real run (2026-09-27, run 36358940283) failed and fixed in phase 11: a ZIP-bomb unit
+test over the 5 s timeout under coverage (bomb sized down), the panel image assuming an
+unversioned empty `public/` (now `robots.txt`, optional copy), toast colors below WCAG AA
+(darker texts), and the E2E hanging ~24 min after its last test — pnpm 12 runs children in a
+new process group, so Playwright's kill of the web server's group missed them; web servers
+now run plain `node` + `exec`, with `gracefulShutdown` and a 12 min step timeout.
 
 ## Releases
 

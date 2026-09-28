@@ -578,9 +578,10 @@ Each one gets an ADR in docs/adr/.
 
 ## Current phase
 **Phase 10 (tests) COMPLETE (2026-09-27), merged `--ff-only` to `main`. Phase 11 (CI/CD): M1–M6
-DONE on `feat/phase-11-ci-cd` — WAITING for the user to run the slow suite on GitHub (draft PR to
-`main`) and to apply the GitHub settings (docs/ci-cd.md); then close via PR + rebase-merge ONLY
-when the user says so (needs `gh`, the user installs/authenticates it). M3b (phase 5) and MFA
+DONE on `feat/phase-11-ci-cd`; draft PR #2 to `main` is ALL GREEN on GitHub after the CI fixes
+(2026-09-28). WAITING for the user: GitHub settings (docs/ci-cd.md), then merge PR #2 with
+rebase-merge ONLY when the user says so (`gh` is installed and authenticated). Renovate's welcome
+PR #1 is left untouched and closed WITHOUT merging after the phase merge. M3b (phase 5) and MFA
 (TOTP) remain recommended/required before a real client.**
 
 1. scaffold — done (2026-09-24).
@@ -1487,10 +1488,37 @@ when the user says so (needs `gh`, the user installs/authenticates it). M3b (pha
     - M6 docs — DONE: PR template + issue forms (blank issues off, security → SECURITY.md),
       docs/ci-cd.md (workflows, E2E policy, manual runs, budget ≈ 1,000 min / month, releases,
       supply chain, settings checklist), ADR-022, README "CI/CD" section, this file.
-    - NEXT (user): open a DRAFT PR `feat/phase-11-ci-cd` → `main` in the GitHub UI — "Run
-      workflow" does not exist until ci.yml is on main — and report the slow-suite result; apply
-      the settings checklist; install `gh` for the close. At close: update the measured timings
-      in docs/ci-cd.md, check `main-guard` green after the merge, then the release PR (0.11.0).
+    - First real slow-suite run (PR #2, run 36358940283, 2026-09-27) FAILED — fixed (2026-09-28):
+      1. `documents.test.ts` ZIP bomb over the 5 s timeout under coverage on 2 vCPU → 3 MB bomb
+         vs a 2 MB cap, built once, + explicit uncompressed-size-cap assertion, own 15 s
+         timeout (never the global one).
+      2. Panel image: `cp apps/admin/public` failed (git does not version empty folders) →
+         `apps/admin/public/robots.txt` (`Disallow: /`) + optional copy in the Dockerfile +
+         the panel smoke test checks /robots.txt.
+      3a. axe color-contrast on the sonner toast: the REAL light rich colors fail AA (success
+         4.29, info 4.35, error 4.36, warning 3.07 : 1) → darker texts in globals.css
+         (`html [data-sonner-toaster][data-sonner-theme="light"]`, 5.96–6.74 : 1);
+         `expectAccessible` waits for toast animations; E2E emulates reducedMotion.
+      3b. E2E hung ~24 min after its last test until the 30-min job timeout. ROOT CAUSE
+         (reproduced in a node:24 container, scratch Playwright project): pnpm 12 (native binary,
+         `pnpm-native`) runs every child in a NEW process group; Playwright stops a web server
+         with kill(-pgid) of its shell, so tsx / next started via `pnpm exec` survived
+         (reparented to PID 1) holding Playwright's stdout pipe, and Playwright waited for
+         "close" forever. NOT the API shutdown (server.ts ends SSE via `eventHub.close()`; new
+         startup-smoke test: live SSE stream + SIGTERM → exit 0 in < 5 s, verified to fail
+         without `eventHub.close()`). Fix: web servers run plain `node --import tsx` / `node
+         node_modules/next/dist/bin/next` with `exec` (not on Windows: cmd has no exec,
+         Playwright uses taskkill /T there), `gracefulShutdown` SIGTERM + 15 s; e2e-n8n waits for
+         its worker; CI calls `./node_modules/.bin/playwright test` directly (no pnpm), step
+         timeout 12 min, job 20 min.
+      Second run (run 36366205273): all green, 0 flaky, Playwright exits right after the last
+      test. Measured: quick 2m00s, plan 6s, integration-coverage 5m14s, e2e 6m58s, images 4m06s
+      (table + ≈ 830 billed min / month estimate in docs/ci-cd.md).
+      LESSON: never start long-running processes through pnpm 12 where a supervisor kills by
+      process group (Playwright web servers, CI steps that may time out).
+    - NEXT (user): GitHub settings checklist; merge PR #2 (rebase) only on the user's word; then
+      check `main-guard` green on main, review the release PR (0.11.0) and close Renovate's PR #1
+      without merging.
 
 ## Known issues (out of scope)
 - **Phase 11:** the 4 accepted audit exceptions (postcss ×2 via next 15.5, deepmerge-ts,
