@@ -83,13 +83,31 @@ push run 36366200541). The jobs of one run execute in parallel: a PR to `main` i
 | integration-coverage | PR to main, manual, nightly       | 5 m 14 s  | 6 min  | `test:coverage` 210 s (real Postgres), `build` 46 s, install 16 s              |
 | e2e                  | per `E2E_POLICY`                  | 6 m 58 s  | 7 min  | browsers + OS deps 42 s, build + 76 tests 322 s (Playwright exits right after) |
 | images               | PR/manual when Docker inputs move | 4 m 06 s  | 5 min  | builds 64 s + 90 s, secrets check 35 s, smoke tests 16 s, Trivy 33 s           |
-| release (4 builds)   | once per release                  | pending   | —      | measured on the first release (arm64 builds run there for the first time)      |
+| release (v0.11.0)    | once per release                  | 3 m 55 s  | 17 min | 4 builds in parallel + publish (table below)                                   |
 
 Nightly runs happen only when `main` got commits in the last 24 h.
 
+First release, v0.11.0 (2026-09-28, run 36371046144, all green on the first attempt — including
+arm64, built and tested there for the first time). Jobs run in parallel: tag + images published
+3 m 55 s after the merge.
+
+| Job                 | Wall time   | Billed    | Local build | Secrets check | Smoke | Trivy | Push by digest |
+| ------------------- | ----------- | --------- | ----------- | ------------- | ----- | ----- | -------------- |
+| release-please      | 12 s        | 1 min     | —           | —             | —     | —     | —              |
+| build api (amd64)   | 3 m 16 s    | 4 min     | 86 s        | 20 s          | 14 s  | 18 s  | 22 s           |
+| build api (arm64)   | 2 m 53 s    | 3 min     | 75 s        | 13 s          | 11 s  | 22 s  | 19 s           |
+| build admin (amd64) | 3 m 07 s    | 4 min     | 102 s       | 17 s          | 2 s   | 17 s  | 18 s           |
+| build admin (arm64) | 2 m 26 s    | 3 min     | 84 s        | 8 s           | 2 s   | 17 s  | 12 s           |
+| publish api / admin | 18 s / 23 s | 1 + 1 min | —           | —             | —     | —     | —              |
+
+The native arm64 runners (`ubuntu-24.04-arm`) were FASTER than amd64 here. Push by digest
+reuses the checked build (same builder cache) and adds the SBOM + provenance attestations —
+they show up as `unknown/unknown` entries next to `linux/amd64` and `linux/arm64` in the
+multi-arch index. A release costs **17 billed minutes** (plus ~3 for the CI run of the same push).
+
 Monthly estimate while private, with the billed minutes above: 60 pushes × 2 + 8 PRs to
 `main` × 3 runs × ~19 (plan + integration + e2e + images) + ~15 nightly runs × 14 + 2
-releases × ~20 ≈ **830 min / month**, well under half the quota. Set the Actions budget to
+releases × ~20 (measured: 17 + 3) ≈ **830 min / month**, well under half the quota. Set the Actions budget to
 **$0** so an overrun stops instead of billing (see the settings checklist).
 
 First real run (2026-09-27, run 36358940283) failed and fixed in phase 11: a ZIP-bomb unit

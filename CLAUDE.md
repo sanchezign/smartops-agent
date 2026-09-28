@@ -580,14 +580,10 @@ Each one gets an ADR in docs/adr/.
   `ghcr.io/sanchezign/smartops-{api,admin}`.
 
 ## Current phase
-**Phase 10 (tests) COMPLETE (2026-09-27), merged `--ff-only` to `main`. Phase 11 (CI/CD): M1–M6
-DONE; PR #2 rebase-merged to `main` (2026-09-28, 1942ab6; main-guard + quick green; GitHub
-settings applied by the user); Renovate's PR #1 closed without merging. The empty Release-As
-commit was dropped by the rebase-merge → release PR #3 proposed 0.1.1; fixed by the
-`fix/release-as-0.11.0` docs PR (Release-As in a non-empty commit). WAITING: the user reviews
-release PR #3 (0.11.0) — merging it creates tag v0.11.0 and publishes the multi-arch images;
-NEVER merge #3 without the user. M3b (phase 5) and MFA (TOTP) remain recommended/required before
-a real client.**
+**Phase 11 (CI/CD) COMPLETE (2026-09-28): **v0.11.0 released** (tag + GitHub release + multi-arch
+images in GHCR). Phase 12 (deploy) branch `feat/phase-12-deploy` created from `main` — plan NOT
+written yet (the user asks for it next). M3b (phase 5) and MFA (TOTP) remain
+recommended/required before a real client.**
 
 1. scaffold — done (2026-09-24).
 2. config/env/logging + initial Prisma schema — done (2026-09-24). Migrations:
@@ -1466,7 +1462,8 @@ a real client.**
       whole-number current price never starts the percentage search below `MIN_PRICE_DECIMALS`.
       The rest of the ~150 survivors stay in the report (boundary instants on multi-day/-hour
       windows, error-message text, regex/text variants — no further real gaps found).
-11. CI/CD — M1–M6 DONE (2026-09-27) on `feat/phase-11-ci-cd`, NOT merged yet. Approved plan
+11. CI/CD — DONE (2026-09-28), merged to `main` via PR #2 (rebase), released as **v0.11.0**.
+    Branch `feat/phase-11-ci-cd` (kept). Approved plan
     (2026-09-27) + user answers: (1) soft enforcement of main now (main-guard job + pre-push hook);
     going public only after a SEPARATE full security audit; (2) rebase-merge, phase PR opened with
     `gh`, merged only when the user says so; (3) no Playwright browser cache; (4) one version for
@@ -1521,9 +1518,29 @@ a real client.**
       (table + ≈ 830 billed min / month estimate in docs/ci-cd.md).
       LESSON: never start long-running processes through pnpm 12 where a supervisor kills by
       process group (Playwright web servers, CI steps that may time out).
-    - NEXT (user): GitHub settings checklist; merge PR #2 (rebase) only on the user's word; then
-      check `main-guard` green on main, review the release PR (0.11.0) and close Renovate's PR #1
-      without merging.
+    - Close (2026-09-28): the user applied the GitHub settings (verified by API: E2E_POLICY,
+      read-only token + Actions may create PRs, allowed actions with SHA pinning required, 14-day
+      retention, Dependabot alerts). PR #2 marked ready and rebase-merged (1942ab6, branch kept);
+      main: main-guard + quick green on the first try. Renovate's onboarding PR #1 had already
+      auto-closed (config found on main) — commented, never merged; Renovate opened its
+      "Dependency Dashboard" issue #4.
+    - Release: the empty `chore: release 0.11.0` commit was DROPPED by GitHub's rebase-merge →
+      release PR #3 proposed 0.1.1. Fixed with PR #5 (`fix/release-as-0.11.0`, docs commit with
+      body `Release-As: 0.11.0`, rebase-merged 58ffdc9 after green checks, user-authorized) →
+      #3 became 0.11.0 (4 version files + CHANGELOG section), reviewed by the user, rebase-merged
+      (9a302e7). Release run 36371046144: ALL GREEN on the first attempt, tag v0.11.0 + GitHub
+      release, 4 native builds (api/admin × amd64/arm64) each with secrets check, smoke test and
+      Trivy BEFORE the push, then multi-arch tags `0.11.0`, `0.11`, `sha-9a302e7` for
+      `ghcr.io/sanchezign/smartops-{api,admin}` (index = linux/amd64 + linux/arm64 + 2 attestation
+      manifests `unknown/unknown`, labels `org.opencontainers.image.source` = the repo). 3 m 55 s
+      wall, 17 billed minutes; arm64 builds were faster than amd64 (api 2m53 vs 3m16, admin 2m26
+      vs 3m07). Timings in docs/ci-cd.md. Anonymous pulls are refused (not public); package
+      visibility/link could not be read by API (the gh token lacks `read:packages`).
+    - LESSONS: (1) pnpm 12 runs children in a new process group — never supervise long-running
+      processes through it (Playwright web servers, CI steps); (2) GitHub's rebase-merge drops
+      EMPTY commits — a `Release-As` footer must ride on a commit that changes files; (3) sonner's
+      default light rich colors fail WCAG AA — keep the override in globals.css; (4) timing-heavy
+      unit tests need headroom on 2-vCPU runners with coverage (size the data, per-test timeout).
 
 ## Known issues (out of scope)
 - **Phase 11:** the 4 accepted audit exceptions (postcss ×2 via next 15.5, deepmerge-ts,
@@ -1534,8 +1551,11 @@ a real client.**
 - **Phase 11:** `main` is protected only by convention (main-guard detects, does not prevent)
   until the repo is public and a ruleset is created. Release PRs opened by `GITHUB_TOKEN` get no
   CI checks (GitHub rule).
-- **Phase 11:** `release-please` has only been validated statically (schema keys, guard test);
-  the first real release PR appears after the phase merge — review it before merging.
+- **Phase 11:** the v0.11.0 CHANGELOG compare link (`v0.1.0...v0.11.0`) is broken — no `v0.1.0`
+  tag exists. Accepted by the user (first release only).
+- **Phase 11:** GHCR package visibility (private) and repository link not verified by API: the
+  `gh` token has no `read:packages` scope (add it with `gh auth refresh -s read:packages`, or
+  check Profile → Packages). Anonymous pulls are refused, so they are not public.
 - **Tooling caveat (phase 10 M9):** one Stryker JSON report entry (`price-math.ts`, the
   `Math.min(MAX_PRICE_DECIMALS, Math.max(MIN_PRICE_DECIMALS, …))` clamp mutated to
   `Math.min(MIN_PRICE_DECIMALS, …)`) was reported "Survived", but manually re-applying that exact
