@@ -17,10 +17,13 @@ COPY apps/api/package.json apps/api/
 COPY apps/admin/package.json apps/admin/
 RUN pnpm fetch
 COPY apps/admin apps/admin
+# public/ is optional: git does not version empty folders, so never assume it exists.
 RUN pnpm install --offline --frozen-lockfile --filter @smartops/admin \
   && pnpm --filter @smartops/admin build \
   && cp -r apps/admin/.next/static apps/admin/.next/standalone/apps/admin/.next/static \
-  && cp -r apps/admin/public apps/admin/.next/standalone/apps/admin/public
+  && if [ -d apps/admin/public ]; then \
+       cp -r apps/admin/public apps/admin/.next/standalone/apps/admin/public; \
+     fi
 
 FROM ${NODE_IMAGE} AS runtime
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0

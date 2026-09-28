@@ -15,6 +15,11 @@ for _ in $(seq 1 60); do
 done
 if [ "$ok" -ne 1 ]; then echo "::error::the panel never served /login"; docker logs "$name" | tail -40; exit 1; fi
 echo "/login OK (noindex)"
+# public/ reaches the image: the private panel tells crawlers to stay out.
+if ! docker exec "$name" node -e "fetch('http://127.0.0.1:3000/robots.txt').then(async r=>{const t=await r.text();process.exit(r.ok&&/Disallow: \/\s*$/m.test(t)?0:1)},()=>process.exit(1))"; then
+  echo "::error::/robots.txt is missing or does not disallow everything"; exit 1
+fi
+echo "/robots.txt OK (Disallow: /)"
 docker stop --time 20 "$name" >/dev/null
 code="$(docker inspect "$name" --format '{{.State.ExitCode}}')"
 if [ "$code" != "0" ]; then echo "::error::panel exited with $code after SIGTERM"; exit 1; fi
