@@ -1,6 +1,6 @@
 {
   "name": "smartops-agent",
-  "version": "0.1.0",
+  "version": "0.11.0",
   "private": true,
   "description": "SmartOps Agent — multi-channel operations agent with AI (WhatsApp + Claude + n8n)",
   "packageManager": "pnpm@12.6.0",
