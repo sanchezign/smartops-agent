@@ -215,18 +215,33 @@ describe("docx (mammoth + htmlparser2)", () => {
 });
 
 describe("limits and hostile files", () => {
-  const small = { ...L, zipMaxUncompressedBytes: 5 * 1024 * 1024 };
+  const small = { ...L, zipMaxUncompressedBytes: 2 * 1024 * 1024 };
 
-  it("a ZIP bomb is rejected by what really decompresses, not by what it declares", async () => {
-    expect(() => assertSafeZip(zipBomb(20), small)).toThrow(DocumentRejectedError);
-    const result = await convertDocument(
-      { bytes: zipBomb(20), mimeType: XLSX_MIME, filename: null },
-      small,
-    );
-    expect(result).toMatchObject({ ok: false, reason: "zip_bomb" });
-    // High ratio on a single entry (2 MB of zeros ≈ 1000:1).
-    expect(() => assertSafeZip(zipBomb(2), L)).toThrow(/ratio/);
-  });
+  // Bomb sized down in phase 11 (20 MB built twice took 5.5 s on a 2-vCPU CI runner with
+  // coverage): 3 MB of zeros (≈ 3 KB compressed) still exceeds the 2 MB cap. Own timeout as a
+  // margin for slow runners — only this test, never the global one.
+  it(
+    "a ZIP bomb is rejected by what really decompresses, not by what it declares",
+    {
+      timeout: 15_000,
+    },
+    async () => {
+      const bomb = zipBomb(3);
+      expect(() => assertSafeZip(bomb, small)).toThrow(DocumentRejectedError);
+      // The uncompressed-size cap alone stops it too (ratio check off): bytes are counted while
+      // inflating, whatever the archive declares.
+      expect(() =>
+        assertSafeZip(bomb, { ...small, zipMaxRatio: Number.POSITIVE_INFINITY }),
+      ).toThrow(/uncompressed size exceeds/);
+      const result = await convertDocument(
+        { bytes: bomb, mimeType: XLSX_MIME, filename: null },
+        small,
+      );
+      expect(result).toMatchObject({ ok: false, reason: "zip_bomb" });
+      // High ratio on a single entry (2 MB of zeros ≈ 1000:1).
+      expect(() => assertSafeZip(zipBomb(2), L)).toThrow(/ratio/);
+    },
+  );
 
   it("too many entries, invalid containers and oversized files are rejected", async () => {
     expect(() => assertSafeZip(manyEntriesZip(30), { ...L, zipMaxEntries: 20 })).toThrow(/entries/);
