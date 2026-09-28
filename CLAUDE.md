@@ -1653,13 +1653,19 @@ M3b (phase 5) and MFA (TOTP) remain recommended/required before a real client.**
       config hard-coded (A1.Flex 1/3, Ubuntu 24.04 aarch64 non-Minimal looked up, subnet by name,
       `--assign-public-ip false`, the user's .pub — a private key is refused), checks for an
       existing `smartops-demo` (any state but TERMINATED/TERMINATING) BEFORE every attempt,
-      capacity → 5–10 min random wait, 429 → 15 min, any other error (NotAuthenticated,
-      NotAuthorizedOrNotFound, Limit/QuotaExceeded, InvalidParameter…) → STOP with a hint, deadline
+      capacity → 2–5 min random wait (user, 2026-09-28), 429 → 15 min, NETWORK failures (no
+      ServiceError: timeouts, DNS, refused / reset, "Max retries exceeded", RequestException) are
+      retried in the listing AND the launch (safe: existence checked before every launch — a lost
+      answer is found on the next check), an ALERT + toast every 12 in a row (the streak resets only
+      when OCI answers with a real ServiceError, not on a successful listing), local CLI config
+      errors and real errors (NotAuthenticated, NotAuthorizedOrNotFound, Limit/QuotaExceeded,
+      InvalidParameter…) → STOP with a hint (-DryRun never retries), deadline
       `-MaxDays` 5 (waits never pass it), success → toast + sound, log without secrets in
-      %LOCALAPPDATA%smartopslaunch-retry.log, SetThreadExecutionState keeps the PC awake while it
+      %LOCALAPPDATA%\smartops\launch-retry.log, SetThreadExecutionState keeps the PC awake while it
       runs, `-DryRun` resolves everything without launching. Tested against a fake OCI CLI shim
       (dry-run, capacity×2 → success, existing instance, 401 stop, 429, deadline, private key,
-      missing CLI). Least privilege (docs/deploy/m1-retry-launch.md): Identity Domains user
+      missing CLI, network cut in the listing and in the launch, 13 cuts → alert at 12 → success,
+      launch that worked with its answer lost → found, no second launch, config error → stop). Least privilege (docs/deploy/m1-retry-launch.md): Identity Domains user
       `smartops-launcher` in group `smartops-launchers` (Default domain), policy in the root
       compartment: `manage instance-family` + `use volume-family` + `use virtual-network-family`
       in compartment smartops + `read app-catalog-listing` in tenancy (Oracle's "Let users launch

@@ -1,7 +1,7 @@
 # M1 — Reintento automático para crear la VM (fase 12)
 
 São Paulo está sin capacidad ARM ("500-InternalError, Out of host capacity"). En vez de
-reintentar a mano, un script corre **en tu PC** y prueba crear la VM cada 5–10 minutos (con
+reintentar a mano, un script corre **en tu PC** y prueba crear la VM cada 2–5 minutos (con
 variación al azar) durante hasta 5 días, sin Pay As You Go. Usa **OCI CLI** con un **usuario
 aparte de mínimo privilegio** (`smartops-launcher`), no tu usuario administrador. Apenas tenemos
 la VM, se borran ese usuario y su clave.
@@ -19,9 +19,15 @@ Script: [`scripts/oci/launch-retry.ps1`](../../scripts/oci/launch-retry.ps1). Gu
 - Crea la VM con la configuración aprobada, fija en el script: `VM.Standard.A1.Flex`, **1 OCPU /
   3 GB**, Ubuntu 24.04 aarch64 (no Minimal), subred `smartops-public`, **sin IP pública** (la
   reservada se asigna a mano después), tu clave pública `smartops_oci.pub`.
-- "Out of host capacity" → espera 5–10 min y reintenta. Demasiadas llamadas (429) → 15 min.
-- **Cualquier otro error** (autenticación, permisos, límites, parámetros) → **se frena**, te
-  avisa y deja una pista en el log. No reintenta a ciegas.
+- "Out of host capacity" → espera 2–5 min (al azar) y reintenta. Demasiadas llamadas (429) → 15
+  min.
+- **Cortes de red** (timeouts, DNS, conexión rechazada o cortada, "Max retries exceeded", o
+  cualquier falla sin respuesta de OCI), tanto al listar como al crear → **espera y reintenta**,
+  no se frena. Es seguro: antes de cada intento verifica si la VM ya existe (si un intento
+  anterior la creó pero la respuesta se perdió, la encuentra y se detiene sin crear otra). Cada
+  **12 cortes seguidos** te avisa en el log y con una notificación, y sigue hasta el plazo.
+- **Errores reales** (autenticación 401, permisos 404, límites, parámetros, o la configuración
+  local de OCI CLI) → **se frena**, te avisa y deja una pista en el log. No reintenta a ciegas.
 - Cuando lo logra: se detiene, **notificación de Windows + sonido**.
 - Log local sin secretos: `%LOCALAPPDATA%\smartops\launch-retry.log`.
 - Mientras corre, **le pide a Windows que no suspenda la PC** (se libera al terminar).
@@ -188,6 +194,9 @@ host capacity. -> proximo en 7,3 min`).
 Cuando lo logra: notificación **"SmartOps: VM creada!"** + sonido, y una línea `SUCCESS` en el
 log. Seguí con el **paso 6.1** de [`m1-oracle-setup.md`](m1-oracle-setup.md) (asignar la IP
 reservada) y el resto de la guía (Bastion, verificación).
+
+Si ves avisos de **"sin conexion con OCI"** (12 cortes seguidos): revisá la conexión a internet de la
+PC; el script sigue solo, no hace falta pararlo.
 
 Si se frena solo (`STOP`): leé la línea `HINT`, corregí y volvé a correrlo; si no está claro,
 mandame esas dos líneas.
