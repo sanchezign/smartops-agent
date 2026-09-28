@@ -132,3 +132,15 @@
     @apply font-sans;
   }
 }
+
+/* Toasts (sonner, richColors). Its default light-theme texts fail WCAG AA on their tinted
+   backgrounds (success 4.29, info 4.35, error 4.36, warning 3.07 : 1 at 13 px). Darker texts,
+   same hues: success 5.96, info 6.18, warning 6.74, error 6.00 : 1 (phase 11, found by axe in
+   CI). `html` raises the specificity over the CSS sonner injects at runtime. Dark theme
+   already passes (≥ 6.5 : 1). */
+html [data-sonner-toaster][data-sonner-theme="light"] {
+  --success-text: hsl(140, 100%, 22%);
+  --info-text: hsl(210, 92%, 36%);
+  --warning-text: hsl(31, 92%, 28%);
+  --error-text: hsl(360, 100%, 37%);
+}
