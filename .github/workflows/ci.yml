@@ -187,7 +187,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.code == 'true' && needs.plan.outputs.e2e == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 20
     permissions:
       contents: read
     services:
@@ -219,7 +219,13 @@ jobs:
       # download, and the OS dependencies are not cacheable) — user decision, phase 11.
       - run: pnpm --filter @smartops/admin exec playwright install --with-deps chromium webkit
       # CI=true: one retry, and a test that only passes on the retry is reported as flaky.
-      - run: pnpm test:e2e
+      # Playwright is called directly, not through pnpm: pnpm 12 runs children in a new process
+      # group, out of reach of the runner when a step times out. Build + 112 tests ≈ 5 min;
+      # the step timeout caps any hang (phase 11: a web server that never stopped burned 30 min).
+      - name: Browser E2E
+        working-directory: apps/admin
+        timeout-minutes: 12
+        run: ./node_modules/.bin/playwright test
       - name: Upload the report and traces (failures only, 7 days — artifacts share 500 MB)
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

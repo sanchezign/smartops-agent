@@ -11,6 +11,21 @@ import { E2E } from "./e2e/env";
  */
 const API_ENV = apiEnv();
 
+/*
+ * Web servers are started WITHOUT pnpm (phase 11, found in CI): pnpm 12 (native binary) runs
+ * every child in a NEW process group. On Linux Playwright stops a web server by killing the
+ * process group of its shell, so the tsx / next processes started through pnpm survived,
+ * reparented to PID 1 with Playwright's stdout pipe still open — and Playwright waited for
+ * that pipe forever after the last test (reproduced in a node:24 container). Plain `node` +
+ * `exec` keeps the whole tree in the shell's group. cmd.exe has no `exec`; on Windows
+ * Playwright uses `taskkill /T` (the whole tree) anyway.
+ */
+const EXEC = process.platform === "win32" ? "" : "exec ";
+const TSX = "node --env-file-if-exists=.env --import tsx";
+const NEXT = "node node_modules/next/dist/bin/next";
+/** SIGTERM first (API and worker close their pools and streams), SIGKILL after 15 s. */
+const GRACEFUL = { signal: "SIGTERM", timeout: 15_000 } as const;
+
 export default defineConfig({
   testDir: "./e2e",
   testMatch: /.*\.spec\.ts/,
@@ -33,6 +48,8 @@ export default defineConfig({
     timezoneId: "America/Montevideo",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
+    // Stable accessibility checks: no half-faded toasts under axe (see expectAccessible).
+    contextOptions: { reducedMotion: "reduce" },
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
@@ -41,28 +58,31 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "pnpm demo:seed && pnpm exec tsx --env-file-if-exists=.env src/server.ts",
+      command: `${TSX} scripts/demo/seed.ts && ${EXEC}${TSX} src/server.ts`,
       cwd: "../api",
       url: `http://localhost:${E2E.apiPort}/api/v1/health`,
       reuseExistingServer: false,
       timeout: 240_000,
+      gracefulShutdown: GRACEFUL,
       env: API_ENV,
     },
     {
       // Plays n8n (the exported workflows, over HTTP) and runs the REAL worker (phase 9 M8).
-      command: "pnpm exec tsx --env-file-if-exists=.env scripts/demo/e2e-n8n.ts",
+      command: `${EXEC}${TSX} scripts/demo/e2e-n8n.ts`,
       cwd: "../api",
       url: "http://127.0.0.1:4110/health",
       reuseExistingServer: false,
       timeout: 300_000,
+      gracefulShutdown: GRACEFUL,
       env: { ...API_ENV, API_URL: `http://127.0.0.1:${E2E.apiPort}`, N8N_FAKE_PORT: "4110" },
     },
     {
       // Production build (deterministic, like the deploy), in its own dist dir.
-      command: `pnpm exec next build && pnpm exec next start --port ${E2E.panelPort}`,
+      command: `${NEXT} build && ${EXEC}${NEXT} start --port ${E2E.panelPort}`,
       url: `${E2E.panelUrl}/login`,
       reuseExistingServer: false,
       timeout: 300_000,
+      gracefulShutdown: GRACEFUL,
       env: {
         API_PROXY_TARGET: `http://localhost:${E2E.apiPort}`,
         NEXT_DIST_DIR: ".next-e2e",

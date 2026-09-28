@@ -8,6 +8,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "../../src/common/db.js";
 import { startBoss } from "../../src/jobs/boss.js";
 import { QUEUE_DEFINITIONS, QUEUES } from "../../src/jobs/queues.js";
+import { createSessionsRepository } from "../../src/modules/auth/sessions.repository.js";
+import { createUsersRepository } from "../../src/modules/users/users.repository.js";
+import { createUsersService } from "../../src/modules/users/users.service.js";
 import { TEST_ENV_SOURCE } from "../helpers/build-app.js";
 import { createTestPrisma, testDatabaseUrl } from "./db.js";
 
@@ -149,6 +152,58 @@ describe.skipIf(!testDatabaseUrl)("startup smoke (server.ts, worker.ts)", () => 
     expect(api.logs.filter((l) => l.level >= 50)).toEqual([]);
     await expect.poll(() => connections("smartops-api-events"), { timeout: 10_000 }).toBe(0);
     await expect.poll(() => connections("smartops-api"), { timeout: 10_000 }).toBe(0);
+  }, 90_000);
+
+  // Phase 11 (CI hang investigation): `docker stop` sends SIGTERM while panels keep SSE streams
+  // open. server.close() alone would wait for them; the API must end them and leave quickly —
+  // well before its own 10 s forced exit (which would exit 1).
+  it("SIGTERM with a live SSE stream: the stream ends and the API exits 0 within seconds", async () => {
+    const email = `smoke-${crypto.randomUUID()}@x.uy`;
+    const password = "frase larga para probar el apagado";
+    await createUsersService({
+      repository: createUsersRepository(prisma, {
+        revokeUserSessionsInTx: createSessionsRepository(prisma).revokeAllForUserInTx,
+      }),
+    }).create({ email, name: "Smoke", role: "operator", password }, { label: "test" });
+
+    const port = await freePort();
+    const base = `http://127.0.0.1:${port}/api/v1`;
+    const api = launch("src/server.ts", { PORT: String(port) });
+    started.push(api);
+    await waitForLog(api, /api listening/);
+
+    const login = await fetch(`${base}/auth/login`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-smartops-csrf": "1",
+        origin: TEST_ENV_SOURCE.CORS_ORIGINS,
+      },
+      body: JSON.stringify({ email, password }),
+    });
+    expect(login.status).toBe(200);
+    const { accessToken } = (await login.json()) as { accessToken: string };
+
+    const stream = await fetch(`${base}/events`, {
+      headers: { authorization: `Bearer ${accessToken}`, accept: "text/event-stream" },
+    });
+    expect(stream.status).toBe(200);
+    const reader = stream.body!.getReader();
+    const first = new TextDecoder().decode((await reader.read()).value);
+    expect(first).toContain("ready"); // the stream is live
+    const streamEnded = (async () => {
+      for (;;) if ((await reader.read().catch(() => ({ done: true }))).done) return true;
+    })();
+
+    const t0 = Date.now();
+    terminate(api);
+    const code = await api.exited;
+    const elapsed = Date.now() - t0;
+
+    expect(code, api.logs.map((l) => l.msg).join("\n")).toBe(0);
+    expect(elapsed).toBeLessThan(5_000);
+    expect(await streamEnded).toBe(true);
+    expect(api.logs.filter((l) => l.level >= 50)).toEqual([]);
   }, 90_000);
 
   it("the worker finishes its in-flight job on SIGTERM, then exits 0", async () => {

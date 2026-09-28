@@ -64,9 +64,13 @@ const worker = spawn(process.execPath, ["--import", "tsx", "src/worker.ts"], {
   env: process.env,
   stdio: "inherit",
 });
+// Leave only after the worker finished its graceful shutdown (it shares our stdout: exiting
+// first would leave it holding the pipe Playwright waits on). Bounded: 12 s, then we go anyway.
 const stop = () => {
-  worker.kill();
-  process.exit(0);
+  if (worker.exitCode !== null || worker.signalCode !== null) process.exit(0);
+  worker.once("exit", () => process.exit(0));
+  worker.kill("SIGTERM");
+  setTimeout(() => process.exit(0), 12_000).unref();
 };
 process.on("SIGTERM", stop);
 process.on("SIGINT", stop);
