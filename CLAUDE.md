@@ -568,8 +568,11 @@ Each one gets an ADR in docs/adr/.
   (OS packages, fixable HIGH/CRITICAL).
 - Releases: release-please (`release-please-config.json`, root package only, tags `vX.Y.Z`,
   bootstrap ad17cef, `extra-files` bump both apps; guard `test/unit/release-config.test.ts`:
-  versions in lockstep, NO `release-as` in the config). First release forced to 0.11.0 by the
-  empty commit `chore: release 0.11.0` + body `Release-As: 0.11.0`. CHANGELOG heading
+  versions in lockstep, NO `release-as` in the config). First release forced to 0.11.0 by a
+  `Release-As: 0.11.0` commit body. LESSON (2026-09-28): the first attempt was an EMPTY commit
+  and GitHub's rebase-merge DROPS empty commits → release-please proposed 0.1.1; `Release-As`
+  must go in a commit that changes files (redone in the `fix/release-as-0.11.0` docs PR).
+  CHANGELOG heading
   `[Before v0.11.0]` matches release-please's header regex (entries go above it). CHANGELOG.md
   and the manifest are prettier-ignored. Images: native amd64 (`ubuntu-24.04`) + arm64
   (`ubuntu-24.04-arm`) → local build → secrets check + smoke + Trivy → push by digest (same
@@ -578,11 +581,13 @@ Each one gets an ADR in docs/adr/.
 
 ## Current phase
 **Phase 10 (tests) COMPLETE (2026-09-27), merged `--ff-only` to `main`. Phase 11 (CI/CD): M1–M6
-DONE on `feat/phase-11-ci-cd`; draft PR #2 to `main` is ALL GREEN on GitHub after the CI fixes
-(2026-09-28). WAITING for the user: GitHub settings (docs/ci-cd.md), then merge PR #2 with
-rebase-merge ONLY when the user says so (`gh` is installed and authenticated). Renovate's welcome
-PR #1 is left untouched and closed WITHOUT merging after the phase merge. M3b (phase 5) and MFA
-(TOTP) remain recommended/required before a real client.**
+DONE; PR #2 rebase-merged to `main` (2026-09-28, 1942ab6; main-guard + quick green; GitHub
+settings applied by the user); Renovate's PR #1 closed without merging. The empty Release-As
+commit was dropped by the rebase-merge → release PR #3 proposed 0.1.1; fixed by the
+`fix/release-as-0.11.0` docs PR (Release-As in a non-empty commit). WAITING: the user reviews
+release PR #3 (0.11.0) — merging it creates tag v0.11.0 and publishes the multi-arch images;
+NEVER merge #3 without the user. M3b (phase 5) and MFA (TOTP) remain recommended/required before
+a real client.**
 
 1. scaffold — done (2026-09-24).
 2. config/env/logging + initial Prisma schema — done (2026-09-24). Migrations:

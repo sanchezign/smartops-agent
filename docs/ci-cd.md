@@ -107,15 +107,19 @@ now run plain `node` + `exec`, with `gracefulShutdown` and a 12 min step timeout
   push to `main`, with the changelog built from Conventional Commits. Merging it (rebase-merge,
   only when the maintainer says so) creates the tag and the GitHub release, and the **same run**
   builds the images: a tag created with `GITHUB_TOKEN` never triggers another workflow.
-- The first release is forced to **0.11.0** by the empty commit `chore: release 0.11.0` with
-  the body `Release-As: 0.11.0` (one-shot; a `release-as` in the config would propose the same
-  version forever — a guard test forbids it). To force another version later, repeat that
-  pattern.
+- To force a version, put `Release-As: X.Y.Z` in the body of a commit **that changes at least
+  one file** (one-shot; a `release-as` in the config would propose the same version forever — a
+  guard test forbids it). **Never in an empty commit:** GitHub's rebase-merge drops empty
+  commits, so the footer never reaches `main`. That happened with the first attempt at 0.11.0
+  (`chore: release 0.11.0`, empty): release-please proposed 0.1.1 from the `fix` commits. The
+  version was forced again by the docs fix that added this note (PR `fix/release-as-0.11.0`).
+  The first release's compare link (`v0.1.0...`) is broken — no `v0.1.0` tag exists; accepted.
 - Release PRs opened by `GITHUB_TOKEN` trigger **no CI checks** (GitHub rule). That is expected:
   the diff is only versions and the changelog. If checks are wanted, run CI by hand on the
   release PR's branch (shown on the PR; release-please names it).
 - Merge phase PRs with **rebase-merge**, never squash: a squash would drop the individual
   Conventional Commit types and any `Release-As:` footer the changelog and version rely on.
+  Rebase-merge keeps each commit, but not EMPTY ones (see above).
 - Images: `ghcr.io/sanchezign/smartops-api` and `ghcr.io/sanchezign/smartops-admin`, tags
   `X.Y.Z`, `X.Y` and `sha-xxxxxxx` (no `latest`: deploys pin a version). Built natively on
   amd64 and arm64 runners (the Oracle VM of phase 12 is ARM), every architecture checked
