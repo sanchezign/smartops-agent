@@ -587,10 +587,10 @@ Each one gets an ADR in docs/adr/.
 
 ## Current phase
 **Phase 11 (CI/CD) COMPLETE (2026-09-28): v0.11.0 released. Phase 12 (deploy $0, branch
-`feat/phase-12-deploy`): plan approved; M0 DONE (code + deploy bundle + local harness) — WAITING
-for the user to do M1 (Oracle account / region / budget / VCN / VM / Bastion test / DuckDNS)
-with a step-by-step guide. M3b (phase 5) and MFA (TOTP) remain recommended/required before a
-real client.**
+`feat/phase-12-deploy`): M0 DONE; M1 done up to DuckDNS — the VM cannot be created yet (São Paulo
+has no A1 capacity). WAITING: the user runs `scripts/oci/launch-retry.ps1` for 3–5 days
+(guide `docs/deploy/m1-retry-launch.md`); meanwhile we look at what to advance from phase 13.
+M3b (phase 5) and MFA (TOTP) remain recommended/required before a real client.**
 
 1. scaffold — done (2026-09-24).
 2. config/env/logging + initial Prisma schema — done (2026-09-24). Migrations:
@@ -1639,8 +1639,34 @@ real client.**
       22 only from 10.0.0.0/24, reserved public IP, VM A1.Flex 1/3 Ubuntu 24.04 (not Minimal)
       without ephemeral IP, Bastion port-forwarding session + plan B 22 to the user's /32, DuckDNS
       set by hand, zero-cost checks). Reserved-IP cost: announced free by Oracle but NOT verified
-      on an official price page (403) — the budget + Cost Analysis check covers it. WAITING for the
-      user to run M1 and report region, IPs, DuckDNS name, Bastion result.
+      on an official price page (403) — the budget + Cost Analysis check covers it.
+    - M1 run by the user (2026-09-28): tenancy (name not published), home region São Paulo, budget
+      USD 1 with 2 alerts, compartment `smartops`, VCN + subnet as in the guide (ingress only the
+      default ICMP + 80/443 from anywhere + 22 from 10.0.0.0/24), reserved public IP
+      **163.176.132.161**, **smartops-demo.duckdns.org** → that IP (verified). The VM could NOT be
+      created: 30+ attempts "500-InternalError, Out of host capacity" (A1.Flex 1 OCPU / 3 GB,
+      AD-1). The config is saved as Resource Manager stack `smartops-demo-vm` (plan correct: 3 GB,
+      no public IP, the user's key). User decision: automatic retry for 3–5 days, NO Pay As You Go.
+    - M1 retry tooling — DONE (2026-09-28): `scripts/oci/launch-retry.ps1` (PowerShell 5.1, ASCII,
+      runs on the USER's PC with OCI CLI): direct `oci compute instance launch --no-retry` (not
+      Resource Manager jobs: exact error codes, no Terraform state, fewer permissions), approved
+      config hard-coded (A1.Flex 1/3, Ubuntu 24.04 aarch64 non-Minimal looked up, subnet by name,
+      `--assign-public-ip false`, the user's .pub — a private key is refused), checks for an
+      existing `smartops-demo` (any state but TERMINATED/TERMINATING) BEFORE every attempt,
+      capacity → 5–10 min random wait, 429 → 15 min, any other error (NotAuthenticated,
+      NotAuthorizedOrNotFound, Limit/QuotaExceeded, InvalidParameter…) → STOP with a hint, deadline
+      `-MaxDays` 5 (waits never pass it), success → toast + sound, log without secrets in
+      %LOCALAPPDATA%smartopslaunch-retry.log, SetThreadExecutionState keeps the PC awake while it
+      runs, `-DryRun` resolves everything without launching. Tested against a fake OCI CLI shim
+      (dry-run, capacity×2 → success, existing instance, 401 stop, 429, deadline, private key,
+      missing CLI). Least privilege (docs/deploy/m1-retry-launch.md): Identity Domains user
+      `smartops-launcher` in group `smartops-launchers` (Default domain), policy in the root
+      compartment: `manage instance-family` + `use volume-family` + `use virtual-network-family`
+      in compartment smartops + `read app-catalog-listing` in tenancy (Oracle's "Let users launch
+      compute instances" recipe; group written `'Default'/'smartops-launchers'`). API key generated
+      in the console, kept only on the user's PC (`oci setup repair-file-permissions`); user, key,
+      group, policy, local key, config section and the RM stack are deleted as soon as the VM is
+      RUNNING.
 
 ## Known issues (out of scope)
 - **Phase 12 — idle reclamation risk (open until M3):** the demo stack uses ≈ 0.7 GB (+ OS).
