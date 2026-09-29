@@ -11,6 +11,7 @@ import { isActive, navFor } from "./nav-items";
 import { LiveIndicator } from "@/features/realtime/live-indicator";
 import { StatusChips } from "@/features/realtime/status-chips";
 import { useDemoInfo } from "@/features/demo/hooks";
+import { LocaleSelect } from "@/features/locale/components/locale-select";
 import { UserMenu } from "./user-menu";
 
 /**
@@ -81,6 +82,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex items-center gap-3">
           <StatusChips />
           <LiveIndicator />
+          {/* Language: visible in the top bar from tablets up; on phones, in the user menu. */}
+          <LocaleSelect className="hidden md:flex" />
           <UserMenu />
         </div>
       </header>

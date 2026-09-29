@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { APP_LOCALES } from "../../common/locale.js";
 import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
 import { AppError, errors } from "../../common/errors/app-error.js";
@@ -110,8 +111,19 @@ export function createAuthRouter(deps: {
   });
 
   router.get("/me", requireAuth, (_req, res) => {
-    const { userId, email, name, role } = currentUser(res);
-    res.json({ user: { id: userId, email, name, role } });
+    const { userId, email, name, role, locale } = currentUser(res);
+    res.json({ user: { id: userId, email, name, role, locale: locale ?? null } });
+  });
+
+  // Phase 13: the user's panel language (Bearer only — not a cookie route, no CSRF needed).
+  const preferencesBody = z.object({ locale: z.enum(APP_LOCALES).nullable() }).strict();
+  router.patch("/me", requireAuth, validate({ body: preferencesBody }), async (_req, res) => {
+    const user = currentUser(res);
+    const { locale } = getValidated<typeof preferencesBody>(res, "body");
+    await deps.service.setLocale(user, locale);
+    res.json({
+      user: { id: user.userId, email: user.email, name: user.name, role: user.role, locale },
+    });
   });
 
   return router;

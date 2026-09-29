@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 import { serverEnv } from "./src/env";
 
 const { API_PROXY_TARGET } = serverEnv();
@@ -25,4 +26,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// next-intl (phase 13): request config in src/i18n/request.ts (the plugin's default path).
+const withNextIntl = createNextIntlPlugin();
+
+export default withNextIntl(nextConfig);

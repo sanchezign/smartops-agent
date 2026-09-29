@@ -1,9 +1,12 @@
 "use client";
 
+import { useLocale } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent, useRef } from "react";
 import { ApiError } from "@/lib/api-client";
 import { useDemoInfo } from "@/features/demo/hooks";
+import { storeLocaleCookie } from "@/features/locale/hooks";
+import { localeToApplyAfterLogin } from "@/i18n/locales";
 import { api } from "../api";
 import { loginErrorText, loginSchema } from "../schemas";
 
@@ -15,6 +18,7 @@ function safeNext(value: string | null): string {
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
+  const locale = useLocale();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   // Until React hydrates, the button stays disabled: a native (pre-JS) submit would send the
@@ -39,8 +43,17 @@ export function LoginForm() {
     setPending(true);
     setError(null);
     try {
-      await api.login(parsed.data.email, parsed.data.password);
-      router.replace(safeNext(params.get("next")));
+      const session = await api.login(parsed.data.email, parsed.data.password);
+      const target = safeNext(params.get("next"));
+      // Phase 13: the language saved in the profile wins over this browser's; a full load
+      // re-renders the panel in it (the access token is recovered by the silent refresh).
+      const saved = localeToApplyAfterLogin(session.user.locale, locale);
+      if (saved) {
+        storeLocaleCookie(saved);
+        window.location.assign(target);
+        return;
+      }
+      router.replace(target);
     } catch (err) {
       setError(loginErrorText(err instanceof ApiError ? err.code : "UNKNOWN"));
       setPending(false);

@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../../common/db.js";
+import { toAppLocale, type AppLocale } from "../../common/locale.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 import type { UserRole } from "../../generated/prisma/enums.js";
 import { decideRefresh, nextIdleExpiry, type RefreshDecision } from "./session-rules.js";
@@ -20,6 +21,8 @@ export interface SessionUser {
   email: string;
   name: string;
   role: UserRole;
+  /** Panel language chosen by the user (phase 13); null = follow the browser. */
+  locale: AppLocale | null;
 }
 
 export interface ActiveSession {
@@ -60,10 +63,19 @@ export interface SessionsRepository {
   revokeAllForUser(userId: string, reason: string): Promise<number>;
 }
 
-const userSelect = { id: true, email: true, name: true, role: true, active: true } as const;
+const userSelect = {
+  id: true,
+  email: true,
+  name: true,
+  role: true,
+  active: true,
+  locale: true,
+} as const;
 
-function toSessionUser(u: SessionUser & { active: boolean }): SessionUser {
-  return { id: u.id, email: u.email, name: u.name, role: u.role };
+function toSessionUser(
+  u: Omit<SessionUser, "locale"> & { active: boolean; locale: string | null },
+): SessionUser {
+  return { id: u.id, email: u.email, name: u.name, role: u.role, locale: toAppLocale(u.locale) };
 }
 
 export function createSessionsRepository(prisma: PrismaClient): SessionsRepository {

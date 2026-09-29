@@ -130,6 +130,9 @@ services:
     networks: [edge]
     mem_limit: 384m
     cap_drop: [ALL]
+    environment:
+      # Phase 13: the public demo starts in English (visitors can switch to Spanish).
+      PANEL_DEFAULT_LOCALE: en
 
   n8n:
     <<: *hardening

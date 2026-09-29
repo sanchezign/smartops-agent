@@ -13,3 +13,7 @@ allowBuilds:
   # postinstall downloads the schema engine binary used by `prisma migrate`.
   prisma: true
   "@prisma/engines": true
+  # next-intl 4 (phase 13) message-extraction tooling: prebuilt native bindings ship as
+  # optional dependencies; the postinstall fallbacks (build from source / wasm) are not needed.
+  "@parcel/watcher": false
+  "@swc/core": false

@@ -1,6 +1,7 @@
 "use client";
 
 import { LogOut, Monitor, Moon, Sun, UserRound } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -19,6 +20,8 @@ import { api } from "@/features/auth/api";
 import { useAuthStore } from "@/features/auth/store";
 import { useDemoInfo } from "@/features/demo/hooks";
 import { isPublicDemoAccount } from "@/features/demo/public-account";
+import { useChangeLocale } from "@/features/locale/hooks";
+import { LOCALE_NAMES, LOCALES, isAppLocale } from "@/i18n/locales";
 
 const ROLE_LABEL = { admin: "Administrador", operator: "Operador" } as const;
 
@@ -26,6 +29,9 @@ export function UserMenu() {
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const locale = useLocale();
+  const tLocale = useTranslations("locale");
+  const changeLocale = useChangeLocale();
   // The public demo operator is shared by every visitor: no account-wide actions (phase 12).
   const shared = isPublicDemoAccount(useDemoInfo().data, user?.email);
 
@@ -71,6 +77,22 @@ export function UserMenu() {
           <DropdownMenuRadioItem value="system">
             <Monitor aria-hidden /> Según el dispositivo
           </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+          {tLocale("label")}
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={locale}
+          onValueChange={(value) => {
+            if (isAppLocale(value)) void changeLocale(value);
+          }}
+        >
+          {LOCALES.map((value) => (
+            <DropdownMenuRadioItem key={value} value={value} lang={value}>
+              {LOCALE_NAMES[value]}
+            </DropdownMenuRadioItem>
+          ))}
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={logout}>

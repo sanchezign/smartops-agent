@@ -13,6 +13,8 @@ export interface SessionUser {
   email: string;
   name: string;
   role: "admin" | "operator";
+  /** Saved panel language (phase 13); null/absent = follow the browser. */
+  locale?: "en" | "es" | null;
 }
 
 export interface Session {
@@ -155,6 +157,13 @@ export function createApiClient(deps: ApiClientDeps) {
     async logout(): Promise<void> {
       await post("/auth/logout").catch(() => undefined);
       deps.onSignedOut();
+    },
+    /** Saves the panel language in the profile (phase 13; refused for the shared demo account). */
+    async setLocale(locale: "en" | "es" | null): Promise<void> {
+      await request<{ user: SessionUser }>("/auth/me", {
+        method: "PATCH",
+        body: JSON.stringify({ locale }),
+      });
     },
     async logoutAll(): Promise<number> {
       const { sessions } = await request<{ sessions: number }>("/auth/logout-all", {

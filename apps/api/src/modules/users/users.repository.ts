@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../../common/db.js";
+import { toAppLocale, type AppLocale } from "../../common/locale.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 import type { UserRole } from "../../generated/prisma/enums.js";
 import type { LockoutState } from "../auth/login-lockout.js";
@@ -15,6 +16,8 @@ export interface UserRecord {
   name: string;
   role: UserRole;
   active: boolean;
+  /** Panel language (phase 13); null = follow the browser. */
+  locale: AppLocale | null;
   passwordHash: string;
   lockout: LockoutState;
   lastLoginAt: Date | null;
@@ -22,7 +25,7 @@ export interface UserRecord {
   createdAt: Date;
 }
 
-export type PublicUser = Omit<UserRecord, "passwordHash" | "lockout"> & {
+export type PublicUser = Omit<UserRecord, "passwordHash" | "lockout" | "locale"> & {
   lockedUntil: Date | null;
 };
 
@@ -48,6 +51,8 @@ export type RevokeUserSessionsInTx = (
 
 export interface UsersRepository {
   findByEmail(email: string): Promise<UserRecord | null>;
+  /** The user's panel language (phase 13). Not audited: a display preference. */
+  setLocale(id: string, locale: AppLocale | null): Promise<void>;
   findById(id: string): Promise<UserRecord | null>;
   list(): Promise<PublicUser[]>;
   create(
@@ -76,6 +81,7 @@ const userSelect = {
   name: true,
   role: true,
   active: true,
+  locale: true,
   passwordHash: true,
   failedLoginCount: true,
   loginWindowStartedAt: true,
@@ -95,6 +101,7 @@ function toRecord(row: Row): UserRecord {
     name: row.name,
     role: row.role,
     active: row.active,
+    locale: toAppLocale(row.locale),
     passwordHash: row.passwordHash,
     lockout: {
       failedCount: row.failedLoginCount,
@@ -145,6 +152,10 @@ export function createUsersRepository(
     deps.revokeUserSessionsInTx ? deps.revokeUserSessionsInTx(tx, userId, reason) : 0;
 
   return {
+    async setLocale(id, locale) {
+      await prisma.user.update({ where: { id }, data: { locale } });
+    },
+
     async findByEmail(email) {
       const row = await prisma.user.findUnique({ where: { email }, select: userSelect });
       return row ? toRecord(row) : null;

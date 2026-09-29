@@ -1,0 +1,12 @@
+{
+  "meta": {
+    "description": "SmartOps — panel de operaciones"
+  },
+  "common": {
+    "loading": "Cargando…"
+  },
+  "locale": {
+    "label": "Idioma",
+    "saveFailed": "No se pudo guardar tu idioma. Solo se aplicará en este dispositivo."
+  }
+}

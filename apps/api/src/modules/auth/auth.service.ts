@@ -1,4 +1,5 @@
 import { errors } from "../../common/errors/app-error.js";
+import type { AppLocale } from "../../common/locale.js";
 import type { Logger } from "../../common/logger.js";
 import {
   NO_PUBLIC_ACCOUNT,
@@ -41,6 +42,8 @@ export interface AuthenticatedUser {
   email: string;
   name: string;
   sessionId: string;
+  /** Panel language (phase 13); absent/null = follow the browser. */
+  locale?: AppLocale | null;
 }
 
 const INVALID_LOGIN = "Invalid email or password";
@@ -51,7 +54,10 @@ export function maskEmail(email: string): string {
 }
 
 export function createAuthService(deps: {
-  users: Pick<UsersRepository, "findByEmail" | "saveLockout" | "setPassword" | "audit">;
+  users: Pick<
+    UsersRepository,
+    "findByEmail" | "saveLockout" | "setPassword" | "audit" | "setLocale"
+  >;
   sessions: SessionsRepository;
   tokens: AccessTokens;
   config: SessionConfig;
@@ -160,7 +166,13 @@ export function createAuthService(deps: {
         userId: user.id,
         data: { sessionId: session.sessionId, ip: meta.ip ?? null },
       });
-      const sessionUser = { id: user.id, email: user.email, name: user.name, role: user.role };
+      const sessionUser = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        locale: user.locale,
+      };
       return issue(sessionUser, session.sessionId, session.refreshToken, session.expiresAt);
     },
 
@@ -199,6 +211,15 @@ export function createAuthService(deps: {
       }
     },
 
+    /**
+     * The user's panel language (phase 13). The shared public demo operator cannot store one:
+     * it would switch the language of every other visitor (the panel keeps it in a cookie).
+     */
+    async setLocale(user: { userId: string; email: string }, locale: AppLocale | null) {
+      if (publicAccount.isPublic(user.email)) throw errors.forbidden(PUBLIC_ACCOUNT_REFUSED);
+      await deps.users.setLocale(user.userId, locale);
+    },
+
     async logoutAll(user: { userId: string; email: string }, meta: RequestMeta) {
       // It would end every OTHER visitor's session of the shared public demo account.
       if (publicAccount.isPublic(user.email)) throw errors.forbidden(PUBLIC_ACCOUNT_REFUSED);
@@ -232,6 +253,7 @@ export function createAuthService(deps: {
         email: active.user.email,
         name: active.user.name,
         sessionId: active.sessionId,
+        locale: active.user.locale,
       };
     },
   };

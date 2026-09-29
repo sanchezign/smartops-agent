@@ -1018,6 +1018,8 @@ model User {
   name                 String
   role                 UserRole  @default(operator)
   active               Boolean   @default(true)
+  /// Panel language (phase 13): en | es; null = follow the browser. CHECK users_locale_chk.
+  locale               String?
   /// Lockout (phase 8, ADR-018): failures in the current 15-min window.
   failedLoginCount     Int       @default(0) @map("failed_login_count")
   loginWindowStartedAt DateTime? @map("login_window_started_at") @db.Timestamptz(3)

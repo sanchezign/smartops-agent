@@ -159,6 +159,11 @@
     "operator": 403,
     "admin": "allow"
   },
+  "PATCH /api/v1/auth/me": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
   "POST /:version/:phoneNumberId/messages": {
     "anonymous": 401,
     "operator": 401,

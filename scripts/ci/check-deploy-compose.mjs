@@ -53,6 +53,10 @@ for (const name of ["api", "worker", "seed"]) {
   if (env.TRUST_PROXY !== "1") fail(`${name}: TRUST_PROXY must be 1 (one hop: Caddy)`);
 }
 
+// Phase 13: the public demo opens in English.
+if (services.admin?.environment?.PANEL_DEFAULT_LOCALE !== "en")
+  fail("admin: PANEL_DEFAULT_LOCALE must be en (the public demo starts in English)");
+
 // Third-party images pinned by digest; ours by version tag (the release workflow's tags).
 for (const [name, svc] of Object.entries(services)) {
   const image = String(svc.image ?? "");

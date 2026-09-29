@@ -209,6 +209,8 @@ Week 4
     password there (DEMO_ADMIN_PASSWORD unset or secret; only the public operator).
 13. docs — README: problem, architecture diagram, flow, setup with Meta test
     number, env var table, demo GIF, cost estimate, ADR list.
+    Expanded (user, 2026-09-28): i18n FIRST (panel English by default + Spanish, neutral Spanish),
+    then English docs, screenshots / video, panel guide EN + ES, portfolio kit — see Current phase.
 
 ## Data model (starting point — refine in phase 2 plan)
 Supplier · Contact (waId unique, kind supplier|customer|internal) ·
@@ -240,6 +242,8 @@ Alert · Setting/Rule · User (admin|operator) · AuditLog
   encryption, private key only on the owner's PC), OCI CLI container (instance principal
   uploads), Healthchecks.io + UptimeRobot (monitoring), shellcheck in CI. The real WhatsApp
   instance is OUT of phase 12 (the VM only runs the public demo, without real keys).
+- Panel i18n (phase 13, plan approved 2026-09-28, ADR-024): next-intl 4.14.7 (exact; App Router
+  WITHOUT i18n routing) + eslint-plugin-i18next (`no-literal-string`, M2).
 Each one gets an ADR in docs/adr/.
 
 ## Architecture decisions
@@ -589,8 +593,10 @@ Each one gets an ADR in docs/adr/.
 **Phase 11 (CI/CD) COMPLETE (2026-09-28): v0.11.0 released. Phase 12 (deploy $0, branch
 `feat/phase-12-deploy`): M0 DONE; M1 done up to DuckDNS — the VM cannot be created yet (São Paulo
 has no A1 capacity). WAITING: the user runs `scripts/oci/launch-retry.ps1` for 3–5 days
-(guide `docs/deploy/m1-retry-launch.md`); meanwhile we look at what to advance from phase 13.
-M3b (phase 5) and MFA (TOTP) remain recommended/required before a real client.**
+(guide `docs/deploy/m1-retry-launch.md`). Phase 13 (i18n + docs, branch `feat/phase-13-i18n-docs`)
+advances meanwhile: M0 + M1 DONE, next M2 (panel texts). If the VM appears first, phase 12 does
+not wait (first deploy without i18n, updated later). M3b (phase 5) and MFA (TOTP) remain
+recommended/required before a real client.**
 
 1. scaffold — done (2026-09-24).
 2. config/env/logging + initial Prisma schema — done (2026-09-24). Migrations:
@@ -1673,6 +1679,51 @@ M3b (phase 5) and MFA (TOTP) remain recommended/required before a real client.**
       in the console, kept only on the user's PC (`oci setup repair-file-permissions`); user, key,
       group, policy, local key, config section and the RM stack are deleted as soon as the VM is
       RUNNING.
+13. i18n + docs + portfolio — IN PROGRESS on `feat/phase-13-i18n-docs` (created from main after PR
+    #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
+    - Language rule: English for code, comments, commits, the single README, technical docs
+      (architecture, security, costs, development, ADRs), CLAUDE.md, runbook and deploy guides.
+      Panel: English by default + selector to Spanish, saved per user in the DB, at login the
+      browser language; the public demo starts in English (`PANEL_DEFAULT_LOCALE=en`); outside the
+      demo a Spanish browser sees Spanish (login included). Numbers / dates follow the panel
+      language; supplier price READING stays es-UY. All Spanish NEUTRAL (no voseo): "tú" in the
+      panel, "usted" in WhatsApp to suppliers / customers. Demo sample data stays Spanish. WhatsApp
+      texts follow a new business-language setting (Spanish default). Both languages: panel guide
+      for the owner, case study (docs/), video captions (EN for the README GIF, ES for YouTube and
+      clients). Workana / LinkedIn texts + post draft OUTSIDE the repo
+      (`C:/dev/smartops-portfolio-kit/`). Media budgets (test): README media ≤ 8 MB, Spanish
+      guide screenshots ≤ 4 MB, 12 MB total. n8n workflow / node names to English in phase 12 (CLI
+      import on the VM) — the user's local n8n is NOT touched (real credentials; export backup
+      first when it is done). Kept from the first plan: license "all rights reserved", author
+      sanchezign, screenshots light + dark (desktop 1440×900 + iPhone 15), paid-client costs with
+      verified prices, no exaggerated claims, warn the user to hide their number in phone videos.
+    - Milestones: M0 branches → M1 i18n infrastructure → M2 every panel text + no-literal-string +
+      catalog parity + anti-voseo test → M3 API texts / business.language / alert codes + params →
+      M4 E2E in English + Spanish smoke + axe in both → M5 English docs (README portfolio, docs
+      index, development, architecture with Mermaid, security, costs, runbook + deploy guides in
+      English, link checker in `quick`) → M6 screenshots + video / GIF — STOP for the user's review
+      → M7 panel guide EN + ES → M8 kit outside the repo → M9 close.
+    - M0 — DONE (2026-09-28): PR #8 green (e2e 6m39, images 4m53, integration-coverage 5m08),
+      rebase-merged with the user's OK (branch `feat/phase-12-deploy` kept); branch created + pushed.
+    - M1 i18n infrastructure — DONE (2026-09-28), ADR-024. API: migration `user_locale`
+      (`users.locale` NULL = browser, hand-written CHECK `users_locale_chk` en/es — listed in
+      migrations.test.ts), `src/common/locale.ts`, locale in the session user (login, GET
+      /auth/me), `PATCH /api/v1/auth/me {locale}` (strict Zod; shared public demo account → 403;
+      authz matrix regenerated: anonymous 401, both roles allow). Panel: next-intl 4.14.7 exact
+      (`@swc/core` / `@parcel/watcher` = its optional extractor → allowBuilds false, prebuilt
+      bindings), `src/i18n/` (`locales.ts` pure: cookie `smartops_locale` → `PANEL_DEFAULT_LOCALE`
+      → Accept-Language by q-value → en; `request.ts`; `messages/{en,es}.json`; typed keys),
+      `<html lang>` from the resolved language (every page now dynamic), selector (login, top bar
+      md+, user menu), saved language applied after login (cookie + full load), `useChangeLocale`
+      (cookie + PATCH except the shared account + reload). `createFormat(locale)` / `useFormat()`:
+      "$" = business currency (UYU) in both languages, USD "US$", others their code; ratios and
+      percentages built by hand (Node's ICU gives es-UY "83%" and a plain space before "PM", browsers
+      U+202F — tests normalize); relative times neutral ("hace un momento", was "recién"). The old
+      named exports are Spanish bindings until M2 moves every component to `useFormat()`.
+      `deploy/compose.yaml` admin `PANEL_DEFAULT_LOCALE: en` + invariant (mutation-checked).
+      Verified over HTTP on a production build: es browser → es, en → en, cookie wins, invalid
+      cookie ignored, env en beats an es browser, cookie es beats env. Playwright stays es-UY until
+      M4. Tests: API 1076 unit + 221 integration, panel 99, E2E 76 passed.
 
 ## Known issues (out of scope)
 - **Phase 12 — idle reclamation risk (open until M3):** the demo stack uses ≈ 0.7 GB (+ OS).

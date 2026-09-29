@@ -97,6 +97,7 @@ describe.skipIf(!testDatabaseUrl)("migrations (Postgres, from scratch)", () => {
       "price_changes.price_changes_currency_changed_chk",
       "price_changes.price_changes_pct_null_on_currency_change_chk",
       "price_changes.price_changes_pct_requires_old_price_chk",
+      "users.users_locale_chk",
     ]);
 
     const triggers = await rows<{ name: string }>(

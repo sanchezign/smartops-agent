@@ -110,6 +110,7 @@ export const stubAuthService: AuthService = {
   refresh: notConfigured,
   logout: async () => {},
   logoutAll: notConfigured,
+  setLocale: notConfigured,
   authenticate: async () => null,
   checkSession: async () => null,
 };

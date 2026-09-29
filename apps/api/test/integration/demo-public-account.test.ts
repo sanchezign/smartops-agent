@@ -169,6 +169,29 @@ describe.skipIf(!testDatabaseUrl)("the shared public demo operator (Postgres)", 
     });
   });
 
+  // Phase 13 (i18n): each user keeps a panel language; the shared public operator cannot (it
+  // would switch the language of every other visitor — the panel keeps it in a cookie).
+  it("the panel language is stored per user, never for the shared public account", async () => {
+    const ana = await login("ana@x.uy", PASS).expect(200);
+    expect(ana.body.user.locale).toBeNull();
+    const patch = (token: string, body: object) =>
+      request(app).patch("/api/v1/auth/me").set("authorization", `Bearer ${token}`).send(body);
+
+    const saved = await patch(ana.body.accessToken, { locale: "es" }).expect(200);
+    expect(saved.body.user).toMatchObject({ email: "ana@x.uy", locale: "es" });
+    expect((await login("ana@x.uy", PASS).expect(200)).body.user.locale).toBe("es");
+    await me(ana.body.accessToken).expect(200);
+    expect((await me(ana.body.accessToken)).body.user.locale).toBe("es");
+    await patch(ana.body.accessToken, { locale: null }).expect(200); // back to the browser's
+    await patch(ana.body.accessToken, { locale: "fr" }).expect(400);
+    await patch(ana.body.accessToken, { locale: "en", extra: 1 }).expect(400);
+
+    const visitor = await login(PUBLIC, PUBLIC_PASS).expect(200);
+    const refused = await patch(visitor.body.accessToken, { locale: "es" });
+    expect(refused.status).toBe(403);
+    expect((await prisma.user.findUniqueOrThrow({ where: { email: PUBLIC } })).locale).toBeNull();
+  });
+
   it("outside DEMO_MODE the same email is an ordinary account", async () => {
     const service = createUsersService({ repository: users() });
     const operator = await prisma.user.findUniqueOrThrow({ where: { email: PUBLIC } });
