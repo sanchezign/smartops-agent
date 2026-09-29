@@ -1,166 +1,167 @@
-# M1 — Oracle Cloud paso a paso (fase 12)
+# M1 — Oracle Cloud step by step (phase 12)
 
-Guía para crear, **a $0**, todo lo que la demo pública necesita en Oracle Cloud: cuenta,
-presupuesto con alertas, red, IP pública fija, la VM, el acceso SSH por Bastion y el nombre en
-DuckDNS. Está pensada para alguien que **nunca usó Oracle Cloud**. Nada de esta guía instala la
-demo todavía: eso es el M2 (endurecer la VM) y el M3 (primer deploy).
+A guide to create, **at $0**, everything the public demo needs on Oracle Cloud: the account, a
+budget with alerts, the network, a fixed public IP, the VM, SSH access through Bastion and the
+DuckDNS name. It is written for someone who has **never used Oracle Cloud**. Nothing in this
+guide installs the demo yet: that is M2 (hardening the VM) and M3 (first deploy).
 
-> Las pantallas de Oracle cambian de nombre seguido. Si un botón no se llama exactamente igual,
-> buscá el más parecido; los **valores** que hay que poner son los de esta guía.
+> Oracle's screens are renamed often. If a button is not called exactly the same, pick the
+> closest one; the **values** to enter are the ones in this guide.
 
-**Reglas de oro durante todo el M1**
+**Golden rules for all of M1**
 
-- **Nunca hagas "Upgrade to Pay As You Go"** (ni aunque la consola lo sugiera para conseguir
-  capacidad). Según Oracle, la tarjeta no se cobra salvo que actualices la cuenta.
-- **Solo recursos con la etiqueta "Always Free-eligible"**. Si una forma, imagen o servicio no la
-  tiene, no lo crees.
-- **No toques** nada que no esté en esta guía (bases de datos, Kubernetes, balanceadores, VPN,
-  NAT gateway, instancias AMD, etc.).
-- **Nada de secretos en capturas ni en el chat conmigo**: podés mandarme IPs, nombres y
-  mensajes de error, nunca claves privadas ni el token de DuckDNS.
+- **Never click "Upgrade to Pay As You Go"** (not even when the console suggests it to get
+  capacity). According to Oracle, the card is not charged unless you upgrade the account.
+- **Only resources labeled "Always Free-eligible"**. If a shape, image or service does not have
+  the label, do not create it.
+- **Do not touch** anything that is not in this guide (databases, Kubernetes, load balancers,
+  VPN, NAT gateway, AMD instances, etc.).
+- **No secrets in screenshots or in the chat with me**: you can send IPs, names and error
+  messages, never private keys or the DuckDNS token.
 
-**Qué vas a tener al final (me lo pasás para el M2):**
+**What you will have at the end (send it to me for M2):**
 
-| Dato                              | Ejemplo                                 |
-| --------------------------------- | --------------------------------------- |
-| Región de origen                  | `sa-saopaulo-1` (São Paulo)             |
-| IP pública reservada de la VM     | `144.22.x.y`                            |
-| IP privada de la VM               | `10.0.0.23`                             |
-| Nombre DuckDNS                    | `smartops-demo.duckdns.org`             |
-| Forma de la VM                    | `VM.Standard.A1.Flex`, 1 OCPU, 3 GB     |
-| Resultado de la prueba de Bastion | "entré" / "no entré + mensaje de error" |
+| Item                        | Example                                         |
+| --------------------------- | ----------------------------------------------- |
+| Home region                 | `sa-saopaulo-1` (São Paulo)                     |
+| The VM's reserved public IP | `144.22.x.y`                                    |
+| The VM's private IP         | `10.0.0.23`                                     |
+| DuckDNS name                | `smartops-demo.duckdns.org`                     |
+| VM shape                    | `VM.Standard.A1.Flex`, 1 OCPU, 3 GB             |
+| Bastion test result         | "I got in" / "I did not get in + error message" |
 
-Tiempo estimado: 1 a 2 horas (más reintentos si aparece "Out of capacity").
+Estimated time: 1 to 2 hours (plus retries if "Out of capacity" shows up).
 
 ---
 
-## Paso 0 — Antes de empezar (en tu PC)
+## Step 0 — Before you start (on your computer)
 
-### 0.1 Clave SSH
+### 0.1 SSH key
 
-La VM solo acepta clave SSH (nunca contraseña). Si ya tenés una clave **ed25519** que usás
-solo para servidores, podés usarla; si no, creá una nueva. En PowerShell:
+The VM only accepts an SSH key (never a password). If you already have an **ed25519** key that
+you use only for servers, you can use it; otherwise create a new one. In PowerShell:
 
 ```powershell
 ssh-keygen -t ed25519 -f $HOME\.ssh\smartops_oci -C "smartops-oci"
 ```
 
-- Te pide una **passphrase**: poné una (protege la clave si alguien copia el archivo).
-- Se crean dos archivos: `smartops_oci` (**privada — nunca sale de tu PC**) y
-  `smartops_oci.pub` (pública — esta es la que se sube a Oracle).
+- It asks for a **passphrase**: set one (it protects the key if someone copies the file).
+- Two files are created: `smartops_oci` (**private — it never leaves your computer**) and
+  `smartops_oci.pub` (public — this is the one uploaded to Oracle).
 
-**Verificá:** `Get-Content $HOME\.ssh\smartops_oci.pub` muestra una línea que empieza con
+**Check:** `Get-Content $HOME\.ssh\smartops_oci.pub` shows a line that starts with
 `ssh-ed25519`.
 
-### 0.2 Tu IP pública (para el plan B)
+### 0.2 Your public IP (for plan B)
 
-Entrá a https://ifconfig.me desde tu PC y anotá la IP. Solo se usa si Bastion falla (paso 7).
+Open https://ifconfig.me on your computer and write down the IP. It is only used if Bastion
+fails (step 7).
 
 ---
 
-## Paso 1 — Crear la cuenta (región de origen: São Paulo)
+## Step 1 — Create the account (home region: São Paulo)
 
-1. Entrá a https://www.oracle.com/cloud/free/ → **Start for free**.
-2. Datos de la cuenta:
+1. Go to https://www.oracle.com/cloud/free/ → **Start for free**.
+2. Account data:
    - **Country/Territory:** Uruguay.
-   - **Cloud Account Name:** algo sin datos personales, por ejemplo `smartopsdemo` (es parte de
-     la URL de login; no se puede cambiar).
-   - **Home Region:** **Brazil East (São Paulo)**. Si no aparece o da error de capacidad al
-     registrarte, **Chile Central (Santiago)**.
+   - **Cloud Account Name:** something without personal data, for example `smartopsdemo` (it is
+     part of the login URL and cannot be changed).
+   - **Home Region:** **Brazil East (São Paulo)**. If it does not show up or gives a capacity
+     error at sign-up, **Chile Central (Santiago)**.
 
-   > ⚠️ **La región de origen no se puede cambiar nunca** y los recursos Always Free solo se
-   > crean ahí. Revisala dos veces antes de seguir.
+   > ⚠️ **The home region can never be changed**, and Always Free resources can only be created
+   > there. Double-check it before going on.
 
-3. Verificación con tarjeta: Oracle pide una tarjeta para verificar identidad. Puede aparecer
-   una **retención temporal** que se libera sola; no es un cobro.
-4. Esperá el mail "Your account is ready" (puede tardar de minutos a horas).
+3. Card verification: Oracle asks for a card to verify your identity. A **temporary hold** may
+   appear and is released by itself; it is not a charge.
+4. Wait for the "Your account is ready" email (it can take minutes to hours).
 
-**Verificá:** al entrar a la consola, arriba a la derecha dice **Brazil East (Sao Paulo)**
-(o Chile Central si fuiste por el plan B).
+**Check:** in the console, the top right says **Brazil East (Sao Paulo)** (or Chile Central if
+you took plan B).
 
-**No toques:** el banner de "Upgrade" ni la prueba de servicios pagos.
+**Do not touch:** the "Upgrade" banner or the trial of paid services.
 
 ---
 
-## Paso 2 — Presupuesto de USD 1 con alertas
+## Step 2 — A USD 1 budget with alerts
 
-El presupuesto **no frena nada**: solo te manda un mail si aparece cualquier gasto. Es la
-alarma temprana de que algo no era Always Free.
+The budget **stops nothing**: it only emails you if any spend appears. It is the early warning
+that something was not Always Free.
 
-1. Menú ☰ → **Billing & Cost Management** → **Budgets** → **Create Budget**.
-2. Valores:
-   - **Name:** `smartops-cero-gasto`
-   - **Target:** _Compartment_ → el compartimento **raíz** (el que tiene el nombre de tu cuenta).
+1. Menu ☰ → **Billing & Cost Management** → **Budgets** → **Create Budget**.
+2. Values:
+   - **Name:** `smartops-cero-gasto` (zero spend)
+   - **Target:** _Compartment_ → the **root** compartment (the one named after your account).
    - **Schedule:** _Monthly_.
    - **Budgeted amount:** `1` (USD).
-3. **Budget alert rule** (primera regla):
+3. **Budget alert rule** (first rule):
    - **Threshold metric:** _Actual Spend_
-   - **Threshold type:** _Percentage of Budget_ → `1` (%, o sea USD 0,01)
-   - **Email recipients:** tu mail.
-   - **Message:** `SmartOps: apareció un gasto en Oracle Cloud. Revisar Cost Analysis.`
-4. Guardá y agregá una **segunda regla** igual pero con **Threshold metric: Forecast Spend**.
+   - **Threshold type:** _Percentage of Budget_ → `1` (%, that is USD 0.01)
+   - **Email recipients:** your email.
+   - **Message:** `SmartOps: a charge appeared on Oracle Cloud. Check Cost Analysis.`
+4. Save and add a **second rule** that is the same but with **Threshold metric: Forecast Spend**.
 
-**Verificá:** Budgets muestra `smartops-cero-gasto` con 2 alert rules. El presupuesto se evalúa
-cada 24 h, así que no esperes un mail enseguida.
-
----
-
-## Paso 3 — Compartimento (orden, sin costo)
-
-1. Menú ☰ → **Identity & Security** → **Compartments** → **Create Compartment**.
-2. **Name:** `smartops` · **Description:** `Demo publica SmartOps` · **Parent:** la raíz.
-
-A partir de acá, **todo se crea en el compartimento `smartops`** (hay un selector de
-compartimento a la izquierda en cada pantalla).
+**Check:** Budgets shows `smartops-cero-gasto` with 2 alert rules. The budget is evaluated every
+24 h, so do not expect an email right away.
 
 ---
 
-## Paso 4 — Red (VCN, gateway de internet, subred y reglas)
+## Step 3 — Compartment (for order, no cost)
 
-Vamos a crear la red **a mano** (no con el asistente "VCN with Internet Connectivity", que
-agrega un NAT gateway y otras piezas que no necesitamos).
+1. Menu ☰ → **Identity & Security** → **Compartments** → **Create Compartment**.
+2. **Name:** `smartops` · **Description:** `SmartOps public demo` · **Parent:** the root.
+
+From here on, **everything is created in the `smartops` compartment** (there is a compartment
+selector on the left of every screen).
+
+---
+
+## Step 4 — Network (VCN, internet gateway, subnet and rules)
+
+We create the network **by hand** (not with the "VCN with Internet Connectivity" wizard, which
+adds a NAT gateway and other pieces we do not need).
 
 ### 4.1 VCN
 
-1. Menú ☰ → **Networking** → **Virtual Cloud Networks** → **Create VCN**.
+1. Menu ☰ → **Networking** → **Virtual Cloud Networks** → **Create VCN**.
 2. **Name:** `smartops-vcn` · **Compartment:** `smartops` · **IPv4 CIDR block:** `10.0.0.0/16`.
-   Dejá desmarcado IPv6. **Create VCN**.
+   Leave IPv6 unchecked. **Create VCN**.
 
 ### 4.2 Internet Gateway
 
-1. Dentro de `smartops-vcn` → **Gateways** (o _Internet Gateways_) → **Create Internet Gateway**.
+1. Inside `smartops-vcn` → **Gateways** (or _Internet Gateways_) → **Create Internet Gateway**.
 2. **Name:** `smartops-igw`. **Create**.
 
-### 4.3 Ruta a internet
+### 4.3 Route to the internet
 
-1. Dentro de la VCN → **Route Tables** → **Default Route Table for smartops-vcn**.
+1. Inside the VCN → **Route Tables** → **Default Route Table for smartops-vcn**.
 2. **Add Route Rules**:
    - **Target Type:** _Internet Gateway_
    - **Destination CIDR Block:** `0.0.0.0/0`
    - **Target Internet Gateway:** `smartops-igw`
 
-### 4.4 Reglas de entrada (security list)
+### 4.4 Ingress rules (security list)
 
-1. Dentro de la VCN → **Security Lists** → **Default Security List for smartops-vcn**.
-2. **Ingress Rules**: vas a ver una regla de **TCP 22 desde `0.0.0.0/0`**. **Borrala** (el SSH
-   nunca queda abierto a internet). Dejá las de ICMP que vienen por defecto.
-3. **Add Ingress Rules** (tres reglas, _Stateless_ desmarcado, _IP Protocol: TCP_):
+1. Inside the VCN → **Security Lists** → **Default Security List for smartops-vcn**.
+2. **Ingress Rules**: you will see a rule for **TCP 22 from `0.0.0.0/0`**. **Delete it** (SSH is
+   never open to the internet). Keep the default ICMP rules.
+3. **Add Ingress Rules** (three rules, _Stateless_ unchecked, _IP Protocol: TCP_):
 
-   | Source CIDR   | Destination Port | Para qué                                          |
-   | ------------- | ---------------- | ------------------------------------------------- |
-   | `0.0.0.0/0`   | `80`             | HTTP (Caddy lo redirige a HTTPS)                  |
-   | `0.0.0.0/0`   | `443`            | HTTPS de la demo                                  |
-   | `10.0.0.0/24` | `22`             | SSH **solo desde adentro de la subred** (Bastion) |
+   | Source CIDR   | Destination Port | What for                                      |
+   | ------------- | ---------------- | --------------------------------------------- |
+   | `0.0.0.0/0`   | `80`             | HTTP (Caddy redirects it to HTTPS)            |
+   | `0.0.0.0/0`   | `443`            | The demo's HTTPS                              |
+   | `10.0.0.0/24` | `22`             | SSH **only from inside the subnet** (Bastion) |
 
-4. **Egress Rules:** dejá la que viene (todo el tráfico de salida permitido).
+4. **Egress Rules:** keep the default one (all outbound traffic allowed).
 
-**Verificá:** las reglas de entrada son exactamente ICMP (las de fábrica), `80` y `443` desde
-`0.0.0.0/0`, y `22` **solo** desde `10.0.0.0/24`.
+**Check:** the ingress rules are exactly ICMP (the defaults), `80` and `443` from `0.0.0.0/0`,
+and `22` **only** from `10.0.0.0/24`.
 
-### 4.5 Subred pública
+### 4.5 Public subnet
 
-1. Dentro de la VCN → **Subnets** → **Create Subnet**.
-2. Valores:
+1. Inside the VCN → **Subnets** → **Create Subnet**.
+2. Values:
    - **Name:** `smartops-public`
    - **Subnet Type:** _Regional_
    - **IPv4 CIDR Block:** `10.0.0.0/24`
@@ -169,189 +170,192 @@ agrega un NAT gateway y otras piezas que no necesitamos).
    - **Security List:** _Default Security List for smartops-vcn_
 3. **Create Subnet**.
 
-**No toques:** NAT gateway, Service gateway, DRG, VPN, Load Balancer.
+**Do not touch:** NAT gateway, Service gateway, DRG, VPN, Load Balancer.
 
 ---
 
-## Paso 5 — IP pública reservada
+## Step 5 — Reserved public IP
 
-Una IP **reservada** no cambia aunque borres y vuelvas a crear la VM (así DuckDNS se configura
-una sola vez).
+A **reserved** IP does not change even if you delete and recreate the VM (so DuckDNS is set only
+once).
 
-1. Menú ☰ → **Networking** → **IP Management** → **Reserved Public IPs** → **Reserve Public IP
+1. Menu ☰ → **Networking** → **IP Management** → **Reserved Public IPs** → **Reserve Public IP
    Address**.
-2. **Name:** `smartops-demo-ip` · **Compartment:** `smartops` · _Create new_ (no "from IP pool").
+2. **Name:** `smartops-demo-ip` · **Compartment:** `smartops` · _Create new_ (not "from IP pool").
 
-**Verificá:** aparece `smartops-demo-ip` con una dirección `x.x.x.x` y estado _Available_. Anotá
-la IP.
+**Check:** `smartops-demo-ip` appears with an `x.x.x.x` address and state _Available_. Write down
+the IP.
 
-> 💲 Oracle anunció las IP públicas reservadas **sin costo**; no lo pude confirmar en una página
-> de precios oficial. El presupuesto del paso 2 avisaría ante cualquier gasto, y en el paso 9
-> lo revisamos en _Cost Analysis_.
+> 💲 Oracle announced reserved public IPs **at no cost**; I could not confirm it on an official
+> price page. The step 2 budget would warn about any spend, and in step 9 we check it in _Cost
+> Analysis_.
 
 ---
 
-## Paso 6 — La VM (1 OCPU / 3 GB, Ubuntu 24.04 ARM)
+## Step 6 — The VM (1 OCPU / 3 GB, Ubuntu 24.04 ARM)
 
-1. Menú ☰ → **Compute** → **Instances** → **Create Instance**.
+1. Menu ☰ → **Compute** → **Instances** → **Create Instance**.
 2. **Name:** `smartops-demo` · **Compartment:** `smartops`.
-3. **Placement:** dejá el _Availability Domain_ que viene (São Paulo tiene uno solo).
+3. **Placement:** keep the default _Availability Domain_ (São Paulo has only one).
 4. **Image and shape** → **Edit**:
-   - **Image:** _Change image_ → **Canonical Ubuntu** → **24.04** (la común, **no** la
-     "Minimal"). Tiene que decir _Always Free-eligible_.
+   - **Image:** _Change image_ → **Canonical Ubuntu** → **24.04** (the regular one, **not**
+     "Minimal"). It must say _Always Free-eligible_.
    - **Shape:** _Change shape_ → **Ampere** → **VM.Standard.A1.Flex** (_Always Free-eligible_).
      - **Number of OCPUs:** `1`
      - **Amount of memory (GB):** `3`
 
-     > Por qué 3 GB y no más: Oracle puede reclamar una VM Always Free si en 7 días CPU, red
-     > **y memoria** están debajo del 20 %. La demo usa ≈ 0,7 GB; con 3 GB el umbral es 0,6 GB.
-     > Se puede agrandar después sin reinstalar.
+     > Why 3 GB and not more: Oracle may reclaim an Always Free VM if, over 7 days, CPU, network
+     > **and memory** stay below 20 %. The demo uses about 0.7 GB; with 3 GB the threshold is
+     > 0.6 GB. It can be enlarged later without reinstalling.
 5. **Networking** → **Edit**:
    - _Select existing virtual cloud network_ → `smartops-vcn`
    - _Select existing subnet_ → `smartops-public`
-   - **Public IPv4 address:** _Do not assign_ (en el paso 6.1 le asignamos la reservada).
-6. **Add SSH keys:** _Upload public key files (.pub)_ → `smartops_oci.pub` (la **pública**).
-7. **Boot volume:** dejá el tamaño por defecto (50 GB). **No** marques "Use in-transit
-   encryption" si pide cambiar la forma, ni otras opciones avanzadas.
+   - **Public IPv4 address:** _Do not assign_ (in step 6.1 we assign the reserved one).
+6. **Add SSH keys:** _Upload public key files (.pub)_ → `smartops_oci.pub` (the **public** one).
+7. **Boot volume:** keep the default size (50 GB). Do **not** check "Use in-transit encryption"
+   if it asks to change the shape, nor other advanced options.
 8. **Create**.
 
-**Si aparece "Out of capacity for shape VM.Standard.A1.Flex"**: es falta temporal de máquinas
-ARM en la región, no un error tuyo. Reintentá en otro horario (temprano de mañana o de
-madrugada suele andar mejor), durante unos días. **No** cambies a Pay As You Go ni a una forma
-sin la etiqueta Always Free. Si después de varios días no hay caso, lo decidimos juntos.
+**If "Out of capacity for shape VM.Standard.A1.Flex" appears**: it is a temporary shortage of ARM
+machines in the region, not your mistake. Retry at other times (early morning or night often
+works better) for a few days — or use the automatic retry,
+[m1-retry-launch.md](m1-retry-launch.md). Do **not** switch to Pay As You Go or to a shape
+without the Always Free label. If after several days there is still no luck, we decide together.
 
-**Verificá:** la instancia queda **RUNNING**, _Shape_ `VM.Standard.A1.Flex`, _OCPU count_ 1,
-_Memory_ 3 GB. En **Primary VNIC** anotá la **Private IPv4 address** (ej. `10.0.0.23`).
+**Check:** the instance is **RUNNING**, _Shape_ `VM.Standard.A1.Flex`, _OCPU count_ 1, _Memory_
+3 GB. Under **Primary VNIC**, write down the **Private IPv4 address** (e.g. `10.0.0.23`).
 
-### 6.1 Asignarle la IP reservada
+### 6.1 Assign the reserved IP
 
-1. En la instancia → **Attached VNICs** (o _Networking_) → la VNIC primaria → **IPv4
+1. In the instance → **Attached VNICs** (or _Networking_) → the primary VNIC → **IPv4
    Addresses**.
-2. En la IP privada primaria → ⋮ → **Edit** → **Public IP type:** _Reserved public IP_ →
+2. On the primary private IP → ⋮ → **Edit** → **Public IP type:** _Reserved public IP_ →
    _Select existing_ → `smartops-demo-ip` → **Update**.
 
-**Verificá:** la instancia muestra como _Public IPv4 address_ la IP reservada del paso 5.
+**Check:** the instance shows the reserved IP from step 5 as its _Public IPv4 address_.
 
-### 6.2 Activar el plugin de Bastion (por las dudas)
+### 6.2 Enable the Bastion plugin (just in case)
 
-En la instancia → **Oracle Cloud Agent** → activá **Bastion** si aparece desactivado. (La sesión
-de _port forwarding_ del paso 7 no lo necesita, pero no molesta.)
+In the instance → **Oracle Cloud Agent** → enable **Bastion** if it is disabled. (The step 7
+_port forwarding_ session does not need it, but it does no harm.)
 
 ---
 
-## Paso 7 — Acceso SSH por Bastion (y plan B)
+## Step 7 — SSH access through Bastion (and plan B)
 
-El puerto 22 no está abierto a internet. Entramos a través del servicio **Bastion** de Oracle
-(gratis): crea un túnel temporal (máximo 3 h) hacia la VM.
+Port 22 is not open to the internet. We go in through Oracle's **Bastion** service (free): it
+creates a temporary tunnel (3 h at most) to the VM.
 
-### 7.1 Crear el bastion
+### 7.1 Create the bastion
 
-1. Menú ☰ → **Identity & Security** → **Bastion** → **Create bastion**.
-2. Valores:
-   - **Name:** `smartopsbastion` (solo letras y números)
+1. Menu ☰ → **Identity & Security** → **Bastion** → **Create bastion**.
+2. Values:
+   - **Name:** `smartopsbastion` (letters and digits only)
    - **Target virtual cloud network:** `smartops-vcn`
    - **Target subnet:** `smartops-public`
-   - **CIDR block allowlist:** tu IP del paso 0.2 con `/32` (ej. `190.64.x.y/32`). Si tu IP cambia
-     seguido, podés poner `0.0.0.0/0`: igual hace falta tu clave privada para entrar.
-3. **Create bastion** y esperá a que quede **Active**.
+   - **CIDR block allowlist:** your IP from step 0.2 with `/32` (e.g. `190.64.x.y/32`). If your
+     IP changes often, you can use `0.0.0.0/0`: your private key is still needed to get in.
+3. **Create bastion** and wait until it is **Active**.
 
-### 7.2 Crear una sesión
+### 7.2 Create a session
 
-1. En el bastion → **Create session**.
-2. Valores:
+1. In the bastion → **Create session**.
+2. Values:
    - **Session type:** _SSH port forwarding session_
    - **Session name:** `smartops-ssh`
-   - **Connect to the target host by using:** _IP address_ → la **IP privada** de la VM (paso 6)
+   - **Connect to the target host by using:** _IP address_ → the VM's **private IP** (step 6)
    - **Port:** `22`
    - **SSH key:** _Choose SSH key file_ → `smartops_oci.pub`
-   - **Maximum session time-to-live:** 180 minutos (lo máximo)
-3. **Create session** y esperá **Active**.
-4. En la sesión → ⋮ → **Copy SSH command**. Es algo así (el tuyo va a tener otros valores):
+   - **Maximum session time-to-live:** 180 minutes (the maximum)
+3. **Create session** and wait for **Active**.
+4. In the session → ⋮ → **Copy SSH command**. It looks like this (yours has other values):
 
    ```text
    ssh -i <privateKey> -N -L <localPort>:10.0.0.23:22 -p 22 ocid1.bastionsession.oc1.sa-saopaulo-1.xxxx@host.bastion.sa-saopaulo-1.oci.oraclecloud.com
    ```
 
-### 7.3 Probar (dos terminales de PowerShell)
+### 7.3 Test it (two PowerShell terminals)
 
-Terminal 1 (el túnel; queda "colgada", es normal):
+Terminal 1 (the tunnel; it seems to "hang", which is normal):
 
 ```powershell
 ssh -i $HOME\.ssh\smartops_oci -N -L 2222:10.0.0.23:22 -p 22 ocid1.bastionsession....@host.bastion.sa-saopaulo-1.oci.oraclecloud.com
 ```
 
-(reemplazá `<privateKey>` por tu clave y `<localPort>` por `2222`; el resto, tal cual lo copiaste.)
+(replace `<privateKey>` with your key and `<localPort>` with `2222`; the rest exactly as copied.)
 
-Terminal 2 (entrar a la VM por el túnel):
+Terminal 2 (into the VM through the tunnel):
 
 ```powershell
 ssh -i $HOME\.ssh\smartops_oci -p 2222 ubuntu@localhost
 ```
 
-La primera vez pregunta si confiás en la huella del servidor: respondé `yes`.
+The first time it asks whether you trust the server's fingerprint: answer `yes`.
 
-**Verificá, ya adentro de la VM:**
+**Check, once inside the VM:**
 
 ```bash
 uname -m           # aarch64
-free -h            # Mem total ≈ 2,8 Gi
+free -h            # total memory ≈ 2.8 Gi
 lsb_release -d     # Ubuntu 24.04…
-curl -s ifconfig.me; echo    # la IP reservada del paso 5
+curl -s ifconfig.me; echo    # the reserved IP from step 5
 exit
 ```
 
-Si todo eso sale bien: **Bastion funciona** y es el camino definitivo. Anotá "entré".
+If all of that works: **Bastion works** and is the permanent path. Write down "I got in".
 
-### 7.4 Plan B (solo si 7.3 falla)
+### 7.4 Plan B (only if 7.3 fails)
 
-Si no pudiste entrar (anotá el mensaje de error exacto para mandármelo):
+If you could not get in (write down the exact error message to send me):
 
-1. **Security List** (paso 4.4) → **Add Ingress Rule**: _Source CIDR_ = tu IP del paso 0.2 con
-   `/32`, _TCP_, _Destination Port_ `22`.
-2. Entrá directo: `ssh -i $HOME\.ssh\smartops_oci ubuntu@<IP reservada>`.
-3. Si tu IP de casa cambia, vas a tener que actualizar esa regla (ifconfig.me te dice la nueva).
+1. **Security List** (step 4.4) → **Add Ingress Rule**: _Source CIDR_ = your IP from step 0.2
+   with `/32`, _TCP_, _Destination Port_ `22`.
+2. Go in directly: `ssh -i $HOME\.ssh\smartops_oci ubuntu@<reserved IP>`.
+3. If your home IP changes, you will have to update that rule (ifconfig.me tells you the new
+   one).
 
-**No hagas:** abrir el 22 a `0.0.0.0/0`.
+**Do not:** open port 22 to `0.0.0.0/0`.
 
 ---
 
-## Paso 8 — Nombre gratis en DuckDNS
+## Step 8 — A free name on DuckDNS
 
-1. Entrá a https://www.duckdns.org y logueate (GitHub o Google).
-2. En **sub domain** escribí el nombre (sin datos personales), por ejemplo `smartops-demo`,
+1. Go to https://www.duckdns.org and sign in (GitHub or Google).
+2. In **sub domain**, type the name (without personal data), for example `smartops-demo`,
    → **add domain**.
-3. En la fila del dominio, en **current ip**, borrá lo que haya, pegá la **IP reservada** del
-   paso 5 → **update ip**.
-4. El **token** que muestra la página es como una contraseña: guardalo en tu gestor de
-   contraseñas. **Nunca va a la VM ni al repo** (la IP no cambia, así que no hace falta
-   actualizarla desde el servidor).
+3. In the domain's row, in **current ip**, delete whatever is there, paste the **reserved IP**
+   from step 5 → **update ip**.
+4. The **token** the page shows is like a password: keep it in your password manager. **It never
+   goes to the VM or the repository** (the IP does not change, so there is no need to update it
+   from the server).
 
-**Verificá** (en PowerShell, puede tardar unos minutos):
+**Check** (in PowerShell; it can take a few minutes):
 
 ```powershell
 Resolve-DnsName smartops-demo.duckdns.org -Type A
 ```
 
-Tiene que devolver la IP reservada. (La página todavía no carga nada: la demo se instala en M3.)
+It must return the reserved IP. (The page does not load anything yet: the demo is installed in
+M3.)
 
 ---
 
-## Paso 9 — Verificar el "cero gasto" (a las 24–48 h)
+## Step 9 — Check the "zero spend" (after 24–48 h)
 
-1. Menú ☰ → **Billing & Cost Management** → **Cost Analysis**: el total del mes tiene que ser
-   **0,00**. Si aparece algo, mirá qué servicio es y avisame.
-2. **Subscriptions** (o _Upgrade and Manage Payment_): la cuenta sigue en **Free Tier** (o _Free
-   Trial_ los primeros 30 días), **sin** "Pay As You Go".
-3. Menú ☰ → **Governance & Administration** → **Limits, Quotas and Usage**: filtrá _Compute_ →
-   el uso de _Standard.A1 cores_ es 1 de 2 y la memoria 3 de 12 GB.
+1. Menu ☰ → **Billing & Cost Management** → **Cost Analysis**: the month's total must be
+   **0.00**. If anything appears, see which service it is and tell me.
+2. **Subscriptions** (or _Upgrade and Manage Payment_): the account is still on **Free Tier** (or
+   _Free Trial_ for the first 30 days), **without** "Pay As You Go".
+3. Menu ☰ → **Governance & Administration** → **Limits, Quotas and Usage**: filter _Compute_ →
+   the _Standard.A1 cores_ usage is 1 of 2 and the memory 3 of 12 GB.
 
 ---
 
-## Qué me mandás al terminar
+## What to send me at the end
 
-- Región, IP reservada, IP privada, nombre DuckDNS y forma de la VM (tabla del principio).
-- Resultado de Bastion (paso 7.3) o del plan B, con el mensaje de error si hubo uno.
-- Cualquier pantalla donde algo no coincidió con la guía (sin claves ni tokens).
+- Region, reserved IP, private IP, DuckDNS name and VM shape (the table at the start).
+- The Bastion result (step 7.3) or plan B's, with the error message if there was one.
+- Any screen where something did not match the guide (without keys or tokens).
 
-Con eso te paso el M2: endurecer la VM con `deploy/bin/host-setup.sh` (SSH, firewall,
-actualizaciones automáticas, Docker) — lo corrés vos, yo no tengo acceso a la VM.
+With that I send you M2: hardening the VM with `deploy/bin/host-setup.sh` (SSH, firewall,
+automatic updates, Docker) — you run it; I have no access to the VM.

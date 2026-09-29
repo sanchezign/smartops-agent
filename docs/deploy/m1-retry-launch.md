@@ -1,89 +1,94 @@
-# M1 — Reintento automático para crear la VM (fase 12)
+# M1 — Automatic retry to create the VM (phase 12)
 
-São Paulo está sin capacidad ARM ("500-InternalError, Out of host capacity"). En vez de
-reintentar a mano, un script corre **en tu PC** y prueba crear la VM cada 2–5 minutos (con
-variación al azar) durante hasta 5 días, sin Pay As You Go. Usa **OCI CLI** con un **usuario
-aparte de mínimo privilegio** (`smartops-launcher`), no tu usuario administrador. Apenas tenemos
-la VM, se borran ese usuario y su clave.
+São Paulo has no ARM capacity ("500-InternalError, Out of host capacity"). Instead of retrying
+by hand, a script runs **on your computer** and tries to create the VM every 2–5 minutes (with
+random jitter) for up to 5 days, without Pay As You Go. It uses the **OCI CLI** with a
+**separate least-privilege user** (`smartops-launcher`), not your administrator user. As soon as
+the VM exists, that user and its key are deleted.
 
-Script: [`scripts/oci/launch-retry.ps1`](../../scripts/oci/launch-retry.ps1). Guía anterior:
-[`m1-oracle-setup.md`](m1-oracle-setup.md) (después de crear la VM, seguís desde su paso 6.1).
+Script: [`scripts/oci/launch-retry.ps1`](../../scripts/oci/launch-retry.ps1). Previous guide:
+[`m1-oracle-setup.md`](m1-oracle-setup.md) (after the VM is created, continue from its step 6.1).
 
-> 🔒 **Nunca pegues en el chat** la clave privada (`.pem`), el contenido de `~/.oci/config`
-> ni tokens. Podés mandarme el log del script: no tiene secretos.
+> 🔒 **Never paste** the private key (`.pem`), the contents of `~/.oci/config` or tokens into a
+> chat. The script's log is safe to share: it holds no secrets.
 
-## Qué hace el script (y qué NO)
+> The script still prints its messages in Spanish; they are quoted here as they appear. They
+> become English in a later phase 12 milestone.
 
-- **Antes de cada intento** busca una instancia `smartops-demo` en el compartimento `smartops`
-  (en cualquier estado salvo terminada). Si existe, **no crea otra** y se detiene.
-- Crea la VM con la configuración aprobada, fija en el script: `VM.Standard.A1.Flex`, **1 OCPU /
-  3 GB**, Ubuntu 24.04 aarch64 (no Minimal), subred `smartops-public`, **sin IP pública** (la
-  reservada se asigna a mano después), tu clave pública `smartops_oci.pub`.
-- "Out of host capacity" → espera 2–5 min (al azar) y reintenta. Demasiadas llamadas (429) → 15
-  min.
-- **Cortes de red** (timeouts, DNS, conexión rechazada o cortada, "Max retries exceeded", o
-  cualquier falla sin respuesta de OCI), tanto al listar como al crear → **espera y reintenta**,
-  no se frena. Es seguro: antes de cada intento verifica si la VM ya existe (si un intento
-  anterior la creó pero la respuesta se perdió, la encuentra y se detiene sin crear otra). Cada
-  **12 cortes seguidos** te avisa en el log y con una notificación, y sigue hasta el plazo.
-- **Errores reales** (autenticación 401, permisos 404, límites, parámetros, o la configuración
-  local de OCI CLI) → **se frena**, te avisa y deja una pista en el log. No reintenta a ciegas.
-- Cuando lo logra: se detiene, **notificación de Windows + sonido**.
-- Log local sin secretos: `%LOCALAPPDATA%\smartops\launch-retry.log`.
-- Mientras corre, **le pide a Windows que no suspenda la PC** (se libera al terminar).
-- Después de 5 días sin capacidad se detiene y lo decidimos juntos.
+## What the script does (and does not do)
 
-**Por qué lanza la instancia directo y no un job del stack de Resource Manager**: una sola
-llamada a la API con el código de error exacto (capacidad vs. autenticación vs. límites), que
-es lo que permite frenar ante lo que no es capacidad; los jobs del stack envuelven Terraform
-(errores dentro de logs, ~1 min por intento, historial de jobs y un estado de Terraform que
-puede quedar "failed") y además necesitarían más permisos (`orm-stacks`/`orm-jobs` encima de los
-de la instancia). El stack `smartops-demo-vm` queda como registro de la configuración y se
-borra en la limpieza.
+- **Before every attempt** it looks for a `smartops-demo` instance in the `smartops`
+  compartment (in any state except terminated). If one exists, it **does not create another**
+  and stops.
+- It creates the VM with the approved configuration, fixed in the script:
+  `VM.Standard.A1.Flex`, **1 OCPU / 3 GB**, Ubuntu 24.04 aarch64 (not Minimal), subnet
+  `smartops-public`, **no public IP** (the reserved one is assigned by hand later), your public
+  key `smartops_oci.pub`.
+- "Out of host capacity" → waits 2–5 min (random) and retries. Too many calls (429) → 15 min.
+- **Network failures** (timeouts, DNS, refused or reset connections, "Max retries exceeded", or
+  any failure without an answer from OCI), both when listing and when creating → it **waits and
+  retries**, it does not stop. This is safe: before every attempt it checks whether the VM
+  already exists (if an earlier attempt created it but the answer was lost, it finds it and stops
+  without creating another). Every **12 failures in a row** it warns you in the log and with a
+  notification, and it keeps going until the deadline.
+- **Real errors** (authentication 401, permissions 404, limits, parameters, or the local OCI CLI
+  configuration) → it **stops**, warns you and leaves a hint in the log. It never retries blindly.
+- When it succeeds: it stops, with a **Windows notification + sound**.
+- A local log without secrets: `%LOCALAPPDATA%\smartops\launch-retry.log`.
+- While it runs, it **asks Windows not to put the computer to sleep** (released when it ends).
+- After 5 days without capacity it stops, and we decide together.
+
+**Why it launches the instance directly instead of a Resource Manager stack job**: a single API
+call returns the exact error code (capacity vs. authentication vs. limits), which is what lets
+the script stop on anything that is not capacity. Stack jobs wrap Terraform: errors end up inside
+logs, each attempt takes about 1 minute, and they leave a job history and a Terraform state that
+can stay "failed". They would also need more permissions (`orm-stacks` / `orm-jobs` on top of
+the instance ones). The `smartops-demo-vm` stack remains as a record of the configuration and is
+deleted in the cleanup.
 
 ---
 
-## Paso 1 — Instalar OCI CLI en Windows
+## Step 1 — Install the OCI CLI on Windows
 
-1. Abrí https://github.com/oracle/oci-cli/releases, bajá el instalador **MSI para Windows** de
-   la última versión y ejecutalo (Siguiente → Siguiente → Finalizar).
-2. Abrí una **PowerShell nueva** (normal, no hace falta como administrador) y verificá:
+1. Open https://github.com/oracle/oci-cli/releases, download the **Windows MSI installer** of the
+   latest version and run it (Next → Next → Finish).
+2. Open a **new PowerShell** (a normal one; administrator is not needed) and check:
 
    ```powershell
    oci --version
    ```
 
-   Tiene que mostrar un número de versión (por ejemplo `3.94.0`).
+   It must print a version number (for example `3.94.0`).
 
-## Paso 2 — Usuario, grupo y política de mínimo privilegio
+## Step 2 — Least-privilege user, group and policy
 
-Las cuentas nuevas de Oracle usan **Identity Domains**: los usuarios y grupos viven en el
-dominio **Default**. Todo esto lo hacés con tu usuario administrador en la consola.
+New Oracle accounts use **Identity Domains**: users and groups live in the **Default** domain.
+You do all of this with your administrator user in the console.
 
-### 2.1 Usuario `smartops-launcher`
+### 2.1 User `smartops-launcher`
 
-1. Menú ☰ → **Identity & Security** → **Domains** → **Default** → **User management** →
+1. Menu ☰ → **Identity & Security** → **Domains** → **Default** → **User management** →
    **Users** → **Create user**.
-2. Valores:
+2. Values:
    - **First name:** `SmartOps` · **Last name:** `Launcher`
-   - **Username / Email:** Oracle exige un mail. Usá un alias de tu casilla, por ejemplo
-     `tu.usuario+smartops-launcher@gmail.com` (llega a tu mismo buzón).
-   - **No** le asignes roles de administrador ni lo agregues a _Administrators_.
-3. **Create**. Si llega un mail de activación de la consola, **ignoralo**: este usuario nunca
-   entra a la consola, solo usa la clave de API.
+   - **Username / Email:** Oracle requires an email. Use an alias of your mailbox, for example
+     `your.user+smartops-launcher@gmail.com` (it arrives in the same inbox).
+   - Do **not** give it administrator roles or add it to _Administrators_.
+3. **Create**. If a console activation email arrives, **ignore it**: this user never signs in to
+   the console, it only uses the API key.
 
-### 2.2 Grupo `smartops-launchers`
+### 2.2 Group `smartops-launchers`
 
-1. En el mismo dominio → **User management** → **Groups** → **Create group**.
-2. **Name:** `smartops-launchers` · **Description:** `Solo crear la VM de la demo` · agregá al
-   usuario `smartops-launcher`. **Create**.
+1. In the same domain → **User management** → **Groups** → **Create group**.
+2. **Name:** `smartops-launchers` · **Description:** `Only create the demo VM` · add the user
+   `smartops-launcher`. **Create**.
 
-### 2.3 Política
+### 2.3 Policy
 
-1. Menú ☰ → **Identity & Security** → **Policies**. A la izquierda elegí el compartimento
-   **raíz** (el de la cuenta; la política tiene una línea "in tenancy").
-2. **Create Policy** → **Name:** `smartops-launcher-policy` → **Description:** `Crear la VM de la
-demo en smartops` → **Show manual editor** y pegá exactamente:
+1. Menu ☰ → **Identity & Security** → **Policies**. On the left, choose the **root** compartment
+   (the account's; the policy has one "in tenancy" line).
+2. **Create Policy** → **Name:** `smartops-launcher-policy` → **Description:** `Create the demo VM
+in smartops` → **Show manual editor**, and paste exactly:
 
    ```text
    Allow group 'Default'/'smartops-launchers' to manage instance-family in compartment smartops
@@ -92,129 +97,132 @@ demo en smartops` → **Show manual editor** y pegá exactamente:
    Allow group 'Default'/'smartops-launchers' to read app-catalog-listing in tenancy
    ```
 
-   Es la receta oficial de Oracle "Let users launch compute instances", **limitada al
-   compartimento `smartops`**: puede crear/ver instancias y usar la red y el disco de ese
-   compartimento, y leer el catálogo de imágenes. No puede tocar otros compartimentos, la
-   facturación ni la identidad.
+   This is Oracle's official "Let users launch compute instances" recipe, **limited to the
+   `smartops` compartment**: it can create and view instances, use that compartment's network and
+   disks, and read the image catalog. It cannot touch other compartments, billing or identity.
 
 3. **Create**.
 
-**Verificá:** Policies muestra `smartops-launcher-policy` con 4 sentencias.
+**Check:** Policies shows `smartops-launcher-policy` with 4 statements.
 
-### 2.4 Clave de API (se genera en la consola)
+### 2.4 API key (generated in the console)
 
 1. **Domains** → **Default** → **Users** → `smartops-launcher` → **API keys** → **Add API key**.
-2. **Generate API key pair** → **Download private key** (baja un `.pem`) → **Add**.
-3. Aparece **Configuration file preview**: dejá esa ventana abierta (la usás en el paso 3).
-4. Mové el `.pem` descargado a `C:\Users\<tu usuario>\.oci\smartops_launcher.pem` (creá la
-   carpeta `.oci` si no existe). **Nunca** lo pongas dentro del repo ni en Drive/OneDrive.
-5. Restringí sus permisos:
+2. **Generate API key pair** → **Download private key** (a `.pem` file) → **Add**.
+3. A **Configuration file preview** appears: keep that window open (you use it in step 3).
+4. Move the downloaded `.pem` to `C:\Users\<your user>\.oci\smartops_launcher.pem` (create the
+   `.oci` folder if it does not exist). **Never** put it inside the repository or in Drive /
+   OneDrive.
+5. Restrict its permissions:
 
    ```powershell
    oci setup repair-file-permissions --file $HOME\.oci\smartops_launcher.pem
    ```
 
-## Paso 3 — Configurar `~/.oci/config`
+## Step 3 — Configure `~/.oci/config`
 
-1. Abrí (o creá) `C:\Users\<tu usuario>\.oci\config` con el Bloc de notas.
-2. Agregá una sección `[SMARTOPS]` copiando los valores de **Configuration file preview**:
+1. Open (or create) `C:\Users\<your user>\.oci\config` with Notepad.
+2. Add a `[SMARTOPS]` section with the values from the **Configuration file preview**:
 
    ```ini
    [SMARTOPS]
-   user=ocid1.user.oc1..(el del preview)
-   fingerprint=(el del preview)
-   tenancy=ocid1.tenancy.oc1..(el del preview)
+   user=ocid1.user.oc1..(the one in the preview)
+   fingerprint=(the one in the preview)
+   tenancy=ocid1.tenancy.oc1..(the one in the preview)
    region=sa-saopaulo-1
-   key_file=C:\Users\<tu usuario>\.oci\smartops_launcher.pem
+   key_file=C:\Users\<your user>\.oci\smartops_launcher.pem
    ```
 
-   (Si el archivo ya tenía una sección `[DEFAULT]`, dejala como está.)
+   (If the file already had a `[DEFAULT]` section, leave it as it is.)
 
-3. Restringí también el archivo de configuración:
+3. Restrict the configuration file too:
 
    ```powershell
    oci setup repair-file-permissions --file $HOME\.oci\config
    ```
 
-## Paso 4 — Probar la conexión (sin crear nada)
+## Step 4 — Test the connection (without creating anything)
 
-1. Copiá el **OCID del compartimento `smartops`**: Identity & Security → Compartments →
+1. Copy the **OCID of the `smartops` compartment**: Identity & Security → Compartments →
    `smartops` → _OCID_ → **Copy**.
-2. Prueba de autenticación:
+2. Authentication test:
 
    ```powershell
    oci --profile SMARTOPS iam region list --output table
    ```
 
-   Tiene que listar regiones. Si dice `NotAuthenticated`: revisá fingerprint, `key_file` y que
-   la clave de API sea la del usuario `smartops-launcher`.
+   It must list regions. If it says `NotAuthenticated`: check the fingerprint, `key_file`, and
+   that the API key belongs to the `smartops-launcher` user.
 
-3. **Dry-run del script** (resuelve subred, dominio de disponibilidad e imagen, y verifica que
-   no exista ya la VM; **no crea nada**):
+3. **Dry run of the script** (resolves the subnet, the availability domain and the image, and
+   checks that the VM does not exist yet; it **creates nothing**):
 
    ```powershell
    cd C:\dev\smartops-agent
-   powershell -ExecutionPolicy Bypass -File scripts\oci\launch-retry.ps1 -CompartmentId <OCID de smartops> -DryRun
+   powershell -ExecutionPolicy Bypass -File scripts\oci\launch-retry.ps1 -CompartmentId <OCID of smartops> -DryRun
    ```
 
-   Esperado: líneas `subred smartops-public = …`, `dominio de disponibilidad = …`,
-   `imagen = Canonical-Ubuntu-24.04-aarch64-…` y al final `DRYRUN todo resuelto…`.
+   Expected: lines `subred smartops-public = …` (subnet), `dominio de disponibilidad = …`
+   (availability domain), `imagen = Canonical-Ubuntu-24.04-aarch64-…` (image) and, at the end,
+   `DRYRUN todo resuelto…` (everything resolved).
 
-   - Si se frena en _listar dominios de disponibilidad_ con `NotAuthorizedOrNotFound`: copiá el
-     nombre del dominio de la pantalla _Create Instance_ (algo como `Xyz1:SA-SAOPAULO-1-AD-1`) y
-     agregá `-AvailabilityDomain "Xyz1:SA-SAOPAULO-1-AD-1"` al comando.
-   - Cualquier otro error: mandame la línea `STOP` y la `HINT` del log.
+   - If it stops while _listing availability domains_ with `NotAuthorizedOrNotFound`: copy the
+     domain name from the _Create Instance_ screen (something like `Xyz1:SA-SAOPAULO-1-AD-1`) and
+     add `-AvailabilityDomain "Xyz1:SA-SAOPAULO-1-AD-1"` to the command.
+   - Any other error: send me the `STOP` line and the `HINT` line from the log.
 
-## Paso 5 — Dejar la PC lista para varios días
+## Step 5 — Get the computer ready for several days
 
-- **Enchufada** (si es notebook) y con la **tapa abierta**, o en _Configuración → Sistema →
-  Energía → Acciones de la tapa_ poné "No hacer nada" mientras corre.
-- El script le pide a Windows que no suspenda; podés verificarlo con
-  `powercfg /requests` (aparece `powershell.exe` en **SYSTEM**).
-- **Windows Update**: _Configuración → Windows Update → Pausar actualizaciones_ por 1 semana, así
-  no reinicia solo.
-- La pantalla sí puede apagarse; eso no frena el script.
+- **Plugged in** (if it is a laptop) with the **lid open**, or set _Settings → System → Power →
+  Lid actions_ to "Do nothing" while it runs.
+- The script asks Windows not to sleep; you can check it with `powercfg /requests`
+  (`powershell.exe` appears under **SYSTEM**).
+- **Windows Update**: _Settings → Windows Update → Pause updates_ for 1 week, so it does not
+  restart by itself.
+- The screen may turn off; that does not stop the script.
 
-## Paso 6 — Correr el reintento
+## Step 6 — Run the retry
 
-En una PowerShell que vas a dejar abierta:
+In a PowerShell window that you will leave open:
 
 ```powershell
 cd C:\dev\smartops-agent
-powershell -ExecutionPolicy Bypass -File scripts\oci\launch-retry.ps1 -CompartmentId <OCID de smartops>
+powershell -ExecutionPolicy Bypass -File scripts\oci\launch-retry.ps1 -CompartmentId <OCID of smartops>
 ```
 
-- Cada intento aparece en pantalla y en el log (`CAPACITY intento 12: 500 InternalError Out of
-host capacity. -> proximo en 7,3 min`).
-- Ver el log desde otra ventana:
+- Every attempt shows on screen and in the log (`CAPACITY intento 12: 500 InternalError Out of
+host capacity. -> proximo en 7,3 min` = attempt 12, next one in 7.3 min).
+- To watch the log from another window:
   `Get-Content $env:LOCALAPPDATA\smartops\launch-retry.log -Tail 20 -Wait`
-- **Pararlo:** `Ctrl + C` en su ventana (o cerrarla). Volver a lanzarlo es seguro: primero se
-  fija si la VM ya existe.
+- **To stop it:** `Ctrl + C` in its window (or close it). Starting it again is safe: it first
+  checks whether the VM already exists.
 
-Cuando lo logra: notificación **"SmartOps: VM creada!"** + sonido, y una línea `SUCCESS` en el
-log. Seguí con el **paso 6.1** de [`m1-oracle-setup.md`](m1-oracle-setup.md) (asignar la IP
-reservada) y el resto de la guía (Bastion, verificación).
+When it succeeds: the notification **"SmartOps: VM creada!"** (VM created) + a sound, and a
+`SUCCESS` line in the log. Continue with **step 6.1** of
+[`m1-oracle-setup.md`](m1-oracle-setup.md) (assign the reserved IP) and the rest of that guide
+(Bastion, checks).
 
-Si ves avisos de **"sin conexion con OCI"** (12 cortes seguidos): revisá la conexión a internet de la
-PC; el script sigue solo, no hace falta pararlo.
+If you see **"sin conexion con OCI"** warnings (no connection to OCI, 12 failures in a row):
+check the computer's internet connection; the script keeps going by itself, there is no need to
+stop it.
 
-Si se frena solo (`STOP`): leé la línea `HINT`, corregí y volvé a correrlo; si no está claro,
-mandame esas dos líneas.
+If it stops by itself (`STOP`): read the `HINT` line, fix the cause and run it again; if it is
+not clear, send me those two lines.
 
-## Paso 7 — Limpieza (apenas la VM está RUNNING)
+## Step 7 — Cleanup (as soon as the VM is RUNNING)
 
-El usuario de lanzamiento no se necesita más: **borralo con su clave**.
+The launch user is no longer needed: **delete it with its key**.
 
-1. **Domains → Default → Users → `smartops-launcher` → API keys**: borrá la clave.
-2. Borrá el usuario `smartops-launcher` (Users → ⋮ → _Delete_).
-3. **Groups**: borrá `smartops-launchers`.
-4. **Policies** (compartimento raíz): borrá `smartops-launcher-policy`.
-5. En tu PC:
-   - borrá `C:\Users\<tu usuario>\.oci\smartops_launcher.pem`;
-   - quitá la sección `[SMARTOPS]` de `C:\Users\<tu usuario>\.oci\config`.
-6. **Resource Manager → Stacks → `smartops-demo-vm`**: revisá que _Stack resources_ esté vacío
-   (los intentos fallidos no crearon nada) y borrá el stack.
-7. Reanudá Windows Update y volvé la configuración de energía a como estaba.
-8. (Opcional) Desinstalá OCI CLI desde _Aplicaciones instaladas_.
+1. **Domains → Default → Users → `smartops-launcher` → API keys**: delete the key.
+2. Delete the user `smartops-launcher` (Users → ⋮ → _Delete_).
+3. **Groups**: delete `smartops-launchers`.
+4. **Policies** (root compartment): delete `smartops-launcher-policy`.
+5. On your computer:
+   - delete `C:\Users\<your user>\.oci\smartops_launcher.pem`;
+   - remove the `[SMARTOPS]` section from `C:\Users\<your user>\.oci\config`.
+6. **Resource Manager → Stacks → `smartops-demo-vm`**: check that _Stack resources_ is empty (the
+   failed attempts created nothing) and delete the stack.
+7. Resume Windows Update and set the power settings back as they were.
+8. (Optional) Uninstall the OCI CLI from _Installed apps_.
 
-**Verificá:** Users ya no muestra `smartops-launcher` y Policies ya no tiene la política.
+**Check:** Users no longer shows `smartops-launcher` and Policies no longer has the policy.

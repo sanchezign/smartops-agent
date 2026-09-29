@@ -1,114 +1,126 @@
-# n8n: importar, configurar y probar los workflows de SmartOps (fase 6)
+# n8n: import, configure and test the SmartOps workflows (phase 6)
 
-Los borradores están en `n8n/workflows/`:
+The workflows are in `n8n/workflows/`:
 
-| Archivo          | Workflow               | Qué hace                                                                                               |
-| ---------------- | ---------------------- | ------------------------------------------------------------------------------------------------------ |
-| `receiver.json`  | SmartOps · Receptor    | Webhook "mensaje listo" → `POST /internal/classify` → ruta (lista / consulta / pedido / fin)           |
-| `processor.json` | SmartOps · Procesador  | `POST /internal/extract` (espera si está "extracting") → `POST /internal/catalog/ingest` → notificador |
-| `notifier.json`  | SmartOps · Notificador | `POST /internal/notifications` → (si es lista) `POST /internal/messages/ack`                           |
-| `errors.json`    | SmartOps · Errores     | Error Trigger → `POST /internal/n8n/errors` (alerta + aviso crítico)                                   |
+| File             | Workflow               | What it does                                                                                     |
+| ---------------- | ---------------------- | ------------------------------------------------------------------------------------------------ |
+| `receiver.json`  | SmartOps · Receptor    | "message ready" webhook → `POST /internal/classify` → route (list / question / order / end)      |
+| `processor.json` | SmartOps · Procesador  | `POST /internal/extract` (waits while "extracting") → `POST /internal/catalog/ingest` → notifier |
+| `notifier.json`  | SmartOps · Notificador | `POST /internal/notifications` → (for a list) `POST /internal/messages/ack`                      |
+| `errors.json`    | SmartOps · Errores     | Error Trigger → `POST /internal/n8n/errors` (alert + critical notice)                            |
 
-El backend decide todo lo importante (pre-filtro, completa/parcial, qué se notifica, a quién, cuándo).
-n8n solo orquesta. Ningún secreto va en los JSON: solo nombres de credenciales.
+The workflow and node names are still in Spanish, as they appear in n8n ("Receptor" = receiver,
+"Procesador" = processor, "Notificador" = notifier, "Errores" = errors). They become English
+when the demo server imports them (phase 12). The names below are quoted as they appear.
 
-## 0. Antes de empezar
+The backend decides everything that matters: the pre-filter, full vs partial list, what is
+notified, to whom and when. n8n only orchestrates. No secret goes into the JSON files, only
+credential names.
 
-1. `docker compose up -d` (n8n en http://localhost:5678, API en tu máquina).
-2. `pnpm --filter @smartops/api dev` (API + worker) con el LLM fake (`AI_PROVIDER=fake`, $0).
-3. En `apps/api/.env` ya están generados `INTERNAL_API_KEY` y `N8N_WEBHOOK_SECRET`.
-   Dejá `N8N_DELIVERY_ENABLED=false` hasta el paso 5.
+## 0. Before you start
 
-## 1. Credenciales (una sola vez) — n8n → Overview → Create → Credential
+1. `docker compose up -d` (n8n on http://localhost:5678, the API on your machine).
+2. `pnpm --filter @smartops/api dev` (API + worker) with the fake LLM (`AI_PROVIDER=fake`, $0).
+3. `apps/api/.env` already has `INTERNAL_API_KEY` and `N8N_WEBHOOK_SECRET`. Keep
+   `N8N_DELIVERY_ENABLED=false` until step 5.
 
-| Nombre (exacto)           | Tipo        | Name                 | Value                            |
-| ------------------------- | ----------- | -------------------- | -------------------------------- |
-| `SmartOps API`            | Header Auth | `X-Internal-Api-Key` | el valor de `INTERNAL_API_KEY`   |
-| `SmartOps webhook secret` | Header Auth | `X-SmartOps-Secret`  | el valor de `N8N_WEBHOOK_SECRET` |
+## 1. Credentials (once) — n8n → Overview → Create → Credential
 
-Los nombres tienen que ser exactamente esos: los JSON los referencian por nombre.
+| Name (exact)              | Type        | Name                 | Value                             |
+| ------------------------- | ----------- | -------------------- | --------------------------------- |
+| `SmartOps API`            | Header Auth | `X-Internal-Api-Key` | the value of `INTERNAL_API_KEY`   |
+| `SmartOps webhook secret` | Header Auth | `X-SmartOps-Secret`  | the value of `N8N_WEBHOOK_SECRET` |
 
-## 2. Importar (Workflows → ⋯ → Import from File), en este orden
+The names must be exactly these: the JSON files refer to them by name.
+
+## 2. Import (Workflows → ⋯ → Import from File), in this order
 
 1. `errors.json`
 2. `notifier.json`
 3. `processor.json`
 4. `receiver.json`
 
-Después de importar cada uno:
+After importing each one:
 
-- En **cada nodo HTTP** (y en el Webhook del receptor) abrí el nodo y elegí la credencial en el
-  desplegable (al importar la referencia queda vacía). Guardá.
-- **Config** (primer nodo tras el disparador): `apiBaseUrl` = `http://host.docker.internal:4000/api/v1`
-  (n8n corre en Docker y la API en tu máquina; en el deploy de la fase 12 será `http://api:4000/api/v1`).
-- **Procesador → nodo "Notificar"** y **Receptor → "Procesar lista" / "Notificar consulta"**:
-  elegí en _Workflow_ el sub-workflow correspondiente (SmartOps · Procesador / SmartOps · Notificador).
-- **Settings** de Receptor, Procesador y Notificador → _Error workflow_ = `SmartOps · Errores`.
+- In **every HTTP node** (and in the receiver's Webhook node), open the node and pick the
+  credential in the drop-down (the import leaves the reference empty). Save.
+- **Config** (the first node after the trigger): `apiBaseUrl` =
+  `http://host.docker.internal:4000/api/v1` (n8n runs in Docker and the API on your machine; on
+  the phase 12 server it is `http://api:4000/api/v1`).
+- **Procesador → node "Notificar"** (notify) and **Receptor → "Procesar lista" / "Notificar
+  consulta"** (process list / notify question): pick the matching sub-workflow in _Workflow_
+  (SmartOps · Procesador / SmartOps · Notificador).
+- **Settings** of Receptor, Procesador and Notificador → _Error workflow_ = `SmartOps · Errores`.
 
-## 3. Probar sin Meta ($0)
+## 3. Test without Meta ($0)
 
-1. Abrí el Receptor y pulsá **Execute workflow** (URL de prueba `/webhook-test/…`).
-2. Desde otra terminal enviá un evento como lo hace el backend (reemplazá `<secret>` y `<messageId>`
-   por un mensaje real de tu base, por ejemplo uno creado con `wa:simulate`):
+1. Open the Receptor and click **Execute workflow** (test URL `/webhook-test/…`).
+2. From another terminal, send an event the way the backend does (replace `<secret>` and
+   `<messageId>` with a real message from your database, for example one created with
+   `wa:simulate`):
 
    ```bash
    node -e "fetch('http://localhost:5678/webhook-test/smartops-message-ready',{method:'POST',headers:{'content-type':'application/json','x-smartops-secret':'<secret>'},body:JSON.stringify({version:1,type:'message.ready',messageId:'<messageId>'})}).then(r=>console.log(r.status))"
    ```
 
-3. Mirá la ejecución: Clasificar → Ruta → Procesar lista → (Procesador) Extraer → Ingestar → Notificar.
-4. Pruebas sugeridas (con `wa:simulate` + `wa:fake-graph`, LLM fake y golden):
-   - texto con precios de un proveedor → lista procesada;
-   - "hola" → pre-filtrado (`prefilterRule`), fin sin LLM;
-   - mensaje de un contacto `customer` → notificación de consulta;
-   - PDF y foto de prueba (`test/fixtures/extraction/`) → 5 cambios, 1 revisión → notificación en el panel.
-5. Errores: apagá la API y ejecutá de nuevo → los nodos HTTP reintentan 3 veces y el workflow
-   de errores intenta avisar al backend (con la API apagada fallará también; al volver, repetí).
+3. Watch the execution: Clasificar (classify) → Ruta (route) → Procesar lista → (Procesador)
+   Extraer (extract) → Ingestar (ingest) → Notificar.
+4. Suggested tests (with `wa:simulate` + `wa:fake-graph`, the fake LLM and the recorded outputs):
+   - a supplier's text with prices → the list is processed;
+   - "hola" → pre-filtered (`prefilterRule`), the end, no LLM;
+   - a message from a `customer` contact → a question notification;
+   - the test PDF and photo (`test/fixtures/extraction/`) → 5 price changes, 1 review → a panel
+     notification.
+5. Errors: stop the API and run it again → the HTTP nodes retry 3 times and the error workflow
+   tries to tell the backend (with the API down that fails too; repeat once it is back).
 
-## 4. Publicar
+## 4. Publish
 
-Publicá los 4 workflows (n8n 2.x: botón **Publish**). La URL de producción del receptor es
-`http://localhost:5678/webhook/smartops-message-ready` (la de `N8N_RECEIVER_WEBHOOK_URL`).
+Publish the 4 workflows (n8n 2.x: the **Publish** button). The receiver's production URL is
+`http://localhost:5678/webhook/smartops-message-ready` (the one in `N8N_RECEIVER_WEBHOOK_URL`).
 
-## 5. Encender la entrega automática
+## 5. Turn on automatic delivery
 
-En `apps/api/.env`: `N8N_DELIVERY_ENABLED=true` y reiniciá `pnpm dev`. Desde ahí cada mensaje
-listo llega solo a n8n (reintentos ~24 h si n8n está caído; `pnpm --filter @smartops/api n8n:replay`
-reenvía los que fallaron). Para probar: `pnpm --filter @smartops/api wa:simulate text --body "Tarugo 8mm 150"`.
+In `apps/api/.env`: `N8N_DELIVERY_ENABLED=true`, then restart `pnpm dev`. From then on every
+ready message reaches n8n by itself (retries for ~24 h if n8n is down;
+`pnpm --filter @smartops/api n8n:replay` resends the failed ones). To try it:
+`pnpm --filter @smartops/api wa:simulate text --body "Tarugo 8mm 150"`.
 
-## 6. Exportar de vuelta al repo (sin credenciales)
+## 6. Export back to the repository (no credentials)
 
 ```bash
 pnpm --filter @smartops/api n8n:export
 npx prettier --write n8n/workflows
-pnpm --filter @smartops/api test -- n8n-workflows   # los tests estáticos validan el export
+pnpm --filter @smartops/api test -- n8n-workflows   # the static tests validate the export
 ```
 
-El script corre `n8n export:workflow` dentro del contenedor, descarta `pinData` (los datos
-fijados de prueba pueden tener teléfonos reales), `staticData` y metadatos, deja las
-credenciales solo como referencia (nombre e id) y **no escribe nada** si encuentra algo con
-forma de secreto. Nunca exportes credenciales.
+The script runs `n8n export:workflow` inside the container, drops `pinData` (pinned test data
+may hold real phone numbers), `staticData` and metadata, keeps credentials only as references
+(name and id) and **writes nothing** if it finds anything that looks like a secret. Never export
+credentials.
 
-## 7. Actualizar el Receptor (fase 8: pedidos)
+## 7. Updating the Receptor (phase 8: orders)
 
-`receiver.json` suma la salida **"pedido"** en el nodo `Ruta` (`internal_order`) → "Datos del
-pedido" (`kind: order`) → "Notificar pedido" (el mismo Notificador). Sin esto un pedido queda
-clasificado pero sin aviso.
+`receiver.json` adds the **"pedido"** (order) output to the `Ruta` node (`internal_order`) →
+"Datos del pedido" (order data, `kind: order`) → "Notificar pedido" (notify order, the same
+Notificador). Without it an order is classified but nobody is told.
 
-1. En n8n abrí **SmartOps · Receptor**, **vaciá el lienzo** (seleccioná todo con Ctrl+A →
-   Delete) y recién ahí ⋯ → **Import from File** → `n8n/workflows/receiver.json`.
-   **Import from File SUMA los nodos al lienzo, no los reemplaza**: sin vaciarlo quedan nodos
-   duplicados ("Ruta1", "Clasificar1"…) y dos webhooks en el mismo path. Así se conserva el
-   mismo workflow (su id y su URL de producción).
-2. Revisá que el nodo **Notificar pedido** apunte a _SmartOps · Notificador_ (si aparece vacío,
-   elegilo en el desplegable) y que los nodos HTTP / el webhook tengan sus credenciales.
-3. Guardá y **Publish**.
-4. Probá con un mensaje "necesito 3 macetas" (desde un contacto que no sea cliente va al
-   clasificador; desde un cliente se etiqueta pedido sin IA).
-5. Exportá de vuelta: `pnpm --filter @smartops/api n8n:export`, Prettier y
+1. In n8n open **SmartOps · Receptor**, **clear the canvas** (select all with Ctrl+A → Delete),
+   and only then ⋯ → **Import from File** → `n8n/workflows/receiver.json`.
+   **Import from File ADDS the nodes to the canvas, it does not replace them**: without clearing
+   it you get duplicate nodes ("Ruta1", "Clasificar1"…) and two webhooks on the same path.
+   This way the workflow keeps its id and its production URL.
+2. Check that the **Notificar pedido** node points to _SmartOps · Notificador_ (if it is empty,
+   pick it in the drop-down) and that the HTTP nodes and the webhook have their credentials.
+3. Save and **Publish**.
+4. Try it with the message "necesito 3 macetas" ("I need 3 flower pots"). From a contact who is
+   not a customer it goes to the classifier; from a customer it is labeled an order without AI.
+5. Export back: `pnpm --filter @smartops/api n8n:export`, Prettier and
    `pnpm --filter @smartops/api test -- n8n-workflows`.
 
-## Seguridad
+## Security
 
-- El editor de n8n NUNCA queda expuesto públicamente (fase 12: solo por túnel/VPN o IP
-  permitida, además del login).
-- n8n no toca la base de datos: todo pasa por la API interna con `X-Internal-Api-Key`.
+- The n8n editor is NEVER publicly exposed (phase 12: only through a tunnel / VPN or an allowed
+  IP, on top of the n8n login).
+- n8n does not touch the database: everything goes through the internal API with
+  `X-Internal-Api-Key`.

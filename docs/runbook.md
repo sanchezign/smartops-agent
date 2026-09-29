@@ -1,114 +1,117 @@
-# Runbook — demo pública en Oracle Cloud (fase 12)
+# Runbook — public demo on Oracle Cloud (phase 12)
 
-Operación del servidor de la demo: deploy, rollback, backups, restauración, rotación de
-secretos y qué hacer si algo se cae. Diseño y decisiones: ADR-023 (llega al cierre de la fase) y
-[`deploy/README.md`](../deploy/README.md). Todo se ejecuta **en la VM con `sudo`**, salvo la
-prueba de restauración, que corre **en tu PC**.
+How to operate the demo server: deploy, rollback, backups, restore, secret rotation, and what to
+do when something breaks. Design and decisions: ADR-023 (added when the phase closes) and
+[`deploy/README.md`](../deploy/README.md). Everything runs **on the VM with `sudo`**, except the
+restore test, which runs **on your computer**.
 
-> Estado: M0 (scripts probados en local con `scripts/deploy/local-harness.sh`). Las secciones
-> de la consola de Oracle (M1), el endurecimiento (M2) y el primer arranque (M3) se completan
-> con la guía paso a paso de cada hito.
+> Status: M0 (scripts tested locally with `scripts/deploy/local-harness.sh`). The Oracle console
+> (M1), hardening (M2) and first start (M3) sections are completed with each milestone's
+> step-by-step guide.
 
-## 0. Qué hay en la VM
+## 0. What is on the VM
 
-| Ruta                          | Qué es                                                                       |
-| ----------------------------- | ---------------------------------------------------------------------------- |
-| `/etc/smartops/demo.env`      | secretos + dominio (root, **600**). Lo crea `init-secrets.sh`; nunca se sube |
-| `/etc/smartops/backup.env`    | destino del backup, tu clave **pública** age, URL de Healthchecks (600)      |
-| `/etc/smartops/monitor.env`   | URLs de Healthchecks y umbrales de disco / memoria (600)                     |
-| `/opt/smartops/releases/<v>/` | bundle de cada versión (sale de su imagen de la API)                         |
-| `/opt/smartops/current`       | enlace a la versión en uso (los timers de systemd lo siguen)                 |
-| `/opt/smartops/state/`        | `current`, `previous`, `deploy.log`                                          |
-| `/opt/smartops/backups/`      | copias locales cifradas (7 días)                                             |
+| Path                          | What it is                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------ |
+| `/etc/smartops/demo.env`      | secrets + domain (root, **600**). Created by `init-secrets.sh`; never uploaded |
+| `/etc/smartops/backup.env`    | backup target, your **public** age key, Healthchecks URL (600)                 |
+| `/etc/smartops/monitor.env`   | Healthchecks URLs and disk / memory thresholds (600)                           |
+| `/opt/smartops/releases/<v>/` | the bundle of each version (taken from its API image)                          |
+| `/opt/smartops/current`       | link to the version in use (the systemd timers follow it)                      |
+| `/opt/smartops/state/`        | `current`, `previous`, `deploy.log`                                            |
+| `/opt/smartops/backups/`      | local encrypted copies (7 days)                                                |
 
-Contenedores (proyecto `smartops-demo`): `caddy` (único con puertos: 80/443), `admin`, `api`,
-`worker`, `n8n` (sin editor), `postgres`. Estado de un vistazo:
+Containers (project `smartops-demo`): `caddy` (the only one with ports: 80/443), `admin`, `api`,
+`worker`, `n8n` (no editor), `postgres`. Status at a glance:
 
 ```bash
 sudo /opt/smartops/current/bin/status.sh
 ```
 
-## 1. Deploy de una versión
+## 1. Deploying a version
 
-Las versiones son los tags de GitHub (`v0.12.0` → imagen `0.12.0`). La VM **baja** la versión;
-nadie empuja nada a la VM y la CI no tiene credenciales de ella.
+Versions are the GitHub tags (`v0.12.0` → image `0.12.0`). The VM **pulls** the version; nobody
+pushes anything to the VM and CI has no credentials for it.
 
 ```bash
 sudo /opt/smartops/current/bin/deploy.sh 0.13.0
 ```
 
-Qué hace, en orden (si algo falla, frena con un mensaje claro y la versión anterior sigue):
+What it does, in order (if a step fails, it stops with a clear message and the previous version
+keeps running):
 
-1. baja el bundle de `0.13.0` desde su imagen (si falta) y le pasa el control a **su** `deploy.sh`;
-2. controla que `demo.env` sea 600 y que **no tenga ninguna clave real** (la API también se
-   niega a arrancar si encuentra una);
-3. baja las imágenes;
-4. **backup cifrado antes de migrar** (no en la primera instalación);
-5. `prisma migrate deploy` (solo hacia adelante);
-6. re-siembra los datos de la demo (usuarios y sesiones se mantienen);
-7. importa y publica los workflows de n8n por CLI;
-8. levanta todo, espera los healthchecks y prueba `https://<dominio>/api/v1/health` y `/login`
-   a través de Caddy;
-9. anota `current` / `previous` y actualiza los timers.
+1. fetches the bundle of `0.13.0` from its image (if missing) and hands over to **its**
+   `deploy.sh`;
+2. checks that `demo.env` is 600 and holds **no real key** (the API also refuses to start if it
+   finds one);
+3. pulls the images;
+4. makes an **encrypted backup before migrating** (not on the first install);
+5. runs `prisma migrate deploy` (forward only);
+6. re-seeds the demo data (users and sessions are kept);
+7. imports and publishes the n8n workflows from the command line;
+8. starts everything, waits for the health checks and tests `https://<domain>/api/v1/health` and
+   `/login` through Caddy;
+9. records `current` / `previous` and updates the timers.
 
 ## 2. Rollback
 
 ```bash
-sudo /opt/smartops/current/bin/rollback.sh          # vuelve a la versión anterior
-sudo /opt/smartops/current/bin/rollback.sh 0.12.0   # o a una versión concreta
+sudo /opt/smartops/current/bin/rollback.sh          # back to the previous version
+sudo /opt/smartops/current/bin/rollback.sh 0.12.0   # or to a given version
 ```
 
-Vuelve las **imágenes**, el compose y los workflows de n8n; **la base no se toca**. Regla del
-proyecto: las migraciones son _expand/contract_ (una migración nunca rompe a la versión
-anterior). Si la base tiene migraciones que la versión destino no conoce, el rollback **se
-niega** y las lista:
+It rolls back the **images**, the compose file and the n8n workflows; **the database is not
+touched**. Project rule: migrations are _expand/contract_ (a migration never breaks the previous
+version). If the database has migrations the target version does not know, the rollback
+**refuses** and lists them:
 
-- si son aditivas (columnas / tablas nuevas): `rollback.sh 0.12.0 --accept-newer-schema`;
-- si no: restaurá el backup `pre-deploy-<versión>` (sección 5) y después hacé el rollback.
+- if they are additive (new columns / tables): `rollback.sh 0.12.0 --accept-newer-schema`;
+- if not: restore the `pre-deploy-<version>` backup (section 5), then roll back.
 
 ## 3. Backups
 
-Diarios a las 03:30 (hora de Montevideo) y antes de cada deploy: las dos bases (demo + n8n) y
-`demo.env` (sin él, las credenciales guardadas de n8n no se pueden leer), **cifrados con age a
-tu clave pública**. La clave privada vive solo en tu PC: si alguien toma la VM, no puede leer
-los backups.
+Daily at 03:30 (Montevideo time) and before every deploy: both databases (demo + n8n) and
+`demo.env` (without it, the credentials stored in n8n cannot be read), **encrypted with age to
+your public key**. The private key lives only on your computer: whoever takes the VM cannot read
+the backups.
 
 `/etc/smartops/backup.env` (600):
 
 ```ini
-BACKUP_AGE_RECIPIENT=age1…          # tu clave PÚBLICA (age-keygen -y clave.txt)
+BACKUP_AGE_RECIPIENT=age1…          # your PUBLIC key (age-keygen -y key.txt)
 BACKUP_TARGET=oci
-OCI_BUCKET=smartops-backups         # retención: política de ciclo de vida del bucket (30 días)
-HC_BACKUP_URL=https://hc-ping.com/… # opcional: Healthchecks avisa si un backup falla o no llega
+OCI_BUCKET=smartops-backups         # retention: the bucket's lifecycle policy (30 days)
+HC_BACKUP_URL=https://hc-ping.com/… # optional: Healthchecks warns if a backup fails or never arrives
 ```
 
-A mano: `sudo /opt/smartops/current/bin/backup.sh --reason manual`.
+By hand: `sudo /opt/smartops/current/bin/backup.sh --reason manual`.
 
-## 4. Prueba de restauración (en tu PC, una vez por mes)
+## 4. Restore test (on your computer, once a month)
 
-1. Bajá una carpeta de backup del bucket (Object Storage → bucket → carpeta `<fecha>-<motivo>/`
-   → descargar los 4 archivos).
-2. En el repo:
+1. Download one backup folder from the bucket (Object Storage → bucket → folder
+   `<date>-<reason>/` → download the 4 files).
+2. In the repository:
 
 ```bash
-deploy/bin/restore-test.sh --dir <carpeta descargada> --identity <tu clave age> \
-  --hc-url https://hc-ping.com/<uuid del chequeo mensual>
+deploy/bin/restore-test.sh --dir <downloaded folder> --identity <your age key> \
+  --hc-url https://hc-ping.com/<uuid of the monthly check>
 ```
 
-Verifica checksums, descifra en memoria, restaura en un Postgres **descartable**, cuenta filas
-(migraciones, usuarios, productos, mensajes, workflows y credenciales de n8n) y borra el
-contenedor. El chequeo mensual de Healthchecks.io (periodo 30 días) te manda un mail solo si
-pasa un mes sin una restauración exitosa: es el recordatorio (no hay timer en la VM).
+It verifies the checksums, decrypts in memory, restores into a **throw-away** Postgres, counts
+rows (migrations, users, products, messages, n8n workflows and credentials) and removes the
+container. The monthly Healthchecks.io check (period 30 days) emails you only if a month passes
+without a successful restore: that is the reminder (there is no timer on the VM).
 
-## 5. Restauración real (se perdió la base o la VM)
+## 5. Real restore (the database or the VM was lost)
 
-1. VM nueva (M1/M2 del runbook) o la misma VM.
-2. En tu PC, descifrá `demo.env.age` del backup y copiá el resultado a la VM como
-   `/etc/smartops/demo.env` (root, `chmod 600`). **Tiene que ser el mismo archivo**: la
-   `N8N_ENCRYPTION_KEY` de ese backup es la que lee las credenciales de n8n.
-3. Deploy de la **misma versión** del backup (`manifest.txt` → `version=`):
+1. A new VM (runbook M1/M2) or the same VM.
+2. On your computer, decrypt `demo.env.age` from the backup and copy the result to the VM as
+   `/etc/smartops/demo.env` (root, `chmod 600`). **It must be the same file**: the
+   `N8N_ENCRYPTION_KEY` of that backup is the one that reads the n8n credentials.
+3. Deploy the **same version** as the backup (`manifest.txt` → `version=`):
    `sudo /opt/smartops/releases/<v>/bin/deploy.sh <v> --skip-backup`.
-4. Restaurar las bases (descifrando en tu PC y subiendo los `.dump` a la VM por el túnel):
+4. Restore the databases (decrypt on your computer and upload the `.dump` files to the VM through
+   the tunnel):
 
 ```bash
 sudo docker compose -p smartops-demo stop api worker n8n
@@ -120,45 +123,45 @@ sudo docker compose -p smartops-demo start api worker n8n
 sudo /opt/smartops/current/bin/status.sh
 ```
 
-5. Borrá los `.dump` descifrados de la VM y de tu PC.
+5. Delete the decrypted `.dump` files from the VM and from your computer.
 
-## 6. Rotación de secretos
+## 6. Rotating secrets
 
-| Secreto                                                           | Cómo                                                                                                                                  |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Token de GHCR (PAT classic, `read:packages`, vence a los 90 días) | Creá uno nuevo en GitHub → `sudo docker login ghcr.io -u <usuario>` (pegalo por stdin) → revocá el viejo                              |
-| `INTERNAL_API_KEY`, `N8N_WEBHOOK_SECRET`                          | borrá la línea de `demo.env`, `sudo init-secrets.sh` genera otra, y `deploy.sh <versión actual>` (re-importa las credenciales de n8n) |
-| `JWT_ACCESS_SECRET`                                               | igual; los visitantes vuelven a iniciar sesión (normal)                                                                               |
-| Contraseñas de Postgres                                           | `ALTER ROLE … PASSWORD` dentro del contenedor, actualizar `demo.env`, `deploy.sh <versión actual>`                                    |
-| `N8N_ENCRYPTION_KEY`                                              | **no se rota** sin re-cifrar las credenciales de n8n; en la demo alcanza con borrar el volumen de n8n y hacer deploy (se re-importan) |
-| Clave age                                                         | nueva clave en tu PC, nueva `BACKUP_AGE_RECIPIENT`; guardá la vieja mientras existan backups cifrados con ella (30 días)              |
+| Secret                                                           | How                                                                                                                                              |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| GHCR token (classic PAT, `read:packages`, expires after 90 days) | Create a new one on GitHub → `sudo docker login ghcr.io -u <user>` (paste it on stdin) → revoke the old one                                      |
+| `INTERNAL_API_KEY`, `N8N_WEBHOOK_SECRET`                         | delete the line from `demo.env`, `sudo init-secrets.sh` generates a new one, then `deploy.sh <current version>` (re-imports the n8n credentials) |
+| `JWT_ACCESS_SECRET`                                              | the same; visitors sign in again (expected)                                                                                                      |
+| Postgres passwords                                               | `ALTER ROLE … PASSWORD` inside the container, update `demo.env`, `deploy.sh <current version>`                                                   |
+| `N8N_ENCRYPTION_KEY`                                             | **not rotated** without re-encrypting the n8n credentials; on the demo it is enough to delete the n8n volume and deploy (they are re-imported)   |
+| age key                                                          | a new key on your computer, a new `BACKUP_AGE_RECIPIENT`; keep the old one while backups encrypted with it exist (30 days)                       |
 
-Nunca pegues un secreto en un comando (queda en el historial): usá archivos 600 o stdin.
+Never paste a secret into a command (it stays in the shell history): use 600 files or stdin.
 
-## 7. Si algo se cae
+## 7. When something breaks
 
-| Síntoma                                 | Qué hacer                                                                                                       |
-| --------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Mail de Healthchecks "monitor" (fail)   | `status.sh`; el texto del aviso dice qué falló (disco, memoria, contenedor, HTTPS)                              |
-| Healthchecks sin pings                  | la VM está caída o apagada: consola de OCI → la instancia → _Reboot_; después `status.sh`                       |
-| Mail "boot" (fail) después de las 04:00 | los contenedores no volvieron solos: `sudo docker compose -p smartops-demo up -d` y revisar `logs`              |
-| UptimeRobot: la demo no responde        | `status.sh`; `sudo docker compose -p smartops-demo logs --tail 100 caddy api`                                   |
-| Disco lleno                             | `sudo docker system df`; logs ya rotan; borrar backups locales viejos o imágenes sin uso (`docker image prune`) |
-| Oracle reclamó / borró la VM            | sección 5 con una VM nueva (el backup está en Object Storage)                                                   |
-| "Out of capacity" al crear la VM        | reintentar en otro horario o con una forma más chica; no hay otro dominio de disponibilidad en la región        |
-| Alerta de presupuesto de OCI            | **no debería pasar** (cuenta sin upgrade): consola → Billing → Cost Analysis, identificar el recurso y borrarlo |
+| Symptom                                | What to do                                                                                                         |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Healthchecks "monitor" email (fail)    | `status.sh`; the alert text says what failed (disk, memory, container, HTTPS)                                      |
+| Healthchecks without pings             | the VM is down or stopped: OCI console → the instance → _Reboot_; then `status.sh`                                 |
+| "boot" email (fail) after 04:00        | the containers did not come back on their own: `sudo docker compose -p smartops-demo up -d` and check the `logs`   |
+| UptimeRobot: the demo does not answer  | `status.sh`; `sudo docker compose -p smartops-demo logs --tail 100 caddy api`                                      |
+| Disk full                              | `sudo docker system df`; logs already rotate; delete old local backups or unused images (`docker image prune`)     |
+| Oracle reclaimed / deleted the VM      | section 5 with a new VM (the backup is in Object Storage)                                                          |
+| "Out of capacity" when creating the VM | retry at another time or with a smaller shape; there is no other availability domain in the region                 |
+| OCI budget alert                       | **should never happen** (account not upgraded): console → Billing → Cost Analysis, find the resource and delete it |
 
-## 8. Probar en local antes de un release
+## 8. Testing locally before a release
 
 ```bash
 docker build -f apps/api/Dockerfile   -t smartops-local/smartops-api:m0a .
 docker build -f apps/admin/Dockerfile -t smartops-local/smartops-admin:m0a .
 docker tag smartops-local/smartops-api:m0a smartops-local/smartops-api:m0b
 docker tag smartops-local/smartops-admin:m0a smartops-local/smartops-admin:m0b
-scripts/deploy/local-harness.sh <carpeta vacía>
+scripts/deploy/local-harness.sh <empty folder>
 ```
 
-Corre los scripts reales de `deploy/bin` contra tu Docker (puertos solo en 127.0.0.1): deploy,
-smoke a través de Caddy (encabezados, rutas internas bloqueadas, SSE, una muestra por n8n),
-segundo deploy con backup, prueba de restauración, rollback y el rechazo por esquema más nuevo.
-Al final imprime los comandos para desarmarlo (no los ejecuta).
+It runs the real `deploy/bin` scripts against your Docker (ports on 127.0.0.1 only): deploy, a
+smoke test through Caddy (headers, blocked internal routes, SSE, a sample through n8n), a second
+deploy with a backup, the restore test, a rollback and the refusal on a newer schema. At the end
+it prints the commands to tear it down (it does not run them).

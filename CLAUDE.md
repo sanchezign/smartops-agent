@@ -594,7 +594,7 @@ Each one gets an ADR in docs/adr/.
 `feat/phase-12-deploy`): M0 DONE; M1 done up to DuckDNS — the VM cannot be created yet (São Paulo
 has no A1 capacity). WAITING: the user runs `scripts/oci/launch-retry.ps1` for 3–5 days
 (guide `docs/deploy/m1-retry-launch.md`). Phase 13 (i18n + docs, branch `feat/phase-13-i18n-docs`)
-advances meanwhile: M0–M4 DONE, next M5 (English docs). If the VM appears first, phase 12 does
+advances meanwhile: M0–M5 DONE, next M6 (screenshots + video / GIF, then STOP for the user's review). If the VM appears first, phase 12 does
 not wait (first deploy without i18n, updated later). M3b (phase 5) and MFA (TOTP) remain
 recommended/required before a real client.**
 
@@ -1771,6 +1771,22 @@ recommended/required before a real client.**
       selector lessons: "Name" also matches a dialog description (exact), a toast can repeat a badge
       text ("The bot answers again."), badge text includes a decorative emoji. 85 passed / 41 skipped
       (3.7 min).
+    - M5 English docs — DONE (2026-09-28). README = portfolio front page (what it does, a Mermaid flow,
+      engineering highlights with real numbers, stack, a short local run, docs links, license); the
+      developer content moved to `docs/development.md` (Spanish headings translated, stale env rows
+      fixed: NEXT_PUBLIC_API_BASE / API_PROXY_TARGET / PANEL_DEFAULT_LOCALE, DEMO_*, PANEL_PUBLIC_URL).
+      New: `docs/README.md` (index), `docs/architecture.md` (Mermaid components + message sequence +
+      ER core, design-choice table with ADRs), `docs/security.md`, `docs/costs.md` (prices checked
+      2026-09-28 with sources; no invented WhatsApp rate), `docs/adr/README.md` (ADR list), `LICENSE`
+      (all rights reserved, sanchezign). Translated to English: runbook, M1 Oracle guide, M1 retry
+      guide (the script's own log lines still Spanish, quoted + glossed), n8n setup (n8n workflow /
+      node names quoted as they are until phase 12). `docs/pitch.md` stays Spanish (the original
+      brief). Link checker `apps/api/scripts/ci/doc-links.ts` (offline: relative targets + GitHub
+      anchors, code ignored; Node type stripping) in the quick job + unit test (also checks the real
+      docs). Demo-server statements are marked "being set up (phase 12)". FINDINGS (costs research):
+      Meta charges service messages and in-window utility messages per message from 2026-10-01 (no
+      free allowance; rates by market published by 2026-09-01) — the main pricing page still says
+      non-template messages are free; Vercel Hobby is non-commercial only.
 
 ## Known issues (out of scope)
 - **Phase 13 M2 — decision pending (user):** the panel ROUTES are still Spanish (/revisiones,

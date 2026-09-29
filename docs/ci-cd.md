@@ -22,7 +22,8 @@ audit (user decision, 2026-09-27).
 - **quick** — every push to any branch (and pull requests from forks). Its check is attached to
   the commit, so it also shows on the pull request without running twice:
   actionlint + zizmor on the workflows, gitleaks on the NEW commits, `pnpm install
---frozen-lockfile`, the dependency audit gate, `format:check`, `lint`, `typecheck`,
+--frozen-lockfile`, the dependency audit gate, the documentation link check (phase 13,
+  `apps/api/scripts/ci/doc-links.ts`: relative links and anchors, offline), `format:check`, `lint`, `typecheck`,
   `test:fast` (API unit + e2e with Supertest, panel logic), and the **deploy bundle** checks
   (phase 12, `scripts/ci/check-deploy-bundle.sh`: shellcheck on every server / CI script,
   `caddy validate` + `caddy fmt`, `docker compose config` of `deploy/compose.yaml` with fake

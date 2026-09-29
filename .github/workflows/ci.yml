@@ -79,6 +79,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Dependency audit gate (high/critical in production, security/audit-exceptions.json)
         run: node apps/api/scripts/security/audit-gate.ts
+      - name: Documentation links (relative files and anchors, offline)
+        run: node apps/api/scripts/ci/doc-links.ts
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
