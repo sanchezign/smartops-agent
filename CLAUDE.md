@@ -594,7 +594,7 @@ Each one gets an ADR in docs/adr/.
 `feat/phase-12-deploy`): M0 DONE; M1 done up to DuckDNS — the VM cannot be created yet (São Paulo
 has no A1 capacity). WAITING: the user runs `scripts/oci/launch-retry.ps1` for 3–5 days
 (guide `docs/deploy/m1-retry-launch.md`). Phase 13 (i18n + docs, branch `feat/phase-13-i18n-docs`)
-advances meanwhile: M0–M6 DONE and approved by the user (2026-09-28) + review adjustments; next M7 (panel guide EN + ES), M8, M9 (PR, then STOP: the user authorizes the merge). If the VM appears first, phase 12 does
+advances meanwhile: M0–M6 DONE and approved by the user (2026-09-28) + review adjustments + M7 DONE; next M8 (kit outside the repo), M9 (PR, then STOP: the user authorizes the merge). If the VM appears first, phase 12 does
 not wait (first deploy without i18n, updated later). M3b (phase 5) and MFA (TOTP) remain
 recommended/required before a real client.**
 
@@ -1815,6 +1815,15 @@ recommended/required before a real client.**
       validated with renovate 44.107.0 --strict. PR #7 closed with a comment; PR #6 left open (to
       review at the phase close; Renovate will move vitest out of it into its own group PR). (5)
       WhatsApp pricing change in Known issues.
+    - M7 panel guide — DONE (2026-09-29). `docs/guide/panel-guide.md` (EN) and
+      `docs/guide/guia-del-panel.md` (neutral Spanish, "tú"): what SmartOps does, signing in
+      (language, theme, sign out everywhere), home, reviews (product line, new spreadsheet format,
+      the other kinds, roles), conversations (badges, reply as a person + 24 h window, pause /
+      reactivate, opt-outs), catalog, alerts, rules, users, the WhatsApp summary, what SmartOps never
+      does. 11 screenshots per language (desktop 1280×960, light) from the real panel: media.spec
+      "guide screenshots" (MEDIA_GUIDE=en|es, language-independent selectors, locale cookie) →
+      `build-media.sh --guide` → `docs/guide/media-{en,es}/*.webp` (672 KB for both; Spanish budget
+      4 MB). Linked from the README and docs/README.md.
 
 ## Known issues (out of scope)
 - **WhatsApp pricing change (Meta, effective 2026-10-01):** service messages and utility messages

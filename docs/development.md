@@ -279,6 +279,11 @@ MEDIA=1 MEDIA_CAPTIONS=1 pnpm e2e media.spec.ts --project desktop -g "demo video
 MEDIA=1 MEDIA_CAPTIONS=0 pnpm e2e media.spec.ts --project desktop -g "demo video"   # clean video + .srt
 cd ../..
 scripts/media/build-media.sh [kit folder]   # ffmpeg in a pinned container
+
+# The panel guide (docs/guide), one language per run, then only its screenshots:
+MEDIA=1 MEDIA_GUIDE=en pnpm --filter @smartops/admin e2e media.spec.ts --project desktop -g "guide"
+MEDIA=1 MEDIA_GUIDE=es pnpm --filter @smartops/admin e2e media.spec.ts --project desktop -g "guide"
+scripts/media/build-media.sh --guide
 ```
 
 The captions (English on the GIF, English and Spanish subtitles for the video) are in

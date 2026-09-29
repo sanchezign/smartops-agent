@@ -1,5 +1,6 @@
 import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+import { E2E } from "./env";
 import { login } from "./helpers";
 import { CAPTIONS, toSrt, type CaptionId } from "./media-captions";
 
@@ -14,6 +15,8 @@ import { CAPTIONS, toSrt, type CaptionId } from "./media-captions";
 test.skip(!process.env.MEDIA, "set MEDIA=1 to produce the README media");
 
 const OUT = "e2e/screens/media";
+const E2E_PANEL_URL = E2E.panelUrl;
+const E2E_ADMIN = E2E.admin;
 mkdirSync(OUT, { recursive: true });
 
 async function settle(page: Page) {
@@ -186,4 +189,68 @@ test("demo video", async ({ browser, isMobile }) => {
     writeFileSync(`${OUT}/demo-clean.es.srt`, toSrt(steps, end, "es"));
   }
   writeFileSync(`${OUT}/demo-${variant}.json`, JSON.stringify({ steps, end }, null, 2));
+});
+
+/**
+ * Screenshots of the owner's panel guide (phase 13 M7), in ONE language per run:
+ *   MEDIA=1 MEDIA_GUIDE=en|es pnpm e2e media.spec.ts --project desktop -g "guide"
+ * Selectors do not depend on the language (URLs, input names, the Spanish sample data).
+ */
+test("guide screenshots", async ({ page, context, isMobile }) => {
+  const lang = process.env.MEDIA_GUIDE;
+  test.skip(isMobile || (lang !== "en" && lang !== "es"), "desktop, MEDIA_GUIDE=en|es");
+  test.setTimeout(300_000);
+  await context.addCookies([{ name: "smartops_locale", value: lang!, url: E2E_PANEL_URL }]);
+  // A taller window instead of full-page shots (the fixed sidebar would end at the fold).
+  await page.setViewportSize({ width: 1280, height: 960 });
+  const shoot = (name: string) => page.screenshot({ path: `${OUT}/guide-${lang}-${name}.png` });
+  const ready = async () => {
+    await page.getByRole("heading", { level: 1 }).first().waitFor();
+    await page.waitForTimeout(900);
+  };
+
+  await page.goto("/login");
+  await page.locator("input[name=email]").waitFor();
+  await shoot("login");
+  await page.locator("input[name=email]").fill(E2E_ADMIN.email);
+  await page.locator("input[name=password]").fill(E2E_ADMIN.password);
+  await page.locator("button[type=submit]").click();
+  await ready();
+  await shoot("dashboard");
+
+  await page.goto("/reviews");
+  await ready();
+  await shoot("reviews");
+  await page.getByText("Arena gruesa").first().click();
+  await ready();
+  await shoot("review-line");
+  await page.goto("/reviews");
+  await ready();
+  await page.getByText("Lista Distribuidora Norte.xlsx").first().click();
+  await ready();
+  await shoot("review-columns");
+
+  await page.goto("/conversations");
+  await ready();
+  await shoot("inbox");
+  await page.locator('main a[href^="/conversations/"]').filter({ hasText: "Luis" }).first().click();
+  await ready();
+  await shoot("chat");
+
+  await page.goto("/catalog");
+  await ready();
+  await page.locator("input[type=search]").fill("tornillo 6mm");
+  await page.locator('main a[href^="/catalog/"]').first().click();
+  await ready();
+  await shoot("product");
+
+  for (const [path, name] of [
+    ["/alerts", "alerts"],
+    ["/rules", "rules"],
+    ["/users", "users"],
+  ] as const) {
+    await page.goto(path);
+    await ready();
+    await shoot(name);
+  }
 });
