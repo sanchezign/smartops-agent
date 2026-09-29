@@ -1,10 +1,11 @@
 "use client";
 
 import { AlertTriangle, Clock, Send } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { formatDateTime } from "@/lib/format";
+import { useFormat } from "@/lib/use-format";
 import { useConversationAction } from "../hooks";
 import type { ConversationHeader } from "../types";
 
@@ -15,12 +16,14 @@ import type { ConversationHeader } from "../types";
  */
 export function Composer({ conversation }: { conversation: ConversationHeader }) {
   const [text, setText] = useState("");
+  const t = useTranslations("conversations.composer");
+  const { formatDateTime } = useFormat();
   const reply = useConversationAction(
     (body: string) => ({
       path: `/admin/conversations/${conversation.id}/reply`,
       body: { text: body },
     }),
-    "Enviado. El bot queda en pausa en este chat.",
+    t("sent"),
   );
   const { window } = conversation;
 
@@ -29,8 +32,8 @@ export function Composer({ conversation }: { conversation: ConversationHeader })
       <p className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
         <Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
         {window.closesAt
-          ? `Pasaron más de 24 h desde su último mensaje (${formatDateTime(window.closesAt)}): WhatsApp no deja escribirle hasta que vuelva a escribir.`
-          : "Este contacto nunca escribió: WhatsApp no deja iniciar la conversación sin una plantilla aprobada."}
+          ? t("windowClosed", { when: formatDateTime(window.closesAt) })
+          : t("neverWrote")}
       </p>
     );
   }
@@ -46,7 +49,7 @@ export function Composer({ conversation }: { conversation: ConversationHeader })
       {conversation.contact.optOutAt ? (
         <p className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-2 text-sm">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden />
-          Pidió no recibir mensajes. Respondé solo si es necesario para lo que te consultó.
+          {t("optedOutWarning")}
         </p>
       ) : null}
       <form
@@ -57,8 +60,8 @@ export function Composer({ conversation }: { conversation: ConversationHeader })
         }}
       >
         <Textarea
-          aria-label="Tu respuesta"
-          placeholder="Escribí tu respuesta…"
+          aria-label={t("label")}
+          placeholder={t("placeholder")}
           value={text}
           maxLength={4096}
           rows={1}
@@ -76,15 +79,13 @@ export function Composer({ conversation }: { conversation: ConversationHeader })
           type="submit"
           size="icon"
           className="size-11 shrink-0"
-          aria-label="Enviar"
+          aria-label={t("send")}
           disabled={!text.trim() || reply.isPending}
         >
           <Send aria-hidden />
         </Button>
       </form>
-      <p className="text-xs text-muted-foreground">
-        Se envía por WhatsApp como la empresa. Al responder, el bot se pausa en este chat.
-      </p>
+      <p className="text-xs text-muted-foreground">{t("hint")}</p>
     </div>
   );
 }

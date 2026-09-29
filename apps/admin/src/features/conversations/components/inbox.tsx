@@ -2,15 +2,16 @@
 
 import { Search, UserX } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useDeferredValue, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatRelative } from "@/lib/format";
+import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
 import { useInbox } from "../hooks";
-import { FILTER_LABEL, contactName, previewText, supplierSuffix, whoAnswers } from "../labels";
+import { contactName, preview, supplierSuffix, whoAnswers } from "../labels";
 import type { InboxFilter, InboxItem } from "../types";
 import { WhoBadge } from "./who-badge";
 
@@ -22,16 +23,19 @@ export function Inbox() {
   const q = useDeferredValue(search.trim());
   const query = useInbox(filter, q);
   const items = query.data?.pages.flatMap((p) => p.items) ?? [];
+  const t = useTranslations("conversations");
+  const tCommon = useTranslations("common");
+  const tPages = useTranslations("pages");
 
   return (
     <>
       <PageHeader
-        title="Conversaciones"
-        description="Quién escribió, quién le está respondiendo y qué quedó pendiente."
+        title={tPages("conversations")}
+        description={t("description")}
         actions={
           <Button asChild variant="outline" className="min-h-11">
             <Link href="/conversaciones/bajas">
-              <UserX aria-hidden /> Dados de baja
+              <UserX aria-hidden /> {t("optedOutLink")}
             </Link>
           </Button>
         }
@@ -44,14 +48,14 @@ export function Inbox() {
           />
           <Input
             type="search"
-            aria-label="Buscar por nombre, proveedor o teléfono"
-            placeholder="Buscar por nombre, proveedor o teléfono"
+            aria-label={t("search")}
+            placeholder={t("search")}
             className="min-h-11 pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div role="group" aria-label="Filtro" className="flex gap-2 overflow-x-auto pb-1">
+        <div role="group" aria-label={t("filter")} className="flex gap-2 overflow-x-auto pb-1">
           {FILTERS.map((f) => (
             <Button
               key={f}
@@ -61,7 +65,7 @@ export function Inbox() {
               className="min-h-9 shrink-0 rounded-full"
               onClick={() => setFilter(f)}
             >
-              {FILTER_LABEL[f]}
+              {t(`filters.${f}`)}
             </Button>
           ))}
         </div>
@@ -73,14 +77,14 @@ export function Inbox() {
         <ErrorState error={query.error} onRetry={() => void query.refetch()} />
       ) : items.length === 0 ? (
         <EmptyState
-          title={q ? "Nada coincide con la búsqueda" : "No hay conversaciones acá"}
-          description={q ? "Probá con otra parte del nombre o del número." : undefined}
+          title={q ? t("noMatches") : t("empty")}
+          description={q ? t("noMatchesHint") : undefined}
         />
       ) : (
         <>
           <ul
             className="flex flex-col divide-y rounded-xl border bg-card"
-            aria-label="Conversaciones"
+            aria-label={t("listLabel")}
           >
             {items.map((item) => (
               <li key={item.id}>
@@ -95,7 +99,7 @@ export function Inbox() {
               disabled={query.isFetchingNextPage}
               onClick={() => void query.fetchNextPage()}
             >
-              {query.isFetchingNextPage ? "Cargando…" : "Ver más"}
+              {query.isFetchingNextPage ? tCommon("loading") : t("loadMore")}
             </Button>
           ) : null}
         </>
@@ -108,6 +112,9 @@ function InboxRow({ item }: { item: InboxItem }) {
   const who = whoAnswers(item);
   const m = item.lastMessage;
   const unanswered = m?.direction === "inbound";
+  const t = useTranslations("conversations");
+  const { formatRelative } = useFormat();
+  const line = m ? preview(m) : null;
   return (
     <Link
       href={`/conversaciones/${item.id}`}
@@ -115,7 +122,7 @@ function InboxRow({ item }: { item: InboxItem }) {
     >
       <div className="flex items-center justify-between gap-2">
         <span className={cn("truncate", unanswered ? "font-semibold" : "font-medium")}>
-          {contactName(item.contact)}
+          {contactName(item.contact, t("contactFallback"))}
           {supplierSuffix(item.contact) ? (
             <span className="font-normal text-muted-foreground">
               {" "}
@@ -131,8 +138,12 @@ function InboxRow({ item }: { item: InboxItem }) {
         <span className="truncate text-sm text-muted-foreground">
           {m ? (
             <>
-              {m.direction === "outbound" ? (m.author === "bot" ? "Bot: " : "Vos: ") : null}
-              {previewText(m)}
+              {m.direction === "outbound"
+                ? m.author === "bot"
+                  ? t("botPrefix")
+                  : t("youPrefix")
+                : null}
+              {line && "snippet" in line ? line.snippet : line ? t(`types.${line.type}`) : null}
             </>
           ) : null}
         </span>

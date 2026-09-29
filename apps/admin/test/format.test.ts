@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createFormat, formatMoney, formatPct } from "../src/lib/format";
+import { createFormat } from "../src/lib/format";
 
 /**
  * Numbers and dates follow the panel language (phase 13): en → en-US, es → es-UY (comma
@@ -118,7 +118,20 @@ describe("dates (business time zone)", () => {
   });
 });
 
-it("the Spanish bindings kept during the migration equal createFormat('es')", () => {
-  expect(formatMoney("1850", "UYU")).toBe(es.formatMoney("1850", "UYU"));
-  expect(formatPct("12.5")).toBe(es.formatPct("12.5"));
+describe("weekdays and day labels", () => {
+  it("weekday names by number (0 = Sunday), capitalized", () => {
+    expect(en.weekdayName(0)).toBe("Sunday");
+    expect(en.weekdayName(1)).toBe("Monday");
+    expect(es.weekdayName(3)).toBe("Miércoles");
+    expect(es.weekdayName(6)).toBe("Sábado");
+  });
+
+  it("chart dates and chat day separators follow the language", () => {
+    const iso = "2026-09-28T15:04:00Z";
+    expect(en.formatShortDate(iso)).toBe("Sep 28");
+    expect(es.formatShortDate(iso)).toMatch(/^28 set/);
+    expect(en.formatLongDay(iso)).toBe("Monday, September 28");
+    expect(es.formatLongDay(iso)).toMatch(/^lunes,? 28 de se?p?tiembre$/);
+    expect(spaces(en.formatWeekdayTime(iso))).toBe("Mon 12:04 PM");
+  });
 });

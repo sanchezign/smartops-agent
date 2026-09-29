@@ -1,13 +1,19 @@
+"use client";
+
 import { AlertCircle } from "lucide-react";
-import { formatTime } from "@/lib/format";
+import { useTranslations } from "next-intl";
+import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
-import { STATUS_LABEL, outboundAuthor } from "../labels";
+import { isLabeledStatus, outboundAuthor } from "../labels";
 import type { ChatMessage } from "../types";
 import { MediaAttachment } from "./media-attachment";
 
 export function MessageBubble({ message }: { message: ChatMessage }) {
   const outbound = message.direction === "outbound";
   const failed = message.status === "failed" || message.status === "canceled";
+  const t = useTranslations("conversations");
+  const { formatTime } = useFormat();
+  const author = outbound ? outboundAuthor(message) : null;
   return (
     <div className={cn("flex", outbound ? "justify-end" : "justify-start")}>
       <div
@@ -31,11 +37,13 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
               message.author === "human" ? "text-primary-foreground/80" : "text-muted-foreground",
             )}
           >
-            {outboundAuthor(message)}
+            {author
+              ? `${author.emoji} ${author.key ? t(`author.${author.key}`) : author.name}`
+              : null}
           </span>
         ) : null}
         {message.revokedAt ? (
-          <p className="italic opacity-80">Mensaje eliminado</p>
+          <p className="italic opacity-80">{t("deleted")}</p>
         ) : (
           <>
             {message.media ? <MediaAttachment media={message.media} type={message.type} /> : null}
@@ -44,7 +52,7 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
             ) : null}
             {message.transcript ? (
               <div className="rounded-lg bg-muted/60 px-2 py-1.5 text-foreground">
-                <p className="text-xs font-medium text-muted-foreground">Transcripción</p>
+                <p className="text-xs font-medium text-muted-foreground">{t("transcript")}</p>
                 <p className="break-words whitespace-pre-wrap">{message.transcript}</p>
               </div>
             ) : null}
@@ -58,13 +66,13 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
               : "text-muted-foreground",
           )}
         >
-          {message.editedAt ? "editado · " : null}
+          {message.editedAt ? t("edited") : null}
           <time dateTime={message.at}>{formatTime(message.at)}</time>
-          {outbound && STATUS_LABEL[message.status] ? (
+          {outbound && isLabeledStatus(message.status) ? (
             <>
               {" · "}
               {failed ? <AlertCircle className="size-3 text-destructive" aria-hidden /> : null}
-              {STATUS_LABEL[message.status]}
+              {t(`status.${message.status}`)}
             </>
           ) : null}
         </span>

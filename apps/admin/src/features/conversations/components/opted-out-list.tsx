@@ -2,56 +2,68 @@
 
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
-import { formatDateTime } from "@/lib/format";
+import { useFormat } from "@/lib/use-format";
 import { useOptedOut } from "../hooks";
-import { KIND_LABEL, contactName } from "../labels";
+import { contactName } from "../labels";
 import type { OptedOutContact } from "../types";
 
-function howText(c: OptedOutContact): string {
+/** How the opt-out happened: a "conversations.optedOut" key + params. */
+export function howKey(c: OptedOutContact): {
+  key: "recorded" | "keyword" | "offWhatsapp" | "offWhatsappBy" | "manual" | "manualBy";
+  params?: Record<string, string>;
+} {
   const last = c.lastOptOut;
-  if (!last) return "Baja registrada";
-  if (last.method === "keyword") return `Escribió "${(last.keyword ?? "").toUpperCase()}"`;
-  const who = last.by ? ` por ${last.by}` : "";
-  return last.method === "off_whatsapp"
-    ? `Lo pidió fuera de WhatsApp (registrado${who})`
-    : `Registrada a mano${who}`;
+  if (!last) return { key: "recorded" };
+  if (last.method === "keyword")
+    return { key: "keyword", params: { keyword: (last.keyword ?? "").toUpperCase() } };
+  if (last.method === "off_whatsapp")
+    return last.by ? { key: "offWhatsappBy", params: { by: last.by } } : { key: "offWhatsapp" };
+  return last.by ? { key: "manualBy", params: { by: last.by } } : { key: "manual" };
 }
 
 /** Contacts that asked not to receive messages (ADR-017: the panel must show them). */
 export function OptedOutList() {
   const query = useOptedOut();
+  const t = useTranslations("conversations");
+  const tKinds = useTranslations("contactKinds");
+  const tPages = useTranslations("pages");
+  const { formatDateTime } = useFormat();
+  const howText = (c: OptedOutContact) => {
+    const { key, params } = howKey(c);
+    return t(`optedOut.${key}`, params);
+  };
   return (
     <>
       <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2 min-h-9">
         <Link href="/conversaciones">
-          <ArrowLeft aria-hidden /> Conversaciones
+          <ArrowLeft aria-hidden /> {t("back")}
         </Link>
       </Button>
-      <PageHeader
-        title="Dados de baja"
-        description="Pidieron no recibir mensajes: el sistema no les envía nada automático. Si escriben, una persona puede responderles."
-      />
+      <PageHeader title={tPages("optedOut")} description={t("optedOut.description")} />
       {query.isPending ? (
         <LoadingState rows={3} />
       ) : query.isError ? (
         <ErrorState error={query.error} onRetry={() => void query.refetch()} />
       ) : query.data.contacts.length === 0 ? (
-        <EmptyState title="Nadie pidió la baja" />
+        <EmptyState title={t("optedOut.empty")} />
       ) : (
         <ul
           className="flex flex-col divide-y rounded-xl border bg-card"
-          aria-label="Contactos dados de baja"
+          aria-label={t("optedOut.listLabel")}
         >
           {query.data.contacts.map((c) => {
             const body = (
               <>
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="truncate font-medium">{contactName(c)}</span>
+                  <span className="truncate font-medium">
+                    {contactName(c, t("contactFallback"))}
+                  </span>
                   <span className="text-sm text-muted-foreground">
-                    {KIND_LABEL[c.kind]} · {howText(c)}
+                    {tKinds(c.kind)} · {howText(c)}
                     {c.optOutAt ? ` · ${formatDateTime(c.optOutAt)}` : ""}
                   </span>
                 </div>

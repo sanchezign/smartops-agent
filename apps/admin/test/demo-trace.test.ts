@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { timeline, type DemoTrace } from "../src/features/demo/trace";
 
-/** "Probar el sistema" timeline (phase 9 M8). */
+/** "Try the system" timeline (phase 9 M8): message keys since phase 13. */
 
 const message = { id: "m", conversationId: "c", type: "image" };
 const run = (over: Partial<NonNullable<DemoTrace["run"]>>) => ({
@@ -19,7 +19,7 @@ const run = (over: Partial<NonNullable<DemoTrace["run"]>>) => ({
 describe("timeline", () => {
   it("nothing yet: the first step is in progress", () => {
     const view = timeline("foto", null);
-    expect(view.steps[0]).toEqual({ label: expect.stringMatching(/WhatsApp/), state: "active" });
+    expect(view.steps[0]).toEqual({ key: "received", state: "active" });
     expect(view.finished).toBe(false);
   });
 
@@ -32,8 +32,10 @@ describe("timeline", () => {
     });
     expect(view.steps.every((s) => s.state === "done")).toBe(true);
     expect(view.outcome).toMatchObject({
-      text: "Catálogo al día: 5 precios actualizados.",
+      key: "updated",
+      counts: { prices: 5, created: 0, reviews: 0 },
       href: "/catalogo",
+      linkKey: "viewCatalog",
     });
   });
 
@@ -68,16 +70,20 @@ describe("timeline", () => {
       run: run({ status: "needs_review", reason: "suspicious_instructions" }),
     });
     // Stopped ON PURPOSE: amber "held", never the red failure state.
-    expect(injection.steps.at(-1)).toEqual({ label: "Frenado para revisión", state: "held" });
+    expect(injection.steps.at(-1)).toEqual({ key: "held", state: "held" });
     expect(injection.outcome!.tone).toBe("review");
-    expect(injection.outcome!.text).toMatch(/órdenes al sistema/);
+    expect(injection.outcome!.key).toBe("suspicious");
     const sheet = timeline("planilla_nueva", {
       received: true,
       message: { ...message, type: "document" },
       media: { status: "stored", transcription: null, conversion: "done" },
       run: run({ status: "needs_review", reason: "column_mapping_required" }),
     });
-    expect(sheet.outcome).toMatchObject({ linkText: "Elegir la columna", tone: "review" });
+    expect(sheet.outcome).toMatchObject({
+      key: "newFormat",
+      linkKey: "pickColumn",
+      tone: "review",
+    });
     expect(sheet.steps.at(-1)!.state).toBe("held");
   });
 
@@ -90,5 +96,16 @@ describe("timeline", () => {
     });
     expect(failed.steps.at(-1)!.state).toBe("failed");
     expect(failed.outcome!.tone).toBe("failed");
+  });
+
+  it("processed without changes says so (no counts)", () => {
+    const view = timeline("pdf", {
+      received: true,
+      message: { ...message, type: "document" },
+      media: { status: "stored", transcription: null, conversion: null },
+      run: run({}),
+    });
+    expect(view.outcome).toMatchObject({ key: "noChanges", tone: "success" });
+    expect(view.outcome!.counts).toBeUndefined();
   });
 });

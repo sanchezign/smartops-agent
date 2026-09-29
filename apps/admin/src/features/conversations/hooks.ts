@@ -1,6 +1,7 @@
 "use client";
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/features/auth/api";
@@ -61,22 +62,27 @@ export const useOptedOut = () =>
     "/admin/contacts/opted-out",
   );
 
-const MUTATION_ERRORS: Record<string, string> = {
-  WINDOW_CLOSED:
-    "Pasaron más de 24 h desde su último mensaje: WhatsApp solo permite plantillas aprobadas.",
-  OPTED_OUT: "Este contacto pidió no recibir mensajes.",
-  FORBIDDEN: "Esta acción es solo para administradores.",
-  VALIDATION_ERROR: "Revisá los datos.",
-};
+const MUTATION_ERRORS = {
+  WINDOW_CLOSED: "windowClosed",
+  OPTED_OUT: "optedOut",
+  FORBIDDEN: "forbidden",
+  VALIDATION_ERROR: "invalid",
+} as const;
 
-export function conversationErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    return (
-      MUTATION_ERRORS[error.code] ??
-      `No se pudo completar${error.requestId ? ` (código ${error.requestId})` : ""}.`
-    );
-  }
-  return "No se pudo completar. Probá de nuevo.";
+type ConversationErrorKey =
+  (typeof MUTATION_ERRORS)[keyof typeof MUTATION_ERRORS] | "withCode" | "noCode" | "generic";
+
+/** API error → a "conversations.errors" key (+ params). */
+export function conversationErrorKey(error: unknown): {
+  key: ConversationErrorKey;
+  params?: Record<string, string>;
+} {
+  if (!(error instanceof ApiError)) return { key: "generic" };
+  const known = MUTATION_ERRORS[error.code as keyof typeof MUTATION_ERRORS];
+  if (known) return { key: known };
+  return error.requestId
+    ? { key: "withCode", params: { requestId: error.requestId } }
+    : { key: "noCode" };
 }
 
 /** Pause / resume / reply / opt-out / opt-in, each refreshing the chat and the inbox. */
@@ -85,6 +91,7 @@ export function useConversationAction<TInput>(
   success: string | ((data: unknown) => string),
 ) {
   const queryClient = useQueryClient();
+  const t = useTranslations("conversations.errors");
   return useMutation({
     mutationFn: (input: TInput) => {
       const { path, body } = build(input);
@@ -94,7 +101,10 @@ export function useConversationAction<TInput>(
       });
     },
     onSuccess: (data) => toast.success(typeof success === "string" ? success : success(data)),
-    onError: (error) => toast.error(conversationErrorMessage(error)),
+    onError: (error) => {
+      const { key, params } = conversationErrorKey(error);
+      toast.error(t(key, params));
+    },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
       void queryClient.invalidateQueries({ queryKey: ["contacts"] });

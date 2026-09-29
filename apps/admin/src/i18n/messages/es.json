@@ -3,10 +3,884 @@
     "description": "SmartOps — panel de operaciones"
   },
   "common": {
-    "loading": "Cargando…"
+    "loading": "Cargando…",
+    "retry": "Reintentar",
+    "backHome": "Volver al inicio",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "close": "Cerrar"
   },
   "locale": {
     "label": "Idioma",
     "saveFailed": "No se pudo guardar tu idioma. Solo se aplicará en este dispositivo."
+  },
+  "pages": {
+    "login": "Iniciar sesión",
+    "home": "Inicio",
+    "alerts": "Alertas",
+    "catalog": "Catálogo",
+    "product": "Producto",
+    "optedOut": "Dados de baja",
+    "conversations": "Conversaciones",
+    "conversation": "Conversación",
+    "digest": "Resumen",
+    "try": "Probar el sistema",
+    "rules": "Reglas",
+    "reviews": "Revisiones",
+    "review": "Revisión",
+    "users": "Usuarios"
+  },
+  "nav": {
+    "sections": "Secciones",
+    "home": "Inicio",
+    "reviews": "Revisiones",
+    "conversations": "Conversaciones",
+    "catalog": "Catálogo",
+    "alerts": "Alertas",
+    "rules": "Reglas",
+    "users": "Usuarios",
+    "try": "Probar el sistema",
+    "more": "Más",
+    "moreSections": "Más secciones"
+  },
+  "shell": {
+    "skipToContent": "Saltar al contenido",
+    "demoBanner": "<strong>Modo demo</strong>: datos de ejemplo, sin WhatsApp real y sin costo.",
+    "tryLink": "Probar el sistema"
+  },
+  "states": {
+    "forbiddenTitle": "No tienes permiso para ver esto",
+    "forbiddenDescription": "Esta sección es solo para administradores. Si la necesitas, pídeselo a quien administra el panel.",
+    "goneTitle": "Esto ya no existe",
+    "goneTitleDemo": "Esto ya no existe (la demo se pudo haber reiniciado)",
+    "goneDescription": "Puede que lo hayan resuelto o borrado. Vuelve a la lista para ver lo que hay ahora.",
+    "errorTitle": "No pudimos cargar esta información",
+    "errorDescription": "Puede ser un problema momentáneo. Prueba de nuevo; si sigue pasando, avisa al equipo.",
+    "errorDescriptionWithCode": "Puede ser un problema momentáneo. Prueba de nuevo; si sigue pasando, avisa al equipo con este código: <code>{requestId}</code>.",
+    "underConstruction": "Esta sección está en construcción"
+  },
+  "errorPage": {
+    "title": "Algo salió mal",
+    "description": "Prueba de nuevo; si sigue pasando, avisa al equipo.",
+    "notFoundTitle": "Página no encontrada"
+  },
+  "auth": {
+    "subtitle": "Panel de operaciones",
+    "email": "Email",
+    "password": "Contraseña",
+    "signIn": "Ingresar",
+    "signingIn": "Ingresando…",
+    "demoTitle": "Demo pública.",
+    "demoIntro": "Entra como operador con estos datos (son públicos):",
+    "useThese": "Usar estos datos",
+    "validation": {
+      "invalidEmail": "Ingresa un email válido",
+      "passwordRequired": "Ingresa tu contraseña",
+      "checkFields": "Revisa los datos."
+    },
+    "errors": {
+      "invalidCredentials": "Email o contraseña incorrectos.",
+      "rateLimited": "Demasiados intentos. Espera unos minutos y prueba de nuevo.",
+      "rejected": "La solicitud fue rechazada por seguridad. Recarga la página.",
+      "unknown": "No se pudo iniciar sesión. Prueba de nuevo en un momento."
+    }
+  },
+  "userMenu": {
+    "account": "Tu cuenta",
+    "roles": {
+      "admin": "Administrador",
+      "operator": "Operador"
+    },
+    "theme": "Tema",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Según el dispositivo",
+    "logout": "Cerrar sesión",
+    "logoutAll": "Cerrar todas mis sesiones",
+    "loggedOutAll": "{count, plural, one {Cerraste # sesión.} other {Cerraste # sesiones.}}"
+  },
+  "realtime": {
+    "live": "En vivo",
+    "connecting": "Conectando…",
+    "offline": "Reconectando…",
+    "degraded": "Actualización cada 30 s",
+    "liveHint": "Los cambios aparecen solos",
+    "fallbackHint": "Actualizando cada 30 s mientras tanto",
+    "closed": "Fuera de horario",
+    "opens": "abre {when}",
+    "botOff": "Bot apagado"
+  },
+  "dashboard": {
+    "description": "Cómo viene la operación: mensajes, automatización, costo de IA y lo que espera por ti.",
+    "period": "Período",
+    "days": "{count} días",
+    "pendingSection": "Pendientes",
+    "automationSection": "Automatización",
+    "pendingReviews": "Revisiones pendientes",
+    "openAlerts": "Alertas abiertas",
+    "humanChats": "Chats atendidos por una persona",
+    "periodErrors": "Errores del período",
+    "integrationUnreviewed": "{count} de integración sin revisar",
+    "errorSources": "Webhooks, entregas a n8n, corridas y envíos",
+    "messagesReceived": "Mensajes recibidos",
+    "lastDays": "Últimos {count} días",
+    "resolvedAlone": "Resuelto sin intervención",
+    "resolvedOf": "{automatic} de {finished} mensajes procesados",
+    "nothingProcessed": "Todavía no hay mensajes procesados",
+    "filteredNoAi": "Filtrado sin IA",
+    "estimatedSaving": "Ahorro estimado {amount}",
+    "messagesPerDay": "Mensajes por día",
+    "messagesPerDayHint": "Todo lo que llegó por WhatsApp",
+    "messagesLabel": "Mensajes",
+    "aiCostPerDay": "Costo de IA por día (US$)",
+    "aiCostSummary": "Hoy (UTC) {today} de {dailyBudget} · Total {total} de {totalBudget}",
+    "aiCostLabel": "Costo de IA",
+    "perDay": "{label} por día",
+    "prefilterTitle": "Qué se resolvió sin llamar a la IA",
+    "prefilterHint": "Mensajes que el filtro previo clasificó solo, sin gastar créditos de Claude.",
+    "prefilterEmpty": "Nada todavía en este período.",
+    "prefilterRules": {
+      "no_price_signal": "Saludos y charla",
+      "customer_contact": "Clientes (consulta o pedido)",
+      "non_content_type": "Stickers, reacciones, ubicaciones",
+      "media_unavailable": "Archivo no disponible",
+      "audio_too_long": "Audios largos (para escuchar)",
+      "audio_not_transcribed": "Audios sin transcribir"
+    }
+  },
+  "inputErrors": {
+    "required": "Escribe un número.",
+    "thousands": "Escríbelo sin punto de miles (por ejemplo 1500).",
+    "format": "Usa solo números y, si hace falta, una coma decimal.",
+    "integer": "Tiene que ser un número entero.",
+    "min": "El mínimo es {limit}.",
+    "max": "El máximo es {limit}.",
+    "priceRequired": "Escribe un precio.",
+    "priceThousands": "¿1.850 es mil ochocientos cincuenta? Escríbelo sin punto de miles: 1850 o 1850,50.",
+    "priceFormat": "Usa solo números y una coma para los decimales.",
+    "pricePositive": "El precio tiene que ser mayor que 0.",
+    "currencyFormat": "La moneda son 3 letras, por ejemplo UYU o USD.",
+    "priceNeededForNew": "Para crear el producto hace falta el precio.",
+    "nameRequired": "Escribe el nombre del producto.",
+    "pickPriceColumn": "Elige la columna de precio de la hoja \"{sheet}\".",
+    "keywordsEmpty": "Escribe al menos una palabra.",
+    "keywordsTooMany": "Como máximo 20 palabras.",
+    "keywordTooLong": "Cada palabra, hasta 40 letras.",
+    "phoneInvalid": "\"{value}\" no parece un número de WhatsApp con código de país.",
+    "phonesTooMany": "Como máximo 10 números.",
+    "hoursFormat": "{day}: usa horas como 09:00.",
+    "hoursEqual": "{day}: la apertura y el cierre no pueden ser iguales."
+  },
+  "reviews": {
+    "description": "Lo que el sistema no decide solo. Nada de esto se aplicó todavía al catálogo.",
+    "typeFilter": "Tipo de revisión",
+    "statusFilter": "Estado",
+    "all": "Todas",
+    "statusFilters": {
+      "pending": "Pendientes",
+      "approved": "Aprobadas",
+      "rejected": "Rechazadas"
+    },
+    "emptyPending": "No hay nada para revisar",
+    "emptyPendingHint": "Todo lo que llegó se procesó solo. Cuando algo necesite tu decisión, aparecerá aquí.",
+    "emptyOther": "No hay revisiones aquí",
+    "listLabel": "Revisiones",
+    "unknownSupplier": "Proveedor sin identificar",
+    "adminResolves": "la resuelve un administrador",
+    "back": "Revisiones",
+    "backTo": "Volver a Revisiones",
+    "resolvedOn": "{status} el {when}.",
+    "adminOnlyTitle": "Solo un administrador puede resolver esta revisión.",
+    "adminOnlyBody": "Afecta una lista entera o todo el catálogo.",
+    "transcriptPrefix": "Transcripción del audio: ",
+    "viewConversation": "Ver la conversación",
+    "titles": {
+      "line": "Línea de la lista",
+      "product": "Producto",
+      "message": "Mensaje",
+      "globalChange": "{pct} a {count} productos",
+      "change": "Cambio"
+    },
+    "scopes": {
+      "run": "Listas enteras",
+      "line": "Productos",
+      "catalog": "Catálogo"
+    },
+    "statuses": {
+      "pending": "Pendiente",
+      "approved": "Aprobada",
+      "rejected": "Rechazada",
+      "superseded": "Reemplazada"
+    },
+    "kinds": {
+      "product_match": "¿Es este producto?",
+      "new_or_existing": "¿Producto nuevo o existente?",
+      "possible_duplicate": "Posible duplicado",
+      "match_conflict": "Coincide con varios productos",
+      "uncertain_value": "Valor dudoso",
+      "pct_without_match": "Porcentaje sin producto",
+      "missing_currency": "Falta la moneda",
+      "currency_changed": "Cambió la moneda",
+      "price_outlier": "Cambio de precio fuera de lo normal",
+      "stale_source": "Mensaje más viejo que el precio actual",
+      "mark_unavailable": "¿Marcar como no disponible?",
+      "global_change": "Aumento general",
+      "tax_basis_changed": "Cambió el IVA de la lista",
+      "suspicious_instructions": "Mensaje sospechoso",
+      "unknown_supplier": "¿De qué proveedor es?",
+      "extraction_failed": "No se pudo leer",
+      "column_mapping": "Elige la columna de precio"
+    },
+    "help": {
+      "product_match": "El nombre de la lista se parece a un producto del catálogo, pero no es seguro.",
+      "new_or_existing": "No sabemos si es un producto nuevo o uno que ya existe con otro nombre.",
+      "possible_duplicate": "Puede ser el mismo producto que otro del catálogo.",
+      "match_conflict": "La línea coincide con más de un producto del catálogo.",
+      "uncertain_value": "La IA no está segura del valor que leyó.",
+      "pct_without_match": "La lista da un porcentaje pero no encontramos a qué producto aplicarlo.",
+      "missing_currency": "La lista no dice la moneda y no se puede suponer.",
+      "currency_changed": "El proveedor cotiza este producto en otra moneda.",
+      "price_outlier": "El cambio supera el límite configurado en Reglas.",
+      "stale_source": "Este mensaje es anterior al precio que ya tenemos cargado.",
+      "mark_unavailable": "La lista completa no lo incluye, o el proveedor dice que no hay.",
+      "global_change": "El proveedor anunció un cambio para todos sus productos.",
+      "tax_basis_changed": "La lista pasó de precios con IVA a sin IVA (o al revés).",
+      "suspicious_instructions": "El mensaje intenta darle órdenes al sistema. No se aplicó nada.",
+      "unknown_supplier": "No pudimos saber con certeza de qué proveedor es la lista.",
+      "extraction_failed": "El archivo o el mensaje no se pudo procesar automáticamente.",
+      "column_mapping": "Es la primera vez que llega esta planilla: confirma qué columna usar."
+    },
+    "reasons": {
+      "price_outlier": "Cambio fuera de lo normal",
+      "currency_changed": "Otra moneda",
+      "missing_currency": "Sin moneda",
+      "invalid_result": "Precio inválido",
+      "stale_source": "Mensaje viejo",
+      "pct_without_match": "Porcentaje sin producto",
+      "uncertain_value": "Valor dudoso",
+      "product_match": "Coincidencia dudosa",
+      "possible_duplicate": "Posible duplicado",
+      "new_or_existing": "¿Nuevo?",
+      "match_conflict": "Varias coincidencias",
+      "duplicate_line": "Línea repetida",
+      "auto_create_disabled": "Alta automática apagada",
+      "stated_unavailable_new": "Producto nuevo sin stock",
+      "suspicious_source": "Mensaje sospechoso",
+      "document_incomplete": "Documento incompleto",
+      "column_mapping_required": "Formato nuevo",
+      "sheet_format_changed": "Cambió el formato",
+      "suspicious_instructions": "Instrucciones sospechosas",
+      "missing_from_full_list": "No está en la lista completa",
+      "stated_unavailable": "El proveedor dice que no hay",
+      "global_change": "Cambio general",
+      "tax_basis_changed": "Cambio de IVA",
+      "unknown_supplier": "Proveedor dudoso",
+      "ambiguous_supplier_name": "Varios proveedores posibles"
+    },
+    "toast": {
+      "rejected": "Revisión rechazada: no se cambió nada.",
+      "approvedRetriggered": "Aprobada. La lista se vuelve a procesar con lo que elegiste.",
+      "approved": "Aprobada y aplicada."
+    },
+    "errors": {
+      "generic": "No se pudo guardar. Prueba de nuevo.",
+      "stale": "El catálogo cambió desde que se armó esta propuesta, así que ya no aplica. Actualizamos la lista.",
+      "conflict": "No se pudo aplicar: {detail}",
+      "forbidden": "Solo un administrador puede resolver esta revisión.",
+      "invalid": "Revisa los datos: {detail}",
+      "withCode": "No se pudo guardar (código {requestId}).",
+      "noCode": "No se pudo guardar."
+    },
+    "actions": {
+      "reject": "Rechazar",
+      "rejectHint": "No se cambia nada en el catálogo. Puedes dejar una nota para el equipo (opcional).",
+      "note": "Nota",
+      "notePlaceholder": "Ej.: el proveedor se equivocó; se le pidió la lista de nuevo",
+      "back": "Volver",
+      "confirm": "Confirmar",
+      "saving": "Guardando…"
+    },
+    "line": {
+      "listSays": "Lo que dice la lista",
+      "product": "Producto",
+      "unit": "Unidad",
+      "price": "Precio",
+      "change": "Cambio",
+      "whichProduct": "¿Qué producto es?",
+      "currentPrice": "Precio actual: {price}",
+      "noPrice": "Precio actual: sin precio",
+      "isNew": "Es un producto nuevo",
+      "priceToApply": "Precio a aplicar",
+      "name": "Nombre",
+      "currency": "Moneda",
+      "pctPlaceholder": "{pct} sobre el precio actual",
+      "createProduct": "Crear producto",
+      "applyPrice": "Aplicar precio"
+    },
+    "global": {
+      "announced": "Cambio anunciado: {pct} a {count} productos",
+      "outliers": "{count, plural, one {# producto supera} other {# productos superan}} el límite de cambio configurado.",
+      "product": "Producto",
+      "before": "Antes",
+      "after": "Después",
+      "outlierBadge": "fuera de lo normal",
+      "apply": "Aplicar {pct}"
+    },
+    "unavailable": {
+      "product": "Producto",
+      "currentPrice": "precio actual {price}",
+      "missingFromFull": "El proveedor mandó su lista completa y este producto no aparece. Puede que ya no lo venda, o que se le haya pasado.",
+      "statedUnavailable": "El proveedor dice que no tiene este producto.",
+      "consequence": "Si lo marcas como no disponible, deja de ofrecerse hasta que vuelva a cotizarlo.",
+      "approve": "Marcar como no disponible",
+      "reject": "Dejarlo disponible"
+    },
+    "gate": {
+      "taxIncluded": "con IVA incluido",
+      "taxExcluded": "sin IVA",
+      "taxUnknown": "sin indicar",
+      "taxTitle": "Qué cambió",
+      "taxBody": "Antes los precios de este proveedor venían {previous}; esta lista viene {current}. Si la aceptas, la lista se procesa con la nueva base.",
+      "taxApprove": "Aceptar y procesar la lista",
+      "discardList": "Descartar la lista",
+      "suspiciousTitle": "Por qué se frenó",
+      "suspiciousBody": "El mensaje incluye instrucciones dirigidas al sistema (por ejemplo, cambiar reglas o precios en general). No se aplicó nada. Lee el mensaje original: si es una lista legítima, puedes procesarla igual.",
+      "suspiciousApprove": "Procesar igual",
+      "discard": "Descartar",
+      "failedTitle": "Qué pasó",
+      "failedBody": "No se pudo leer automáticamente. Si lo reintentas, la lista vuelve a la cola; si la descartas, no se hace nada.",
+      "failedBodyDetail": "No se pudo leer automáticamente ({detail}). Si lo reintentas, la lista vuelve a la cola; si la descartas, no se hace nada.",
+      "retry": "Reintentar"
+    },
+    "supplier": {
+      "title": "¿De qué proveedor es la lista?",
+      "documentSays": "El documento dice:",
+      "label": "Proveedor",
+      "otherExisting": "Otro proveedor existente",
+      "isNew": "Es un proveedor nuevo",
+      "choose": "Elige el proveedor",
+      "newName": "Nombre del proveedor",
+      "approve": "Asignar y procesar",
+      "nameRequired": "Escribe el nombre del proveedor.",
+      "pickOne": "Elige un proveedor."
+    },
+    "columns": {
+      "suspicious": "La planilla tiene texto que intenta darle órdenes al sistema. Revísala antes de aprobar.",
+      "notes": "Notas de la lectura",
+      "approve": "Usar esta columna",
+      "reject": "Descartar la planilla",
+      "sheetQuestion": "Hoja \"{sheet}\": ¿qué precio cargamos en el catálogo?",
+      "sheetLabel": "Columna de precio de la hoja {sheet}",
+      "columnN": "Columna {n}",
+      "suggested": "Sugerida",
+      "withVat": "con IVA",
+      "withoutVat": "sin IVA",
+      "remembered": "Se recuerda para las próximas planillas de este proveedor con el mismo formato: esas se leen sin IA y sin revisión.",
+      "kinds": {
+        "list": "Precio de lista",
+        "wholesale": "Mayorista",
+        "cash": "Contado",
+        "card": "Tarjeta",
+        "cost": "Costo",
+        "other": "Otro precio"
+      }
+    }
+  },
+  "rules": {
+    "description": "Cómo se comporta el sistema, sin tocar código. Los cambios aplican al instante y quedan registrados.",
+    "readOnly": "Puedes ver las reglas; cambiarlas es solo para administradores.",
+    "saved": "Guardado.",
+    "invalidValue": "El valor no es válido: {detail}",
+    "saveFailed": "No se pudo guardar.",
+    "noChanges": "No hay cambios para guardar.",
+    "saving": "Guardando…",
+    "saveSection": "Guardar \"{section}\"",
+    "useHours": "Usar horario de atención",
+    "daysAndHours": "Días y horas",
+    "opens": "{day}: abre",
+    "closes": "{day}: cierra",
+    "to": "a",
+    "closed": "Cerrado",
+    "sections": {
+      "bot": {
+        "title": "Respuestas automáticas",
+        "description": "Qué contesta el sistema solo, sin que intervenga una persona."
+      },
+      "hours": {
+        "title": "Horario de atención",
+        "description": "Fuera de horario, los resúmenes por WhatsApp que no son urgentes esperan a la apertura y el panel muestra \"fuera de horario\". Los avisos críticos salen igual."
+      },
+      "prices": {
+        "title": "Precios",
+        "description": "Cuándo un cambio de precio se aplica solo, cuándo avisa y cuándo pide revisión."
+      },
+      "team": {
+        "title": "Avisos al equipo por WhatsApp",
+        "description": "Pocos mensajes y solo con lo que requiere acción."
+      },
+      "contacts": {
+        "title": "Audios y bajas",
+        "description": "Transcripción de notas de voz y pedidos de no recibir mensajes."
+      }
+    },
+    "fields": {
+      "bot_autoRepliesEnabled": {
+        "label": "El bot responde a los contactos",
+        "help": "Apagado, no le contesta a nadie (como si todos los chats estuvieran atendidos por una persona). Las listas se siguen procesando y el equipo sigue recibiendo avisos."
+      },
+      "bot_supplierAck": {
+        "label": "Confirmar a los proveedores que recibimos su lista",
+        "help": "Envía un \"Recibimos su lista\" con el resumen de lo que se aplicó."
+      },
+      "coexistence_humanTakeoverMinutes": {
+        "label": "Cuando responde una persona, el bot se pausa",
+        "help": "En ese chat, durante este tiempo desde el último mensaje de la persona.",
+        "suffix": "minutos"
+      },
+      "businessHours": {
+        "label": "Días y horas",
+        "help": "Hora de Uruguay. Si el cierre es antes que la apertura, el horario sigue al día siguiente."
+      },
+      "catalog_priceAlertPct": {
+        "label": "Avisar cuando un precio cambia",
+        "help": "Se aplica igual, pero se crea una alerta y entra en el resumen del equipo.",
+        "suffix": "% o más"
+      },
+      "catalog_maxIncreasePct": {
+        "label": "Aumentos mayores a esto van a revisión",
+        "help": "No se aplican hasta que una persona los apruebe.",
+        "suffix": "%"
+      },
+      "catalog_maxDecreasePct": {
+        "label": "Bajas mayores a esto van a revisión",
+        "help": "Una baja muy grande suele ser un error de tipeo.",
+        "suffix": "%"
+      },
+      "catalog_lowStockThreshold": {
+        "label": "Avisar con stock bajo",
+        "help": "Cuando el proveedor informa este stock o menos. Vacío = no avisar.",
+        "suffix": "unidades o menos"
+      },
+      "catalog_autoCreateProducts": {
+        "label": "Crear productos nuevos automáticamente",
+        "help": "Si la IA está segura de que es un producto nuevo. Apagado, todo producto nuevo pasa por revisión."
+      },
+      "catalog_reactivateOnQuote": {
+        "label": "Reactivar productos cuando vuelven a cotizarse",
+        "help": "Un producto no disponible vuelve a estar disponible si llega en una lista."
+      },
+      "notifications_whatsappRecipients": {
+        "label": "Números que reciben los resúmenes",
+        "help": "Con código de país, sin + ni espacios (por ejemplo 59899123456). Hasta 10. Tienen que haberle escrito antes al número de la empresa."
+      },
+      "notifications_digestWindowMinutes": {
+        "label": "Agrupar los avisos de",
+        "help": "Todo lo que pase en ese lapso llega en un solo mensaje.",
+        "suffix": "minutos"
+      },
+      "notifications_maxPerHour": {
+        "label": "Máximo de resúmenes por hora",
+        "help": "Lo que exceda se junta en el siguiente.",
+        "suffix": "por persona"
+      },
+      "notifications_criticalMaxPerHour": {
+        "label": "Máximo de avisos críticos por hora",
+        "help": "Los errores graves no esperan el agrupado, hasta este límite.",
+        "suffix": "por persona"
+      },
+      "transcription_maxAutoDurationSeconds": {
+        "label": "Transcribir audios de hasta",
+        "help": "Los más largos quedan para escuchar a mano (con una alerta).",
+        "suffix": "segundos"
+      },
+      "optOut_keywords": {
+        "label": "Palabras para darse de baja",
+        "help": "Si el mensaje es solo una de estas (sin importar mayúsculas ni tildes). Sepáralas con comas."
+      },
+      "optIn_keywords": {
+        "label": "Palabras para volver a darse de alta",
+        "help": "Sepáralas con comas."
+      },
+      "optOut_instructionReminderDays": {
+        "label": "Recordar cómo darse de baja cada",
+        "help": "Se agrega al primer mensaje automático y después como mucho con esta frecuencia.",
+        "suffix": "días"
+      }
+    }
+  },
+  "contactKinds": {
+    "supplier": "Proveedor",
+    "customer": "Cliente",
+    "internal": "Equipo",
+    "unknown": "Sin clasificar"
+  },
+  "conversations": {
+    "description": "Quién escribió, quién le está respondiendo y qué quedó pendiente.",
+    "optedOutLink": "Dados de baja",
+    "search": "Buscar por nombre, proveedor o teléfono",
+    "filter": "Filtro",
+    "filters": {
+      "all": "Todas",
+      "human": "Atiende una persona",
+      "suppliers": "Proveedores",
+      "customers": "Clientes",
+      "opted_out": "Dados de baja"
+    },
+    "noMatches": "Nada coincide con la búsqueda",
+    "noMatchesHint": "Prueba con otra parte del nombre o del número.",
+    "empty": "No hay conversaciones aquí",
+    "listLabel": "Conversaciones",
+    "loadMore": "Ver más",
+    "botPrefix": "Bot: ",
+    "youPrefix": "Tú: ",
+    "contactFallback": "Contacto",
+    "back": "Conversaciones",
+    "backTo": "Volver a Conversaciones",
+    "loadingMessages": "Cargando mensajes…",
+    "messagesLabel": "Mensajes",
+    "olderMessages": "Ver mensajes anteriores",
+    "noMessages": "Todavía no hay mensajes.",
+    "who": {
+      "bot": "Responde el bot",
+      "human": "Atiende una persona",
+      "opted_out": "Dado de baja"
+    },
+    "humanUntil": "hasta las {time}",
+    "humanUntilResumed": "hasta que lo reactives",
+    "types": {
+      "image": "📷 Foto",
+      "audio": "🎤 Audio",
+      "document": "📄 Documento",
+      "video": "🎬 Video",
+      "sticker": "Sticker",
+      "location": "📍 Ubicación",
+      "contacts": "👤 Contacto",
+      "reaction": "Reacción",
+      "other": "Mensaje"
+    },
+    "author": {
+      "compliance": "Confirmación automática",
+      "bot": "Bot",
+      "phone": "Persona (desde el teléfono)"
+    },
+    "status": {
+      "pending": "Enviando…",
+      "sent": "Enviado",
+      "delivered": "Entregado",
+      "read": "Leído",
+      "failed": "No se pudo enviar",
+      "canceled": "Cancelado (atendía una persona)"
+    },
+    "deleted": "Mensaje eliminado",
+    "transcript": "Transcripción",
+    "edited": "editado · ",
+    "media": {
+      "unavailable": {
+        "pending": "Descargando de WhatsApp…",
+        "skipped": "No se descarga este tipo de archivo",
+        "rejected": "Archivo rechazado (tipo o tamaño no permitido)",
+        "failed": "No se pudo descargar de WhatsApp",
+        "other": "Archivo no disponible"
+      },
+      "photoAlt": "Foto: {name}",
+      "photoAltGeneric": "Foto enviada por WhatsApp",
+      "photoFailed": "No se pudo cargar la foto.",
+      "loadingPhoto": "Cargando foto",
+      "listen": "Escuchar audio",
+      "audioFailed": "No se pudo cargar el audio.",
+      "loadingAudio": "Cargando audio…",
+      "audioLabel": "Audio del mensaje",
+      "cantHear": "¿No se escucha? Descárgalo",
+      "document": "Documento",
+      "open": "Abrir",
+      "downloading": "Descargando…",
+      "download": "Descargar",
+      "downloadFailed": "No se pudo descargar."
+    },
+    "actions": {
+      "paused": "Bot pausado: ahora atiendes tú.",
+      "resumed": "El bot vuelve a responder.",
+      "resume": "Reactivar el bot",
+      "pause": "Pausar el bot",
+      "more": "Más acciones",
+      "optInAction": "Registrar alta (vuelve a recibir mensajes)",
+      "optInAdminOnly": "Registrar un alta es solo para administradores",
+      "optOutAction": "Registrar baja (no enviarle más mensajes)",
+      "pauseTitle": "Pausar el bot en este chat",
+      "pauseBody": "Mientras esté pausado el bot no le responde. Las listas de precios se siguen procesando y el equipo sigue recibiendo avisos.",
+      "duration": "Duración",
+      "pause30": "30 minutos",
+      "pause120": "2 horas",
+      "pause480": "8 horas",
+      "pauseNone": "Hasta que lo reactive",
+      "cancel": "Cancelar",
+      "pauseConfirm": "Pausar",
+      "optOutDone": "Baja registrada: no se le envían más mensajes.",
+      "optInDone": "Alta registrada.",
+      "optOutTitle": "Registrar baja",
+      "optInTitle": "Registrar alta",
+      "optOutBody": "El sistema deja de enviarle mensajes automáticos, plantillas y avisos. Si te escribe, una persona igual puede responderle.",
+      "optInBody": "Solo si el contacto pidió volver a recibir mensajes (por ejemplo, por teléfono). Queda registrado quién lo hizo y por qué.",
+      "howAsked": "Cómo lo pidió",
+      "offWhatsapp": "Lo pidió fuera de WhatsApp",
+      "otherReason": "Otro motivo",
+      "reason": "Motivo (obligatorio)",
+      "optOutPlaceholder": "Ej.: llamó y pidió que no le escribamos",
+      "optInPlaceholder": "Ej.: lo pidió por email el 27/9",
+      "confirm": "Confirmar"
+    },
+    "errors": {
+      "windowClosed": "Pasaron más de 24 h desde su último mensaje: WhatsApp solo permite plantillas aprobadas.",
+      "optedOut": "Este contacto pidió no recibir mensajes.",
+      "forbidden": "Esta acción es solo para administradores.",
+      "invalid": "Revisa los datos.",
+      "withCode": "No se pudo completar (código {requestId}).",
+      "noCode": "No se pudo completar.",
+      "generic": "No se pudo completar. Prueba de nuevo."
+    },
+    "composer": {
+      "sent": "Enviado. El bot queda en pausa en este chat.",
+      "windowClosed": "Pasaron más de 24 h desde su último mensaje ({when}): WhatsApp no deja escribirle hasta que vuelva a escribir.",
+      "neverWrote": "Este contacto nunca escribió: WhatsApp no deja iniciar la conversación sin una plantilla aprobada.",
+      "optedOutWarning": "Pidió no recibir mensajes. Responde solo si es necesario para lo que te consultó.",
+      "label": "Tu respuesta",
+      "placeholder": "Escribe tu respuesta…",
+      "send": "Enviar",
+      "hint": "Se envía por WhatsApp como la empresa. Al responder, el bot se pausa en este chat."
+    },
+    "optedOut": {
+      "description": "Pidieron no recibir mensajes: el sistema no les envía nada automático. Si escriben, una persona puede responderles.",
+      "empty": "Nadie pidió la baja",
+      "listLabel": "Contactos dados de baja",
+      "recorded": "Baja registrada",
+      "keyword": "Escribió \"{keyword}\"",
+      "offWhatsapp": "Lo pidió fuera de WhatsApp (registrado)",
+      "offWhatsappBy": "Lo pidió fuera de WhatsApp (registrado por {by})",
+      "manual": "Registrada a mano",
+      "manualBy": "Registrada a mano por {by}"
+    }
+  },
+  "catalog": {
+    "description": "Los productos de cada proveedor con el último precio que mandaron. Se actualiza solo.",
+    "supplier": "Proveedor",
+    "allSuppliers": "Todos los proveedores",
+    "search": "Buscar producto",
+    "availability": "Disponibilidad",
+    "availabilityOptions": {
+      "all": "Todos",
+      "available": "Disponibles",
+      "unavailable": "No disponibles"
+    },
+    "availableOf": "{available} de {total} disponibles",
+    "lastList": " · última lista {when}",
+    "taxIncluded": " · precios con IVA",
+    "taxExcluded": " · precios sin IVA",
+    "rename": "Renombrar",
+    "noMatches": "Ningún producto coincide",
+    "empty": "No hay productos aquí",
+    "listLabel": "Productos",
+    "loadMore": "Ver más",
+    "stock": "stock {count}",
+    "unavailable": "No disponible",
+    "currencyChanged": "Cambió la moneda",
+    "back": "Catálogo",
+    "backTo": "Volver al Catálogo",
+    "priceSeries": "Precio",
+    "sku": "código {sku}",
+    "withVat": "con IVA",
+    "withoutVat": "sin IVA",
+    "available": "Disponible",
+    "stockBadge": "Stock {count}",
+    "history": "Historial de precios",
+    "noHistory": "Todavía no hay cambios de precio para graficar.",
+    "changesLabel": "Cambios de precio",
+    "initialPrice": "Precio inicial ",
+    "fromReview": "aprobado en revisión",
+    "automatic": "automático",
+    "viewMessage": "Ver el mensaje que lo cambió",
+    "message": "Mensaje",
+    "renameTitle": "Renombrar proveedor",
+    "renameBody": "Por ejemplo, cuando se creó con el nombre de WhatsApp y la empresa se llama distinto. Las próximas listas que digan este nombre se asignan a este proveedor. Queda registrado.",
+    "name": "Nombre",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "renamed": "Proveedor renombrado.",
+    "sameName": "El nombre ya era ese.",
+    "nameTaken": "Ya hay otro proveedor con ese nombre. (Unir proveedores llega más adelante.)",
+    "renameFailed": "No se pudo renombrar."
+  },
+  "alerts": {
+    "description": "Lo que conviene mirar: aumentos grandes, poco stock, errores. Márcalas como vistas cuando las resuelvas.",
+    "status": "Estado",
+    "unseen": "Sin ver",
+    "unseenCount": "Sin ver ({count})",
+    "all": "Todas",
+    "emptyUnseen": "No hay alertas sin ver",
+    "empty": "No hay alertas",
+    "listLabel": "Alertas",
+    "viewProduct": "Ver producto",
+    "viewConversation": "Ver conversación",
+    "markSeen": "Marcar como vista: {title}",
+    "seen": "Vista",
+    "ackFailed": "No se pudo marcar como vista.",
+    "types": {
+      "price_change": "Cambio de precio",
+      "low_stock": "Poco stock",
+      "missing_data": "Faltan datos",
+      "ingestion_error": "Error al procesar",
+      "manual_attention": "Revisar a mano",
+      "integration_error": "Integración",
+      "possible_opt_out": "¿Pidió la baja?"
+    },
+    "severity": {
+      "critical": "Crítica",
+      "warning": "Importante",
+      "info": "Informativa"
+    }
+  },
+  "users": {
+    "description": "Quién entra al panel y qué puede hacer. Siempre queda al menos un administrador activo.",
+    "newUser": "Nuevo usuario",
+    "listLabel": "Usuarios",
+    "roles": {
+      "admin": "Administrador",
+      "operator": "Operador"
+    },
+    "you": "Tú",
+    "deactivated": "Desactivado",
+    "locked": "Bloqueado",
+    "lastLogin": "entró {when}",
+    "neverLoggedIn": "nunca entró",
+    "actionsFor": "Acciones para {name}",
+    "ownRoleHint": "Tu rol lo cambia otro administrador",
+    "changeToAdmin": "Cambiar a administrador",
+    "changeToOperator": "Cambiar a operador",
+    "deactivate": "Desactivar",
+    "reactivate": "Reactivar",
+    "newPassword": "Nueva contraseña",
+    "unlock": "Desbloquear",
+    "revokeSessions": "Cerrar sus sesiones",
+    "updated": "Usuario actualizado. Sus sesiones abiertas se cerraron.",
+    "unlocked": "Cuenta desbloqueada.",
+    "sessionsClosed": "Sesiones cerradas.",
+    "created": "Usuario creado.",
+    "passwordChanged": "Contraseña cambiada. Sus sesiones abiertas se cerraron.",
+    "password": "Contraseña",
+    "passwordHelp": "Mínimo 15 caracteres. Una frase de varias palabras es lo mejor (por ejemplo, “el café de la tarde en la ferretería”). Pásasela a la persona por un canal seguro.",
+    "createTitle": "Nuevo usuario",
+    "createBody": "Un operador resuelve productos y conversaciones; un administrador, además, reglas, listas enteras y usuarios.",
+    "name": "Nombre",
+    "email": "Email",
+    "role": "Rol",
+    "cancel": "Cancelar",
+    "create": "Crear",
+    "resetTitle": "Nueva contraseña para {name}",
+    "resetBody": "Se cierran todas sus sesiones abiertas: tendrá que entrar de nuevo.",
+    "changePassword": "Cambiar contraseña",
+    "errors": {
+      "lastAdmin": "No puede quedar el sistema sin un administrador activo. Nombra otro administrador primero.",
+      "emailTaken": "Ya hay un usuario con ese email.",
+      "ownRole": "No puedes cambiar tu propio rol ni desactivarte: lo tiene que hacer otro administrador.",
+      "invalid": "Revisa los datos.",
+      "withCode": "No se pudo completar (código {requestId}).",
+      "noCode": "No se pudo completar.",
+      "generic": "No se pudo completar. Prueba de nuevo."
+    }
+  },
+  "demo": {
+    "onlyInDemo": "Esta página existe solo en la demo pública",
+    "onlyInDemoHint": "En una instalación real los mensajes llegan por WhatsApp.",
+    "description": "Envía mensajes de ejemplo como si fueras un proveedor. Recorren el sistema real (sin WhatsApp y sin costo) y ves cada paso en vivo.",
+    "reset": "Reiniciar demo",
+    "autoReset": "Los datos de ejemplo se reinician solos a las {time}.",
+    "send": "Enviar",
+    "sending": "Enviando…",
+    "sentLabel": "Mensajes de prueba enviados",
+    "resetTitle": "¿Reiniciar la demo?",
+    "resetBody": "Vuelven los datos de ejemplo del principio: se borran las pruebas y revisiones que hiciste. Tu sesión sigue abierta.",
+    "cancel": "Cancelar",
+    "resetting": "Reiniciando…",
+    "resetConfirm": "Reiniciar",
+    "stepsOf": "Pasos: {title}",
+    "stepStates": {
+      "done": "(listo)",
+      "active": "(en curso)",
+      "held": "(frenado para revisión)",
+      "failed": "(falló)",
+      "waiting": "(pendiente)"
+    },
+    "samples": {
+      "foto": {
+        "title": "Enviar foto de lista de precios",
+        "short": "Foto de lista de precios",
+        "detail": "Una foto de una lista impresa: la IA lee los precios y los compara con el catálogo."
+      },
+      "pdf": {
+        "title": "Enviar PDF de proveedor",
+        "short": "PDF de proveedor",
+        "detail": "La lista completa de un proveedor en PDF."
+      },
+      "audio": {
+        "title": "Enviar audio de proveedor",
+        "short": "Audio de proveedor",
+        "detail": "Una nota de voz: se transcribe y se extrae el precio (si hay dudas, va a revisión)."
+      },
+      "planilla": {
+        "title": "Enviar planilla conocida",
+        "short": "Planilla conocida",
+        "detail": "Un Excel con un formato ya aprobado: se lee sin IA y sin costo."
+      },
+      "planilla_nueva": {
+        "title": "Enviar planilla nueva",
+        "short": "Planilla nueva",
+        "detail": "Un Excel con un formato que el sistema no conoce: una persona elige la columna de precio."
+      },
+      "injection": {
+        "title": "Enviar mensaje con prompt injection",
+        "short": "Mensaje con prompt injection",
+        "detail": "Un mensaje que intenta darle órdenes a la IA: se frena y no toca el catálogo."
+      }
+    },
+    "steps": {
+      "received": "Llegó por WhatsApp (simulado, firmado como Meta)",
+      "downloaded": "Archivo descargado y verificado",
+      "transcribed": "Nota de voz transcrita",
+      "sheetRead": "Planilla leída",
+      "classified": "Clasificado",
+      "extracted": "Extraído y validado con las reglas",
+      "held": "Frenado para revisión"
+    },
+    "outcomes": {
+      "suspicious": "Frenado para revisión: el mensaje intenta darle órdenes al sistema. No se tocó el catálogo.",
+      "newFormat": "Planilla con un formato nuevo: elige qué columna de precio usar.",
+      "review": "Quedó en Revisiones para que una persona decida.",
+      "updated": "Catálogo al día: {summary}.",
+      "noChanges": "Procesado: no hubo cambios de precio.",
+      "failed": "No se pudo procesar.",
+      "prices": "{count, plural, one {# precio actualizado} other {# precios actualizados}}",
+      "created": "{count, plural, one {# producto nuevo} other {# productos nuevos}}",
+      "reviews": "{count, plural, one {# línea para revisar} other {# líneas para revisar}}"
+    },
+    "links": {
+      "viewReviews": "Ver en Revisiones",
+      "pickColumn": "Elegir la columna",
+      "viewCatalog": "Ver el catálogo",
+      "viewConversation": "Ver la conversación"
+    },
+    "toast": {
+      "tooMany": "Muchas pruebas seguidas: espera unos minutos.",
+      "injectFailed": "No se pudo enviar el mensaje de prueba.",
+      "resetDone": "Demo reiniciada: datos de ejemplo como al principio.",
+      "recentlyReset": "{ago, plural, =0 {La demo se reinició hace un momento.} other {La demo se reinició hace # min.}} Podrás reiniciarla de nuevo en {wait} min.",
+      "resetTooSoon": "Se reinició hace poco: prueba en unos minutos.",
+      "resetFailed": "No se pudo reiniciar la demo."
+    }
+  },
+  "digest": {
+    "opening": "Abriendo el resumen…",
+    "goHome": "Ir al inicio",
+    "title": "Resumen de WhatsApp",
+    "description": "Enviado {when}. Toca cada punto para resolverlo.",
+    "itemsLabel": "Puntos del resumen"
   }
 }

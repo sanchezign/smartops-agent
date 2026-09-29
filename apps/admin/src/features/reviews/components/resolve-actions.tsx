@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
  */
 export function ResolveActions({
   approveLabel,
-  rejectLabel = "Rechazar",
+  rejectLabel,
   onApprove,
   onReject,
   pending,
@@ -37,7 +38,9 @@ export function ResolveActions({
   disabled?: boolean;
   error?: string | null;
 }) {
+  const t = useTranslations("reviews.actions");
   const [note, setNote] = useState("");
+  const reject = rejectLabel ?? t("reject");
   const [open, setOpen] = useState(false);
   const noteId = useId();
 
@@ -56,30 +59,28 @@ export function ResolveActions({
               className="h-auto min-h-11 whitespace-normal"
               disabled={pending}
             >
-              <X aria-hidden /> {rejectLabel}
+              <X aria-hidden /> {reject}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{rejectLabel}</DialogTitle>
-              <DialogDescription>
-                No se cambia nada en el catálogo. Podés dejar una nota para el equipo (opcional).
-              </DialogDescription>
+              <DialogTitle>{reject}</DialogTitle>
+              <DialogDescription>{t("rejectHint")}</DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-2">
-              <Label htmlFor={noteId}>Nota</Label>
+              <Label htmlFor={noteId}>{t("note")}</Label>
               <Textarea
                 id={noteId}
                 value={note}
                 maxLength={500}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Ej.: el proveedor se equivocó, pedí la lista de nuevo"
+                placeholder={t("notePlaceholder")}
               />
             </div>
             <DialogFooter>
               <DialogClose asChild>
                 <Button variant="outline" className="min-h-11">
-                  Volver
+                  {t("back")}
                 </Button>
               </DialogClose>
               <Button
@@ -91,7 +92,7 @@ export function ResolveActions({
                   setOpen(false);
                 }}
               >
-                Confirmar
+                {t("confirm")}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -101,7 +102,7 @@ export function ResolveActions({
           onClick={onApprove}
           disabled={pending || disabled}
         >
-          <Check aria-hidden /> {pending ? "Guardando…" : approveLabel}
+          <Check aria-hidden /> {pending ? t("saving") : approveLabel}
         </Button>
       </div>
     </div>

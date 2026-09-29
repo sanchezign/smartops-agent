@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { api } from "@/features/auth/api";
 import { useApiQuery } from "@/hooks/use-api";
@@ -33,21 +34,32 @@ export const useSuppliers = (enabled = true) =>
     enabled,
   });
 
-/** What the person reads when a resolution fails (API codes → plain language). */
-export function resolveErrorMessage(error: unknown): string {
-  if (!(error instanceof ApiError)) return "No se pudo guardar. Probá de nuevo.";
+export type ResolveErrorKey =
+  "generic" | "stale" | "conflict" | "forbidden" | "invalid" | "withCode" | "noCode";
+
+/**
+ * What the person reads when a resolution fails: API codes → a "reviews.errors" key + params.
+ * "detail" is the API message (English, technical) shown after the translated sentence.
+ */
+export function resolveErrorKey(error: unknown): {
+  key: ResolveErrorKey;
+  params?: Record<string, string>;
+} {
+  if (!(error instanceof ApiError)) return { key: "generic" };
   switch (error.code) {
     case "STALE_REVIEW":
-      return "El catálogo cambió desde que se armó esta propuesta, así que ya no aplica. Actualizamos la lista.";
+      return { key: "stale" };
     case "CONFLICT":
-      return `No se pudo aplicar: ${error.message}`;
+      return { key: "conflict", params: { detail: error.message } };
     case "FORBIDDEN":
-      return "Solo un administrador puede resolver esta revisión.";
+      return { key: "forbidden" };
     case "BAD_REQUEST":
     case "VALIDATION_ERROR":
-      return `Revisá los datos: ${error.message}`;
+      return { key: "invalid", params: { detail: error.message } };
     default:
-      return `No se pudo guardar${error.requestId ? ` (código ${error.requestId})` : ""}.`;
+      return error.requestId
+        ? { key: "withCode", params: { requestId: error.requestId } }
+        : { key: "noCode" };
   }
 }
 
@@ -56,6 +68,7 @@ export type ResolveInput =
 
 export function useResolveReview(id: string, onDone?: () => void) {
   const queryClient = useQueryClient();
+  const t = useTranslations("reviews");
   return useMutation({
     mutationFn: (input: ResolveInput) =>
       api.request<{ result: { status: string }; retriggered: boolean }>(
@@ -70,14 +83,17 @@ export function useResolveReview(id: string, onDone?: () => void) {
     onSuccess: (data, input) => {
       toast.success(
         input.action === "reject"
-          ? "Revisión rechazada: no se cambió nada."
+          ? t("toast.rejected")
           : data.retriggered
-            ? "Aprobada. La lista se vuelve a procesar con lo que elegiste."
-            : "Aprobada y aplicada.",
+            ? t("toast.approvedRetriggered")
+            : t("toast.approved"),
       );
       onDone?.();
     },
-    onError: (error) => toast.error(resolveErrorMessage(error)),
+    onError: (error) => {
+      const { key, params } = resolveErrorKey(error);
+      toast.error(t(`errors.${key}`, params));
+    },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["reviews"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });

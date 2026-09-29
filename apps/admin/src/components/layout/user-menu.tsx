@@ -23,14 +23,13 @@ import { isPublicDemoAccount } from "@/features/demo/public-account";
 import { useChangeLocale } from "@/features/locale/hooks";
 import { LOCALE_NAMES, LOCALES, isAppLocale } from "@/i18n/locales";
 
-const ROLE_LABEL = { admin: "Administrador", operator: "Operador" } as const;
-
 export function UserMenu() {
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const locale = useLocale();
   const tLocale = useTranslations("locale");
+  const t = useTranslations("userMenu");
   const changeLocale = useChangeLocale();
   // The public demo operator is shared by every visitor: no account-wide actions (phase 12).
   const shared = isPublicDemoAccount(useDemoInfo().data, user?.email);
@@ -43,7 +42,7 @@ export function UserMenu() {
   async function logoutAll() {
     try {
       const sessions = await api.logoutAll();
-      toast.success(`Cerraste ${sessions} ${sessions === 1 ? "sesión" : "sesiones"}.`);
+      toast.success(t("loggedOutAll", { count: sessions }));
     } finally {
       router.replace("/login");
     }
@@ -52,7 +51,12 @@ export function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Tu cuenta" className="size-11 rounded-full">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={t("account")}
+          className="size-11 rounded-full"
+        >
           <UserRound aria-hidden />
         </Button>
       </DropdownMenuTrigger>
@@ -60,22 +64,22 @@ export function UserMenu() {
         <DropdownMenuLabel className="flex flex-col gap-0.5">
           <span>{user?.name}</span>
           <span className="text-xs font-normal text-muted-foreground">
-            {user?.email} · {user ? ROLE_LABEL[user.role] : ""}
+            {user?.email} · {user ? t(`roles.${user.role}`) : ""}
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-          Tema
+          {t("theme")}
         </DropdownMenuLabel>
         <DropdownMenuRadioGroup value={theme ?? "system"} onValueChange={setTheme}>
           <DropdownMenuRadioItem value="light">
-            <Sun aria-hidden /> Claro
+            <Sun aria-hidden /> {t("light")}
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="dark">
-            <Moon aria-hidden /> Oscuro
+            <Moon aria-hidden /> {t("dark")}
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="system">
-            <Monitor aria-hidden /> Según el dispositivo
+            <Monitor aria-hidden /> {t("system")}
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
@@ -96,11 +100,11 @@ export function UserMenu() {
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={logout}>
-          <LogOut aria-hidden /> Cerrar sesión
+          <LogOut aria-hidden /> {t("logout")}
         </DropdownMenuItem>
         {!shared && (
           <DropdownMenuItem onSelect={logoutAll}>
-            <LogOut aria-hidden /> Cerrar todas mis sesiones
+            <LogOut aria-hidden /> {t("logoutAll")}
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

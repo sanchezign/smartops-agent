@@ -1,23 +1,19 @@
 "use client";
 
 import { BotOff, Moon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useApiQuery } from "@/hooks/use-api";
-import { TIME_ZONE } from "@/lib/format";
+import { useFormat } from "@/lib/use-format";
 
 interface Status {
   autoRepliesEnabled: boolean;
   businessHours: { configured: boolean; open: boolean; nextOpening: string | null };
 }
 
-const opening = new Intl.DateTimeFormat("es-UY", {
-  timeZone: TIME_ZONE,
-  weekday: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-/** "Fuera de horario" and "Bot apagado" in the top bar (phase 9 M6). */
+/** "Outside business hours" and "Bot off" in the top bar (phase 9 M6). */
 export function StatusChips() {
+  const t = useTranslations("realtime");
+  const format = useFormat();
   const query = useApiQuery<Status>(["status"], "/admin/status", {
     refetchInterval: 60_000,
     staleTime: 30_000,
@@ -29,11 +25,11 @@ export function StatusChips() {
       {businessHours.configured && !businessHours.open ? (
         <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-muted-foreground">
           <Moon className="size-3" aria-hidden />
-          Fuera de horario
+          {t("closed")}
           {businessHours.nextOpening ? (
             <span className="hidden sm:inline">
               {" "}
-              · abre {opening.format(new Date(businessHours.nextOpening))}
+              · {t("opens", { when: format.formatWeekdayTime(businessHours.nextOpening) })}
             </span>
           ) : null}
         </span>
@@ -41,7 +37,7 @@ export function StatusChips() {
       {!autoRepliesEnabled ? (
         <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-amber-900 dark:bg-amber-950 dark:text-amber-200">
           <BotOff className="size-3" aria-hidden />
-          Bot apagado
+          {t("botOff")}
         </span>
       ) : null}
     </span>

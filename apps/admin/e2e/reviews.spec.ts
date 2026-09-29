@@ -62,7 +62,7 @@ test.describe("resolving reviews (desktop only: it changes the shared demo data)
       .getByRole("list", { name: "Revisiones" })
       .getByText("Lista Distribuidora Norte.xlsx")
       .click();
-    await expect(page.getByRole("heading", { name: "Elegí la columna de precio" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Elige la columna de precio" })).toBeVisible();
     const group = page.getByRole("radiogroup", { name: /Columna de precio/ });
     const withTax = group.getByRole("radio", { name: /Precio c\/IVA/ });
     await expect(withTax).toBeChecked(); // the recommendation is pre-selected…

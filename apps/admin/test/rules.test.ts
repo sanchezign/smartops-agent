@@ -11,23 +11,57 @@ describe("parseNumberInput", () => {
     ["12.5", 12.5],
     [" 30 ", 30],
   ])("%j → %d", (raw, value) => {
-    expect(parseNumberInput(raw)).toEqual({ ok: true, value });
+    expect(parseNumberInput(raw, "es")).toEqual({ ok: true, value });
+    expect(parseNumberInput(raw, "en")).toEqual({ ok: true, value });
   });
 
-  it("refuses ambiguous thousands, decimals where integers go, and out of range", () => {
-    expect(parseNumberInput("1.500").ok).toBe(false);
-    expect(parseNumberInput("2,5", { integer: true }).ok).toBe(false);
-    expect(parseNumberInput("0", { min: 1 })).toEqual({ ok: false, message: "El mínimo es 1." });
-    expect(parseNumberInput("120,5", { max: 100 })).toEqual({
+  it("refuses ambiguous thousands (per language), decimals where integers go, and out of range", () => {
+    expect(parseNumberInput("1.500", "es")).toEqual({ ok: false, error: { code: "thousands" } });
+    expect(parseNumberInput("1,500", "en")).toEqual({ ok: false, error: { code: "thousands" } });
+    expect(parseNumberInput("2,5", "es", { integer: true })).toEqual({
       ok: false,
-      message: "El máximo es 100.",
+      error: { code: "integer" },
     });
-    expect(parseNumberInput("").ok).toBe(false);
+    expect(parseNumberInput("0", "es", { min: 1 })).toEqual({
+      ok: false,
+      error: { code: "min", params: { limit: 1 } },
+    });
+    expect(parseNumberInput("120,5", "es", { max: 100 })).toEqual({
+      ok: false,
+      error: { code: "max", params: { limit: 100 } },
+    });
+    expect(parseNumberInput("", "en")).toEqual({ ok: false, error: { code: "required" } });
+    expect(parseNumberInput("1 2 x", "en")).toEqual({ ok: false, error: { code: "format" } });
   });
 
-  it("editable values use a decimal comma", () => {
-    expect(toNumberInput(12.5)).toBe("12,5");
-    expect(toNumberInput(null)).toBe("");
+  it("editable values use the language's decimal separator", () => {
+    expect(toNumberInput(12.5, "es")).toBe("12,5");
+    expect(toNumberInput(12.5, "en")).toBe("12.5");
+    expect(toNumberInput(null, "en")).toBe("");
+  });
+});
+
+describe("rule texts", () => {
+  it("every section and field has its messages in both languages", async () => {
+    const { SECTIONS, fieldMessageKey } = await import("../src/features/rules/fields");
+    const catalogs = [
+      (await import("../src/i18n/messages/en.json")).default,
+      (await import("../src/i18n/messages/es.json")).default,
+    ];
+    for (const catalog of catalogs) {
+      for (const section of SECTIONS) {
+        expect(catalog.rules.sections[section.id].title).toBeTruthy();
+        for (const field of section.fields) {
+          const texts = (catalog.rules.fields as Record<string, Record<string, string>>)[
+            fieldMessageKey(field.key)
+          ];
+          expect(texts?.label, field.key).toBeTruthy();
+          expect(texts?.help, field.key).toBeTruthy();
+          if (field.kind === "number" && field.suffix)
+            expect(texts?.suffix, field.key).toBeTruthy();
+        }
+      }
+    }
   });
 });
 
@@ -52,7 +86,7 @@ describe("business hours rows", () => {
     );
     expect(fromRows(rows)).toEqual({
       ok: false,
-      message: "Lunes: la apertura y el cierre no pueden ser iguales.",
+      error: { code: "hoursEqual", params: { day: 1 } },
     });
   });
 });
@@ -61,7 +95,7 @@ describe("keywords and phones", () => {
   it("keywords: trimmed, upper-cased, deduplicated; at least one", async () => {
     const { parseKeywords } = await import("../src/features/rules/fields");
     expect(parseKeywords(" baja, Stop ,, BAJA ")).toEqual({ ok: true, value: ["BAJA", "STOP"] });
-    expect(parseKeywords(" , ").ok).toBe(false);
+    expect(parseKeywords(" , ")).toEqual({ ok: false, error: { code: "keywordsEmpty" } });
   });
 
   it("phones: digits with country code, spaces and + removed, max 10", async () => {
@@ -70,7 +104,10 @@ describe("keywords and phones", () => {
       ok: true,
       value: ["59899123456", "59898765432"],
     });
-    expect(parsePhones("099123").ok).toBe(false);
+    expect(parsePhones("099123")).toEqual({
+      ok: false,
+      error: { code: "phoneInvalid", params: { value: "099123" } },
+    });
     expect(parsePhones(Array.from({ length: 11 }, (_, i) => `5989900000${i}`).join(",")).ok).toBe(
       false,
     );

@@ -3,11 +3,12 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { PageHeader } from "@/components/page-header";
 import { ErrorState, LoadingState } from "@/components/states";
 import { useApiQuery } from "@/hooks/use-api";
-import { formatDateTime } from "@/lib/format";
+import { useFormat } from "@/lib/use-format";
 import { isPanelPath } from "../paths";
 
 interface DigestItem {
@@ -24,6 +25,8 @@ interface DigestItem {
  */
 export function DigestView({ token }: { token: string }) {
   const router = useRouter();
+  const t = useTranslations("digest");
+  const { formatDateTime } = useFormat();
   const query = useApiQuery<{
     digest: { createdAt: string; sentAt: string | null; items: DigestItem[] };
   }>(["digest", token], `/admin/digests/${encodeURIComponent(token)}`);
@@ -34,13 +37,13 @@ export function DigestView({ token }: { token: string }) {
     if (only) router.replace(only);
   }, [only, router]);
 
-  if (query.isPending || only) return <LoadingState rows={3} label="Abriendo el resumen…" />;
+  if (query.isPending || only) return <LoadingState rows={3} label={t("opening")} />;
   if (query.isError) {
     return (
       <ErrorState
         error={query.error}
         onRetry={() => void query.refetch()}
-        back={{ href: "/", label: "Ir al inicio" }}
+        back={{ href: "/", label: t("goHome") }}
       />
     );
   }
@@ -48,13 +51,12 @@ export function DigestView({ token }: { token: string }) {
   return (
     <>
       <PageHeader
-        title="Resumen de WhatsApp"
-        description={`Enviado ${formatDateTime(digest.sentAt ?? digest.createdAt)}. Tocá cada punto para resolverlo.`}
+        title={t("title")}
+        description={t("description", {
+          when: formatDateTime(digest.sentAt ?? digest.createdAt),
+        })}
       />
-      <ul
-        className="flex flex-col divide-y rounded-xl border bg-card"
-        aria-label="Puntos del resumen"
-      >
+      <ul className="flex flex-col divide-y rounded-xl border bg-card" aria-label={t("itemsLabel")}>
         {digest.items.map((item, i) => (
           <li key={`${item.createdAt}-${i}`}>
             {isPanelPath(item.path) ? (

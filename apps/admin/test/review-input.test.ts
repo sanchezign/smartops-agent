@@ -19,15 +19,32 @@ describe("parsePriceInput", () => {
     ["0,0385", "0.0385"],
     ["007", "7"],
   ])("%s → %s", (raw, value) => {
-    expect(parsePriceInput(raw)).toEqual({ ok: true, value });
+    expect(parsePriceInput(raw, "es")).toEqual({ ok: true, value });
   });
 
   it.each(["", "abc", "1.850", "12,50,1", "1,23456", "0", "-5", "1e3"])(
     "rejects %j (never guessed)",
     (raw) => {
-      expect(parsePriceInput(raw).ok).toBe(false);
+      expect(parsePriceInput(raw, "es").ok).toBe(false);
     },
   );
+
+  it("each language refuses ITS ambiguous thousands shape, with a code for the screen", () => {
+    expect(parsePriceInput("1.850", "es")).toEqual({
+      ok: false,
+      error: { code: "priceThousands" },
+    });
+    expect(parsePriceInput("1,850", "en")).toEqual({
+      ok: false,
+      error: { code: "priceThousands" },
+    });
+    // The other separator with 3 decimals is unambiguous in that language.
+    expect(parsePriceInput("1,850", "es")).toEqual({ ok: true, value: "1.850" });
+    expect(parsePriceInput("1.850", "en")).toEqual({ ok: true, value: "1.850" });
+    expect(parsePriceInput("", "en")).toEqual({ ok: false, error: { code: "priceRequired" } });
+    expect(parsePriceInput("0", "en")).toEqual({ ok: false, error: { code: "pricePositive" } });
+    expect(parsePriceInput("abc", "en")).toEqual({ ok: false, error: { code: "priceFormat" } });
+  });
 });
 
 const proposal: LineProposal = {
@@ -51,23 +68,30 @@ const proposal: LineProposal = {
 };
 
 describe("lineApproveBody", () => {
-  const defaults = lineDefaults(proposal, "p1", "UYU");
+  const defaults = lineDefaults(proposal, "p1", "UYU", "es");
 
   it("approving as proposed sends only the product (the API applies its own proposal)", () => {
     expect(defaults.target).toBe("p1");
-    expect(lineApproveBody(defaults, defaults)).toEqual({ ok: true, body: { productId: "p1" } });
+    expect(lineApproveBody(defaults, defaults, "es")).toEqual({
+      ok: true,
+      body: { productId: "p1" },
+    });
   });
 
   it("an edited price goes as a plain decimal", () => {
-    expect(lineApproveBody({ ...defaults, price: "1.700,00".replace(".", "") }, defaults)).toEqual({
+    expect(
+      lineApproveBody({ ...defaults, price: "1.700,00".replace(".", "") }, defaults, "es"),
+    ).toEqual({
       ok: true,
       body: { productId: "p1", price: "1700.00" },
     });
-    expect(lineApproveBody({ ...defaults, price: "1.700" }, defaults).ok).toBe(false);
+    expect(lineApproveBody({ ...defaults, price: "1.700" }, defaults, "es").ok).toBe(false);
   });
 
   it("a new product sends name/price/currency and requires them", () => {
-    expect(lineApproveBody({ ...defaults, target: "new", name: "Arena fina" }, defaults)).toEqual({
+    expect(
+      lineApproveBody({ ...defaults, target: "new", name: "Arena fina" }, defaults, "es"),
+    ).toEqual({
       ok: true,
       body: { createNew: true, price: "3052.5", currency: "UYU", name: "Arena fina" },
     });
@@ -75,17 +99,37 @@ describe("lineApproveBody", () => {
 
   it('the price field starts in es-UY without a thousands dot (the input refuses "1.850")', () => {
     expect(defaults.price).toBe("3052,5");
-    expect(lineApproveBody({ ...defaults, price: "3052,5" }, defaults)).toEqual({
+    expect(lineApproveBody({ ...defaults, price: "3052,5" }, defaults, "es")).toEqual({
       ok: true,
       body: { productId: "p1" },
     });
-    expect(lineApproveBody({ ...defaults, target: "new", price: "" }, defaults).ok).toBe(false);
-    expect(lineApproveBody({ ...defaults, target: "new", name: " " }, defaults).ok).toBe(false);
+    // An emptied price field is a missing price.
+    expect(lineApproveBody({ ...defaults, target: "new", price: "" }, defaults, "es")).toEqual({
+      ok: false,
+      error: { code: "priceRequired" },
+    });
+    // A proposal without any price cannot create the product either.
+    const noPrice = { ...defaults, price: "" };
+    expect(lineApproveBody({ ...noPrice, target: "new" }, noPrice, "es")).toEqual({
+      ok: false,
+      error: { code: "priceNeededForNew" },
+    });
+    expect(lineApproveBody({ ...defaults, target: "new", name: " " }, defaults, "es")).toEqual({
+      ok: false,
+      error: { code: "nameRequired" },
+    });
+  });
+
+  it("in English the price field starts with a decimal point", () => {
+    const en = lineDefaults(proposal, "p1", "UYU", "en");
+    expect(en.price).toBe("3052.5");
+    expect(lineApproveBody(en, en, "en")).toEqual({ ok: true, body: { productId: "p1" } });
+    expect(lineApproveBody({ ...en, price: "1,700" }, en, "en").ok).toBe(false);
   });
 
   it("without a linked product the first candidate is pre-selected, else 'new'", () => {
-    expect(lineDefaults(proposal, null, null).target).toBe("p1");
-    expect(lineDefaults({ ...proposal, candidates: [] }, null, null).target).toBe("new");
+    expect(lineDefaults(proposal, null, null, "es").target).toBe("p1");
+    expect(lineDefaults({ ...proposal, candidates: [] }, null, null, "es").target).toBe("new");
   });
 });
 

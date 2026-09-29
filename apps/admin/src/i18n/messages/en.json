@@ -3,10 +3,884 @@
     "description": "SmartOps — operations panel"
   },
   "common": {
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "retry": "Retry",
+    "backHome": "Back to home",
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close"
   },
   "locale": {
     "label": "Language",
     "saveFailed": "Could not save your language. It will only apply on this device."
+  },
+  "pages": {
+    "login": "Sign in",
+    "home": "Home",
+    "alerts": "Alerts",
+    "catalog": "Catalog",
+    "product": "Product",
+    "optedOut": "Opted out",
+    "conversations": "Conversations",
+    "conversation": "Conversation",
+    "digest": "Summary",
+    "try": "Try the system",
+    "rules": "Rules",
+    "reviews": "Reviews",
+    "review": "Review",
+    "users": "Users"
+  },
+  "nav": {
+    "sections": "Sections",
+    "home": "Home",
+    "reviews": "Reviews",
+    "conversations": "Conversations",
+    "catalog": "Catalog",
+    "alerts": "Alerts",
+    "rules": "Rules",
+    "users": "Users",
+    "try": "Try the system",
+    "more": "More",
+    "moreSections": "More sections"
+  },
+  "shell": {
+    "skipToContent": "Skip to content",
+    "demoBanner": "<strong>Demo mode</strong>: sample data, no real WhatsApp and no cost.",
+    "tryLink": "Try the system"
+  },
+  "states": {
+    "forbiddenTitle": "You don't have permission to see this",
+    "forbiddenDescription": "This section is for administrators only. If you need it, ask whoever manages the panel.",
+    "goneTitle": "This no longer exists",
+    "goneTitleDemo": "This no longer exists (the demo may have been reset)",
+    "goneDescription": "It may have been resolved or deleted. Go back to the list to see what is there now.",
+    "errorTitle": "We couldn't load this information",
+    "errorDescription": "It may be a temporary problem. Try again; if it keeps happening, tell the team.",
+    "errorDescriptionWithCode": "It may be a temporary problem. Try again; if it keeps happening, tell the team and give them this code: <code>{requestId}</code>.",
+    "underConstruction": "This section is under construction"
+  },
+  "errorPage": {
+    "title": "Something went wrong",
+    "description": "Try again; if it keeps happening, tell the team.",
+    "notFoundTitle": "Page not found"
+  },
+  "auth": {
+    "subtitle": "Operations panel",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in…",
+    "demoTitle": "Public demo.",
+    "demoIntro": "Sign in as an operator with these details (they are public):",
+    "useThese": "Use these details",
+    "validation": {
+      "invalidEmail": "Enter a valid email address",
+      "passwordRequired": "Enter your password",
+      "checkFields": "Check the details."
+    },
+    "errors": {
+      "invalidCredentials": "Wrong email or password.",
+      "rateLimited": "Too many attempts. Wait a few minutes and try again.",
+      "rejected": "The request was rejected for security reasons. Reload the page.",
+      "unknown": "Could not sign in. Try again in a moment."
+    }
+  },
+  "userMenu": {
+    "account": "Your account",
+    "roles": {
+      "admin": "Administrator",
+      "operator": "Operator"
+    },
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "Match the device",
+    "logout": "Sign out",
+    "logoutAll": "Sign out everywhere",
+    "loggedOutAll": "{count, plural, one {You closed # session.} other {You closed # sessions.}}"
+  },
+  "realtime": {
+    "live": "Live",
+    "connecting": "Connecting…",
+    "offline": "Reconnecting…",
+    "degraded": "Updating every 30 s",
+    "liveHint": "Changes appear on their own",
+    "fallbackHint": "Updating every 30 s in the meantime",
+    "closed": "Outside business hours",
+    "opens": "opens {when}",
+    "botOff": "Bot off"
+  },
+  "dashboard": {
+    "description": "How operations are going: messages, automation, AI cost and what is waiting for you.",
+    "period": "Period",
+    "days": "{count} days",
+    "pendingSection": "Pending",
+    "automationSection": "Automation",
+    "pendingReviews": "Pending reviews",
+    "openAlerts": "Open alerts",
+    "humanChats": "Chats handled by a person",
+    "periodErrors": "Errors in the period",
+    "integrationUnreviewed": "{count} integration errors not reviewed",
+    "errorSources": "Webhooks, n8n deliveries, runs and sends",
+    "messagesReceived": "Messages received",
+    "lastDays": "Last {count} days",
+    "resolvedAlone": "Resolved without a person",
+    "resolvedOf": "{automatic} of {finished} processed messages",
+    "nothingProcessed": "No processed messages yet",
+    "filteredNoAi": "Filtered without AI",
+    "estimatedSaving": "Estimated saving {amount}",
+    "messagesPerDay": "Messages per day",
+    "messagesPerDayHint": "Everything that arrived over WhatsApp",
+    "messagesLabel": "Messages",
+    "aiCostPerDay": "AI cost per day (US$)",
+    "aiCostSummary": "Today (UTC) {today} of {dailyBudget} · Total {total} of {totalBudget}",
+    "aiCostLabel": "AI cost",
+    "perDay": "{label} per day",
+    "prefilterTitle": "What was resolved without calling the AI",
+    "prefilterHint": "Messages the pre-filter classified on its own, without spending Claude credits.",
+    "prefilterEmpty": "Nothing yet in this period.",
+    "prefilterRules": {
+      "no_price_signal": "Greetings and chit-chat",
+      "customer_contact": "Customers (question or order)",
+      "non_content_type": "Stickers, reactions, locations",
+      "media_unavailable": "File not available",
+      "audio_too_long": "Long voice notes (to listen to)",
+      "audio_not_transcribed": "Voice notes not transcribed"
+    }
+  },
+  "inputErrors": {
+    "required": "Enter a number.",
+    "thousands": "Write it without a thousands separator (for example 1500).",
+    "format": "Use only digits and, if needed, one decimal point.",
+    "integer": "It has to be a whole number.",
+    "min": "The minimum is {limit}.",
+    "max": "The maximum is {limit}.",
+    "priceRequired": "Enter a price.",
+    "priceThousands": "Is 1,850 one thousand eight hundred fifty? Write it without a thousands separator: 1850 or 1850.50.",
+    "priceFormat": "Use only digits and one decimal point.",
+    "pricePositive": "The price has to be greater than 0.",
+    "currencyFormat": "The currency is 3 letters, for example UYU or USD.",
+    "priceNeededForNew": "A price is needed to create the product.",
+    "nameRequired": "Enter the product name.",
+    "pickPriceColumn": "Choose the price column of the sheet \"{sheet}\".",
+    "keywordsEmpty": "Enter at least one word.",
+    "keywordsTooMany": "20 words at most.",
+    "keywordTooLong": "Each word, up to 40 letters.",
+    "phoneInvalid": "\"{value}\" does not look like a WhatsApp number with a country code.",
+    "phonesTooMany": "10 numbers at most.",
+    "hoursFormat": "{day}: use times like 09:00.",
+    "hoursEqual": "{day}: opening and closing cannot be the same."
+  },
+  "reviews": {
+    "description": "What the system does not decide on its own. None of this has been applied to the catalog yet.",
+    "typeFilter": "Review type",
+    "statusFilter": "Status",
+    "all": "All",
+    "statusFilters": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "emptyPending": "Nothing to review",
+    "emptyPendingHint": "Everything that arrived was processed on its own. When something needs your decision, it shows up here.",
+    "emptyOther": "No reviews here",
+    "listLabel": "Reviews",
+    "unknownSupplier": "Unidentified supplier",
+    "adminResolves": "an administrator resolves it",
+    "back": "Reviews",
+    "backTo": "Back to Reviews",
+    "resolvedOn": "{status} on {when}.",
+    "adminOnlyTitle": "Only an administrator can resolve this review.",
+    "adminOnlyBody": "It affects a whole list or the entire catalog.",
+    "transcriptPrefix": "Voice note transcript: ",
+    "viewConversation": "View the conversation",
+    "titles": {
+      "line": "List line",
+      "product": "Product",
+      "message": "Message",
+      "globalChange": "{pct} on {count} products",
+      "change": "Change"
+    },
+    "scopes": {
+      "run": "Whole lists",
+      "line": "Products",
+      "catalog": "Catalog"
+    },
+    "statuses": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "superseded": "Superseded"
+    },
+    "kinds": {
+      "product_match": "Is it this product?",
+      "new_or_existing": "New or existing product?",
+      "possible_duplicate": "Possible duplicate",
+      "match_conflict": "Matches several products",
+      "uncertain_value": "Uncertain value",
+      "pct_without_match": "Percentage without a product",
+      "missing_currency": "Currency missing",
+      "currency_changed": "Currency changed",
+      "price_outlier": "Unusual price change",
+      "stale_source": "Message older than the current price",
+      "mark_unavailable": "Mark as unavailable?",
+      "global_change": "Across-the-board change",
+      "tax_basis_changed": "The list's VAT basis changed",
+      "suspicious_instructions": "Suspicious message",
+      "unknown_supplier": "Which supplier is it from?",
+      "extraction_failed": "Could not be read",
+      "column_mapping": "Choose the price column"
+    },
+    "help": {
+      "product_match": "The name on the list looks like a catalog product, but it is not certain.",
+      "new_or_existing": "We don't know whether it is a new product or one that already exists under another name.",
+      "possible_duplicate": "It may be the same product as another one in the catalog.",
+      "match_conflict": "The line matches more than one catalog product.",
+      "uncertain_value": "The AI is not sure about the value it read.",
+      "pct_without_match": "The list gives a percentage but we couldn't find which product it applies to.",
+      "missing_currency": "The list doesn't state the currency and it cannot be assumed.",
+      "currency_changed": "The supplier quotes this product in another currency.",
+      "price_outlier": "The change exceeds the limit set in Rules.",
+      "stale_source": "This message is older than the price we already have.",
+      "mark_unavailable": "The full list doesn't include it, or the supplier says it is out of stock.",
+      "global_change": "The supplier announced a change for all their products.",
+      "tax_basis_changed": "The list switched from prices with VAT to prices without VAT (or the other way round).",
+      "suspicious_instructions": "The message tries to give orders to the system. Nothing was applied.",
+      "unknown_supplier": "We couldn't tell for sure which supplier the list is from.",
+      "extraction_failed": "The file or the message could not be processed automatically.",
+      "column_mapping": "This spreadsheet is arriving for the first time: confirm which column to use."
+    },
+    "reasons": {
+      "price_outlier": "Unusual change",
+      "currency_changed": "Another currency",
+      "missing_currency": "No currency",
+      "invalid_result": "Invalid price",
+      "stale_source": "Old message",
+      "pct_without_match": "Percentage without a product",
+      "uncertain_value": "Uncertain value",
+      "product_match": "Uncertain match",
+      "possible_duplicate": "Possible duplicate",
+      "new_or_existing": "New?",
+      "match_conflict": "Several matches",
+      "duplicate_line": "Repeated line",
+      "auto_create_disabled": "Automatic creation off",
+      "stated_unavailable_new": "New product out of stock",
+      "suspicious_source": "Suspicious message",
+      "document_incomplete": "Incomplete document",
+      "column_mapping_required": "New format",
+      "sheet_format_changed": "The format changed",
+      "suspicious_instructions": "Suspicious instructions",
+      "missing_from_full_list": "Not on the full list",
+      "stated_unavailable": "The supplier says it's out of stock",
+      "global_change": "Across-the-board change",
+      "tax_basis_changed": "VAT change",
+      "unknown_supplier": "Uncertain supplier",
+      "ambiguous_supplier_name": "Several possible suppliers"
+    },
+    "toast": {
+      "rejected": "Review rejected: nothing was changed.",
+      "approvedRetriggered": "Approved. The list is processed again with what you chose.",
+      "approved": "Approved and applied."
+    },
+    "errors": {
+      "generic": "Could not save. Try again.",
+      "stale": "The catalog changed since this proposal was made, so it no longer applies. We refreshed the list.",
+      "conflict": "Could not be applied: {detail}",
+      "forbidden": "Only an administrator can resolve this review.",
+      "invalid": "Check the details: {detail}",
+      "withCode": "Could not save (code {requestId}).",
+      "noCode": "Could not save."
+    },
+    "actions": {
+      "reject": "Reject",
+      "rejectHint": "Nothing changes in the catalog. You can leave a note for the team (optional).",
+      "note": "Note",
+      "notePlaceholder": "E.g.: the supplier made a mistake, I asked for the list again",
+      "back": "Back",
+      "confirm": "Confirm",
+      "saving": "Saving…"
+    },
+    "line": {
+      "listSays": "What the list says",
+      "product": "Product",
+      "unit": "Unit",
+      "price": "Price",
+      "change": "Change",
+      "whichProduct": "Which product is it?",
+      "currentPrice": "Current price: {price}",
+      "noPrice": "Current price: none",
+      "isNew": "It's a new product",
+      "priceToApply": "Price to apply",
+      "name": "Name",
+      "currency": "Currency",
+      "pctPlaceholder": "{pct} on the current price",
+      "createProduct": "Create product",
+      "applyPrice": "Apply price"
+    },
+    "global": {
+      "announced": "Announced change: {pct} on {count} products",
+      "outliers": "{count, plural, one {# product exceeds} other {# products exceed}} the configured change limit.",
+      "product": "Product",
+      "before": "Before",
+      "after": "After",
+      "outlierBadge": "unusual",
+      "apply": "Apply {pct}"
+    },
+    "unavailable": {
+      "product": "Product",
+      "currentPrice": "current price {price}",
+      "missingFromFull": "The supplier sent their full list and this product is not on it. They may no longer sell it, or they may have left it out by mistake.",
+      "statedUnavailable": "The supplier says they don't have this product.",
+      "consequence": "If you mark it as unavailable, it stops being offered until they quote it again.",
+      "approve": "Mark as unavailable",
+      "reject": "Keep it available"
+    },
+    "gate": {
+      "taxIncluded": "with VAT included",
+      "taxExcluded": "without VAT",
+      "taxUnknown": "not stated",
+      "taxTitle": "What changed",
+      "taxBody": "This supplier's prices used to come {previous}; this list comes {current}. If you accept it, the list is processed with the new basis.",
+      "taxApprove": "Accept and process the list",
+      "discardList": "Discard the list",
+      "suspiciousTitle": "Why it was stopped",
+      "suspiciousBody": "The message includes instructions aimed at the system (for example, changing rules or prices in general). Nothing was applied. Read the original message: if it is a legitimate list, you can process it anyway.",
+      "suspiciousApprove": "Process anyway",
+      "discard": "Discard",
+      "failedTitle": "What happened",
+      "failedBody": "It could not be read automatically. If you retry, the list goes back to the queue; if you discard it, nothing happens.",
+      "failedBodyDetail": "It could not be read automatically ({detail}). If you retry, the list goes back to the queue; if you discard it, nothing happens.",
+      "retry": "Retry"
+    },
+    "supplier": {
+      "title": "Which supplier is the list from?",
+      "documentSays": "The document says:",
+      "label": "Supplier",
+      "otherExisting": "Another existing supplier",
+      "isNew": "It's a new supplier",
+      "choose": "Choose the supplier",
+      "newName": "Supplier name",
+      "approve": "Assign and process",
+      "nameRequired": "Enter the supplier's name.",
+      "pickOne": "Choose a supplier."
+    },
+    "columns": {
+      "suspicious": "The spreadsheet has text that tries to give orders to the system. Check it before approving.",
+      "notes": "Reading notes",
+      "approve": "Use this column",
+      "reject": "Discard the spreadsheet",
+      "sheetQuestion": "Sheet \"{sheet}\": which price goes into the catalog?",
+      "sheetLabel": "Price column of the sheet {sheet}",
+      "columnN": "Column {n}",
+      "suggested": "Suggested",
+      "withVat": "with VAT",
+      "withoutVat": "without VAT",
+      "remembered": "It is remembered for this supplier's next spreadsheets with the same format: those are read without AI and without review.",
+      "kinds": {
+        "list": "List price",
+        "wholesale": "Wholesale",
+        "cash": "Cash",
+        "card": "Card",
+        "cost": "Cost",
+        "other": "Other price"
+      }
+    }
+  },
+  "rules": {
+    "description": "How the system behaves, without touching code. Changes apply instantly and are recorded.",
+    "readOnly": "You can see the rules; changing them is for administrators only.",
+    "saved": "Saved.",
+    "invalidValue": "The value is not valid: {detail}",
+    "saveFailed": "Could not save.",
+    "noChanges": "There are no changes to save.",
+    "saving": "Saving…",
+    "saveSection": "Save \"{section}\"",
+    "useHours": "Use business hours",
+    "daysAndHours": "Days and hours",
+    "opens": "{day}: opens",
+    "closes": "{day}: closes",
+    "to": "to",
+    "closed": "Closed",
+    "sections": {
+      "bot": {
+        "title": "Automatic replies",
+        "description": "What the system answers on its own, without a person stepping in."
+      },
+      "hours": {
+        "title": "Business hours",
+        "description": "Outside business hours, non-urgent WhatsApp summaries wait until opening time and the panel shows \"outside business hours\". Critical alerts go out anyway."
+      },
+      "prices": {
+        "title": "Prices",
+        "description": "When a price change applies on its own, when it alerts and when it asks for a review."
+      },
+      "team": {
+        "title": "WhatsApp alerts to the team",
+        "description": "Few messages, and only with what needs action."
+      },
+      "contacts": {
+        "title": "Voice notes and opt-outs",
+        "description": "Voice note transcription and requests to stop receiving messages."
+      }
+    },
+    "fields": {
+      "bot_autoRepliesEnabled": {
+        "label": "The bot replies to contacts",
+        "help": "When off, it replies to nobody (as if every chat were handled by a person). Lists are still processed and the team still gets alerts."
+      },
+      "bot_supplierAck": {
+        "label": "Confirm to suppliers that we received their list",
+        "help": "Sends a \"We received your list\" message with a summary of what was applied."
+      },
+      "coexistence_humanTakeoverMinutes": {
+        "label": "When a person replies, the bot pauses",
+        "help": "In that chat, for this long after the person's last message.",
+        "suffix": "minutes"
+      },
+      "businessHours": {
+        "label": "Days and hours",
+        "help": "Uruguay time. If closing is earlier than opening, the hours continue into the next day."
+      },
+      "catalog_priceAlertPct": {
+        "label": "Alert when a price changes",
+        "help": "It still applies, but an alert is created and it goes into the team summary.",
+        "suffix": "% or more"
+      },
+      "catalog_maxIncreasePct": {
+        "label": "Increases above this go to review",
+        "help": "They are not applied until a person approves them.",
+        "suffix": "%"
+      },
+      "catalog_maxDecreasePct": {
+        "label": "Decreases above this go to review",
+        "help": "A very large decrease is usually a typo.",
+        "suffix": "%"
+      },
+      "catalog_lowStockThreshold": {
+        "label": "Alert on low stock",
+        "help": "When the supplier reports this stock or less. Empty = no alert.",
+        "suffix": "units or fewer"
+      },
+      "catalog_autoCreateProducts": {
+        "label": "Create new products automatically",
+        "help": "When the AI is sure it is a new product. When off, every new product goes through review."
+      },
+      "catalog_reactivateOnQuote": {
+        "label": "Reactivate products when they are quoted again",
+        "help": "An unavailable product becomes available again if it arrives on a list."
+      },
+      "notifications_whatsappRecipients": {
+        "label": "Numbers that receive the summaries",
+        "help": "With country code, without + or spaces (for example 59899123456). Up to 10. They must have written to the company number before."
+      },
+      "notifications_digestWindowMinutes": {
+        "label": "Group alerts over",
+        "help": "Everything that happens in that time arrives in a single message.",
+        "suffix": "minutes"
+      },
+      "notifications_maxPerHour": {
+        "label": "Maximum summaries per hour",
+        "help": "Anything above it joins the next one.",
+        "suffix": "per person"
+      },
+      "notifications_criticalMaxPerHour": {
+        "label": "Maximum critical alerts per hour",
+        "help": "Serious errors don't wait for the grouping, up to this limit.",
+        "suffix": "per person"
+      },
+      "transcription_maxAutoDurationSeconds": {
+        "label": "Transcribe voice notes up to",
+        "help": "Longer ones are left to be listened to by hand (with an alert).",
+        "suffix": "seconds"
+      },
+      "optOut_keywords": {
+        "label": "Words to opt out",
+        "help": "If the message is only one of these (ignoring case and accents). Separate them with commas."
+      },
+      "optIn_keywords": {
+        "label": "Words to opt back in",
+        "help": "Separate them with commas."
+      },
+      "optOut_instructionReminderDays": {
+        "label": "Remind how to opt out every",
+        "help": "It is added to the first automatic message and then at most this often.",
+        "suffix": "days"
+      }
+    }
+  },
+  "contactKinds": {
+    "supplier": "Supplier",
+    "customer": "Customer",
+    "internal": "Team",
+    "unknown": "Unclassified"
+  },
+  "conversations": {
+    "description": "Who wrote, who is answering them and what is still pending.",
+    "optedOutLink": "Opted out",
+    "search": "Search by name, supplier or phone",
+    "filter": "Filter",
+    "filters": {
+      "all": "All",
+      "human": "A person is handling it",
+      "suppliers": "Suppliers",
+      "customers": "Customers",
+      "opted_out": "Opted out"
+    },
+    "noMatches": "Nothing matches the search",
+    "noMatchesHint": "Try another part of the name or the number.",
+    "empty": "No conversations here",
+    "listLabel": "Conversations",
+    "loadMore": "Show more",
+    "botPrefix": "Bot: ",
+    "youPrefix": "You: ",
+    "contactFallback": "Contact",
+    "back": "Conversations",
+    "backTo": "Back to Conversations",
+    "loadingMessages": "Loading messages…",
+    "messagesLabel": "Messages",
+    "olderMessages": "Show earlier messages",
+    "noMessages": "No messages yet.",
+    "who": {
+      "bot": "The bot answers",
+      "human": "A person is handling it",
+      "opted_out": "Opted out"
+    },
+    "humanUntil": "until {time}",
+    "humanUntilResumed": "until you reactivate it",
+    "types": {
+      "image": "📷 Photo",
+      "audio": "🎤 Voice note",
+      "document": "📄 Document",
+      "video": "🎬 Video",
+      "sticker": "Sticker",
+      "location": "📍 Location",
+      "contacts": "👤 Contact",
+      "reaction": "Reaction",
+      "other": "Message"
+    },
+    "author": {
+      "compliance": "Automatic confirmation",
+      "bot": "Bot",
+      "phone": "Person (from the phone)"
+    },
+    "status": {
+      "pending": "Sending…",
+      "sent": "Sent",
+      "delivered": "Delivered",
+      "read": "Read",
+      "failed": "Could not be sent",
+      "canceled": "Canceled (a person was handling it)"
+    },
+    "deleted": "Message deleted",
+    "transcript": "Transcript",
+    "edited": "edited · ",
+    "media": {
+      "unavailable": {
+        "pending": "Downloading from WhatsApp…",
+        "skipped": "This type of file is not downloaded",
+        "rejected": "File rejected (type or size not allowed)",
+        "failed": "Could not be downloaded from WhatsApp",
+        "other": "File not available"
+      },
+      "photoAlt": "Photo: {name}",
+      "photoAltGeneric": "Photo sent over WhatsApp",
+      "photoFailed": "Could not load the photo.",
+      "loadingPhoto": "Loading photo",
+      "listen": "Play voice note",
+      "audioFailed": "Could not load the voice note.",
+      "loadingAudio": "Loading voice note…",
+      "audioLabel": "Voice note of the message",
+      "cantHear": "Can't hear it? Download it",
+      "document": "Document",
+      "open": "Open",
+      "downloading": "Downloading…",
+      "download": "Download",
+      "downloadFailed": "Could not download."
+    },
+    "actions": {
+      "paused": "Bot paused: you are handling it now.",
+      "resumed": "The bot answers again.",
+      "resume": "Reactivate the bot",
+      "pause": "Pause the bot",
+      "more": "More actions",
+      "optInAction": "Record opt-in (receives messages again)",
+      "optInAdminOnly": "Recording an opt-in is for administrators only",
+      "optOutAction": "Record opt-out (send no more messages)",
+      "pauseTitle": "Pause the bot in this chat",
+      "pauseBody": "While it is paused, the bot doesn't answer them. Price lists are still processed and the team still gets alerts.",
+      "duration": "Duration",
+      "pause30": "30 minutes",
+      "pause120": "2 hours",
+      "pause480": "8 hours",
+      "pauseNone": "Until I reactivate it",
+      "cancel": "Cancel",
+      "pauseConfirm": "Pause",
+      "optOutDone": "Opt-out recorded: no more messages are sent to them.",
+      "optInDone": "Opt-in recorded.",
+      "optOutTitle": "Record opt-out",
+      "optInTitle": "Record opt-in",
+      "optOutBody": "The system stops sending them automatic messages, templates and alerts. If they write to you, a person can still answer.",
+      "optInBody": "Only if the contact asked to receive messages again (for example, by phone). Who did it and why is recorded.",
+      "howAsked": "How they asked",
+      "offWhatsapp": "They asked outside WhatsApp",
+      "otherReason": "Another reason",
+      "reason": "Reason (required)",
+      "optOutPlaceholder": "E.g.: they called and asked us not to write",
+      "optInPlaceholder": "E.g.: they asked by email on 9/27",
+      "confirm": "Confirm"
+    },
+    "errors": {
+      "windowClosed": "More than 24 h have passed since their last message: WhatsApp only allows approved templates.",
+      "optedOut": "This contact asked not to receive messages.",
+      "forbidden": "This action is for administrators only.",
+      "invalid": "Check the details.",
+      "withCode": "Could not be completed (code {requestId}).",
+      "noCode": "Could not be completed.",
+      "generic": "Could not be completed. Try again."
+    },
+    "composer": {
+      "sent": "Sent. The bot stays paused in this chat.",
+      "windowClosed": "More than 24 h have passed since their last message ({when}): WhatsApp doesn't let you write to them until they write again.",
+      "neverWrote": "This contact never wrote: WhatsApp doesn't allow starting the conversation without an approved template.",
+      "optedOutWarning": "They asked not to receive messages. Reply only if it is needed for what they asked you.",
+      "label": "Your reply",
+      "placeholder": "Write your reply…",
+      "send": "Send",
+      "hint": "It is sent over WhatsApp as the company. When you reply, the bot pauses in this chat."
+    },
+    "optedOut": {
+      "description": "They asked not to receive messages: the system sends them nothing automatic. If they write, a person can answer them.",
+      "empty": "Nobody has opted out",
+      "listLabel": "Opted-out contacts",
+      "recorded": "Opt-out recorded",
+      "keyword": "Wrote \"{keyword}\"",
+      "offWhatsapp": "Asked outside WhatsApp (recorded)",
+      "offWhatsappBy": "Asked outside WhatsApp (recorded by {by})",
+      "manual": "Recorded by hand",
+      "manualBy": "Recorded by hand by {by}"
+    }
+  },
+  "catalog": {
+    "description": "Each supplier's products with the last price they sent. It updates on its own.",
+    "supplier": "Supplier",
+    "allSuppliers": "All suppliers",
+    "search": "Search product",
+    "availability": "Availability",
+    "availabilityOptions": {
+      "all": "All",
+      "available": "Available",
+      "unavailable": "Unavailable"
+    },
+    "availableOf": "{available} of {total} available",
+    "lastList": " · last list {when}",
+    "taxIncluded": " · prices with VAT",
+    "taxExcluded": " · prices without VAT",
+    "rename": "Rename",
+    "noMatches": "No product matches",
+    "empty": "No products here",
+    "listLabel": "Products",
+    "loadMore": "Show more",
+    "stock": "stock {count}",
+    "unavailable": "Unavailable",
+    "currencyChanged": "Currency changed",
+    "back": "Catalog",
+    "backTo": "Back to the Catalog",
+    "priceSeries": "Price",
+    "sku": "code {sku}",
+    "withVat": "with VAT",
+    "withoutVat": "without VAT",
+    "available": "Available",
+    "stockBadge": "Stock {count}",
+    "history": "Price history",
+    "noHistory": "No price changes to chart yet.",
+    "changesLabel": "Price changes",
+    "initialPrice": "Initial price ",
+    "fromReview": "approved in review",
+    "automatic": "automatic",
+    "viewMessage": "View the message that changed it",
+    "message": "Message",
+    "renameTitle": "Rename supplier",
+    "renameBody": "For example, when it was created with the WhatsApp name and the company is called something else. The next lists that state this name are assigned to this supplier. It is recorded.",
+    "name": "Name",
+    "cancel": "Cancel",
+    "save": "Save",
+    "renamed": "Supplier renamed.",
+    "sameName": "It already had that name.",
+    "nameTaken": "Another supplier already has that name. (Merging suppliers comes later.)",
+    "renameFailed": "Could not rename."
+  },
+  "alerts": {
+    "description": "What is worth looking at: large increases, low stock, errors. Mark them as seen when you resolve them.",
+    "status": "Status",
+    "unseen": "Unseen",
+    "unseenCount": "Unseen ({count})",
+    "all": "All",
+    "emptyUnseen": "No unseen alerts",
+    "empty": "No alerts",
+    "listLabel": "Alerts",
+    "viewProduct": "View product",
+    "viewConversation": "View conversation",
+    "markSeen": "Mark as seen: {title}",
+    "seen": "Seen",
+    "ackFailed": "Could not mark it as seen.",
+    "types": {
+      "price_change": "Price change",
+      "low_stock": "Low stock",
+      "missing_data": "Missing data",
+      "ingestion_error": "Processing error",
+      "manual_attention": "Check by hand",
+      "integration_error": "Integration",
+      "possible_opt_out": "Did they opt out?"
+    },
+    "severity": {
+      "critical": "Critical",
+      "warning": "Important",
+      "info": "Informational"
+    }
+  },
+  "users": {
+    "description": "Who signs in to the panel and what they can do. There is always at least one active administrator.",
+    "newUser": "New user",
+    "listLabel": "Users",
+    "roles": {
+      "admin": "Administrator",
+      "operator": "Operator"
+    },
+    "you": "You",
+    "deactivated": "Deactivated",
+    "locked": "Locked",
+    "lastLogin": "signed in {when}",
+    "neverLoggedIn": "never signed in",
+    "actionsFor": "Actions for {name}",
+    "ownRoleHint": "Another administrator changes your role",
+    "changeToAdmin": "Change to administrator",
+    "changeToOperator": "Change to operator",
+    "deactivate": "Deactivate",
+    "reactivate": "Reactivate",
+    "newPassword": "New password",
+    "unlock": "Unlock",
+    "revokeSessions": "Close their sessions",
+    "updated": "User updated. Their open sessions were closed.",
+    "unlocked": "Account unlocked.",
+    "sessionsClosed": "Sessions closed.",
+    "created": "User created.",
+    "passwordChanged": "Password changed. Their open sessions were closed.",
+    "password": "Password",
+    "passwordHelp": "At least 15 characters. A phrase of several words is best (for example, “afternoon coffee at the hardware store”). Give it to the person through a secure channel.",
+    "createTitle": "New user",
+    "createBody": "An operator resolves products and conversations; an administrator also handles rules, whole lists and users.",
+    "name": "Name",
+    "email": "Email",
+    "role": "Role",
+    "cancel": "Cancel",
+    "create": "Create",
+    "resetTitle": "New password for {name}",
+    "resetBody": "All their open sessions are closed: they will have to sign in again.",
+    "changePassword": "Change password",
+    "errors": {
+      "lastAdmin": "The system cannot be left without an active administrator. Make someone else an administrator first.",
+      "emailTaken": "There is already a user with that email.",
+      "ownRole": "You can't change your own role or deactivate yourself: another administrator has to do it.",
+      "invalid": "Check the details.",
+      "withCode": "Could not be completed (code {requestId}).",
+      "noCode": "Could not be completed.",
+      "generic": "Could not be completed. Try again."
+    }
+  },
+  "demo": {
+    "onlyInDemo": "This page only exists in the public demo",
+    "onlyInDemoHint": "In a real installation, messages arrive over WhatsApp.",
+    "description": "Send sample messages as if you were a supplier. They go through the real system (no WhatsApp and no cost) and you see every step live.",
+    "reset": "Reset demo",
+    "autoReset": "The sample data resets itself at {time}.",
+    "send": "Send",
+    "sending": "Sending…",
+    "sentLabel": "Sample messages sent",
+    "resetTitle": "Reset the demo?",
+    "resetBody": "The original sample data comes back: the tests and reviews you made are deleted. Your session stays open.",
+    "cancel": "Cancel",
+    "resetting": "Resetting…",
+    "resetConfirm": "Reset",
+    "stepsOf": "Steps: {title}",
+    "stepStates": {
+      "done": "(done)",
+      "active": "(in progress)",
+      "held": "(stopped for review)",
+      "failed": "(failed)",
+      "waiting": "(pending)"
+    },
+    "samples": {
+      "foto": {
+        "title": "Send a photo of a price list",
+        "short": "Photo of a price list",
+        "detail": "A photo of a printed list: the AI reads the prices and compares them with the catalog."
+      },
+      "pdf": {
+        "title": "Send a supplier PDF",
+        "short": "Supplier PDF",
+        "detail": "A supplier's full list as a PDF."
+      },
+      "audio": {
+        "title": "Send a supplier voice note",
+        "short": "Supplier voice note",
+        "detail": "A voice note: it is transcribed and the price is extracted (if in doubt, it goes to review)."
+      },
+      "planilla": {
+        "title": "Send a known spreadsheet",
+        "short": "Known spreadsheet",
+        "detail": "An Excel file in an already approved format: it is read without AI and at no cost."
+      },
+      "planilla_nueva": {
+        "title": "Send a new spreadsheet",
+        "short": "New spreadsheet",
+        "detail": "An Excel file in a format the system doesn't know: a person chooses the price column."
+      },
+      "injection": {
+        "title": "Send a prompt-injection message",
+        "short": "Prompt-injection message",
+        "detail": "A message that tries to give orders to the AI: it is stopped and doesn't touch the catalog."
+      }
+    },
+    "steps": {
+      "received": "Arrived over WhatsApp (simulated, signed like Meta)",
+      "downloaded": "File downloaded and verified",
+      "transcribed": "Voice note transcribed",
+      "sheetRead": "Spreadsheet read",
+      "classified": "Classified",
+      "extracted": "Extracted and checked against the rules",
+      "held": "Stopped for review"
+    },
+    "outcomes": {
+      "suspicious": "Stopped for review: the message tries to give orders to the system. The catalog was not touched.",
+      "newFormat": "Spreadsheet in a new format: choose which price column to use.",
+      "review": "It is in Reviews for a person to decide.",
+      "updated": "Catalog up to date: {summary}.",
+      "noChanges": "Processed: there were no price changes.",
+      "failed": "Could not be processed.",
+      "prices": "{count, plural, one {# price updated} other {# prices updated}}",
+      "created": "{count, plural, one {# new product} other {# new products}}",
+      "reviews": "{count, plural, one {# line to review} other {# lines to review}}"
+    },
+    "links": {
+      "viewReviews": "View in Reviews",
+      "pickColumn": "Choose the column",
+      "viewCatalog": "View the catalog",
+      "viewConversation": "View the conversation"
+    },
+    "toast": {
+      "tooMany": "Many tests in a row: wait a few minutes.",
+      "injectFailed": "Could not send the sample message.",
+      "resetDone": "Demo reset: sample data as it was at the start.",
+      "recentlyReset": "{ago, plural, =0 {The demo was reset a moment ago.} other {The demo was reset # min ago.}} You can reset it again in {wait} min.",
+      "resetTooSoon": "It was reset recently: try again in a few minutes.",
+      "resetFailed": "Could not reset the demo."
+    }
+  },
+  "digest": {
+    "opening": "Opening the summary…",
+    "goHome": "Go home",
+    "title": "WhatsApp summary",
+    "description": "Sent {when}. Tap each item to resolve it.",
+    "itemsLabel": "Summary items"
   }
 }

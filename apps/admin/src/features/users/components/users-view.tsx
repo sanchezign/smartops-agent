@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, LogOut, MoreVertical, Unlock, UserPlus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
@@ -29,8 +30,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { api } from "@/features/auth/api";
 import { useAuthStore } from "@/features/auth/store";
 import { useApiQuery } from "@/hooks/use-api";
-import { formatRelative } from "@/lib/format";
-import { userErrorMessage } from "../errors";
+import { useFormat } from "@/lib/use-format";
+import { userErrorKey } from "../errors";
 
 export interface PanelUser {
   id: string;
@@ -43,13 +44,14 @@ export interface PanelUser {
   lockedUntil: string | null;
 }
 
-const ROLE_LABEL = { admin: "Administrador", operator: "Operador" } as const;
+const ROLES = ["operator", "admin"] as const;
 
 function useUserAction<T>(
   build: (input: T) => { path: string; method?: string; body?: unknown },
   success: string,
 ) {
   const queryClient = useQueryClient();
+  const t = useTranslations("users.errors");
   return useMutation({
     mutationFn: (input: T) => {
       const { path, method = "POST", body } = build(input);
@@ -59,7 +61,10 @@ function useUserAction<T>(
       });
     },
     onSuccess: () => toast.success(success),
-    onError: (error) => toast.error(userErrorMessage(error)),
+    onError: (error) => {
+      const { key, params, details } = userErrorKey(error);
+      toast.error(details?.length ? details.join(" ") : t(key, params));
+    },
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ["users"] }),
   });
 }
@@ -71,16 +76,18 @@ export function UsersView() {
   });
   const [creating, setCreating] = useState(false);
   const [resetting, setResetting] = useState<PanelUser | null>(null);
+  const t = useTranslations("users");
+  const tPages = useTranslations("pages");
 
   if (me?.role !== "admin") return <ForbiddenState />;
   return (
     <>
       <PageHeader
-        title="Usuarios"
-        description="Quién entra al panel y qué puede hacer. Siempre queda al menos un administrador activo."
+        title={tPages("users")}
+        description={t("description")}
         actions={
           <Button className="min-h-11" onClick={() => setCreating(true)}>
-            <UserPlus aria-hidden /> Nuevo usuario
+            <UserPlus aria-hidden /> {t("newUser")}
           </Button>
         }
       />
@@ -89,7 +96,10 @@ export function UsersView() {
       ) : query.isError ? (
         <ErrorState error={query.error} onRetry={() => void query.refetch()} />
       ) : (
-        <ul className="flex flex-col divide-y rounded-xl border bg-card" aria-label="Usuarios">
+        <ul
+          className="flex flex-col divide-y rounded-xl border bg-card"
+          aria-label={t("listLabel")}
+        >
           {query.data.users.map((u) => (
             <li key={u.id}>
               <UserRow user={u} isMe={u.id === me.id} onReset={() => setResetting(u)} />
@@ -107,18 +117,20 @@ export function UsersView() {
 
 function UserRow({ user, isMe, onReset }: { user: PanelUser; isMe: boolean; onReset(): void }) {
   const locked = user.lockedUntil !== null && new Date(user.lockedUntil) > new Date();
+  const t = useTranslations("users");
+  const { formatRelative } = useFormat();
   const patch = useUserAction(
     (body: { role?: PanelUser["role"]; active?: boolean }) => ({
       path: `/${user.id}`,
       method: "PATCH",
       body,
     }),
-    "Usuario actualizado. Sus sesiones abiertas se cerraron.",
+    t("updated"),
   );
-  const unlock = useUserAction(() => ({ path: `/${user.id}/unlock` }), "Cuenta desbloqueada.");
+  const unlock = useUserAction(() => ({ path: `/${user.id}/unlock` }), t("unlocked"));
   const revoke = useUserAction(
     () => ({ path: `/${user.id}/revoke-sessions` }),
-    "Sesiones cerradas.",
+    t("sessionsClosed"),
   );
   const otherRole = user.role === "admin" ? "operator" : "admin";
 
@@ -127,16 +139,18 @@ function UserRow({ user, isMe, onReset }: { user: PanelUser; isMe: boolean; onRe
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="flex flex-wrap items-center gap-2">
           <span className="truncate font-medium">{user.name}</span>
-          {isMe ? <Badge variant="outline">Vos</Badge> : null}
+          {isMe ? <Badge variant="outline">{t("you")}</Badge> : null}
           <Badge variant={user.role === "admin" ? "default" : "secondary"}>
-            {ROLE_LABEL[user.role]}
+            {t(`roles.${user.role}`)}
           </Badge>
-          {!user.active ? <Badge variant="outline">Desactivado</Badge> : null}
-          {locked ? <Badge variant="destructive">Bloqueado</Badge> : null}
+          {!user.active ? <Badge variant="outline">{t("deactivated")}</Badge> : null}
+          {locked ? <Badge variant="destructive">{t("locked")}</Badge> : null}
         </span>
         <span className="truncate text-sm text-muted-foreground">
           {user.email} ·{" "}
-          {user.lastLoginAt ? `entró ${formatRelative(user.lastLoginAt)}` : "nunca entró"}
+          {user.lastLoginAt
+            ? t("lastLogin", { when: formatRelative(user.lastLoginAt) })
+            : t("neverLoggedIn")}
         </span>
       </div>
       <DropdownMenu>
@@ -145,36 +159,36 @@ function UserRow({ user, isMe, onReset }: { user: PanelUser; isMe: boolean; onRe
             variant="outline"
             size="icon"
             className="size-11"
-            aria-label={`Acciones para ${user.name}`}
+            aria-label={t("actionsFor", { name: user.name })}
           >
             <MoreVertical aria-hidden />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {isMe ? (
-            <DropdownMenuItem disabled>Tu rol lo cambia otro administrador</DropdownMenuItem>
+            <DropdownMenuItem disabled>{t("ownRoleHint")}</DropdownMenuItem>
           ) : (
             <>
               <DropdownMenuItem onSelect={() => patch.mutate({ role: otherRole })}>
-                Cambiar a {ROLE_LABEL[otherRole].toLowerCase()}
+                {otherRole === "admin" ? t("changeToAdmin") : t("changeToOperator")}
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => patch.mutate({ active: !user.active })}>
-                {user.active ? "Desactivar" : "Reactivar"}
+                {user.active ? t("deactivate") : t("reactivate")}
               </DropdownMenuItem>
             </>
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={onReset}>
-            <KeyRound aria-hidden /> Nueva contraseña
+            <KeyRound aria-hidden /> {t("newPassword")}
           </DropdownMenuItem>
           {locked ? (
             <DropdownMenuItem onSelect={() => unlock.mutate(undefined)}>
-              <Unlock aria-hidden /> Desbloquear
+              <Unlock aria-hidden /> {t("unlock")}
             </DropdownMenuItem>
           ) : null}
           {!isMe ? (
             <DropdownMenuItem onSelect={() => revoke.mutate(undefined)}>
-              <LogOut aria-hidden /> Cerrar sus sesiones
+              <LogOut aria-hidden /> {t("revokeSessions")}
             </DropdownMenuItem>
           ) : null}
         </DropdownMenuContent>
@@ -192,9 +206,10 @@ function PasswordField({
   value: string;
   onChange(v: string): void;
 }) {
+  const t = useTranslations("users");
   return (
     <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>Contraseña</Label>
+      <Label htmlFor={id}>{t("password")}</Label>
       <Input
         id={id}
         type="password"
@@ -204,8 +219,7 @@ function PasswordField({
         aria-describedby={`${id}-help`}
       />
       <p id={`${id}-help`} className="text-xs text-muted-foreground">
-        Mínimo 15 caracteres. Una frase de varias palabras es lo mejor (por ejemplo, &ldquo;el mate
-        de la tarde en la ferretería&rdquo;). Pasásela a la persona por un canal seguro.
+        {t("passwordHelp")}
       </p>
     </div>
   );
@@ -219,16 +233,14 @@ function CreateUserDialog({ onClose }: { onClose(): void }) {
     password: "",
   });
   const ids = { name: useId(), email: useId(), password: useId() };
-  const create = useUserAction(() => ({ path: "", body: form }), "Usuario creado.");
+  const t = useTranslations("users");
+  const create = useUserAction(() => ({ path: "", body: form }), t("created"));
   return (
     <Dialog open onOpenChange={(open) => (open ? null : onClose())}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nuevo usuario</DialogTitle>
-          <DialogDescription>
-            Un operador resuelve productos y conversaciones; un administrador, además, reglas,
-            listas enteras y usuarios.
-          </DialogDescription>
+          <DialogTitle>{t("createTitle")}</DialogTitle>
+          <DialogDescription>{t("createBody")}</DialogDescription>
         </DialogHeader>
         <form
           id="create-user"
@@ -239,7 +251,7 @@ function CreateUserDialog({ onClose }: { onClose(): void }) {
           }}
         >
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={ids.name}>Nombre</Label>
+            <Label htmlFor={ids.name}>{t("name")}</Label>
             <Input
               id={ids.name}
               value={form.name}
@@ -247,7 +259,7 @@ function CreateUserDialog({ onClose }: { onClose(): void }) {
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={ids.email}>Email</Label>
+            <Label htmlFor={ids.email}>{t("email")}</Label>
             <Input
               id={ids.email}
               type="email"
@@ -259,12 +271,12 @@ function CreateUserDialog({ onClose }: { onClose(): void }) {
           <RadioGroup
             value={form.role}
             onValueChange={(role) => setForm({ ...form, role: role as PanelUser["role"] })}
-            aria-label="Rol"
+            aria-label={t("role")}
             className="flex gap-4"
           >
-            {(["operator", "admin"] as const).map((r) => (
+            {ROLES.map((r) => (
               <Label key={r} className="flex min-h-11 items-center gap-2">
-                <RadioGroupItem value={r} /> {ROLE_LABEL[r]}
+                <RadioGroupItem value={r} /> {t(`roles.${r}`)}
               </Label>
             ))}
           </RadioGroup>
@@ -276,10 +288,10 @@ function CreateUserDialog({ onClose }: { onClose(): void }) {
         </form>
         <DialogFooter>
           <Button variant="outline" className="min-h-11" onClick={onClose}>
-            Cancelar
+            {t("cancel")}
           </Button>
           <Button type="submit" form="create-user" className="min-h-11" disabled={create.isPending}>
-            Crear
+            {t("create")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -290,18 +302,17 @@ function CreateUserDialog({ onClose }: { onClose(): void }) {
 function ResetPasswordDialog({ user, onClose }: { user: PanelUser; onClose(): void }) {
   const [password, setPassword] = useState("");
   const id = useId();
+  const t = useTranslations("users");
   const reset = useUserAction(
     () => ({ path: `/${user.id}/reset-password`, body: { password } }),
-    "Contraseña cambiada. Sus sesiones abiertas se cerraron.",
+    t("passwordChanged"),
   );
   return (
     <Dialog open onOpenChange={(open) => (open ? null : onClose())}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nueva contraseña para {user.name}</DialogTitle>
-          <DialogDescription>
-            Se cierran todas sus sesiones abiertas: va a tener que entrar de nuevo.
-          </DialogDescription>
+          <DialogTitle>{t("resetTitle", { name: user.name })}</DialogTitle>
+          <DialogDescription>{t("resetBody")}</DialogDescription>
         </DialogHeader>
         <form
           id="reset-password"
@@ -314,7 +325,7 @@ function ResetPasswordDialog({ user, onClose }: { user: PanelUser; onClose(): vo
         </form>
         <DialogFooter>
           <Button variant="outline" className="min-h-11" onClick={onClose}>
-            Cancelar
+            {t("cancel")}
           </Button>
           <Button
             type="submit"
@@ -322,7 +333,7 @@ function ResetPasswordDialog({ user, onClose }: { user: PanelUser; onClose(): vo
             className="min-h-11"
             disabled={reset.isPending}
           >
-            Cambiar contraseña
+            {t("changePassword")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -16,6 +16,7 @@ import {
   Table2,
 } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, LoadingState } from "@/components/states";
@@ -29,49 +30,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { formatDateTime, formatTime } from "@/lib/format";
+import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
 import { useDemoInfo, useInject, useResetDemo, useTrace } from "../hooks";
 import { timeline, type DemoSampleKind } from "../trace";
 
-const SAMPLES: { kind: DemoSampleKind; title: string; detail: string; icon: typeof Mic }[] = [
-  {
-    kind: "foto",
-    title: "Enviar foto de lista de precios",
-    detail: "Una foto de una lista impresa: la IA lee los precios y los compara con el catálogo.",
-    icon: ImageIcon,
-  },
-  {
-    kind: "pdf",
-    title: "Enviar PDF de proveedor",
-    detail: "La lista completa de un proveedor en PDF.",
-    icon: FileText,
-  },
-  {
-    kind: "audio",
-    title: "Enviar audio de proveedor",
-    detail: "Una nota de voz: se transcribe y se extrae el precio (si hay dudas, va a revisión).",
-    icon: Mic,
-  },
-  {
-    kind: "planilla",
-    title: "Enviar planilla conocida",
-    detail: "Un Excel con un formato ya aprobado: se lee sin IA y sin costo.",
-    icon: FileSpreadsheet,
-  },
-  {
-    kind: "planilla_nueva",
-    title: "Enviar planilla nueva",
-    detail:
-      "Un Excel con un formato que el sistema no conoce: una persona elige la columna de precio.",
-    icon: Table2,
-  },
-  {
-    kind: "injection",
-    title: "Enviar mensaje con prompt injection",
-    detail: "Un mensaje que intenta darle órdenes a la IA: se frena y no toca el catálogo.",
-    icon: ShieldAlert,
-  },
+/** The six samples (texts in "demo.samples.<kind>"). */
+const SAMPLES: { kind: DemoSampleKind; icon: typeof Mic }[] = [
+  { kind: "foto", icon: ImageIcon },
+  { kind: "pdf", icon: FileText },
+  { kind: "audio", icon: Mic },
+  { kind: "planilla", icon: FileSpreadsheet },
+  { kind: "planilla_nueva", icon: Table2 },
+  { kind: "injection", icon: ShieldAlert },
 ];
 
 interface Sent {
@@ -84,6 +55,9 @@ export function TryView() {
   const info = useDemoInfo();
   const [sent, setSent] = useState<Sent[]>([]);
   const [confirmReset, setConfirmReset] = useState(false);
+  const t = useTranslations("demo");
+  const tPages = useTranslations("pages");
+  const { formatTime } = useFormat();
   const inject = useInject((kind, wamid) =>
     setSent((s) => [{ kind, wamid, at: new Date().toISOString() }, ...s].slice(0, 10)),
   );
@@ -93,55 +67,49 @@ export function TryView() {
   });
 
   if (info.isPending) return <LoadingState rows={3} />;
-  if (!info.data)
-    return (
-      <EmptyState
-        title="Esta página existe solo en la demo pública"
-        description="En una instalación real los mensajes llegan por WhatsApp."
-      />
-    );
+  if (!info.data) return <EmptyState title={t("onlyInDemo")} description={t("onlyInDemoHint")} />;
 
   return (
     <>
       <PageHeader
-        title="Probar el sistema"
-        description="Mandá mensajes de ejemplo como si fueras un proveedor. Recorren el sistema real (sin WhatsApp y sin costo) y ves cada paso en vivo."
+        title={tPages("try")}
+        description={t("description")}
         actions={
           <Button variant="outline" className="min-h-11" onClick={() => setConfirmReset(true)}>
-            <RotateCcw aria-hidden /> Reiniciar demo
+            <RotateCcw aria-hidden /> {t("reset")}
           </Button>
         }
       />
       {info.data.nextResetAt ? (
         <p className="mb-4 text-sm text-muted-foreground">
-          Los datos de ejemplo se reinician solos a las {formatTime(info.data.nextResetAt)}.
+          {t("autoReset", { time: formatTime(info.data.nextResetAt) })}
         </p>
       ) : null}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {SAMPLES.map(({ kind, title, detail, icon: Icon }) => (
+        {SAMPLES.map(({ kind, icon: Icon }) => (
           <Card key={kind} className="flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-start gap-2 text-base">
                 <Icon className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
-                <h2>{title}</h2>
+                <h2>{t(`samples.${kind}.title`)}</h2>
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col justify-between gap-3">
-              <p className="text-sm text-muted-foreground">{detail}</p>
+              <p className="text-sm text-muted-foreground">{t(`samples.${kind}.detail`)}</p>
               <Button
                 className="min-h-11 w-full"
                 disabled={inject.isPending}
                 onClick={() => inject.mutate(kind)}
-                aria-label={title}
+                aria-label={t(`samples.${kind}.title`)}
               >
-                {inject.isPending && inject.variables === kind ? "Enviando…" : "Enviar"}
+                {inject.isPending && inject.variables === kind ? t("sending") : t("send")}
               </Button>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <section aria-label="Mensajes de prueba enviados" className="mt-6 flex flex-col gap-3">
+      <section aria-label={t("sentLabel")} className="mt-6 flex flex-col gap-3">
         {sent.map((s) => (
           <TraceCard key={s.wamid} sent={s} />
         ))}
@@ -150,18 +118,15 @@ export function TryView() {
       <Dialog open={confirmReset} onOpenChange={setConfirmReset}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>¿Reiniciar la demo?</DialogTitle>
-            <DialogDescription>
-              Vuelven los datos de ejemplo del principio: se borran las pruebas y revisiones que
-              hiciste. Tu sesión sigue abierta.
-            </DialogDescription>
+            <DialogTitle>{t("resetTitle")}</DialogTitle>
+            <DialogDescription>{t("resetBody")}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" className="min-h-11" onClick={() => setConfirmReset(false)}>
-              Cancelar
+              {t("cancel")}
             </Button>
             <Button className="min-h-11" disabled={reset.isPending} onClick={() => reset.mutate()}>
-              {reset.isPending ? "Reiniciando…" : "Reiniciar"}
+              {reset.isPending ? t("resetting") : t("resetConfirm")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -177,7 +142,20 @@ function TraceCard({ sent }: { sent: Sent }) {
   useEffect(() => {
     if (view.finished) setFinished(true);
   }, [view.finished]);
-  const title = SAMPLES.find((s) => s.kind === sent.kind)!.title.replace(/^Enviar /, "");
+  const t = useTranslations("demo");
+  const { formatDateTime } = useFormat();
+  const title = t(`samples.${sent.kind}.short`);
+  const outcome = view.outcome;
+  const outcomeText = !outcome
+    ? null
+    : outcome.key === "updated" && outcome.counts
+      ? t("outcomes.updated", {
+          summary: (["prices", "created", "reviews"] as const)
+            .filter((k) => outcome.counts![k] > 0)
+            .map((k) => t(`outcomes.${k}`, { count: outcome.counts![k] }))
+            .join(", "),
+        })
+      : t(`outcomes.${outcome.key}`);
   return (
     <Card>
       <CardHeader>
@@ -189,9 +167,9 @@ function TraceCard({ sent }: { sent: Sent }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <ol className="flex flex-col gap-1.5" aria-label={`Pasos: ${title}`}>
+        <ol className="flex flex-col gap-1.5" aria-label={t("stepsOf", { title })}>
           {view.steps.map((step) => (
-            <li key={step.label} className="flex items-center gap-2 text-sm">
+            <li key={step.key} className="flex items-center gap-2 text-sm">
               {step.state === "done" ? (
                 <CheckCircle2 className="size-4 text-emerald-600" aria-hidden />
               ) : step.state === "active" ? (
@@ -204,19 +182,9 @@ function TraceCard({ sent }: { sent: Sent }) {
                 <Circle className="size-4 text-muted-foreground/60" aria-hidden />
               )}
               <span className={cn(step.state === "waiting" && "text-muted-foreground")}>
-                {step.label}
+                {t(`steps.${step.key}`)}
               </span>
-              <span className="sr-only">
-                {
-                  {
-                    done: "(listo)",
-                    active: "(en curso)",
-                    held: "(frenado para revisión)",
-                    failed: "(falló)",
-                    waiting: "(pendiente)",
-                  }[step.state]
-                }
-              </span>
+              <span className="sr-only">{t(`stepStates.${step.state}`)}</span>
             </li>
           ))}
         </ol>
@@ -233,13 +201,13 @@ function TraceCard({ sent }: { sent: Sent }) {
             )}
           >
             <span className="flex items-center gap-2">
-              <CircleDot className="size-4 shrink-0" aria-hidden /> {view.outcome.text}
+              <CircleDot className="size-4 shrink-0" aria-hidden /> {outcomeText}
             </span>
             <Link
               href={view.outcome.href}
               className="min-h-9 font-medium underline-offset-4 hover:underline"
             >
-              {view.outcome.linkText}
+              {t(`links.${view.outcome.linkKey}`)}
             </Link>
           </div>
         ) : null}

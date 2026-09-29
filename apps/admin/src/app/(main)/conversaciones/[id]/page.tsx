@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/i18n/metadata";
 import { ChatView } from "@/features/conversations/components/chat-view";
 
-export const metadata: Metadata = { title: "Conversación" };
+export const generateMetadata = pageMetadata("conversation");
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

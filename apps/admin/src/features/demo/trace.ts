@@ -1,6 +1,7 @@
 /**
- * "Probar el sistema" timeline (phase 9 M8): where an injected sample is in the REAL pipeline,
- * from GET /api/v1/demo/trace/:wamid. Pure — unit tested.
+ * "Try the system" timeline (phase 9 M8): where an injected sample is in the REAL pipeline,
+ * from GET /api/v1/demo/trace/:wamid. Pure — unit tested. Returns message keys of "demo.steps",
+ * "demo.outcomes" and "demo.links" (phase 13); the page translates them.
  */
 
 export type DemoSampleKind = "foto" | "pdf" | "audio" | "planilla" | "planilla_nueva" | "injection";
@@ -21,22 +22,29 @@ export interface DemoTrace {
   } | null;
 }
 
+export type StepKey =
+  "received" | "downloaded" | "transcribed" | "sheetRead" | "classified" | "extracted" | "held";
+
 export interface TimelineStep {
-  label: string;
+  key: StepKey;
   /** held = stopped ON PURPOSE for a person (amber); failed = a real failure (red). */
   state: "done" | "active" | "waiting" | "held" | "failed";
 }
 
+export type OutcomeKey = "suspicious" | "newFormat" | "review" | "updated" | "noChanges" | "failed";
+export type LinkKey = "viewReviews" | "pickColumn" | "viewCatalog" | "viewConversation";
+
 export interface TimelineOutcome {
-  text: string;
+  key: OutcomeKey;
+  /** For "updated": what changed (only the non-zero counts are shown). */
+  counts?: { prices: number; created: number; reviews: number };
   tone: "success" | "review" | "failed";
   /** Panel screen to see it. */
   href: string;
-  linkText: string;
+  linkKey: LinkKey;
 }
 
 const FINAL_RUN = new Set(["ingested", "needs_review", "failed", "rejected"]);
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export function timeline(
   kind: DemoSampleKind,
@@ -47,20 +55,20 @@ export function timeline(
   finished: boolean;
 } {
   const steps: TimelineStep[] = [];
-  const add = (label: string, done: boolean) => {
+  const add = (key: StepKey, done: boolean) => {
     const previousDone = steps.every((s) => s.state === "done");
-    steps.push({ label, state: done ? "done" : previousDone ? "active" : "waiting" });
+    steps.push({ key, state: done ? "done" : previousDone ? "active" : "waiting" });
   };
   const run = trace?.run ?? null;
   const media = trace?.media ?? null;
 
-  add("Llegó por WhatsApp (simulado, firmado como Meta)", Boolean(trace?.received));
-  if (kind !== "injection") add("Archivo descargado y verificado", media?.status === "stored");
-  if (kind === "audio") add("Nota de voz transcripta", media?.transcription === "done");
+  add("received", Boolean(trace?.received));
+  if (kind !== "injection") add("downloaded", media?.status === "stored");
+  if (kind === "audio") add("transcribed", media?.transcription === "done");
   if (kind === "planilla" || kind === "planilla_nueva")
-    add("Planilla leída", media?.conversion === "done");
-  add("Clasificado", Boolean(run && run.status !== "pending"));
-  add("Extraído y validado con las reglas", Boolean(run && FINAL_RUN.has(run.status)));
+    add("sheetRead", media?.conversion === "done");
+  add("classified", Boolean(run && run.status !== "pending"));
+  add("extracted", Boolean(run && FINAL_RUN.has(run.status)));
 
   if (!run || !FINAL_RUN.has(run.status) || !trace?.message) {
     return { steps, outcome: null, finished: false };
@@ -69,16 +77,16 @@ export function timeline(
   if (run.status === "needs_review") {
     const last = steps.at(-1)!;
     last.state = "held";
-    last.label = "Frenado para revisión";
+    last.key = "held";
     if (run.reason === "suspicious_instructions") {
       return {
         steps,
         finished: true,
         outcome: {
-          text: "Frenado para revisión: el mensaje intenta darle órdenes al sistema. No se tocó el catálogo.",
+          key: "suspicious",
           tone: "review",
           href: "/revisiones",
-          linkText: "Ver en Revisiones",
+          linkKey: "viewReviews",
         },
       };
     }
@@ -87,10 +95,10 @@ export function timeline(
         steps,
         finished: true,
         outcome: {
-          text: "Planilla con un formato nuevo: elegí qué columna de precio usar.",
+          key: "newFormat",
           tone: "review",
           href: "/revisiones",
-          linkText: "Elegir la columna",
+          linkKey: "pickColumn",
         },
       };
     }
@@ -98,36 +106,29 @@ export function timeline(
       steps,
       finished: true,
       outcome: {
-        text: "Quedó en Revisiones para que una persona decida.",
+        key: "review",
         tone: "review",
         href: "/revisiones",
-        linkText: "Ver en Revisiones",
+        linkKey: "viewReviews",
       },
     };
   }
   if (run.status === "ingested") {
-    const parts = [
-      run.priceChanges > 0
-        ? plural(run.priceChanges, "precio actualizado", "precios actualizados")
-        : null,
-      run.createdProducts > 0
-        ? plural(run.createdProducts, "producto nuevo", "productos nuevos")
-        : null,
-      run.pendingReviews > 0
-        ? plural(run.pendingReviews, "línea para revisar", "líneas para revisar")
-        : null,
-    ].filter(Boolean);
+    const counts = {
+      prices: run.priceChanges,
+      created: run.createdProducts,
+      reviews: run.pendingReviews,
+    };
+    const changed = counts.prices + counts.created + counts.reviews > 0;
     return {
       steps,
       finished: true,
       outcome: {
-        text:
-          parts.length > 0
-            ? `Catálogo al día: ${parts.join(", ")}.`
-            : "Procesado: no hubo cambios de precio.",
+        key: changed ? "updated" : "noChanges",
+        ...(changed ? { counts } : {}),
         tone: run.pendingReviews > 0 ? "review" : "success",
         href: run.pendingReviews > 0 ? "/revisiones" : "/catalogo",
-        linkText: run.pendingReviews > 0 ? "Ver en Revisiones" : "Ver el catálogo",
+        linkKey: run.pendingReviews > 0 ? "viewReviews" : "viewCatalog",
       },
     };
   }
@@ -136,10 +137,10 @@ export function timeline(
     steps,
     finished: true,
     outcome: {
-      text: "No se pudo procesar.",
+      key: "failed",
       tone: "failed",
       href: conversation,
-      linkText: "Ver la conversación",
+      linkKey: "viewConversation",
     },
   };
 }

@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/i18n/metadata";
 import { RulesView } from "@/features/rules/components/rules-view";
 
-export const metadata: Metadata = { title: "Reglas" };
+export const generateMetadata = pageMetadata("rules");
 
 export default function Page() {
   return <RulesView />;

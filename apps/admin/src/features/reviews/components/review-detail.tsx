@@ -3,14 +3,15 @@
 import { ArrowLeft, FileText, Lock, MessagesSquare } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { ErrorState, LoadingState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthStore } from "@/features/auth/store";
-import { formatDateTime } from "@/lib/format";
+import { useFormat } from "@/lib/use-format";
 import { useResolveReview, useReview, type ResolveInput } from "../hooks";
-import { KIND_HELP, KIND_LABEL, STATUS_LABEL, reasonLabel } from "../labels";
+import { isKnownReason, rawReason } from "../labels";
 import { canResolve } from "../permissions";
 import type { ReviewItem } from "../types";
 import { ColumnMappingResolver } from "./column-mapping-resolver";
@@ -27,12 +28,13 @@ export function ReviewDetail({ id }: { id: string }) {
   const query = useReview(id);
   const user = useAuthStore((s) => s.user);
   const mutation = useResolveReview(id, () => router.push("/revisiones"));
+  const t = useTranslations("reviews");
 
   return (
     <div className="mx-auto max-w-3xl">
       <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2 min-h-9">
         <Link href="/revisiones">
-          <ArrowLeft aria-hidden /> Revisiones
+          <ArrowLeft aria-hidden /> {t("back")}
         </Link>
       </Button>
       {query.isPending ? (
@@ -41,7 +43,7 @@ export function ReviewDetail({ id }: { id: string }) {
         <ErrorState
           error={query.error}
           onRetry={() => void query.refetch()}
-          back={{ href: "/revisiones", label: "Volver a Revisiones" }}
+          back={{ href: "/revisiones", label: t("backTo") }}
         />
       ) : (
         <DetailBody
@@ -67,21 +69,23 @@ function DetailBody({
   onResolve(input: ResolveInput): void;
 }) {
   const props = { item, readOnly, pending, onResolve };
+  const t = useTranslations("reviews");
+  const { formatDateTime } = useFormat();
   return (
     <>
       <header className="mb-5 flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{KIND_LABEL[item.kind]}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t(`kinds.${item.kind}`)}</h1>
           {item.status !== "pending" ? (
-            <Badge variant="outline">{STATUS_LABEL[item.status]}</Badge>
+            <Badge variant="outline">{t(`statuses.${item.status}`)}</Badge>
           ) : null}
         </div>
-        <p className="text-sm text-muted-foreground">{KIND_HELP[item.kind]}</p>
+        <p className="text-sm text-muted-foreground">{t(`help.${item.kind}`)}</p>
         {item.reasons.length > 1 ? (
           <div className="flex flex-wrap gap-1.5">
             {item.reasons.map((r) => (
               <Badge key={r} variant="secondary">
-                {reasonLabel(r)}
+                {isKnownReason(r) ? t(`reasons.${r}`) : rawReason(r)}
               </Badge>
             ))}
           </div>
@@ -92,7 +96,10 @@ function DetailBody({
 
       {item.status !== "pending" && item.resolvedAt ? (
         <p className="mb-4 rounded-lg border bg-muted/40 p-3 text-sm">
-          {STATUS_LABEL[item.status]} el {formatDateTime(item.resolvedAt)}.
+          {t("resolvedOn", {
+            status: t(`statuses.${item.status}`),
+            when: formatDateTime(item.resolvedAt),
+          })}
         </p>
       ) : null}
 
@@ -119,8 +126,7 @@ function DetailBody({
           >
             <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
             <span>
-              <strong>Solo un administrador puede resolver esta revisión.</strong> Afecta una lista
-              entera o todo el catálogo.
+              <strong>{t("adminOnlyTitle")}</strong> {t("adminOnlyBody")}
             </span>
           </p>
         </div>
@@ -131,12 +137,14 @@ function DetailBody({
 
 /** Where it came from: supplier, when, and the original message (text or transcript). */
 function SourceCard({ item }: { item: ReviewItem }) {
+  const t = useTranslations("reviews");
+  const { formatDateTime } = useFormat();
   const text = item.message.transcript ?? item.message.text;
   return (
     <Card className="mb-5">
       <CardContent className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-          <span className="font-medium">{item.supplier?.name ?? "Proveedor sin identificar"}</span>
+          <span className="font-medium">{item.supplier?.name ?? t("unknownSupplier")}</span>
           <span className="text-muted-foreground">{formatDateTime(item.message.receivedAt)}</span>
         </div>
         {item.message.media?.filename ? (
@@ -148,7 +156,7 @@ function SourceCard({ item }: { item: ReviewItem }) {
         {text ? (
           <blockquote className="line-clamp-6 border-l-2 pl-3 text-sm whitespace-pre-wrap text-muted-foreground">
             {item.message.transcript ? (
-              <span className="sr-only">Transcripción del audio: </span>
+              <span className="sr-only">{t("transcriptPrefix")}</span>
             ) : null}
             {text}
           </blockquote>
@@ -158,7 +166,7 @@ function SourceCard({ item }: { item: ReviewItem }) {
           prefetch={false}
           className="flex min-h-9 w-fit items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline"
         >
-          <MessagesSquare className="size-4" aria-hidden /> Ver la conversación
+          <MessagesSquare className="size-4" aria-hidden /> {t("viewConversation")}
         </Link>
       </CardContent>
     </Card>

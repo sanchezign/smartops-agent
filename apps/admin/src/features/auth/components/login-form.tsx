@@ -1,6 +1,6 @@
 "use client";
 
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent, useRef } from "react";
 import { ApiError } from "@/lib/api-client";
@@ -8,7 +8,7 @@ import { useDemoInfo } from "@/features/demo/hooks";
 import { storeLocaleCookie } from "@/features/locale/hooks";
 import { localeToApplyAfterLogin } from "@/i18n/locales";
 import { api } from "../api";
-import { loginErrorText, loginSchema } from "../schemas";
+import { isLoginValidationKey, loginErrorKey, loginSchema } from "../schemas";
 
 /** Only same-app paths are followed after login (no open redirect). */
 function safeNext(value: string | null): string {
@@ -19,6 +19,7 @@ export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const locale = useLocale();
+  const t = useTranslations("auth");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   // Until React hydrates, the button stays disabled: a native (pre-JS) submit would send the
@@ -37,7 +38,8 @@ export function LoginForm() {
       password: String(form.get("password") ?? ""),
     });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Revisá los datos.");
+      const key = parsed.error.issues[0]?.message;
+      setError(t(`validation.${isLoginValidationKey(key) ? key : "checkFields"}`));
       return;
     }
     setPending(true);
@@ -55,7 +57,7 @@ export function LoginForm() {
       }
       router.replace(target);
     } catch (err) {
-      setError(loginErrorText(err instanceof ApiError ? err.code : "UNKNOWN"));
+      setError(t(`errors.${loginErrorKey(err instanceof ApiError ? err.code : "UNKNOWN")}`));
       setPending(false);
     }
   }
@@ -71,12 +73,12 @@ export function LoginForm() {
       {demo.data ? (
         <div className="flex flex-col gap-2 rounded-lg border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
           <p>
-            <strong>Demo pública.</strong> Entrá como operador con estos datos (son públicos):
+            <strong>{t("demoTitle")}</strong> {t("demoIntro")}
           </p>
           <dl className="grid grid-cols-[auto_1fr] gap-x-2">
-            <dt>Email</dt>
+            <dt>{t("email")}</dt>
             <dd className="font-mono break-all">{demo.data.operator.email}</dd>
-            <dt>Contraseña</dt>
+            <dt>{t("password")}</dt>
             <dd className="font-mono break-all">{demo.data.operator.password}</dd>
           </dl>
           <button
@@ -91,12 +93,12 @@ export function LoginForm() {
                 demo.data.operator.password;
             }}
           >
-            Usar estos datos
+            {t("useThese")}
           </button>
         </div>
       ) : null}
       <label className="flex flex-col gap-1 text-sm">
-        Email
+        {t("email")}
         <input
           name="email"
           type="email"
@@ -106,7 +108,7 @@ export function LoginForm() {
         />
       </label>
       <label className="flex flex-col gap-1 text-sm">
-        Contraseña
+        {t("password")}
         <input
           name="password"
           type="password"
@@ -125,7 +127,7 @@ export function LoginForm() {
         disabled={pending || !hydrated}
         className="rounded-md bg-neutral-900 px-3 py-2 text-white disabled:opacity-60"
       >
-        {pending ? "Ingresando…" : "Ingresar"}
+        {pending ? t("signingIn") : t("signIn")}
       </button>
     </form>
   );

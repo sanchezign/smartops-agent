@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Inbox, Lock, RefreshCw, SearchX } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,10 +14,11 @@ import { ApiError } from "@/lib/api-client";
  * Screen readers are told what is happening (role=status / role=alert).
  */
 
-export function LoadingState({ rows = 3, label = "Cargando…" }: { rows?: number; label?: string }) {
+export function LoadingState({ rows = 3, label }: { rows?: number; label?: string }) {
+  const t = useTranslations("common");
   return (
     <div role="status" aria-live="polite" className="flex flex-col gap-3">
-      <span className="sr-only">{label}</span>
+      <span className="sr-only">{label ?? t("loading")}</span>
       {Array.from({ length: rows }, (_, i) => (
         <Skeleton key={i} className="h-20 w-full rounded-xl" />
       ))}
@@ -46,11 +48,12 @@ export function EmptyState({
 }
 
 export function ForbiddenState() {
+  const t = useTranslations("states");
   return (
     <EmptyState
       icon={<Lock className="size-8" aria-hidden />}
-      title="No tenés permiso para ver esto"
-      description="Esta sección es solo para administradores. Si la necesitás, pedíselo a quien administra el panel."
+      title={t("forbiddenTitle")}
+      description={t("forbiddenDescription")}
     />
   );
 }
@@ -59,20 +62,19 @@ export function ForbiddenState() {
  * A 404 on a detail screen: the thing is gone (a demo reset or re-seed changes ids, or it was
  * resolved elsewhere) — not a "momentary problem" (user, phase 9 phone tests).
  */
-export function NotFoundState({
-  back = { href: "/", label: "Volver al inicio" },
-}: {
-  back?: { href: string; label: string };
-}) {
+export function NotFoundState({ back }: { back?: { href: string; label: string } }) {
+  const t = useTranslations("states");
+  const tCommon = useTranslations("common");
   const demo = useDemoInfo().data;
+  const target = back ?? { href: "/", label: tCommon("backHome") };
   return (
     <EmptyState
       icon={<SearchX className="size-8" aria-hidden />}
-      title={`Esto ya no existe${demo ? " (la demo se pudo haber reiniciado)" : ""}`}
-      description="Puede que lo hayan resuelto o borrado. Volvé a la lista para ver lo que hay ahora."
+      title={demo ? t("goneTitleDemo") : t("goneTitle")}
+      description={t("goneDescription")}
       action={
         <Button asChild variant="outline" className="min-h-11">
-          <Link href={back.href}>{back.label}</Link>
+          <Link href={target.href}>{target.label}</Link>
         </Button>
       }
     />
@@ -89,6 +91,8 @@ export function ErrorState({
   /** Where a 404 sends the person back (detail screens). */
   back?: { href: string; label: string };
 }) {
+  const t = useTranslations("states");
+  const tCommon = useTranslations("common");
   if (error instanceof ApiError && error.status === 403) return <ForbiddenState />;
   if (error instanceof ApiError && error.status === 404) return <NotFoundState back={back} />;
   const requestId = error instanceof ApiError ? error.requestId : undefined;
@@ -98,20 +102,18 @@ export function ErrorState({
       className="flex flex-col items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-6 py-10 text-center"
     >
       <AlertTriangle className="size-8 text-destructive" aria-hidden />
-      <p className="font-medium">No pudimos cargar esta información</p>
+      <p className="font-medium">{t("errorTitle")}</p>
       <p className="max-w-sm text-sm text-muted-foreground">
-        Puede ser un problema momentáneo. Probá de nuevo; si sigue pasando, avisá al equipo
-        {requestId ? (
-          <>
-            {" "}
-            con este código: <code className="font-mono">{requestId}</code>
-          </>
-        ) : null}
-        .
+        {requestId
+          ? t.rich("errorDescriptionWithCode", {
+              requestId,
+              code: (chunks) => <code className="font-mono">{chunks}</code>,
+            })
+          : t("errorDescription")}
       </p>
       {onRetry ? (
         <Button variant="outline" onClick={onRetry}>
-          <RefreshCw aria-hidden /> Reintentar
+          <RefreshCw aria-hidden /> {tCommon("retry")}
         </Button>
       ) : null}
     </div>

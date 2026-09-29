@@ -7,7 +7,8 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { formatShortDay } from "@/lib/format";
+import { useTranslations } from "next-intl";
+import { useFormat } from "@/lib/use-format";
 
 /**
  * A daily bar chart (phase 9). Charts are decorative for screen readers: the same data is in a
@@ -27,6 +28,8 @@ export function DailyBars({
   /** Short axis labels (the tooltip and the table keep the full format). */
   axisFormat?: (value: number) => string;
 }) {
+  const t = useTranslations("dashboard");
+  const { formatShortDay } = useFormat();
   const config = { value: { label, color } } satisfies ChartConfig;
   return (
     <>
@@ -63,7 +66,7 @@ export function DailyBars({
         </BarChart>
       </ChartContainer>
       <table className="sr-only">
-        <caption>{label} por día</caption>
+        <caption>{t("perDay", { label })}</caption>
         <tbody>
           {data.map((d) => (
             <tr key={d.day}>

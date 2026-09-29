@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/i18n/metadata";
 import { ReviewList } from "@/features/reviews/components/review-list";
 
-export const metadata: Metadata = { title: "Revisiones" };
+export const generateMetadata = pageMetadata("reviews");
 
 export default function Page() {
   return <ReviewList />;

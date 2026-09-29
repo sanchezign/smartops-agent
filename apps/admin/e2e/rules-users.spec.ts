@@ -24,7 +24,7 @@ test.describe("rules (phase 9 M6)", () => {
   test("an operator cannot open Users (direct URL → no permission)", async ({ page }) => {
     await login(page, "operator");
     await page.goto("/usuarios");
-    await expect(page.getByText("No tenés permiso para ver esto")).toBeVisible();
+    await expect(page.getByText("No tienes permiso para ver esto")).toBeVisible();
   });
 });
 

@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/i18n/metadata";
 import { UsersView } from "@/features/users/components/users-view";
 
-export const metadata: Metadata = { title: "Usuarios" };
+export const generateMetadata = pageMetadata("users");
 
 export default function Page() {
   return <UsersView />;

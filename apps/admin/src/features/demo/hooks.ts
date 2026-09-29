@@ -1,11 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { clientEnv } from "@/env";
 import { api } from "@/features/auth/api";
 import { ApiError } from "@/lib/api-client";
-import { isRecentlyResetDetails, recentlyResetMessage } from "./reset-message";
+import { isRecentlyResetDetails, recentlyResetParams } from "./reset-message";
 import type { DemoSampleKind, DemoTrace } from "./trace";
 
 export interface DemoInfo {
@@ -33,6 +34,7 @@ export function useDemoInfo() {
 }
 
 export function useInject(onInjected: (kind: DemoSampleKind, wamid: string) => void) {
+  const t = useTranslations("demo.toast");
   return useMutation({
     mutationFn: (kind: DemoSampleKind) =>
       api.request<{ wamid: string }>("/demo/inject", {
@@ -42,9 +44,7 @@ export function useInject(onInjected: (kind: DemoSampleKind, wamid: string) => v
     onSuccess: (data, kind) => onInjected(kind, data.wamid),
     onError: (error) =>
       toast.error(
-        error instanceof ApiError && error.status === 429
-          ? "Muchas pruebas seguidas: esperá unos minutos."
-          : "No se pudo enviar el mensaje de prueba.",
+        error instanceof ApiError && error.status === 429 ? t("tooMany") : t("injectFailed"),
       ),
   });
 }
@@ -60,11 +60,12 @@ export function useTrace(wamid: string, finished: boolean) {
 
 export function useResetDemo(onDone: () => void) {
   const queryClient = useQueryClient();
+  const t = useTranslations("demo.toast");
   return useMutation({
     mutationFn: () =>
       api.request<{ nextResetAt: string | null }>("/demo/reset", { method: "POST" }),
     onSuccess: () => {
-      toast.success("Demo reiniciada: datos de ejemplo como al principio.");
+      toast.success(t("resetDone"));
       onDone();
       void queryClient.invalidateQueries();
     },
@@ -73,10 +74,10 @@ export function useResetDemo(onDone: () => void) {
         error instanceof ApiError &&
           error.code === "DEMO_RECENTLY_RESET" &&
           isRecentlyResetDetails(error.details)
-          ? recentlyResetMessage(error.details)
+          ? t("recentlyReset", recentlyResetParams(error.details))
           : error instanceof ApiError && error.status === 429
-            ? "Se reinició hace poco: probá en unos minutos."
-            : "No se pudo reiniciar la demo.",
+            ? t("resetTooSoon")
+            : t("resetFailed"),
       ),
   });
 }

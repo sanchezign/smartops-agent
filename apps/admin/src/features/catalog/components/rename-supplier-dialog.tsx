@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,17 +25,15 @@ export function RenameSupplierDialog({
 }) {
   const [name, setName] = useState(supplier.name);
   const nameId = useId();
+  const t = useTranslations("catalog");
   const rename = useRenameSupplier(onClose);
   const valid = name.trim().length >= 2;
   return (
     <Dialog open onOpenChange={(open) => (open ? null : onClose())}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Renombrar proveedor</DialogTitle>
-          <DialogDescription>
-            Por ejemplo, cuando se creó con el nombre de WhatsApp y la empresa se llama distinto.
-            Las próximas listas que digan este nombre se asignan a este proveedor. Queda registrado.
-          </DialogDescription>
+          <DialogTitle>{t("renameTitle")}</DialogTitle>
+          <DialogDescription>{t("renameBody")}</DialogDescription>
         </DialogHeader>
         <form
           id="rename-supplier"
@@ -44,7 +43,7 @@ export function RenameSupplierDialog({
             if (valid) rename.mutate({ id: supplier.id, name: name.trim() });
           }}
         >
-          <Label htmlFor={nameId}>Nombre</Label>
+          <Label htmlFor={nameId}>{t("name")}</Label>
           <Input
             id={nameId}
             value={name}
@@ -54,7 +53,7 @@ export function RenameSupplierDialog({
         </form>
         <DialogFooter>
           <Button variant="outline" className="min-h-11" onClick={onClose}>
-            Cancelar
+            {t("cancel")}
           </Button>
           <Button
             type="submit"
@@ -62,7 +61,7 @@ export function RenameSupplierDialog({
             className="min-h-11"
             disabled={!valid || rename.isPending}
           >
-            Guardar
+            {t("save")}
           </Button>
         </DialogFooter>
       </DialogContent>

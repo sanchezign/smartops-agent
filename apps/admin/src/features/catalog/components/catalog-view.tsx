@@ -2,6 +2,7 @@
 
 import { ChevronRight, Pencil, Search } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useDeferredValue, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
@@ -16,16 +17,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuthStore } from "@/features/auth/store";
-import { formatInt, formatMoney, formatPct, formatRelative } from "@/lib/format";
+import { useFormat } from "@/lib/use-format";
 import { useCatalogSuppliers, useProducts } from "../hooks";
 import type { Availability, ProductRow } from "../types";
 import { RenameSupplierDialog } from "./rename-supplier-dialog";
 
-const AVAILABILITY: { value: Availability; label: string }[] = [
-  { value: "all", label: "Todos" },
-  { value: "available", label: "Disponibles" },
-  { value: "unavailable", label: "No disponibles" },
-];
+const AVAILABILITY: Availability[] = ["all", "available", "unavailable"];
 
 const ALL = "__all__";
 
@@ -40,24 +37,25 @@ export function CatalogView() {
   const products = useProducts({ supplierId, q, availability });
   const items = products.data?.pages.flatMap((p) => p.items) ?? [];
   const selected = suppliers.data?.suppliers.find((s) => s.id === supplierId) ?? null;
+  const t = useTranslations("catalog");
+  const tCommon = useTranslations("common");
+  const tPages = useTranslations("pages");
+  const { formatInt, formatRelative } = useFormat();
 
   return (
     <>
-      <PageHeader
-        title="Catálogo"
-        description="Los productos de cada proveedor con el último precio que mandaron. Se actualiza solo."
-      />
+      <PageHeader title={tPages("catalog")} description={t("description")} />
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex flex-1 flex-col gap-1.5">
           <Select
             value={supplierId ?? ALL}
             onValueChange={(v) => setSupplierId(v === ALL ? null : v)}
           >
-            <SelectTrigger className="min-h-11 w-full" aria-label="Proveedor">
-              <SelectValue placeholder="Todos los proveedores" />
+            <SelectTrigger className="min-h-11 w-full" aria-label={t("supplier")}>
+              <SelectValue placeholder={t("allSuppliers")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>Todos los proveedores</SelectItem>
+              <SelectItem value={ALL}>{t("allSuppliers")}</SelectItem>
               {(suppliers.data?.suppliers ?? []).map((s) => (
                 <SelectItem key={s.id} value={s.id}>
                   {s.name} ({formatInt(s.products)})
@@ -73,8 +71,8 @@ export function CatalogView() {
           />
           <Input
             type="search"
-            aria-label="Buscar producto"
-            placeholder="Buscar producto"
+            aria-label={t("search")}
+            placeholder={t("search")}
             className="min-h-11 pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -82,29 +80,38 @@ export function CatalogView() {
         </div>
       </div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div role="group" aria-label="Disponibilidad" className="inline-flex rounded-lg border p-1">
+        <div
+          role="group"
+          aria-label={t("availability")}
+          className="inline-flex rounded-lg border p-1"
+        >
           {AVAILABILITY.map((a) => (
             <Button
-              key={a.value}
+              key={a}
               size="sm"
-              variant={availability === a.value ? "secondary" : "ghost"}
-              aria-pressed={availability === a.value}
+              variant={availability === a ? "secondary" : "ghost"}
+              aria-pressed={availability === a}
               className="min-h-9"
-              onClick={() => setAvailability(a.value)}
+              onClick={() => setAvailability(a)}
             >
-              {a.label}
+              {t(`availabilityOptions.${a}`)}
             </Button>
           ))}
         </div>
         {selected ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>
-              {formatInt(selected.available)} de {formatInt(selected.products)} disponibles
-              {selected.lastListAt ? ` · última lista ${formatRelative(selected.lastListAt)}` : ""}
+              {t("availableOf", {
+                available: formatInt(selected.available),
+                total: formatInt(selected.products),
+              })}
+              {selected.lastListAt
+                ? t("lastList", { when: formatRelative(selected.lastListAt) })
+                : ""}
               {selected.taxIncluded === true
-                ? " · precios con IVA"
+                ? t("taxIncluded")
                 : selected.taxIncluded === false
-                  ? " · precios sin IVA"
+                  ? t("taxExcluded")
                   : ""}
             </span>
             {user?.role === "admin" ? (
@@ -114,7 +121,7 @@ export function CatalogView() {
                 className="min-h-9"
                 onClick={() => setRenaming(true)}
               >
-                <Pencil aria-hidden /> Renombrar
+                <Pencil aria-hidden /> {t("rename")}
               </Button>
             ) : null}
           </div>
@@ -126,10 +133,13 @@ export function CatalogView() {
       ) : products.isError ? (
         <ErrorState error={products.error} onRetry={() => void products.refetch()} />
       ) : items.length === 0 ? (
-        <EmptyState title={q ? "Ningún producto coincide" : "No hay productos acá"} />
+        <EmptyState title={q ? t("noMatches") : t("empty")} />
       ) : (
         <>
-          <ul className="flex flex-col divide-y rounded-xl border bg-card" aria-label="Productos">
+          <ul
+            className="flex flex-col divide-y rounded-xl border bg-card"
+            aria-label={t("listLabel")}
+          >
             {items.map((p) => (
               <li key={p.id}>
                 <ProductRowLink product={p} showSupplier={!supplierId} />
@@ -143,7 +153,7 @@ export function CatalogView() {
               disabled={products.isFetchingNextPage}
               onClick={() => void products.fetchNextPage()}
             >
-              {products.isFetchingNextPage ? "Cargando…" : "Ver más"}
+              {products.isFetchingNextPage ? tCommon("loading") : t("loadMore")}
             </Button>
           ) : null}
         </>
@@ -158,6 +168,8 @@ export function CatalogView() {
 function ProductRowLink({ product, showSupplier }: { product: ProductRow; showSupplier: boolean }) {
   const change = product.lastChange;
   const pct = change?.changePct ? Number(change.changePct) : null;
+  const t = useTranslations("catalog");
+  const { formatInt, formatMoney, formatPct } = useFormat();
   return (
     <Link
       href={`/catalogo/${product.id}`}
@@ -169,7 +181,7 @@ function ProductRowLink({ product, showSupplier }: { product: ProductRow; showSu
           {[
             showSupplier ? product.supplier.name : null,
             product.unit,
-            product.stock !== null ? `stock ${formatInt(product.stock)}` : null,
+            product.stock !== null ? t("stock", { count: formatInt(product.stock) }) : null,
           ]
             .filter(Boolean)
             .join(" · ")}
@@ -180,9 +192,9 @@ function ProductRowLink({ product, showSupplier }: { product: ProductRow; showSu
           {formatMoney(product.price, product.currency)}
         </span>
         {!product.available ? (
-          <Badge variant="outline">No disponible</Badge>
+          <Badge variant="outline">{t("unavailable")}</Badge>
         ) : change?.currencyChanged ? (
-          <Badge variant="secondary">Cambió la moneda</Badge>
+          <Badge variant="secondary">{t("currencyChanged")}</Badge>
         ) : pct !== null && pct !== 0 ? (
           <Badge variant={pct > 0 ? "secondary" : "outline"} className="tabular-nums">
             {formatPct(change!.changePct!)}

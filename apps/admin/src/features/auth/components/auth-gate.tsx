@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, type ReactNode } from "react";
 import { api } from "../api";
 import { useAuthStore } from "../store";
@@ -12,6 +13,7 @@ import { useAuthStore } from "../store";
  */
 export function AuthGate({ children }: { children: ReactNode }) {
   const status = useAuthStore((s) => s.status);
+  const t = useTranslations("common");
   const router = useRouter();
   const pathname = usePathname();
 
@@ -23,7 +25,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   if (status !== "authenticated") {
     return (
       <main className="flex min-h-screen items-center justify-center p-8 text-sm text-neutral-500">
-        Cargando…
+        {t("loading")}
       </main>
     );
   }

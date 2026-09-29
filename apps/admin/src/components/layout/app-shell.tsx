@@ -3,6 +3,7 @@
 import { Ellipsis } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, type ReactNode } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useAuthStore } from "@/features/auth/store";
@@ -15,12 +16,14 @@ import { LocaleSelect } from "@/features/locale/components/locale-select";
 import { UserMenu } from "./user-menu";
 
 /**
- * Panel shell (phase 9), MOBILE FIRST: on a phone a bottom bar with the 4 main sections + "Más"
+ * Panel shell (phase 9), MOBILE FIRST: on a phone a bottom bar with the 4 main sections + "More"
  * (a sheet with the rest); from md up a fixed sidebar. Touch targets ≥ 44 px, a skip link, and
  * aria-current on the active section.
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const t = useTranslations("nav");
+  const tShell = useTranslations("shell");
   const user = useAuthStore((s) => s.user);
   const demo = useDemoInfo().data ?? null;
   const items = navFor(user, demo !== null);
@@ -35,14 +38,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         href="#contenido"
         className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:shadow"
       >
-        Saltar al contenido
+        {tShell("skipToContent")}
       </a>
 
       {demo ? (
         <div className="relative z-40 bg-amber-100 px-4 py-1.5 text-center text-xs text-amber-950 md:ml-60 dark:bg-amber-950 dark:text-amber-100">
-          <strong>Modo demo</strong>: datos de ejemplo, sin WhatsApp real y sin costo.{" "}
+          {tShell.rich("demoBanner", { strong: (chunks) => <strong>{chunks}</strong> })}{" "}
           <Link href="/probar" className="font-medium underline underline-offset-2">
-            Probar el sistema
+            {tShell("tryLink")}
           </Link>
         </div>
       ) : null}
@@ -52,7 +55,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex h-16 items-center px-5 text-lg font-semibold tracking-tight">
           SmartOps
         </div>
-        <nav aria-label="Secciones" className="flex flex-1 flex-col gap-1 px-3">
+        <nav aria-label={t("sections")} className="flex flex-1 flex-col gap-1 px-3">
           {items.map((item) => {
             const active = isActive(pathname, item.href);
             return (
@@ -68,7 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 )}
               >
                 <item.icon className="size-5" aria-hidden />
-                {item.label}
+                {t(item.labelKey)}
               </Link>
             );
           })}
@@ -94,7 +97,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Bottom bar (phone) */}
       <nav
-        aria-label="Secciones"
+        aria-label={t("sections")}
         className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       >
         <ul className="grid grid-cols-5">
@@ -111,7 +114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   )}
                 >
                   <item.icon className="size-5" aria-hidden />
-                  {item.label}
+                  {t(item.labelKey)}
                 </Link>
               </li>
             );
@@ -125,14 +128,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                 )}
               >
                 <Ellipsis className="size-5" aria-hidden />
-                Más
+                {t("more")}
               </SheetTrigger>
               <SheetContent
                 side="bottom"
                 className="rounded-t-2xl pb-[env(safe-area-inset-bottom)]"
               >
                 <SheetHeader>
-                  <SheetTitle>Más secciones</SheetTitle>
+                  <SheetTitle>{t("moreSections")}</SheetTitle>
                 </SheetHeader>
                 <ul className="flex flex-col gap-1 px-4 pb-6">
                   {more.map((item) => (
@@ -144,7 +147,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                         className="flex min-h-12 items-center gap-3 rounded-lg px-3 text-base hover:bg-accent"
                       >
                         <item.icon className="size-5" aria-hidden />
-                        {item.label}
+                        {t(item.labelKey)}
                       </Link>
                     </li>
                   ))}

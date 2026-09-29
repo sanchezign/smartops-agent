@@ -594,7 +594,7 @@ Each one gets an ADR in docs/adr/.
 `feat/phase-12-deploy`): M0 DONE; M1 done up to DuckDNS — the VM cannot be created yet (São Paulo
 has no A1 capacity). WAITING: the user runs `scripts/oci/launch-retry.ps1` for 3–5 days
 (guide `docs/deploy/m1-retry-launch.md`). Phase 13 (i18n + docs, branch `feat/phase-13-i18n-docs`)
-advances meanwhile: M0 + M1 DONE, next M2 (panel texts). If the VM appears first, phase 12 does
+advances meanwhile: M0–M2 DONE, next M3 (API texts / business language). If the VM appears first, phase 12 does
 not wait (first deploy without i18n, updated later). M3b (phase 5) and MFA (TOTP) remain
 recommended/required before a real client.**
 
@@ -1724,8 +1724,36 @@ recommended/required before a real client.**
       Verified over HTTP on a production build: es browser → es, en → en, cookie wins, invalid
       cookie ignored, env en beats an es browser, cookie es beats env. Playwright stays es-UY until
       M4. Tests: API 1076 unit + 221 integration, panel 99, E2E 76 passed.
+    - M2 every panel text — DONE (2026-09-28). All visible text in `src/i18n/messages/{en,es}.json`
+      (namespaces per feature; typed keys, so a missing key is a TS error). Pure modules return
+      CODES, screens translate: `InputError {code, params}` (lib/number-input.ts; "inputErrors",
+      shown by `useInputErrorText` — number params formatted, a "day" param = weekday name),
+      review / conversation / user / demo error keys, `reviewTitle(item, text)`, demo `timeline`
+      step + outcome + link keys (counts for "updated"), `recentlyResetParams`, rules
+      `SECTIONS` without text (`fieldMessageKey`: dots → "_"; unit test checks every field has
+      label / help / suffix in both catalogs). Page titles via `pageMetadata(key)`
+      (src/i18n/metadata.ts). Number inputs per language: one decimal separator (either), the
+      language's GROUP separator + 3 digits refused ("1.850" es, "1,850" en); price fields pre-fill
+      without group separators ("3052,5" es, "3052.5" en). Formatter gained `weekdayName`,
+      `formatWeekdayTime`, `formatShortDate`, `formatLongDay`; the old Spanish-bound exports were
+      removed (every component uses `useFormat()`). Guards: eslint-plugin-i18next 6.1.5
+      `no-literal-string` (mode jsx-only on src/**/*.tsx; technical attributes, translation
+      callees t/tX/tX.rich, setters and `href`/`action` props excluded; chart.tsx / sonner.tsx
+      ignored), `test/locale.test.ts` (catalog parity + no empty values), `test/messages-style.test.ts`
+      (no voseo in es — heuristic on stressed endings with a neutral allowlist, future tense allowed,
+      -rar voseo imperatives listed; no Spanish characters in en). Neutral Spanish throughout ("tú";
+      "Revisa", "Escribe", "Prueba"; "recién" → "hace un momento"). Property tests run per language.
+      Panel coverage ratchet raised (lines 82 / branches 74 / functions 76 / statements 81).
+      Tests: panel 113, E2E 76 passed (Playwright still es-UY until M4; 2 selectors updated to the
+      neutral texts).
 
 ## Known issues (out of scope)
+- **Phase 13 M2 — decision pending (user):** the panel ROUTES are still Spanish (/revisiones,
+  /conversaciones, /catalogo, /alertas, /reglas, /usuarios, /probar). Renaming them to English
+  (with redirects from the old paths) also changes the digest deep-link paths the API builds
+  (`GET /admin/digests/:token`) — proposed, not done.
+- **Phase 13 M2 (planned for M3):** texts COMPOSED BY THE API still arrive in Spanish in the English
+  panel: alert titles, digest item titles, review warnings / `detail`, password-policy messages.
 - **Phase 12 — idle reclamation risk (open until M3):** the demo stack uses ≈ 0.7 GB (+ OS).
   Oracle deems an A1 idle when, over 7 days, CPU p95, network AND memory are all < 20 %. User
   decision (2026-09-28): VM of **1 OCPU / 3 GB** (threshold 0.6 GB); measure in M3 with the OCI

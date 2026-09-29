@@ -62,6 +62,14 @@ export interface Formatter {
   formatShortDay(day: string): string;
   formatDateTime(iso: string): string;
   formatTime(iso: string): string;
+  /** "Mon 09:00 AM" / "lun. 09:00": a moment within the next week (next opening). */
+  formatWeekdayTime(iso: string): string;
+  /** 0 = Sunday … 6 = Saturday → "Monday" / "lunes" (capitalized in both languages). */
+  weekdayName(day: number): string;
+  /** "Sep 28" / "28 set." (chart axes). */
+  formatShortDate(iso: string | number): string;
+  /** "Monday, September 28" / "lunes, 28 de septiembre" (chat day separators). */
+  formatLongDay(iso: string): string;
   formatRelative(iso: string, now?: Date): string;
   /** THE number formatter: accepts Decimal strings (Intl formats them without a float). */
   formatNumber(value: string | number, options?: NumberOptions): string;
@@ -93,6 +101,24 @@ export function createFormat(locale: AppLocale): Formatter {
     timeZone: TIME_ZONE,
     hour: "2-digit",
     minute: "2-digit",
+  });
+  const weekdayTime = new Intl.DateTimeFormat(intl, {
+    timeZone: TIME_ZONE,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const weekday = new Intl.DateTimeFormat(intl, { weekday: "long", timeZone: "UTC" });
+  const shortDate = new Intl.DateTimeFormat(intl, {
+    timeZone: TIME_ZONE,
+    day: "numeric",
+    month: "short",
+  });
+  const longDay = new Intl.DateTimeFormat(intl, {
+    timeZone: TIME_ZONE,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
   });
   const relative = RELATIVE[locale];
 
@@ -151,6 +177,14 @@ export function createFormat(locale: AppLocale): Formatter {
     },
     formatDateTime: (iso) => dateTime.format(new Date(iso)),
     formatTime: (iso) => time.format(new Date(iso)),
+    formatWeekdayTime: (iso) => weekdayTime.format(new Date(iso)),
+    formatShortDate: (iso) => shortDate.format(new Date(iso)),
+    formatLongDay: (iso) => longDay.format(new Date(iso)),
+    weekdayName(day) {
+      // 2026-01-04 is a Sunday: day 0 → Sunday, 1 → Monday…
+      const name = weekday.format(new Date(Date.UTC(2026, 0, 4 + day)));
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    },
     formatRelative(iso, now = new Date()) {
       const minutes = Math.round((now.getTime() - new Date(iso).getTime()) / 60_000);
       if (minutes < 1) return relative.now;
@@ -172,23 +206,3 @@ export function createFormat(locale: AppLocale): Formatter {
     toDecimalInput: (value) => (value ? (locale === "es" ? value.replace(".", ",") : value) : ""),
   };
 }
-
-/**
- * Spanish bindings kept while phase 13 M2 moves every component to `useFormat()`.
- * @deprecated use `useFormat()` in components or a `Formatter` in pure code.
- */
-const es = createFormat("es");
-export const {
-  formatInt,
-  formatRatio,
-  formatMoney,
-  formatUsd,
-  formatShortDay,
-  formatDateTime,
-  formatTime,
-  formatRelative,
-  formatNumber,
-  formatPrice,
-  formatPct,
-  toDecimalInput,
-} = es;

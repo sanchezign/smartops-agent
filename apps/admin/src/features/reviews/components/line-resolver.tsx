@@ -1,11 +1,14 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { useId, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { formatMoney, formatPct } from "@/lib/format";
+import type { InputError } from "@/lib/number-input";
+import { useFormat } from "@/lib/use-format";
+import { useInputErrorText } from "@/lib/use-input-error";
 import type { ResolveInput } from "../hooks";
 import { lineApproveBody, lineDefaults, type LineChoice } from "../resolve-input";
 import type { LineProposal, ReviewItem } from "../types";
@@ -28,12 +31,16 @@ export function LineResolver({
   onResolve(input: ResolveInput): void;
 }) {
   const proposal = item.proposal as LineProposal;
+  const locale = useLocale();
+  const t = useTranslations("reviews.line");
+  const { formatMoney, formatPct } = useFormat();
+  const errorText = useInputErrorText();
   const defaults = useMemo(
-    () => lineDefaults(proposal, item.product?.id ?? null, item.product?.currency ?? null),
-    [proposal, item.product],
+    () => lineDefaults(proposal, item.product?.id ?? null, item.product?.currency ?? null, locale),
+    [proposal, item.product, locale],
   );
   const [choice, setChoice] = useState<LineChoice>(defaults);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<InputError | null>(null);
   const ids = { price: useId(), currency: useId(), name: useId(), unit: useId() };
   const line = proposal.item;
 
@@ -52,17 +59,17 @@ export function LineResolver({
 
   return (
     <>
-      <Section title="Lo que dice la lista">
+      <Section title={t("listSays")}>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-          <dt className="text-muted-foreground">Producto</dt>
+          <dt className="text-muted-foreground">{t("product")}</dt>
           <dd className="font-medium">{line.name}</dd>
           {line.unit ? (
             <>
-              <dt className="text-muted-foreground">Unidad</dt>
+              <dt className="text-muted-foreground">{t("unit")}</dt>
               <dd>{line.unit}</dd>
             </>
           ) : null}
-          <dt className="text-muted-foreground">Precio</dt>
+          <dt className="text-muted-foreground">{t("price")}</dt>
           <dd>
             {line.price
               ? formatMoney(line.price, line.currency ?? proposal.listCurrency ?? "")
@@ -72,7 +79,7 @@ export function LineResolver({
           </dd>
           {proposal.changePct ? (
             <>
-              <dt className="text-muted-foreground">Cambio</dt>
+              <dt className="text-muted-foreground">{t("change")}</dt>
               <dd>
                 <Badge
                   variant={Math.abs(Number(proposal.changePct)) >= 30 ? "destructive" : "secondary"}
@@ -85,12 +92,12 @@ export function LineResolver({
         </dl>
       </Section>
 
-      <Section title="¿Qué producto es?">
+      <Section title={t("whichProduct")}>
         <RadioGroup
           value={choice.target}
           onValueChange={(target) => setChoice((c) => ({ ...c, target }))}
           disabled={readOnly}
-          aria-label="Producto"
+          aria-label={t("product")}
           className="gap-2"
         >
           {candidates.map((c) => (
@@ -100,27 +107,28 @@ export function LineResolver({
             >
               <RadioGroupItem value={c.id} />
               <span className="flex flex-1 flex-col">
-                <span className="font-medium">{c.name ?? "Producto"}</span>
+                <span className="font-medium">{c.name ?? t("product")}</span>
                 <span className="text-xs font-normal text-muted-foreground">
-                  Precio actual:{" "}
-                  {c.price && c.currency ? formatMoney(c.price, c.currency) : "sin precio"}
+                  {c.price && c.currency
+                    ? t("currentPrice", { price: formatMoney(c.price, c.currency) })
+                    : t("noPrice")}
                 </span>
               </span>
             </Label>
           ))}
           <Label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-muted/50">
             <RadioGroupItem value="new" />
-            <span className="font-medium">Es un producto nuevo</span>
+            <span className="font-medium">{t("isNew")}</span>
           </Label>
         </RadioGroup>
       </Section>
 
-      <Section title="Precio a aplicar">
+      <Section title={t("priceToApply")}>
         <div className="grid gap-3 sm:grid-cols-2">
           {choice.target === "new" ? (
             <>
               <div className="flex flex-col gap-1.5 sm:col-span-2">
-                <Label htmlFor={ids.name}>Nombre</Label>
+                <Label htmlFor={ids.name}>{t("name")}</Label>
                 <Input
                   id={ids.name}
                   value={choice.name}
@@ -129,7 +137,7 @@ export function LineResolver({
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor={ids.unit}>Unidad</Label>
+                <Label htmlFor={ids.unit}>{t("unit")}</Label>
                 <Input
                   id={ids.unit}
                   value={choice.unit}
@@ -140,7 +148,7 @@ export function LineResolver({
             </>
           ) : null}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={ids.price}>Precio</Label>
+            <Label htmlFor={ids.price}>{t("price")}</Label>
             <Input
               id={ids.price}
               inputMode="decimal"
@@ -148,14 +156,14 @@ export function LineResolver({
               disabled={readOnly}
               placeholder={
                 line.priceChangePct
-                  ? `${formatPct(line.priceChangePct)} sobre el precio actual`
+                  ? t("pctPlaceholder", { pct: formatPct(line.priceChangePct) })
                   : ""
               }
               onChange={(e) => setChoice((c) => ({ ...c, price: e.target.value }))}
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={ids.currency}>Moneda</Label>
+            <Label htmlFor={ids.currency}>{t("currency")}</Label>
             <Input
               id={ids.currency}
               value={choice.currency}
@@ -170,12 +178,12 @@ export function LineResolver({
 
       {readOnly ? null : (
         <ResolveActions
-          approveLabel={choice.target === "new" ? "Crear producto" : "Aplicar precio"}
+          approveLabel={choice.target === "new" ? t("createProduct") : t("applyPrice")}
           pending={pending}
-          error={error}
+          error={error ? errorText(error) : null}
           onApprove={() => {
-            const result = lineApproveBody(choice, defaults);
-            if (!result.ok) return setError(result.message);
+            const result = lineApproveBody(choice, defaults, locale);
+            if (!result.ok) return setError(result.error);
             setError(null);
             onResolve({ action: "approve", body: result.body });
           }}

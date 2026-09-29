@@ -28,12 +28,17 @@ export interface DashboardData {
   pending: { reviews: number; openAlerts: number; humanConversations: number };
 }
 
-/** Why a message never reached the LLM (pre-filter rules, phase 6). */
-export const PREFILTER_RULE_LABEL: Record<string, string> = {
-  no_price_signal: "Saludos y charla",
-  customer_contact: "Clientes (consulta o pedido)",
-  non_content_type: "Stickers, reacciones, ubicaciones",
-  media_unavailable: "Archivo no disponible",
-  audio_too_long: "Audios largos (para escuchar)",
-  audio_not_transcribed: "Audios sin transcribir",
-};
+/** Why a message never reached the LLM (pre-filter rules, phase 6; texts in the catalogs). */
+export const PREFILTER_RULES = [
+  "no_price_signal",
+  "customer_contact",
+  "non_content_type",
+  "media_unavailable",
+  "audio_too_long",
+  "audio_not_transcribed",
+] as const;
+export type PrefilterRule = (typeof PREFILTER_RULES)[number];
+
+export function isPrefilterRule(value: string): value is PrefilterRule {
+  return (PREFILTER_RULES as readonly string[]).includes(value);
+}

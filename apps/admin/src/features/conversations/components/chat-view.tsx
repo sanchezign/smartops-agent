@@ -2,34 +2,31 @@
 
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Fragment, useEffect, useLayoutEffect, useRef } from "react";
 import { ErrorState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { TIME_ZONE } from "@/lib/format";
+import { useFormat } from "@/lib/use-format";
 import { useConversation, useMessages } from "../hooks";
-import { KIND_LABEL, contactName, humanUntilText, supplierSuffix, whoAnswers } from "../labels";
+import { contactName, supplierSuffix, whoAnswers } from "../labels";
 import type { ChatMessage, ConversationHeader } from "../types";
 import { ChatActions } from "./chat-actions";
 import { Composer } from "./composer";
 import { MessageBubble } from "./message-bubble";
 import { WhoBadge } from "./who-badge";
 
-const dayFormat = new Intl.DateTimeFormat("es-UY", {
-  timeZone: TIME_ZONE,
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-});
 const dayKey = (iso: string) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE }).format(new Date(iso));
 
 export function ChatView({ id }: { id: string }) {
   const header = useConversation(id);
+  const t = useTranslations("conversations");
   return (
     <div className="mx-auto flex max-w-3xl flex-col">
       <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2 w-fit min-h-9">
         <Link href="/conversaciones">
-          <ArrowLeft aria-hidden /> Conversaciones
+          <ArrowLeft aria-hidden /> {t("back")}
         </Link>
       </Button>
       {header.isPending ? (
@@ -38,7 +35,7 @@ export function ChatView({ id }: { id: string }) {
         <ErrorState
           error={header.error}
           onRetry={() => void header.refetch()}
-          back={{ href: "/conversaciones", label: "Volver a Conversaciones" }}
+          back={{ href: "/conversaciones", label: t("backTo") }}
         />
       ) : (
         <>
@@ -56,23 +53,28 @@ export function ChatView({ id }: { id: string }) {
 function ChatHeader({ conversation }: { conversation: ConversationHeader }) {
   const c = conversation.contact;
   const who = whoAnswers(conversation);
+  const t = useTranslations("conversations");
+  const tKinds = useTranslations("contactKinds");
+  const { formatTime } = useFormat();
+  const until = conversation.humanUntil
+    ? t("humanUntil", { time: formatTime(conversation.humanUntil) })
+    : t("humanUntilResumed");
   return (
     <header className="mb-4 flex flex-col gap-3 border-b pb-4">
       <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold tracking-tight">{contactName(c)}</h1>
+        <h1 className="text-xl font-semibold tracking-tight">
+          {contactName(c, t("contactFallback"))}
+        </h1>
         <p className="text-sm text-muted-foreground">
-          {KIND_LABEL[c.kind]}
+          {tKinds(c.kind)}
           {supplierSuffix(c) ? ` · ${supplierSuffix(c)}` : ""}
           {c.waId ? ` · +${c.waId}` : ""}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <WhoBadge
-          who={who}
-          detail={who === "human" ? humanUntilText(conversation.humanUntil) : undefined}
-        />
+        <WhoBadge who={who} detail={who === "human" ? until : undefined} />
         {who === "opted_out" && conversation.mode === "human" ? (
-          <WhoBadge who="human" detail={humanUntilText(conversation.humanUntil)} />
+          <WhoBadge who="human" detail={until} />
         ) : null}
       </div>
       <ChatActions conversation={conversation} />
@@ -82,6 +84,9 @@ function ChatHeader({ conversation }: { conversation: ConversationHeader }) {
 
 function MessageList({ id }: { id: string }) {
   const query = useMessages(id);
+  const t = useTranslations("conversations");
+  const tCommon = useTranslations("common");
+  const { formatLongDay } = useFormat();
   const pages = query.data?.pages ?? [];
   // Pages come newest-first (each page oldest-first inside): show oldest page first.
   const messages: ChatMessage[] = [...pages].reverse().flatMap((p) => p.items);
@@ -103,19 +108,19 @@ function MessageList({ id }: { id: string }) {
     firstLoad.current = true;
   }, [id]);
 
-  if (query.isPending) return <LoadingState rows={4} label="Cargando mensajes…" />;
+  if (query.isPending) return <LoadingState rows={4} label={t("loadingMessages")} />;
   if (query.isError)
     return (
       <ErrorState
         error={query.error}
         onRetry={() => void query.refetch()}
-        back={{ href: "/conversaciones", label: "Volver a Conversaciones" }}
+        back={{ href: "/conversaciones", label: t("backTo") }}
       />
     );
 
   let lastDay = "";
   return (
-    <section aria-label="Mensajes" className="flex flex-col gap-2 pb-4">
+    <section aria-label={t("messagesLabel")} className="flex flex-col gap-2 pb-4">
       {query.hasNextPage ? (
         <Button
           variant="ghost"
@@ -123,11 +128,11 @@ function MessageList({ id }: { id: string }) {
           disabled={query.isFetchingNextPage}
           onClick={() => void query.fetchNextPage()}
         >
-          {query.isFetchingNextPage ? "Cargando…" : "Ver mensajes anteriores"}
+          {query.isFetchingNextPage ? tCommon("loading") : t("olderMessages")}
         </Button>
       ) : null}
       {messages.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">Todavía no hay mensajes.</p>
+        <p className="py-8 text-center text-sm text-muted-foreground">{t("noMessages")}</p>
       ) : null}
       {messages.map((m) => {
         const day = dayKey(m.at);
@@ -137,7 +142,7 @@ function MessageList({ id }: { id: string }) {
           <Fragment key={m.id}>
             {separator ? (
               <p className="my-2 self-center rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground first-letter:uppercase">
-                {dayFormat.format(new Date(m.at))}
+                {formatLongDay(m.at)}
               </p>
             ) : null}
             <MessageBubble message={m} />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { api } from "@/features/auth/api";
 import { useApiQuery } from "@/hooks/use-api";
@@ -43,6 +44,7 @@ export const useProduct = (id: string) =>
 
 export function useRenameSupplier(onDone: () => void) {
   const queryClient = useQueryClient();
+  const t = useTranslations("catalog");
   return useMutation({
     mutationFn: (input: { id: string; name: string }) =>
       api.request<{ supplier: { name: string; changed: boolean } }>(
@@ -50,14 +52,12 @@ export function useRenameSupplier(onDone: () => void) {
         { method: "PATCH", body: JSON.stringify({ name: input.name }) },
       ),
     onSuccess: (data) => {
-      toast.success(data.supplier.changed ? "Proveedor renombrado." : "El nombre ya era ese.");
+      toast.success(data.supplier.changed ? t("renamed") : t("sameName"));
       onDone();
     },
     onError: (error) =>
       toast.error(
-        error instanceof ApiError && error.code === "CONFLICT"
-          ? "Ya hay otro proveedor con ese nombre. (Unir proveedores llega más adelante.)"
-          : "No se pudo renombrar.",
+        error instanceof ApiError && error.code === "CONFLICT" ? t("nameTaken") : t("renameFailed"),
       ),
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["catalog"] });
@@ -74,10 +74,11 @@ export const useAlerts = (status: "open" | "all") =>
 
 export function useAcknowledgeAlert() {
   const queryClient = useQueryClient();
+  const t = useTranslations("alerts");
   return useMutation({
     mutationFn: (id: string) =>
       api.request<{ changed: boolean }>(`/admin/alerts/${id}/acknowledge`, { method: "POST" }),
-    onError: () => toast.error("No se pudo marcar como vista."),
+    onError: () => toast.error(t("ackFailed")),
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["alerts"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });

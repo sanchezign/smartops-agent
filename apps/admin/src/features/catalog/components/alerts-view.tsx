@@ -2,44 +2,36 @@
 
 import { AlertOctagon, AlertTriangle, Check, Info } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatRelative } from "@/lib/format";
+import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
 import { useAcknowledgeAlert, useAlerts } from "../hooks";
-import type { AlertItem } from "../types";
 
-const TYPE_LABEL: Record<AlertItem["type"], string> = {
-  price_change: "Cambio de precio",
-  low_stock: "Poco stock",
-  missing_data: "Faltan datos",
-  ingestion_error: "Error al procesar",
-  manual_attention: "Revisar a mano",
-  integration_error: "Integración",
-  possible_opt_out: "¿Pidió la baja?",
-};
+const STATUS_FILTERS = ["open", "all"] as const;
 
 const SEVERITY = {
-  critical: { icon: AlertOctagon, className: "text-destructive", label: "Crítica" },
-  warning: { icon: AlertTriangle, className: "text-amber-600", label: "Importante" },
-  info: { icon: Info, className: "text-muted-foreground", label: "Informativa" },
+  critical: { icon: AlertOctagon, className: "text-destructive" },
+  warning: { icon: AlertTriangle, className: "text-amber-600" },
+  info: { icon: Info, className: "text-muted-foreground" },
 } as const;
 
 export function AlertsView() {
   const [status, setStatus] = useState<"open" | "all">("open");
   const query = useAlerts(status);
   const ack = useAcknowledgeAlert();
+  const t = useTranslations("alerts");
+  const tPages = useTranslations("pages");
+  const { formatRelative } = useFormat();
   return (
     <>
-      <PageHeader
-        title="Alertas"
-        description="Lo que conviene mirar: aumentos grandes, poco stock, errores. Marcalas como vistas cuando las resuelvas."
-      />
-      <div role="group" aria-label="Estado" className="mb-4 inline-flex rounded-lg border p-1">
-        {(["open", "all"] as const).map((s) => (
+      <PageHeader title={tPages("alerts")} description={t("description")} />
+      <div role="group" aria-label={t("status")} className="mb-4 inline-flex rounded-lg border p-1">
+        {STATUS_FILTERS.map((s) => (
           <Button
             key={s}
             size="sm"
@@ -48,7 +40,11 @@ export function AlertsView() {
             className="min-h-9"
             onClick={() => setStatus(s)}
           >
-            {s === "open" ? `Sin ver${query.data ? ` (${query.data.open})` : ""}` : "Todas"}
+            {s === "open"
+              ? query.data
+                ? t("unseenCount", { count: query.data.open })
+                : t("unseen")
+              : t("all")}
           </Button>
         ))}
       </div>
@@ -57,9 +53,9 @@ export function AlertsView() {
       ) : query.isError ? (
         <ErrorState error={query.error} onRetry={() => void query.refetch()} />
       ) : query.data.items.length === 0 ? (
-        <EmptyState title={status === "open" ? "No hay alertas sin ver" : "No hay alertas"} />
+        <EmptyState title={status === "open" ? t("emptyUnseen") : t("empty")} />
       ) : (
-        <ul className="flex flex-col gap-2" aria-label="Alertas">
+        <ul className="flex flex-col gap-2" aria-label={t("listLabel")}>
           {query.data.items.map((a) => {
             const sev = SEVERITY[a.severity];
             const Icon = sev.icon;
@@ -74,19 +70,19 @@ export function AlertsView() {
               >
                 <Icon
                   className={cn("mt-0.5 size-5 shrink-0", sev.className)}
-                  aria-label={sev.label}
+                  aria-label={t(`severity.${a.severity}`)}
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <p className="font-medium break-words">{a.title}</p>
                   <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                    <Badge variant="outline">{TYPE_LABEL[a.type]}</Badge>
+                    <Badge variant="outline">{t(`types.${a.type}`)}</Badge>
                     {formatRelative(a.createdAt)}
                     {a.product ? (
                       <Link
                         href={`/catalogo/${a.product.id}`}
                         className="font-medium text-foreground underline-offset-4 hover:underline"
                       >
-                        Ver producto
+                        {t("viewProduct")}
                       </Link>
                     ) : null}
                     {a.conversationId ? (
@@ -94,7 +90,7 @@ export function AlertsView() {
                         href={`/conversaciones/${a.conversationId}`}
                         className="font-medium text-foreground underline-offset-4 hover:underline"
                       >
-                        Ver conversación
+                        {t("viewConversation")}
                       </Link>
                     ) : null}
                   </p>
@@ -106,12 +102,12 @@ export function AlertsView() {
                     className="min-h-11 shrink-0"
                     disabled={ack.isPending && ack.variables === a.id}
                     onClick={() => ack.mutate(a.id)}
-                    aria-label={`Marcar como vista: ${a.title}`}
+                    aria-label={t("markSeen", { title: a.title })}
                   >
-                    <Check aria-hidden /> Vista
+                    <Check aria-hidden /> {t("seen")}
                   </Button>
                 ) : (
-                  <span className="shrink-0 text-xs text-muted-foreground">Vista</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{t("seen")}</span>
                 )}
               </li>
             );

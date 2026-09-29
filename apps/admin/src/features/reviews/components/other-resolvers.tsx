@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -20,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatMoney, formatPct } from "@/lib/format";
+import { useFormat } from "@/lib/use-format";
 import { useSuppliers, type ResolveInput } from "../hooks";
 import type {
   GateProposal,
@@ -38,30 +39,27 @@ interface ResolverProps {
   onResolve(input: ResolveInput): void;
 }
 
-const signed = (pct: string) => formatPct(pct);
-
-/** "Todo sube 8 %": the preview per product; approving applies it where the price did not change since. */
+/** "Everything goes up 8%": the preview per product; approving applies it where the price did not change since. */
 export function GlobalChangeResolver({ item, readOnly, pending, onResolve }: ResolverProps) {
   const proposal = item.proposal as GlobalChangeProposal;
+  const t = useTranslations("reviews.global");
+  const { formatMoney, formatPct } = useFormat();
   const outliers = proposal.products.filter((p) => p.outlier).length;
   return (
     <>
       <Section
-        title={`Cambio anunciado: ${signed(proposal.pct)} a ${proposal.products.length} productos`}
+        title={t("announced", { pct: formatPct(proposal.pct), count: proposal.products.length })}
       >
         {outliers ? (
-          <p className="text-sm text-muted-foreground">
-            {outliers} {outliers === 1 ? "producto supera" : "productos superan"} el límite de
-            cambio configurado.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("outliers", { count: outliers })}</p>
         ) : null}
         <div className="overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Producto</TableHead>
-                <TableHead className="text-right">Antes</TableHead>
-                <TableHead className="text-right">Después</TableHead>
+                <TableHead>{t("product")}</TableHead>
+                <TableHead className="text-right">{t("before")}</TableHead>
+                <TableHead className="text-right">{t("after")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -71,7 +69,7 @@ export function GlobalChangeResolver({ item, readOnly, pending, onResolve }: Res
                     {p.name}
                     {p.outlier ? (
                       <Badge variant="destructive" className="ml-2">
-                        fuera de lo normal
+                        {t("outlierBadge")}
                       </Badge>
                     ) : null}
                   </TableCell>
@@ -89,7 +87,7 @@ export function GlobalChangeResolver({ item, readOnly, pending, onResolve }: Res
       </Section>
       {readOnly ? null : (
         <ResolveActions
-          approveLabel={`Aplicar ${signed(proposal.pct)}`}
+          approveLabel={t("apply", { pct: formatPct(proposal.pct) })}
           pending={pending}
           onApprove={() => onResolve({ action: "approve", body: {} })}
           onReject={(note) => onResolve({ action: "reject", note })}
@@ -101,29 +99,32 @@ export function GlobalChangeResolver({ item, readOnly, pending, onResolve }: Res
 
 export function MarkUnavailableResolver({ item, readOnly, pending, onResolve }: ResolverProps) {
   const proposal = item.proposal as MarkUnavailableProposal;
+  const t = useTranslations("reviews.unavailable");
+  const { formatMoney } = useFormat();
   return (
     <>
-      <Section title="Producto">
+      <Section title={t("product")}>
         <p className="text-sm">
-          <span className="font-medium">{item.product?.name ?? "Producto"}</span>
+          <span className="font-medium">{item.product?.name ?? t("product")}</span>
           {item.product ? (
             <span className="text-muted-foreground">
               {" "}
-              · precio actual {formatMoney(item.product.price, item.product.currency)}
+              ·{" "}
+              {t("currentPrice", { price: formatMoney(item.product.price, item.product.currency) })}
             </span>
           ) : null}
         </p>
         <p className="text-sm text-muted-foreground">
           {proposal.reason === "missing_from_full_list"
-            ? "El proveedor mandó su lista completa y este producto no aparece. Puede que ya no lo venda, o que se le haya pasado."
-            : "El proveedor dice que no tiene este producto."}{" "}
-          Si lo marcás como no disponible, deja de ofrecerse hasta que vuelva a cotizarlo.
+            ? t("missingFromFull")
+            : t("statedUnavailable")}{" "}
+          {t("consequence")}
         </p>
       </Section>
       {readOnly ? null : (
         <ResolveActions
-          approveLabel="Marcar como no disponible"
-          rejectLabel="Dejarlo disponible"
+          approveLabel={t("approve")}
+          rejectLabel={t("reject")}
           pending={pending}
           onApprove={() => onResolve({ action: "approve", body: {} })}
           onReject={(note) => onResolve({ action: "reject", note })}
@@ -133,32 +134,38 @@ export function MarkUnavailableResolver({ item, readOnly, pending, onResolve }: 
   );
 }
 
-const taxBasis = (v: boolean | null | undefined) =>
-  v === true ? "con IVA incluido" : v === false ? "sin IVA" : "sin indicar";
+const taxBasisKey = (v: boolean | null | undefined) =>
+  v === true ? "taxIncluded" : v === false ? "taxExcluded" : "taxUnknown";
 
 /** Whole-list gates: tax basis change, suspicious instructions, extraction failed. */
 export function GateResolver({ item, readOnly, pending, onResolve }: ResolverProps) {
   const proposal = (item.proposal ?? {}) as GateProposal;
+  const t = useTranslations("reviews.gate");
   const copy =
     item.kind === "tax_basis_changed"
       ? {
-          title: "Qué cambió",
-          body: `Antes los precios de este proveedor venían ${taxBasis(proposal.previous)}; esta lista viene ${taxBasis(proposal.current)}. Si lo aceptás, la lista se procesa con la nueva base.`,
-          approve: "Aceptar y procesar la lista",
-          reject: "Descartar la lista",
+          title: t("taxTitle"),
+          body: t("taxBody", {
+            previous: t(taxBasisKey(proposal.previous)),
+            current: t(taxBasisKey(proposal.current)),
+          }),
+          approve: t("taxApprove"),
+          reject: t("discardList"),
         }
       : item.kind === "suspicious_instructions"
         ? {
-            title: "Por qué se frenó",
-            body: "El mensaje incluye instrucciones dirigidas al sistema (por ejemplo, cambiar reglas o precios en general). No se aplicó nada. Leé el mensaje original: si es una lista legítima, podés procesarla igual.",
-            approve: "Procesar igual",
-            reject: "Descartar",
+            title: t("suspiciousTitle"),
+            body: t("suspiciousBody"),
+            approve: t("suspiciousApprove"),
+            reject: t("discard"),
           }
         : {
-            title: "Qué pasó",
-            body: `No se pudo leer automáticamente${proposal.detail ? ` (${proposal.detail})` : ""}. Si lo reintentás, la lista vuelve a la cola; si la descartás, no se hace nada.`,
-            approve: "Reintentar",
-            reject: "Descartar",
+            title: t("failedTitle"),
+            body: proposal.detail
+              ? t("failedBodyDetail", { detail: proposal.detail })
+              : t("failedBody"),
+            approve: t("retry"),
+            reject: t("discard"),
           };
   return (
     <>
@@ -178,7 +185,7 @@ export function GateResolver({ item, readOnly, pending, onResolve }: ResolverPro
   );
 }
 
-/** "¿De qué proveedor es?": a candidate, any existing supplier, or a new one. */
+/** "Which supplier is it from?": a candidate, any existing supplier, or a new one. */
 export function SupplierResolver({ item, readOnly, pending, onResolve }: ResolverProps) {
   const proposal = (item.proposal ?? {}) as GateProposal;
   const suppliers = useSuppliers(!readOnly);
@@ -188,13 +195,15 @@ export function SupplierResolver({ item, readOnly, pending, onResolve }: Resolve
   const [newName, setNewName] = useState(proposal.supplierName ?? "");
   const [error, setError] = useState<string | null>(null);
   const nameId = useId();
+  const t = useTranslations("reviews.supplier");
+  const tGate = useTranslations("reviews.gate");
 
   return (
     <>
-      <Section title="¿De qué proveedor es la lista?">
+      <Section title={t("title")}>
         {proposal.supplierName ? (
           <p className="text-sm text-muted-foreground">
-            El documento dice:{" "}
+            {t("documentSays")}{" "}
             <span className="font-medium text-foreground">{proposal.supplierName}</span>
           </p>
         ) : null}
@@ -202,7 +211,7 @@ export function SupplierResolver({ item, readOnly, pending, onResolve }: Resolve
           value={mode}
           onValueChange={setMode}
           disabled={readOnly}
-          aria-label="Proveedor"
+          aria-label={t("label")}
           className="gap-2"
         >
           {candidates.map((c) => (
@@ -214,16 +223,16 @@ export function SupplierResolver({ item, readOnly, pending, onResolve }: Resolve
             </Label>
           ))}
           <Label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border px-3 has-[[data-state=checked]]:border-primary">
-            <RadioGroupItem value="other" /> Otro proveedor existente
+            <RadioGroupItem value="other" /> {t("otherExisting")}
           </Label>
           <Label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border px-3 has-[[data-state=checked]]:border-primary">
-            <RadioGroupItem value="new" /> Es un proveedor nuevo
+            <RadioGroupItem value="new" /> {t("isNew")}
           </Label>
         </RadioGroup>
         {mode === "other" ? (
           <Select value={other} onValueChange={setOther} disabled={readOnly}>
-            <SelectTrigger className="min-h-11 w-full" aria-label="Elegí el proveedor">
-              <SelectValue placeholder="Elegí el proveedor" />
+            <SelectTrigger className="min-h-11 w-full" aria-label={t("choose")}>
+              <SelectValue placeholder={t("choose")} />
             </SelectTrigger>
             <SelectContent>
               {(suppliers.data?.suppliers ?? []).map((s) => (
@@ -236,7 +245,7 @@ export function SupplierResolver({ item, readOnly, pending, onResolve }: Resolve
         ) : null}
         {mode === "new" ? (
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={nameId}>Nombre del proveedor</Label>
+            <Label htmlFor={nameId}>{t("newName")}</Label>
             <Input
               id={nameId}
               value={newName}
@@ -248,18 +257,18 @@ export function SupplierResolver({ item, readOnly, pending, onResolve }: Resolve
       </Section>
       {readOnly ? null : (
         <ResolveActions
-          approveLabel="Asignar y procesar"
-          rejectLabel="Descartar la lista"
+          approveLabel={t("approve")}
+          rejectLabel={tGate("discardList")}
           pending={pending}
           error={error}
           onApprove={() => {
             if (mode === "new") {
-              if (!newName.trim()) return setError("Escribí el nombre del proveedor.");
+              if (!newName.trim()) return setError(t("nameRequired"));
               setError(null);
               return onResolve({ action: "approve", body: { createSupplier: newName.trim() } });
             }
             const supplierId = mode === "other" ? other : mode;
-            if (!supplierId) return setError("Elegí un proveedor.");
+            if (!supplierId) return setError(t("pickOne"));
             setError(null);
             onResolve({ action: "approve", body: { supplierId } });
           }}
