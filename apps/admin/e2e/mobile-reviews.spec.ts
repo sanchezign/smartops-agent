@@ -13,26 +13,26 @@ test("approve one review and reject another with the bottom buttons", async ({
 }, info) => {
   const project = info.project.name;
   await login(page, "operator");
-  await page.getByRole("link", { name: "Revisiones", exact: true }).click();
-  await page.getByRole("button", { name: /^Productos/ }).click();
-  const list = page.getByRole("list", { name: "Revisiones" });
+  await page.getByRole("link", { name: "Reviews", exact: true }).click();
+  await page.getByRole("button", { name: /^Products/ }).click();
+  const list = page.getByRole("list", { name: "Reviews" });
 
   await list.getByText(`Martillo ${project}`).click();
-  const approve = page.getByRole("button", { name: "Aplicar precio" });
+  const approve = page.getByRole("button", { name: "Apply price" });
   // Pinned to the bottom on phones: reachable without scrolling (desktop: normal flow).
   if (isMobile) await expect(approve).toBeInViewport();
   await approve.click();
-  await expect(page.getByText("Aprobada y aplicada.")).toBeVisible();
+  await expect(page.getByText("Approved and applied.")).toBeVisible();
 
-  await page.getByRole("button", { name: /^Productos/ }).click();
+  await page.getByRole("button", { name: /^Products/ }).click();
   await list.getByText(`Serrucho ${project}`).click();
-  const reject = page.getByRole("button", { name: "Rechazar", exact: true });
+  const reject = page.getByRole("button", { name: "Reject", exact: true });
   if (isMobile) await expect(reject).toBeInViewport();
   await reject.click();
-  await page.getByLabel("Nota").fill(`Precio equivocado (${project})`);
-  await page.getByRole("button", { name: "Confirmar" }).click();
-  await expect(page.getByText("Revisión rechazada")).toBeVisible();
+  await page.getByLabel("Note").fill(`Precio equivocado (${project})`);
+  await page.getByRole("button", { name: "Confirm" }).click();
+  await expect(page.getByText("Review rejected")).toBeVisible();
 
-  await page.getByRole("button", { name: "Rechazadas" }).click();
+  await page.getByRole("button", { name: "Rejected" }).click();
   await expect(list.getByText(`Serrucho ${project}`)).toBeVisible();
 });

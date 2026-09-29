@@ -594,7 +594,7 @@ Each one gets an ADR in docs/adr/.
 `feat/phase-12-deploy`): M0 DONE; M1 done up to DuckDNS — the VM cannot be created yet (São Paulo
 has no A1 capacity). WAITING: the user runs `scripts/oci/launch-retry.ps1` for 3–5 days
 (guide `docs/deploy/m1-retry-launch.md`). Phase 13 (i18n + docs, branch `feat/phase-13-i18n-docs`)
-advances meanwhile: M0–M3 DONE, next M4 (E2E in English + Spanish smoke + axe in both). If the VM appears first, phase 12 does
+advances meanwhile: M0–M4 DONE, next M5 (English docs). If the VM appears first, phase 12 does
 not wait (first deploy without i18n, updated later). M3b (phase 5) and MFA (TOTP) remain
 recommended/required before a real client.**
 
@@ -1761,6 +1761,16 @@ recommended/required before a real client.**
       payload); possible_opt_out alerts carry `matched`. Model-written `warnings` stay as they are.
       Tests: API 1087 unit (+ business-texts, English digest / ack) + 222 integration (+ English
       opt-out confirmations; the reminder test now upserts its setting), panel 119, E2E 76.
+    - M4 E2E per language — DONE (2026-09-28). Playwright runs in `en-US` (the panel resolves English
+      from Accept-Language); every selector translated (exact catalog matches by a script, the rest by
+      hand; sample data stays Spanish). `e2e/i18n-es.spec.ts` (`es-UY`): login + dashboard + reviews +
+      catalog (es-UY money) + conversations + alerts + rules in Spanish, axe on each, all 3 browsers.
+      `e2e/language-switch.spec.ts` (desktop): the admin's choice is saved and applied at a login in a
+      fresh English browser (restored in `finally`); the shared demo operator switches by cookie only
+      (a fresh browser stays English, no error toast); the login screen has its own selector. English
+      selector lessons: "Name" also matches a dialog description (exact), a toast can repeat a badge
+      text ("The bot answers again."), badge text includes a decorative emoji. 85 passed / 41 skipped
+      (3.7 min).
 
 ## Known issues (out of scope)
 - **Phase 13 M2 — decision pending (user):** the panel ROUTES are still Spanish (/revisiones,

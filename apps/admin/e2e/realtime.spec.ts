@@ -26,13 +26,13 @@ async function adminApi() {
 
 test("a mode change made elsewhere appears live in the open chat", async ({ page }) => {
   await login(page, "operator");
-  await expect(page.getByRole("status").filter({ hasText: "En vivo" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Live" })).toBeVisible();
 
-  await page.getByRole("link", { name: "Conversaciones", exact: true }).click();
-  await page.getByLabel("Buscar por nombre, proveedor o teléfono").fill("Carolina");
+  await page.getByRole("link", { name: "Conversations", exact: true }).click();
+  await page.getByLabel("Search by name, supplier or phone").fill("Carolina");
   // (by name: clicking "the first link" could hit the list before the search filtered it)
   await page
-    .getByRole("list", { name: "Conversaciones" })
+    .getByRole("list", { name: "Conversations" })
     .getByRole("link", { name: /Carolina/ })
     .click();
   await expect(page.getByRole("heading", { name: "Carolina (depósito)" })).toBeVisible();
@@ -40,19 +40,19 @@ test("a mode change made elsewhere appears live in the open chat", async ({ page
 
   // Every project runs this on the same chat: flip whatever mode it is in now.
   const { ctx, call } = await adminApi();
-  const human = await page.getByRole("button", { name: "Reactivar el bot" }).isVisible();
+  const human = await page.getByRole("button", { name: "Reactivate the bot" }).isVisible();
   const change = human
     ? call("post", `/conversations/${conversationId}/resume`)
     : call("post", `/conversations/${conversationId}/pause`, { minutes: 30 });
   const changed = await change;
   expect(changed.ok(), `${changed.status()} ${await changed.text()}`).toBe(true);
 
-  const expected = human ? "Responde el bot" : "Atiende una persona";
+  const expected = human ? "The bot answers" : "A person is handling it";
   await expect(page.getByText(expected).first()).toBeVisible({ timeout: 5_000 });
   await ctx.dispose();
 });
 
-test("if the stream never answers: 'Actualización cada 30 s' and the screen still refreshes", async ({
+test("if the stream never answers: 'Updating every 30 s' and the screen still refreshes", async ({
   page,
   isMobile,
 }) => {
@@ -61,20 +61,18 @@ test("if the stream never answers: 'Actualización cada 30 s' and the screen sti
   // A proxy that holds the stream forever (like Cloudflare did with GET): never answer it.
   await page.route("**/api/v1/events", () => {});
   await login(page, "operator");
-  await expect(page.getByRole("status").filter({ hasText: "Actualización cada 30 s" })).toBeVisible(
-    {
-      timeout: 15_000,
-    },
-  );
-  await page.getByRole("link", { name: "Conversaciones", exact: true }).click();
-  await page.getByLabel("Buscar por nombre, proveedor o teléfono").fill("Carolina");
+  await expect(page.getByRole("status").filter({ hasText: "Updating every 30 s" })).toBeVisible({
+    timeout: 15_000,
+  });
+  await page.getByRole("link", { name: "Conversations", exact: true }).click();
+  await page.getByLabel("Search by name, supplier or phone").fill("Carolina");
   await page
-    .getByRole("list", { name: "Conversaciones" })
+    .getByRole("list", { name: "Conversations" })
     .getByRole("link", { name: /Carolina/ })
     .click();
   await expect(page.getByRole("heading", { name: "Carolina (depósito)" })).toBeVisible();
   const conversationId = new URL(page.url()).pathname.split("/").pop()!;
-  const human = await page.getByRole("button", { name: "Reactivar el bot" }).isVisible();
+  const human = await page.getByRole("button", { name: "Reactivate the bot" }).isVisible();
   const { ctx, call } = await adminApi();
   const changed = await (human
     ? call("post", `/conversations/${conversationId}/resume`)
@@ -82,7 +80,7 @@ test("if the stream never answers: 'Actualización cada 30 s' and the screen sti
   expect(changed.ok()).toBe(true);
   // The periodic refresh (30 s) brings it in without reloading.
   await expect(
-    page.getByText(human ? "Responde el bot" : "Atiende una persona").first(),
+    page.getByText(human ? "The bot answers" : "A person is handling it").first(),
   ).toBeVisible({
     timeout: 45_000,
   });
@@ -92,8 +90,8 @@ test("if the stream never answers: 'Actualización cada 30 s' and the screen sti
 test("a review resolved elsewhere leaves the open queue live", async ({ page, isMobile }) => {
   test.skip(isMobile, "resolves shared demo data: desktop only");
   await login(page);
-  await page.getByRole("link", { name: "Revisiones", exact: true }).click();
-  const list = page.getByRole("list", { name: "Revisiones" });
+  await page.getByRole("link", { name: "Reviews", exact: true }).click();
+  const list = page.getByRole("list", { name: "Reviews" });
   await expect(list.getByText("Disyuntor diferencial 40A")).toBeVisible();
 
   const { ctx, call } = await adminApi();

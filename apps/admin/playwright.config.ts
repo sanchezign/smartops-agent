@@ -44,7 +44,9 @@ export default defineConfig({
   outputDir: "e2e/results",
   use: {
     baseURL: E2E.panelUrl,
-    locale: "es-UY",
+    // Phase 13: the panel runs in English for the whole suite (Accept-Language en-US); the
+    // Spanish smoke + axe pass (i18n-es.spec.ts) sets es-UY itself.
+    locale: "en-US",
     timezoneId: "America/Montevideo",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",

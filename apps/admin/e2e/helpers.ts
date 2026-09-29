@@ -6,9 +6,9 @@ export async function login(page: Page, who: "operator" | "admin" = "admin") {
   const creds = E2E[who];
   await page.goto("/login");
   await page.getByLabel("Email").fill(creds.email);
-  await page.getByLabel("Contraseña").fill(creds.password);
-  await page.getByRole("button", { name: "Ingresar" }).click();
-  await expect(page.getByRole("heading", { name: "Inicio" })).toBeVisible();
+  await page.getByLabel("Password").fill(creds.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
 }
 
 /**

@@ -37,8 +37,8 @@ async function digestTokens(): Promise<{ multi: string; single: string; id: stri
 async function loginHere(page: Page) {
   await expect(page).toHaveURL(/\/login\?next=%2Fd%2F/);
   await page.getByLabel("Email").fill(E2E.operator.email);
-  await page.getByLabel("Contraseña").fill(E2E.operator.password);
-  await page.getByRole("button", { name: "Ingresar" }).click();
+  await page.getByLabel("Password").fill(E2E.operator.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
 }
 
 test.describe("digest deep link (phase 9 M7)", () => {
@@ -48,10 +48,10 @@ test.describe("digest deep link (phase 9 M7)", () => {
     expect(multi).not.toContain(id);
     await page.goto(`/d/${multi}`);
     await loginHere(page);
-    await expect(page.getByRole("heading", { name: "Resumen de WhatsApp" })).toBeVisible();
-    const list = page.getByRole("list", { name: "Puntos del resumen" });
+    await expect(page.getByRole("heading", { name: "WhatsApp summary" })).toBeVisible();
+    const list = page.getByRole("list", { name: "Summary items" });
     await expect(list.getByRole("link")).toHaveCount(3);
-    await list.getByRole("link", { name: /Pedido de Ana Pereira/ }).click();
+    await list.getByRole("link", { name: /Order from Ana Pereira/ }).click();
     await expect(page.getByRole("heading", { name: "Ana Pereira" })).toBeVisible();
   });
 
@@ -66,7 +66,7 @@ test.describe("digest deep link (phase 9 M7)", () => {
   test("an unknown token says so (same answer as a malformed one)", async ({ page }) => {
     await page.goto(`/d/${"x".repeat(43)}`);
     await loginHere(page);
-    await expect(page.getByText(/Esto ya no existe/)).toBeVisible();
-    await expect(page.getByRole("link", { name: "Ir al inicio" })).toBeVisible();
+    await expect(page.getByText(/This no longer exists/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Go home" })).toBeVisible();
   });
 });

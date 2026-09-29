@@ -20,8 +20,8 @@ const PAGES = [
 const REVIEWS: [string, string][] = [
   ["Lista Distribuidora Norte.xlsx", "planilla"],
   ["Arena gruesa", "linea"],
-  ["Aumento general", "aumento"],
-  ["Mensaje sospechoso", "sospechoso"],
+  ["Across-the-board change", "aumento"],
+  ["Suspicious message", "sospechoso"],
 ];
 
 test.skip(!process.env.SCREENS, "set SCREENS=1 to take screenshots");
@@ -29,7 +29,7 @@ test.skip(!process.env.SCREENS, "set SCREENS=1 to take screenshots");
 test("screenshots", async ({ page }, info) => {
   test.setTimeout(240_000);
   await page.goto("/login");
-  await page.getByText("Demo pública.").waitFor();
+  await page.getByText("Public demo.").waitFor();
   await page.screenshot({ path: `e2e/screens/${info.project.name}-login.png`, fullPage: true });
   await login(page);
   for (const path of PAGES) {
@@ -46,23 +46,23 @@ test("screenshots", async ({ page }, info) => {
     ["Luis", "chat-luis"],
   ] as const) {
     await page.goto("/conversaciones");
-    await page.getByLabel("Buscar por nombre, proveedor o teléfono").fill(search);
-    await page.getByRole("list", { name: "Conversaciones" }).getByRole("link").first().click();
-    await page.getByRole("region", { name: "Mensajes" }).waitFor();
+    await page.getByLabel("Search by name, supplier or phone").fill(search);
+    await page.getByRole("list", { name: "Conversations" }).getByRole("link").first().click();
+    await page.getByRole("region", { name: "Messages" }).waitFor();
     await page.waitForTimeout(800);
     await page.screenshot({ path: `e2e/screens/${info.project.name}-${name}.png` });
   }
   // Product with its price history.
   await page.goto("/catalogo");
-  await page.getByLabel("Buscar producto").fill("tornillo 6mm");
-  await page.getByRole("list", { name: "Productos" }).getByRole("link").first().click();
-  await page.getByRole("heading", { name: "Historial de precios" }).waitFor();
+  await page.getByLabel("Search product").fill("tornillo 6mm");
+  await page.getByRole("list", { name: "Products" }).getByRole("link").first().click();
+  await page.getByRole("heading", { name: "Price history" }).waitFor();
   await page.waitForTimeout(800);
   await page.screenshot({ path: `e2e/screens/${info.project.name}-producto.png`, fullPage: true });
   // Review detail screens (one per resolver).
   for (const [title, name] of REVIEWS) {
     await page.goto("/revisiones");
-    await page.getByRole("list", { name: "Revisiones" }).getByText(title).first().click();
+    await page.getByRole("list", { name: "Reviews" }).getByText(title).first().click();
     // (never "networkidle": the real-time stream stays open, ADR-020)
     await page.getByRole("heading", { level: 1 }).first().waitFor();
     await page.waitForTimeout(800);
