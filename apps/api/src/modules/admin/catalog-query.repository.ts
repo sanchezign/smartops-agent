@@ -1,3 +1,4 @@
+import { alertDetails } from "./alert-details.js";
 import type { PrismaClient } from "../../common/db.js";
 import { errors } from "../../common/errors/app-error.js";
 import type { Prisma } from "../../generated/prisma/client.js";
@@ -213,6 +214,7 @@ export function createCatalogQueryRepository(prisma: PrismaClient) {
             severity: true,
             status: true,
             title: true,
+            payload: true,
             createdAt: true,
             product: { select: { id: true, name: true } },
             ingestionRun: {
@@ -224,8 +226,10 @@ export function createCatalogQueryRepository(prisma: PrismaClient) {
       ]);
       return {
         open,
-        items: items.map(({ ingestionRun, ...a }) => ({
+        items: items.map(({ ingestionRun, payload, ...a }) => ({
           ...a,
+          // Phase 13: the panel writes the alert in its language from these fields.
+          details: alertDetails(a.type, payload),
           conversationId: ingestionRun?.message.conversationId ?? null,
         })),
       };

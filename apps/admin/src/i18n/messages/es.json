@@ -505,6 +505,10 @@
         "label": "Recordar cómo darse de baja cada",
         "help": "Se agrega al primer mensaje automático y después como mucho con esta frecuencia.",
         "suffix": "días"
+      },
+      "business_language": {
+        "label": "Idioma de los mensajes de WhatsApp",
+        "help": "Lo que envía el sistema: respuestas de baja, confirmaciones a proveedores y resúmenes al equipo. Cada persona elige el idioma del panel por su cuenta."
       }
     }
   },
@@ -736,6 +740,15 @@
       "critical": "Crítica",
       "warning": "Importante",
       "info": "Informativa"
+    },
+    "titles": {
+      "priceChange": "{product}: {oldPrice} → {newPrice} ({pct})",
+      "lowStock": "{product}: stock {stock}",
+      "audioTooLong": "Audio de {length} sin transcribir (límite {limit} min): escuchar manualmente",
+      "audioTooLongSize": "Audio de {size} MB sin transcribir (límite {limit} min): escuchar manualmente",
+      "n8nDeliveryFailed": "n8n no recibió un mensaje después de ~24 h de reintentos: revisa n8n y reenvíalo",
+      "n8nWorkflowError": "Error en {where}: {message}",
+      "possibleOptOut": "Posible baja: «{phrase}». Revísalo y regístrala a mano si corresponde"
     }
   },
   "users": {
@@ -785,6 +798,13 @@
       "withCode": "No se pudo completar (código {requestId}).",
       "noCode": "No se pudo completar.",
       "generic": "No se pudo completar. Prueba de nuevo."
+    },
+    "passwordIssues": {
+      "too_short": "Mínimo 15 caracteres (una frase de varias palabras es ideal).",
+      "too_long": "Máximo 128 caracteres.",
+      "common": "Es una contraseña conocida o filtrada: elige otra.",
+      "trivial_pattern": "Es un patrón trivial (repeticiones o secuencias de teclado o números).",
+      "contains_personal_info": "No puede contener el email, el nombre ni el nombre del sistema."
     }
   },
   "demo": {
@@ -881,6 +901,18 @@
     "goHome": "Ir al inicio",
     "title": "Resumen de WhatsApp",
     "description": "Enviado {when}. Toca cada punto para resolverlo.",
-    "itemsLabel": "Puntos del resumen"
+    "itemsLabel": "Puntos del resumen",
+    "items": {
+      "run": "{supplier}: {summary}",
+      "processedList": "Lista procesada",
+      "increases": "{count, plural, one {# aumento} other {# aumentos}}",
+      "increasesOver": "{count, plural, one {# aumento} other {# aumentos}} ({over, plural, one {# mayor} other {# mayores}} al {threshold})",
+      "lowStock": "{count, plural, one {# producto con stock bajo} other {# productos con stock bajo}}",
+      "reviews": "{count, plural, one {# revisión pendiente} other {# revisiones pendientes}}",
+      "order": "Pedido de {name}: «{preview}»",
+      "query": "Consulta de {name}: «{preview}»",
+      "aContact": "un contacto",
+      "error": "Error ({source}): {message}"
+    }
   }
 }

@@ -186,13 +186,15 @@ export function createTranscriptionRepository(
           data: {
             type: "manual_attention",
             severity: "info",
-            title: `Audio de ${length} sin transcribir (límite ${Math.round(input.maxSeconds / 60)} min): escuchar manualmente`,
+            // Technical fallback; the panel and the digest compose their text from the payload.
+            title: `Voice note of ${length} not transcribed (limit ${Math.round(input.maxSeconds / 60)} min): listen by hand`,
             payload: {
               reason: "audio_too_long",
               mediaFileId,
               messageId: message?.id ?? null,
               durationSeconds: input.durationSeconds,
               sizeBytes: input.sizeBytes,
+              maxSeconds: input.maxSeconds,
             },
           },
         });

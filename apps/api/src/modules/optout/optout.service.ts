@@ -1,13 +1,10 @@
+import { businessTexts, toBusinessLanguage } from "../../common/business-texts.js";
 import type { Logger } from "../../common/logger.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 import type { CreateOutboundInput, OutboundRepository } from "../messaging/outbound.repository.js";
 import type { SettingsService } from "../settings/settings.service.js";
 import { buildSendPayload } from "../whatsapp/whatsapp-send.client.js";
-import {
-  detectComplianceEvent,
-  OPT_IN_CONFIRMATION_TEXT,
-  OPT_OUT_CONFIRMATION_TEXT,
-} from "./optout-detector.js";
+import { detectComplianceEvent } from "./optout-detector.js";
 import type { OptOutRepository } from "./optout.repository.js";
 
 /**
@@ -35,14 +32,16 @@ export function createOnComplianceMessageInTx(deps: {
       optIn: settings["optIn.keywords"] as string[],
     });
     if (!detection) return { event: null, applied: false };
+    const texts = businessTexts(toBusinessLanguage(settings["business.language"]));
 
     if (detection.kind === "possible_opt_out") {
       await tx.alert.create({
         data: {
           type: "possible_opt_out",
           severity: "info",
-          title: `Posible baja de un contacto (frase ambigua: "${detection.matched}")`,
-          payload: { contactId, messageId } as Prisma.InputJsonValue,
+          // Technical fallback; the panel shows its own text from the payload (phase 13).
+          title: `Possible opt-out (ambiguous phrase: "${detection.matched}")`,
+          payload: { contactId, messageId, matched: detection.matched } as Prisma.InputJsonValue,
         },
       });
       deps.logger.info({ contactId, messageId }, "possible opt-out flagged for human review");
@@ -73,7 +72,7 @@ export function createOnComplianceMessageInTx(deps: {
     const recipient = contact.waId ? { waId: contact.waId } : { bsuid: contact.bsuid as string };
     const content = {
       kind: "text" as const,
-      body: detection.kind === "opt_out" ? OPT_OUT_CONFIRMATION_TEXT : OPT_IN_CONFIRMATION_TEXT,
+      body: detection.kind === "opt_out" ? texts.optOutConfirmation : texts.optInConfirmation,
     };
     const input: CreateOutboundInput = {
       contactId,

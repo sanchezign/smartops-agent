@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { businessTexts, toBusinessLanguage } from "../../common/business-texts.js";
 import { AppError, errors } from "../../common/errors/app-error.js";
 import type { Logger } from "../../common/logger.js";
 import type { OutboundService } from "../messaging/outbound.service.js";
@@ -64,6 +65,7 @@ export function createNotificationService(deps: {
       } | null,
       thresholdPct: all["catalog.priceAlertPct"] as number,
       businessHours: all["businessHours"] as BusinessHours | null,
+      language: toBusinessLanguage(all["business.language"]),
     };
   }
 
@@ -105,7 +107,7 @@ export function createNotificationService(deps: {
               severity:
                 facts.pendingReviews > 0 || facts.increasesOverThreshold > 0 ? "warning" : "info",
               dedupeKey: `run:${input.runId}`,
-              title: runTitle(facts),
+              title: runTitle(facts, cfg.language),
               data: { category: "run_summary", ...facts },
             },
             log,
@@ -116,13 +118,15 @@ export function createNotificationService(deps: {
           const message = await deps.repository.customerMessage(input.messageId);
           if (!message) throw errors.notFound("Message not found");
           const preview = (message.text ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
-          const label = input.kind === "order" ? "Pedido" : "Consulta";
+          const { digest } = businessTexts(cfg.language);
+          const who = message.contactName ?? digest.aContact;
           return record(
             {
               category: input.kind,
               severity: "info",
               dedupeKey: `${input.kind}:${input.messageId}`,
-              title: `${label} de ${message.contactName ?? "un contacto"}: ${preview}`,
+              title:
+                input.kind === "order" ? digest.order(who, preview) : digest.query(who, preview),
               data: {
                 category: input.kind,
                 messageId: input.messageId,
@@ -134,15 +138,15 @@ export function createNotificationService(deps: {
           );
         }
         case "manual_attention": {
-          const title = await deps.repository.alertTitle(input.alertId);
-          if (!title) throw errors.notFound("Alert not found");
+          const alert = await deps.repository.alertSummary(input.alertId);
+          if (!alert) throw errors.notFound("Alert not found");
           return record(
             {
               category: "manual_attention",
               severity: "info",
               dedupeKey: `alert:${input.alertId}`,
-              title,
-              data: { category: "manual_attention", title },
+              title: alert.title,
+              data: { category: "manual_attention", ...alert },
             },
             log,
           );
@@ -154,7 +158,7 @@ export function createNotificationService(deps: {
       const message = input.message.replace(/\s+/g, " ").trim().slice(0, 300);
       const source = `n8n · ${input.workflow}${input.node ? ` · ${input.node}` : ""}`;
       const alertId = await deps.repository.createIntegrationAlert({
-        title: `Error en ${source}: ${message}`,
+        title: `Error in ${source}: ${message}`,
         payload: {
           reason: "n8n_workflow_error",
           workflow: input.workflow,
@@ -169,7 +173,7 @@ export function createNotificationService(deps: {
           category: "integration_error",
           severity: "critical",
           dedupeKey,
-          title: `Error en ${source}: ${message}`,
+          title: `Error in ${source}: ${message}`,
           data: { category: "integration_error", source, message },
         },
         log,
@@ -217,7 +221,7 @@ export function createNotificationService(deps: {
       const link =
         deps.panelUrl && digest.linkToken ? `${deps.panelUrl}/d/${digest.linkToken}` : null;
       const data = digest.items.map((i) => i.data);
-      const text = renderDigest(data, { link });
+      const text = renderDigest(data, { link, language: cfg.language });
       const idempotencyKey = `digest:${digest.id}`;
       const recipient = { waId: digest.recipient };
       const settle = async (
@@ -275,7 +279,14 @@ export function createNotificationService(deps: {
                         type: "body",
                         // Template parameters cannot contain line breaks: one-line variant.
                         parameters: [
-                          { type: "text", text: renderDigest(data, { link, singleLine: true }) },
+                          {
+                            type: "text",
+                            text: renderDigest(data, {
+                              link,
+                              singleLine: true,
+                              language: cfg.language,
+                            }),
+                          },
                         ],
                       },
                     ],

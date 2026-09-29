@@ -400,7 +400,7 @@ describe.skipIf(!testDatabaseUrl)("notifications (Postgres)", () => {
     expect(out.send).toHaveBeenCalledWith(
       expect.objectContaining({
         recipient: { conversationId: conversation.id },
-        content: { kind: "text", body: "¡Gracias! Recibimos tu lista: 1 precio actualizado." },
+        content: { kind: "text", body: "¡Gracias! Recibimos su lista: 1 precio actualizado." },
         idempotencyKey: `ack:${run.id}`,
       }),
       log,

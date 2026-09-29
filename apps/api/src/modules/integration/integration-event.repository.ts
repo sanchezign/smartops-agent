@@ -71,7 +71,7 @@ export function createIntegrationEventRepository(prisma: PrismaClient): Integrat
             type: "integration_error",
             severity: "critical",
             title:
-              "n8n no recibió un mensaje después de ~24 h de reintentos: revisar n8n y reenviar (n8n:replay)",
+              "n8n did not receive a message after ~24 h of retries: check n8n and resend (n8n:replay)",
             payload: {
               reason: "n8n_delivery_failed",
               eventId: id,

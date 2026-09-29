@@ -594,7 +594,7 @@ Each one gets an ADR in docs/adr/.
 `feat/phase-12-deploy`): M0 DONE; M1 done up to DuckDNS — the VM cannot be created yet (São Paulo
 has no A1 capacity). WAITING: the user runs `scripts/oci/launch-retry.ps1` for 3–5 days
 (guide `docs/deploy/m1-retry-launch.md`). Phase 13 (i18n + docs, branch `feat/phase-13-i18n-docs`)
-advances meanwhile: M0–M2 DONE, next M3 (API texts / business language). If the VM appears first, phase 12 does
+advances meanwhile: M0–M3 DONE, next M4 (E2E in English + Spanish smoke + axe in both). If the VM appears first, phase 12 does
 not wait (first deploy without i18n, updated later). M3b (phase 5) and MFA (TOTP) remain
 recommended/required before a real client.**
 
@@ -1746,14 +1746,30 @@ recommended/required before a real client.**
       Panel coverage ratchet raised (lines 82 / branches 74 / functions 76 / statements 81).
       Tests: panel 113, E2E 76 passed (Playwright still es-UY until M4; 2 selectors updated to the
       neutral texts).
+    - M3 API texts + business language — DONE (2026-09-28), ADR-024 amendment. Setting
+      `business.language` (es | en, default es; Rules → "Language of WhatsApp messages", a select)
+      drives every WhatsApp text the backend composes: `src/common/business-texts.ts` (opt-out
+      instruction + confirmations, supplier ack, digest lines / headline / footer, run titles;
+      `businessMoney` / `businessPct` with the panel currency rule). Spanish to contacts in
+      "usted" ("Responda BAJA…", "Recibimos su lista…"). English uses STOP / START (both already
+      default keywords — tested). The opt-out footer text travels with the outbound input
+      (`optOutInstructionText`). The panel writes alerts (`admin/alert-details.ts` whitelist →
+      `details`; panel `features/catalog/alert-text.ts`), digest items (`data` →
+      `features/digests/item-text.ts`) and password-policy errors (`code` →
+      `users.passwordIssues`) in the panel language. Stored titles = fallback, new ones English.
+      manual_attention digest items carry the structured audio fields (+ `maxSeconds` in the alert
+      payload); possible_opt_out alerts carry `matched`. Model-written `warnings` stay as they are.
+      Tests: API 1087 unit (+ business-texts, English digest / ack) + 222 integration (+ English
+      opt-out confirmations; the reminder test now upserts its setting), panel 119, E2E 76.
 
 ## Known issues (out of scope)
 - **Phase 13 M2 — decision pending (user):** the panel ROUTES are still Spanish (/revisiones,
   /conversaciones, /catalogo, /alertas, /reglas, /usuarios, /probar). Renaming them to English
   (with redirects from the old paths) also changes the digest deep-link paths the API builds
   (`GET /admin/digests/:token`) — proposed, not done.
-- **Phase 13 M2 (planned for M3):** texts COMPOSED BY THE API still arrive in Spanish in the English
-  panel: alert titles, digest item titles, review warnings / `detail`, password-policy messages.
+- **Phase 13 M3:** the extraction / column-mapping `warnings` shown in reviews are written by the
+  model (Spanish prompts) and a failed-read `detail` is technical English: shown as they are in
+  both panel languages (data, not interface text).
 - **Phase 12 — idle reclamation risk (open until M3):** the demo stack uses ≈ 0.7 GB (+ OS).
   Oracle deems an A1 idle when, over 7 days, CPU p95, network AND memory are all < 20 %. User
   decision (2026-09-28): VM of **1 OCPU / 3 GB** (threshold 0.6 GB); measure in M3 with the OCI

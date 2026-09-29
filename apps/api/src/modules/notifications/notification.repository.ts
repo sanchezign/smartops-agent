@@ -52,7 +52,14 @@ export interface NotificationRepository {
   customerMessage(
     messageId: string,
   ): Promise<{ contactName: string | null; text: string | null } | null>;
-  alertTitle(alertId: string): Promise<string | null>;
+  /** The alert behind a manual_attention item: fallback title + the structured fields. */
+  alertSummary(alertId: string): Promise<{
+    title: string;
+    reason?: string;
+    durationSeconds: number | null;
+    sizeBytes: number | null;
+    maxSeconds: number | null;
+  } | null>;
   /** Items per recipient (idempotent) + attach to digests; returns how many were new. */
   record(input: RecordItemInput): Promise<{ created: number; duplicates: number }>;
   getDigest(id: string): Promise<DigestRecord | null>;
@@ -149,11 +156,21 @@ export function createNotificationRepository(
       };
     },
 
-    async alertTitle(alertId) {
-      return (
-        (await prisma.alert.findUnique({ where: { id: alertId }, select: { title: true } }))
-          ?.title ?? null
-      );
+    async alertSummary(alertId) {
+      const alert = await prisma.alert.findUnique({
+        where: { id: alertId },
+        select: { title: true, payload: true },
+      });
+      if (!alert) return null;
+      const payload = (alert.payload ?? {}) as Record<string, unknown>;
+      const num = (v: unknown) => (typeof v === "number" ? v : null);
+      return {
+        title: alert.title,
+        ...(typeof payload.reason === "string" ? { reason: payload.reason } : {}),
+        durationSeconds: num(payload.durationSeconds),
+        sizeBytes: num(payload.sizeBytes),
+        maxSeconds: num(payload.maxSeconds),
+      };
     },
 
     async record(input) {

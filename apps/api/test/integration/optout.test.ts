@@ -108,7 +108,33 @@ describe.skipIf(!testDatabaseUrl)("opt-out / opt-in (Postgres + pg-boss)", () =>
     });
     expect(confirmations).toHaveLength(1);
     expect(confirmations[0]).toMatchObject({ status: "pending" });
-    expect(confirmations[0]?.text).toMatch(/no vas a recibir/);
+    expect(confirmations[0]?.text).toMatch(/no recibirá más mensajes automáticos/);
+  });
+
+  it("with business.language = en the confirmations are in English (STOP / START)", async () => {
+    // Settings are not truncated between tests: always remove it again.
+    await prisma.setting.upsert({
+      where: { key: "business.language" },
+      create: { key: "business.language", value: "en" },
+      update: { value: "en" },
+    });
+    let texts: (string | null)[];
+    try {
+      await deliverText("hello");
+      await deliverText("STOP");
+      await deliverText("START");
+      const confirmations = await prisma.message.findMany({
+        where: { direction: "outbound", purpose: "compliance" },
+        orderBy: { createdAt: "asc" },
+      });
+      texts = confirmations.map((m) => m.text);
+    } finally {
+      await prisma.setting.deleteMany({ where: { key: "business.language" } });
+    }
+    expect(texts).toEqual([
+      "Done: you won't receive more automatic messages from us. To receive them again, reply START.",
+      "Done: you'll receive our automatic messages again.",
+    ]);
   });
 
   it("a repeated BAJA does not opt out twice nor send a second confirmation", async () => {
@@ -135,8 +161,8 @@ describe.skipIf(!testDatabaseUrl)("opt-out / opt-in (Postgres + pg-boss)", () =>
       orderBy: { createdAt: "asc" },
     });
     expect(confirmations.map((m) => m.text)).toEqual([
-      expect.stringMatching(/no vas a recibir/),
-      expect.stringMatching(/vas a volver a recibir/),
+      expect.stringMatching(/no recibirá más/),
+      expect.stringMatching(/volverá a recibir/),
     ]);
   });
 
@@ -154,7 +180,9 @@ describe.skipIf(!testDatabaseUrl)("opt-out / opt-in (Postgres + pg-boss)", () =>
     expect(c.optOutAt).toBeNull();
     const alerts = await prisma.alert.findMany({ where: { type: "possible_opt_out" } });
     expect(alerts).toHaveLength(1);
-    expect(alerts[0]?.title).toMatch(/Posible baja/);
+    expect(alerts[0]?.title).toMatch(/Possible opt-out/);
+    // The panel writes it in its language from the matched phrase (phase 13).
+    expect(alerts[0]?.payload).toMatchObject({ matched: expect.any(String) });
   });
 
   it("a price list from an opted-out supplier is still ingested (no gate on inbound processing)", async () => {
@@ -230,7 +258,12 @@ describe.skipIf(!testDatabaseUrl)("opt-out / opt-in (Postgres + pg-boss)", () =>
     it("appends the opt-out instruction to the first auto reply, then not again within the reminder window", async () => {
       await deliverText("hola");
       const c = await contact();
-      await prisma.setting.create({ data: { key: "optOut.instructionReminderDays", value: 30 } });
+      // Upsert: settings are not truncated between tests or runs.
+      await prisma.setting.upsert({
+        where: { key: "optOut.instructionReminderDays" },
+        create: { key: "optOut.instructionReminderDays", value: 30 },
+        update: { value: 30 },
+      });
       const outbound = createOutboundService({
         repository: outboundRepository(),
         client: {
@@ -247,7 +280,7 @@ describe.skipIf(!testDatabaseUrl)("opt-out / opt-in (Postgres + pg-boss)", () =>
         log,
       );
       const firstMsg = await prisma.message.findUniqueOrThrow({ where: { id: first.messageId } });
-      expect(firstMsg.text).toMatch(/Respondé BAJA/);
+      expect(firstMsg.text).toMatch(/Responda BAJA/);
 
       const second = await outbound.send(
         {

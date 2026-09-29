@@ -1,3 +1,4 @@
+import { businessTexts, toBusinessLanguage } from "../../common/business-texts.js";
 import { errors } from "../../common/errors/app-error.js";
 import type { Logger } from "../../common/logger.js";
 import { maskPhone, maskUserId } from "../../common/phone.js";
@@ -133,12 +134,14 @@ export function createOutboundService(deps: {
         throw errors.autoRepliesOff();
       }
 
-      let optOutInstructionCutoff: Date | undefined;
+      let optOutInstruction: { cutoff: Date; text: string } | undefined;
       if (purpose === "auto_reply" && content.kind === "text" && deps.settings) {
-        const reminderDays = (await deps.settings.getAll(log))[
-          "optOut.instructionReminderDays"
-        ] as number;
-        optOutInstructionCutoff = new Date(now().getTime() - reminderDays * 24 * 3_600_000);
+        const all = await deps.settings.getAll(log);
+        const reminderDays = all["optOut.instructionReminderDays"] as number;
+        optOutInstruction = {
+          cutoff: new Date(now().getTime() - reminderDays * 24 * 3_600_000),
+          text: businessTexts(toBusinessLanguage(all["business.language"])).optOutInstruction,
+        };
       }
 
       const recipient: SendRecipient = contact.waId
@@ -152,7 +155,12 @@ export function createOutboundService(deps: {
         purpose,
         ...(input.authorUserId ? { authorUserId: input.authorUserId } : {}),
         ...(idempotencyKey ? { idempotencyKey } : {}),
-        ...(optOutInstructionCutoff ? { optOutInstructionCutoff } : {}),
+        ...(optOutInstruction
+          ? {
+              optOutInstructionCutoff: optOutInstruction.cutoff,
+              optOutInstructionText: optOutInstruction.text,
+            }
+          : {}),
         request: buildSendPayload(recipient, content),
       });
       log.info(

@@ -56,7 +56,10 @@ export interface AlertItem {
     | "possible_opt_out";
   severity: "info" | "warning" | "critical";
   status: "open" | "sent" | "acknowledged" | "dismissed";
+  /** Technical fallback; the panel writes the alert from `details` when it can (phase 13). */
   title: string;
+  /** Whitelisted structured fields of the alert (API: admin/alert-details.ts). */
+  details: Record<string, string | number | null> | null;
   createdAt: string;
   product: { id: string; name: string } | null;
   conversationId: string | null;

@@ -91,13 +91,5 @@ export function detectComplianceEvent(
   return null;
 }
 
-/** Appended to an auto reply per the opt-out policy (business must give clear instructions). */
-export const OPT_OUT_INSTRUCTION_TEXT =
-  "Respondé BAJA si no querés recibir más mensajes automáticos.";
-
-/** The one compliance reply allowed for an opted-out contact (ADR-017). */
-export const OPT_OUT_CONFIRMATION_TEXT =
-  "Listo, no vas a recibir más mensajes automáticos nuestros. Para volver a recibirlos, respondé ALTA.";
-
-export const OPT_IN_CONFIRMATION_TEXT =
-  "Listo, vas a volver a recibir nuestros mensajes automáticos.";
+// The opt-out instruction and the opt-out / opt-in confirmations are in the business language:
+// common/business-texts.ts (phase 13).

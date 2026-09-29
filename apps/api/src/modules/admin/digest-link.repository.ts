@@ -11,7 +11,10 @@ export const LINK_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
 export interface DigestLinkItem {
   category: ItemData["category"];
+  /** Technical / business-language fallback; the panel composes its own text from `data`. */
   title: string;
+  /** The structured item (phase 13): the panel writes it in the panel language. */
+  data: ItemData;
   createdAt: Date;
   /** Panel path that resolves it (null = nothing specific to open). */
   path: string | null;
@@ -67,7 +70,13 @@ export function createDigestLinkRepository(prisma: PrismaClient) {
             path = "/alertas";
             break;
         }
-        return { category: data.category, title: item.title, createdAt: item.createdAt, path };
+        return {
+          category: data.category,
+          title: item.title,
+          data,
+          createdAt: item.createdAt,
+          path,
+        };
       });
       return {
         createdAt: digest.createdAt,

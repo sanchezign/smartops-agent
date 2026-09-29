@@ -21,7 +21,7 @@ describe("userErrorKey", () => {
           { message: "At least 15 characters." },
         ]),
       ),
-    ).toEqual({ key: "invalid", details: ["At least 15 characters."] });
+    ).toEqual({ key: "invalid", details: ["At least 15 characters."] }); // no code: kept as is
   });
 
   it("anything else: the request id when there is one", () => {

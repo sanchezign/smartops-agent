@@ -58,3 +58,22 @@ The common stack has no i18n library.
   Both ship prebuilt native bindings, and their install-time fallbacks are skipped in `allowBuilds`.
 - Texts that the API composes (WhatsApp digests, acknowledgements) do not follow the panel
   language. They follow the business-language setting (phase 13 M3).
+
+## Amendment (phase 13 M3): the business language
+
+- Setting `business.language` (`es` | `en`, default `es`): the language of everything the backend
+  SENDS over WhatsApp. That covers the opt-out instruction and the opt-out / opt-in confirmations,
+  supplier acknowledgements and team digests. All of them live in
+  `apps/api/src/common/business-texts.ts`. Spanish uses "usted" with contacts. Each language
+  names keywords that the default keyword settings accept (BAJA / ALTA, STOP / START), which is
+  tested. Money in those texts follows the panel rule: `$` is the business currency and USD is
+  `US$`.
+- Texts shown IN THE PANEL are written by the panel, in the panel language, from structured
+  data:
+  - alerts from a whitelisted `details` object per type (`admin/alert-details.ts`);
+  - digest items from their stored `data`;
+  - password-policy errors from their `code`.
+    The stored `title` fields are fallbacks for older rows and unknown shapes. New alert titles are
+    written in English, as technical text.
+- The column-mapping and extraction `warnings` are model output (data), not interface text:
+  they are shown as they are.

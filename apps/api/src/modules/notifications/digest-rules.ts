@@ -2,7 +2,15 @@
  * Notification rules (pure, phase 6). Anti-spam (user rule): only ACTIONABLE events are
  * notified; a run without news stays in the panel. WhatsApp recipients get ONE message per
  * digest window, capped per hour; critical errors skip the window with their own cap.
+ * Texts follow the business language (phase 13, common/business-texts.ts; Spanish by default).
  */
+
+import {
+  businessMoney,
+  businessPct,
+  businessTexts,
+  type BusinessLanguage,
+} from "../../common/business-texts.js";
 
 export interface RunFacts {
   runId: string;
@@ -31,27 +39,37 @@ export type ItemData =
   | { category: "customer_query"; messageId: string; contactName: string | null; preview: string }
   | { category: "order"; messageId: string; contactName: string | null; preview: string }
   | { category: "integration_error"; source: string; message: string }
-  | { category: "manual_attention"; title: string };
+  | {
+      category: "manual_attention";
+      /** Technical fallback (items recorded before phase 13 have only this). */
+      title: string;
+      /** Structured (phase 13): the digest composes the line in the business language. */
+      reason?: string;
+      durationSeconds?: number | null;
+      sizeBytes?: number | null;
+      maxSeconds?: number | null;
+    };
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+/** "10 %" (es) / "10%" (en): a threshold, without sign. */
+const threshold = (language: BusinessLanguage, pct: number) =>
+  businessPct(language, pct).replace(/^[+−]/, "");
 
-export function runTitle(facts: RunFacts): string {
+export function runTitle(facts: RunFacts, language: BusinessLanguage = "es"): string {
+  const { digest } = businessTexts(language);
   const parts: string[] = [];
   if (facts.increases > 0) {
     parts.push(
       facts.increasesOverThreshold > 0
-        ? `${plural(facts.increases, "aumento", "aumentos")} (${facts.increasesOverThreshold} mayor${facts.increasesOverThreshold === 1 ? "" : "es"} al ${facts.thresholdPct} %)`
-        : plural(facts.increases, "aumento", "aumentos"),
+        ? `${digest.increases(facts.increases)} (${digest.overThreshold(facts.increasesOverThreshold, threshold(language, facts.thresholdPct))})`
+        : digest.increases(facts.increases),
     );
   }
-  if (facts.lowStock > 0)
-    parts.push(plural(facts.lowStock, "producto con stock bajo", "productos con stock bajo"));
-  if (facts.pendingReviews > 0)
-    parts.push(plural(facts.pendingReviews, "revisión pendiente", "revisiones pendientes"));
-  return `${facts.supplierName ?? "Lista procesada"}: ${parts.join(", ")}`;
+  if (facts.lowStock > 0) parts.push(digest.lowStock(facts.lowStock));
+  if (facts.pendingReviews > 0) parts.push(digest.pendingReviews(facts.pendingReviews));
+  return `${facts.supplierName ?? digest.processedList}: ${parts.join(", ")}`;
 }
 
-/** Max detail lines in one digest; the rest is "+N más en el panel" (user rule: few lines). */
+/** Max detail lines in one digest; the rest is "+N more in the panel" (user rule: few lines). */
 export const DIGEST_MAX_LINES = 5;
 const SNIPPET_CHARS = 60;
 const NAME_CHARS = 40;
@@ -62,97 +80,115 @@ const DIGEST_MAX_CHARS = 1024;
  * and line breaks removed, links replaced (never a clickable URL from a stranger), WhatsApp
  * formatting marks (* _ ~ `) and our quote marks stripped, truncated with "…".
  */
-export function neutralize(text: string | null | undefined, max: number): string {
+export function neutralize(
+  text: string | null | undefined,
+  max: number,
+  language: BusinessLanguage = "es",
+): string {
   const clean = (text ?? "")
     // eslint-disable-next-line no-control-regex -- stripping control chars is the point
     .replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069]/g, " ")
-    .replace(/\b(?:https?:\/\/|www\.)\S+/gi, "[enlace]")
-    .replace(/[*_~`«»]/g, "")
+    .replace(/\b(?:https?:\/\/|www\.)\S+/gi, businessTexts(language).digest.link)
+    .replace(/[*_~`«»“”]/g, "")
     .replace(/\s+/g, " ")
     .trim();
   return clean.length > max ? `${clean.slice(0, max - 1).trimEnd()}…` : clean;
 }
 
-const money = (value: string, currency: string) => {
-  try {
-    return new Intl.NumberFormat("es-UY", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 2,
-    })
-      .format(value as unknown as number)
-      .replace(/\s/g, " ");
-  } catch {
-    return `${value} ${currency}`;
-  }
-};
-const pct = (value: string) => {
-  const n = Number(value);
-  const text = new Intl.NumberFormat("es-UY", { maximumFractionDigits: 1 }).format(Math.abs(n));
-  return `${n > 0 ? "+" : n < 0 ? "−" : ""}${text} %`;
-};
-
 type Line = { priority: number; text: string };
 
-function runLine(run: Extract<ItemData, { category: "run_summary" }>): string {
-  const supplier = neutralize(run.supplierName ?? "Lista procesada", NAME_CHARS);
+function runLine(
+  run: Extract<ItemData, { category: "run_summary" }>,
+  language: BusinessLanguage,
+): string {
+  const { digest } = businessTexts(language);
+  const supplier = neutralize(run.supplierName ?? digest.processedList, NAME_CHARS, language);
   const parts: string[] = [];
   const main = run.mainChange;
   if (main) {
     parts.push(
-      `${neutralize(main.productName, NAME_CHARS)} ${money(main.oldPrice, main.currency)} → ${money(main.newPrice, main.currency)} (${pct(main.changePct)})`,
+      `${neutralize(main.productName, NAME_CHARS, language)} ${businessMoney(language, main.oldPrice, main.currency)} → ${businessMoney(language, main.newPrice, main.currency)} (${businessPct(language, main.changePct)})`,
     );
     const others = run.increases - (Number(main.changePct) > 0 ? 1 : 0);
-    if (others > 0) parts.push(`${plural(others, "aumento más", "aumentos más")}`);
+    if (others > 0) parts.push(digest.moreIncreases(others));
   } else if (run.increases > 0) {
-    parts.push(plural(run.increases, "aumento", "aumentos"));
+    parts.push(digest.increases(run.increases));
   }
-  if (run.lowStock > 0)
-    parts.push(plural(run.lowStock, "producto con stock bajo", "productos con stock bajo"));
-  if (run.pendingReviews > 0)
-    parts.push(plural(run.pendingReviews, "revisión pendiente", "revisiones pendientes"));
+  if (run.lowStock > 0) parts.push(digest.lowStock(run.lowStock));
+  if (run.pendingReviews > 0) parts.push(digest.pendingReviews(run.pendingReviews));
   return `${supplier}: ${parts.join(", ")}`;
 }
 
-function detailLines(items: ItemData[]): Line[] {
+/** "4:12" from seconds, or "3.2 MB" when the duration could not be read. */
+function audioLength(
+  i: Extract<ItemData, { category: "manual_attention" }>,
+  language: BusinessLanguage,
+): string | null {
+  if (typeof i.durationSeconds === "number") {
+    const s = Math.round(i.durationSeconds);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  }
+  if (typeof i.sizeBytes === "number") {
+    const mb = new Intl.NumberFormat(businessTexts(language).intlLocale, {
+      maximumFractionDigits: 1,
+    }).format(i.sizeBytes / 1024 / 1024);
+    return `${mb} MB`;
+  }
+  return null;
+}
+
+function manualLine(
+  i: Extract<ItemData, { category: "manual_attention" }>,
+  language: BusinessLanguage,
+): string {
+  if (i.reason === "audio_too_long") {
+    const limit = typeof i.maxSeconds === "number" ? Math.round(i.maxSeconds / 60) : null;
+    return businessTexts(language).digest.audioTooLong(audioLength(i, language), limit);
+  }
+  return neutralize(i.title, 90, language);
+}
+
+function detailLines(items: ItemData[], language: BusinessLanguage): Line[] {
+  const { digest } = businessTexts(language);
+  const name = (n: string | null) => neutralize(n ?? digest.aContact, NAME_CHARS, language);
   return items.map((i): Line => {
     switch (i.category) {
       case "integration_error":
         return {
           priority: 0,
-          text: `⚠️ Error (${neutralize(i.source, NAME_CHARS)}): ${neutralize(i.message, 80)}`,
+          text: digest.error(
+            neutralize(i.source, NAME_CHARS, language),
+            neutralize(i.message, 80, language),
+          ),
         };
       case "order":
         return {
           priority: 1,
-          text: `Pedido de ${neutralize(i.contactName ?? "un contacto", NAME_CHARS)}: «${neutralize(i.preview, SNIPPET_CHARS)}»`,
+          text: digest.order(name(i.contactName), neutralize(i.preview, SNIPPET_CHARS, language)),
         };
       case "customer_query":
         return {
           priority: 2,
-          text: `Consulta de ${neutralize(i.contactName ?? "un contacto", NAME_CHARS)}: «${neutralize(i.preview, SNIPPET_CHARS)}»`,
+          text: digest.query(name(i.contactName), neutralize(i.preview, SNIPPET_CHARS, language)),
         };
       case "run_summary":
-        return { priority: 3, text: runLine(i) };
+        return { priority: 3, text: runLine(i, language) };
       case "manual_attention":
-        return { priority: 4, text: `🎧 ${neutralize(i.title, 90)}` };
+        return { priority: 4, text: `🎧 ${manualLine(i, language)}` };
     }
   });
 }
 
-function headline(items: ItemData[]): string {
+function headline(items: ItemData[], language: BusinessLanguage): string {
+  const { headline: h } = businessTexts(language).digest;
   const count = (category: ItemData["category"]) =>
     items.filter((i) => i.category === category).length;
   const parts = [
-    count("integration_error") > 0
-      ? `⚠️ ${plural(count("integration_error"), "error", "errores")}`
-      : null,
-    count("order") > 0 ? plural(count("order"), "pedido", "pedidos") : null,
-    count("customer_query") > 0 ? plural(count("customer_query"), "consulta", "consultas") : null,
-    count("run_summary") > 0 ? plural(count("run_summary"), "lista", "listas") : null,
-    count("manual_attention") > 0
-      ? plural(count("manual_attention"), "audio para escuchar", "audios para escuchar")
-      : null,
+    count("integration_error") > 0 ? h.errors(count("integration_error")) : null,
+    count("order") > 0 ? h.orders(count("order")) : null,
+    count("customer_query") > 0 ? h.queries(count("customer_query")) : null,
+    count("run_summary") > 0 ? h.lists(count("run_summary")) : null,
+    count("manual_attention") > 0 ? h.audios(count("manual_attention")) : null,
   ].filter(Boolean);
   return `SmartOps · ${parts.join(" · ")}`;
 }
@@ -160,24 +196,26 @@ function headline(items: ItemData[]): string {
 /**
  * One WhatsApp text per digest (phase 9 M7, user: a little context per item, still ONE
  * message): a headline with counts, up to DIGEST_MAX_LINES detail lines (errors, orders,
- * queries, lists, audios — in that order) with neutralized snippets, "+N más" and the panel
+ * queries, lists, audios — in that order) with neutralized snippets, "+N more" and the panel
  * link (/d/<random token>: no content in the URL, login required).
  *
  * singleLine: for a template body parameter (WhatsApp does not allow line breaks there).
  */
 export function renderDigest(
   items: ItemData[],
-  options: { link?: string | null; singleLine?: boolean } = {},
+  options: { link?: string | null; singleLine?: boolean; language?: BusinessLanguage } = {},
 ): string {
-  const details = detailLines(items).sort((a, b) => a.priority - b.priority);
+  const language = options.language ?? "es";
+  const { digest } = businessTexts(language);
+  const details = detailLines(items, language).sort((a, b) => a.priority - b.priority);
   const shown = details.slice(0, DIGEST_MAX_LINES).map((l) => l.text);
   const rest = details.length - shown.length;
-  const footer = options.link ? `Ver en el panel: ${options.link}` : "Detalle en el panel.";
+  const footer = options.link ? digest.viewInPanel(options.link) : digest.detailsInPanel;
   const build = (lines: string[], extra: number) => {
-    const body = [...lines, ...(extra > 0 ? [`+${extra} más en el panel`] : [])];
+    const body = [...lines, ...(extra > 0 ? [digest.more(extra)] : [])];
     return options.singleLine
-      ? [headline(items), ...body, footer].join(" · ")
-      : [headline(items), ...body.map((l) => `• ${l}`), footer].join("\n");
+      ? [headline(items, language), ...body, footer].join(" · ")
+      : [headline(items, language), ...body.map((l) => `• ${l}`), footer].join("\n");
   };
   // Keep within the limit by dropping detail lines (never cutting the link in half).
   let count = shown.length;
@@ -187,7 +225,7 @@ export function renderDigest(
     text = build(shown.slice(0, count), details.length - count);
   }
   return text.length > DIGEST_MAX_CHARS
-    ? `${headline(items)} · ${footer}`.slice(0, DIGEST_MAX_CHARS)
+    ? `${headline(items, language)} · ${footer}`.slice(0, DIGEST_MAX_CHARS)
     : text;
 }
 

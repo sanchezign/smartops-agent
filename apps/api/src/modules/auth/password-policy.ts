@@ -64,11 +64,14 @@ export function checkPassword(
   return issues;
 }
 
-/** Spanish explanation for the panel / CLI. */
+/**
+ * English explanation for the CLI and the API error message (phase 13). The panel shows its
+ * own text in the panel language from the `code` of each validation detail.
+ */
 export const PASSWORD_ISSUE_TEXT: Record<PasswordIssue, string> = {
-  too_short: `Mínimo ${PASSWORD_MIN_LENGTH} caracteres (una frase de varias palabras es ideal).`,
-  too_long: `Máximo ${PASSWORD_MAX_LENGTH} caracteres.`,
-  common: "Es una contraseña conocida o filtrada: elegí otra.",
-  trivial_pattern: "Es un patrón trivial (repeticiones o secuencias de teclado/números).",
-  contains_personal_info: "No puede contener tu email, tu nombre ni el nombre del sistema.",
+  too_short: `At least ${PASSWORD_MIN_LENGTH} characters (a phrase of several words is ideal).`,
+  too_long: `At most ${PASSWORD_MAX_LENGTH} characters.`,
+  common: "It is a known or leaked password: choose another one.",
+  trivial_pattern: "It is a trivial pattern (repetitions or keyboard / number sequences).",
+  contains_personal_info: "It cannot contain your email, your name or the system's name.",
 };

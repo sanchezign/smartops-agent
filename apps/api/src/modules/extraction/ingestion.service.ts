@@ -337,7 +337,7 @@ export function createIngestionService(deps: {
                 (conversion.dataRows ?? 0) > maxSingleCallRows
               ? {
                   reason: "requires_chunked_extraction",
-                  detail: `${conversion.dataRows} product lines > ${maxSingleCallRows}: requiere extracción por partes`,
+                  detail: `${conversion.dataRows} product lines > ${maxSingleCallRows}: needs chunked extraction`,
                 }
               : null;
         if (documentBlock) {

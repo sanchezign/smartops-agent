@@ -102,7 +102,13 @@ export const SETTING_DEFINITIONS = {
     schema: businessHoursSchema.nullable(),
     default: null as BusinessHours | null,
   },
-  /** Acknowledge supplier lists by WhatsApp ("Recibimos tu lista…"). OFF by default, ON in demo mode. */
+  /**
+   * Language of every text the backend SENDS over WhatsApp (phase 13): opt-out / opt-in replies,
+   * the opt-out instruction, supplier acknowledgements and team digests (common/business-texts.ts).
+   * Independent of the panel language of each user. Spanish by default.
+   */
+  "business.language": { schema: z.enum(["es", "en"]), default: "es" as "es" | "en" },
+  /** Acknowledge supplier lists by WhatsApp ("We received your list…"). OFF by default, ON in demo mode. */
   "bot.supplierAck": { schema: z.boolean(), default: false },
   /**
    * Human takeover (phase 7, ADR-016): after a person replies (panel or WhatsApp Business

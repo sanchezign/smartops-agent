@@ -52,6 +52,7 @@ function useUserAction<T>(
 ) {
   const queryClient = useQueryClient();
   const t = useTranslations("users.errors");
+  const tIssues = useTranslations("users.passwordIssues");
   return useMutation({
     mutationFn: (input: T) => {
       const { path, method = "POST", body } = build(input);
@@ -62,8 +63,9 @@ function useUserAction<T>(
     },
     onSuccess: () => toast.success(success),
     onError: (error) => {
-      const { key, params, details } = userErrorKey(error);
-      toast.error(details?.length ? details.join(" ") : t(key, params));
+      const { key, params, issues, details } = userErrorKey(error);
+      const lines = [...(issues ?? []).map((i) => tIssues(i)), ...(details ?? [])];
+      toast.error(lines.length > 0 ? lines.join(" ") : t(key, params));
     },
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ["users"] }),
   });

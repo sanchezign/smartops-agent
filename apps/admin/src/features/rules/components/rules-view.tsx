@@ -17,7 +17,7 @@ import { api } from "@/features/auth/api";
 import { useAuthStore } from "@/features/auth/store";
 import { useApiQuery } from "@/hooks/use-api";
 import { ApiError } from "@/lib/api-client";
-import type { AppLocale } from "@/i18n/locales";
+import { isAppLocale, LOCALE_NAMES, LOCALES, type AppLocale } from "@/i18n/locales";
 import { parseNumberInput, toNumberInput, type InputError } from "@/lib/number-input";
 import { useFormat } from "@/lib/use-format";
 import { useInputErrorText } from "@/lib/use-input-error";
@@ -39,6 +39,8 @@ function toDraft(field: Field, value: unknown, locale: AppLocale): unknown {
   switch (field.kind) {
     case "switch":
       return value === true;
+    case "language":
+      return isAppLocale(value) ? value : "es";
     case "number":
       return toNumberInput(value as number | null, locale);
     case "keywords":
@@ -62,6 +64,8 @@ function fromDraft(
   switch (field.kind) {
     case "switch":
       return { ok: true, value: draft === true };
+    case "language":
+      return { ok: true, value: isAppLocale(draft) ? draft : "es" };
     case "number": {
       const raw = String(draft ?? "");
       if (field.nullable && raw.trim() === "") return { ok: true, value: null };
@@ -250,6 +254,28 @@ function FieldControl({
           aria-describedby={describedBy}
           onCheckedChange={(checked) => onChange(checked)}
         />
+      </div>
+    );
+  }
+  if (field.kind === "language") {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={id}>{label}</Label>
+        <select
+          id={id}
+          className="min-h-11 w-48 rounded-md border border-input bg-background px-2"
+          value={String(value)}
+          disabled={readOnly}
+          aria-describedby={describedBy}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          {LOCALES.map((l) => (
+            <option key={l} value={l} lang={l}>
+              {LOCALE_NAMES[l]}
+            </option>
+          ))}
+        </select>
+        {help}
       </div>
     );
   }

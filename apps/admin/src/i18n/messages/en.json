@@ -505,6 +505,10 @@
         "label": "Remind how to opt out every",
         "help": "It is added to the first automatic message and then at most this often.",
         "suffix": "days"
+      },
+      "business_language": {
+        "label": "Language of WhatsApp messages",
+        "help": "What the system sends: opt-out replies, supplier confirmations and team summaries. Each person chooses the panel language on their own."
       }
     }
   },
@@ -736,6 +740,15 @@
       "critical": "Critical",
       "warning": "Important",
       "info": "Informational"
+    },
+    "titles": {
+      "priceChange": "{product}: {oldPrice} → {newPrice} ({pct})",
+      "lowStock": "{product}: stock {stock}",
+      "audioTooLong": "Voice note of {length} not transcribed (limit {limit} min): listen by hand",
+      "audioTooLongSize": "Voice note of {size} MB not transcribed (limit {limit} min): listen by hand",
+      "n8nDeliveryFailed": "n8n did not receive a message after ~24 h of retries: check n8n and resend it",
+      "n8nWorkflowError": "Error in {where}: {message}",
+      "possibleOptOut": "Possible opt-out: “{phrase}”. Check it and record it by hand if it applies"
     }
   },
   "users": {
@@ -785,6 +798,13 @@
       "withCode": "Could not be completed (code {requestId}).",
       "noCode": "Could not be completed.",
       "generic": "Could not be completed. Try again."
+    },
+    "passwordIssues": {
+      "too_short": "At least 15 characters (a phrase of several words is ideal).",
+      "too_long": "At most 128 characters.",
+      "common": "It is a known or leaked password: choose another one.",
+      "trivial_pattern": "It is a trivial pattern (repetitions or keyboard / number sequences).",
+      "contains_personal_info": "It cannot contain the email, the name or the system's name."
     }
   },
   "demo": {
@@ -881,6 +901,18 @@
     "goHome": "Go home",
     "title": "WhatsApp summary",
     "description": "Sent {when}. Tap each item to resolve it.",
-    "itemsLabel": "Summary items"
+    "itemsLabel": "Summary items",
+    "items": {
+      "run": "{supplier}: {summary}",
+      "processedList": "List processed",
+      "increases": "{count, plural, one {# increase} other {# increases}}",
+      "increasesOver": "{count, plural, one {# increase} other {# increases}} ({over} above {threshold})",
+      "lowStock": "{count, plural, one {# product low on stock} other {# products low on stock}}",
+      "reviews": "{count, plural, one {# pending review} other {# pending reviews}}",
+      "order": "Order from {name}: “{preview}”",
+      "query": "Question from {name}: “{preview}”",
+      "aContact": "a contact",
+      "error": "Error ({source}): {message}"
+    }
   }
 }

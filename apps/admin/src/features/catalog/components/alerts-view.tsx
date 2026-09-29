@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
+import { alertText } from "../alert-text";
 import { useAcknowledgeAlert, useAlerts } from "../hooks";
 
 const STATUS_FILTERS = ["open", "all"] as const;
@@ -26,7 +27,8 @@ export function AlertsView() {
   const ack = useAcknowledgeAlert();
   const t = useTranslations("alerts");
   const tPages = useTranslations("pages");
-  const { formatRelative } = useFormat();
+  const format = useFormat();
+  const { formatRelative } = format;
   return (
     <>
       <PageHeader title={tPages("alerts")} description={t("description")} />
@@ -60,6 +62,8 @@ export function AlertsView() {
             const sev = SEVERITY[a.severity];
             const Icon = sev.icon;
             const open = a.status === "open" || a.status === "sent";
+            const text = alertText(a, format);
+            const title = text ? t(`titles.${text.key}`, text.params) : a.title;
             return (
               <li
                 key={a.id}
@@ -73,7 +77,7 @@ export function AlertsView() {
                   aria-label={t(`severity.${a.severity}`)}
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <p className="font-medium break-words">{a.title}</p>
+                  <p className="font-medium break-words">{title}</p>
                   <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
                     <Badge variant="outline">{t(`types.${a.type}`)}</Badge>
                     {formatRelative(a.createdAt)}
@@ -102,7 +106,7 @@ export function AlertsView() {
                     className="min-h-11 shrink-0"
                     disabled={ack.isPending && ack.variables === a.id}
                     onClick={() => ack.mutate(a.id)}
-                    aria-label={t("markSeen", { title: a.title })}
+                    aria-label={t("markSeen", { title })}
                   >
                     <Check aria-hidden /> {t("seen")}
                   </Button>

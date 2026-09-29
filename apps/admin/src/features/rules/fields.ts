@@ -26,7 +26,8 @@ export type Field =
     }
   | { key: string; kind: "keywords" }
   | { key: string; kind: "phones" }
-  | { key: "businessHours"; kind: "hours" };
+  | { key: "businessHours"; kind: "hours" }
+  | { key: "business.language"; kind: "language" };
 
 export type SectionId = keyof Messages["rules"]["sections"];
 export type FieldMessageKey = keyof Messages["rules"]["fields"];
@@ -44,6 +45,7 @@ export const SECTIONS: Section[] = [
   {
     id: "bot",
     fields: [
+      { key: "business.language", kind: "language" },
       { key: "bot.autoRepliesEnabled", kind: "switch" },
       { key: "bot.supplierAck", kind: "switch" },
       {

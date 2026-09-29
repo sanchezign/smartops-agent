@@ -8,7 +8,6 @@ import type {
   OptInSource,
 } from "../../generated/prisma/enums.js";
 import { HUMAN_TAKEOVER_CODE } from "../conversations/conversation-mode.repository.js";
-import { OPT_OUT_INSTRUCTION_TEXT } from "../optout/optout-detector.js";
 import { allowedPreviousStatuses, toMessageStatus } from "../whatsapp/message-status.js";
 
 /** Outbound messages + opt-in. The only place in the outbound flow that touches Prisma. */
@@ -69,11 +68,13 @@ export interface CreateOutboundInput {
   request: Record<string, unknown>;
   /**
    * Auto replies only (ADR-017 policy: give clear opt-out instructions): if the contact
-   * was not reminded since this cutoff, appends OPT_OUT_INSTRUCTION_TEXT to `text` and
+   * was not reminded since this cutoff, appends `optOutInstructionText` to `text` and
    * records it — checked and set atomically in this same transaction (no double-append
    * under concurrent sends).
    */
   optOutInstructionCutoff?: Date;
+  /** The instruction in the business language (phase 13); required with the cutoff. */
+  optOutInstructionText?: string;
 }
 
 export interface OutboundRepository {
@@ -213,7 +214,12 @@ export function createOutboundRepository(
         select: { id: true },
       });
       let text = input.text;
-      if (input.purpose === "auto_reply" && input.optOutInstructionCutoff && text) {
+      if (
+        input.purpose === "auto_reply" &&
+        input.optOutInstructionCutoff &&
+        input.optOutInstructionText &&
+        text
+      ) {
         const reminded = await tx.contact.updateMany({
           where: {
             id: input.contactId,
@@ -227,7 +233,7 @@ export function createOutboundRepository(
         if (reminded.count > 0)
           text = `${text}
 
-${OPT_OUT_INSTRUCTION_TEXT}`;
+${input.optOutInstructionText}`;
       }
       const message = await tx.message.create({
         data: {

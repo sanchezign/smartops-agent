@@ -136,6 +136,71 @@ describe("digest text (phase 9 M7: one WhatsApp, a little context per item)", ()
   });
 });
 
+describe("digest in English (business.language = en)", () => {
+  it("same structure, English words, en-US numbers, the same currency rule", () => {
+    const text = renderDigest(
+      [
+        item(
+          run({
+            increases: 3,
+            increasesOverThreshold: 1,
+            pendingReviews: 1,
+            mainChange: {
+              productName: "Tornillo 6mm",
+              oldPrice: "1200",
+              newPrice: "1400",
+              currency: "UYU",
+              changePct: "16.6667",
+            },
+          }),
+        ),
+        { category: "customer_query", messageId: "q", contactName: null, preview: "hay stock?" },
+        {
+          category: "manual_attention",
+          title: "fallback",
+          reason: "audio_too_long",
+          durationSeconds: 252,
+          sizeBytes: 900000,
+          maxSeconds: 180,
+        },
+      ],
+      { language: "en" },
+    );
+    expect(text.split("\n")).toEqual([
+      "SmartOps · 1 question · 1 list · 1 voice note to listen to",
+      "• Question from a contact: “hay stock?”",
+      "• Distribuidora Ejemplo: Tornillo 6mm $1,200.00 → $1,400.00 (+16.7%), 2 more increases, 1 pending review",
+      "• 🎧 Voice note (4:12) not transcribed (limit 3 min): listen by hand",
+      "Details in the panel.",
+    ]);
+  });
+
+  it("the panel title and links in English", () => {
+    expect(runTitle(run({ increases: 5, increasesOverThreshold: 2, lowStock: 1 }), "en")).toBe(
+      "Distribuidora Ejemplo: 5 increases (2 above 10%), 1 product low on stock",
+    );
+    expect(neutralize("see https://x.example/a", 40, "en")).toBe("see [link]");
+  });
+
+  it("a Spanish audio line from the structured fields; old items fall back to their title", () => {
+    const [, line] = renderDigest([
+      {
+        category: "manual_attention",
+        title: "x",
+        reason: "audio_too_long",
+        durationSeconds: null,
+        sizeBytes: 3355443,
+        maxSeconds: 180,
+      },
+    ]).split("\n");
+    expect(line).toBe("• 🎧 Audio de 3,2 MB sin transcribir (límite 3 min): escuchar manualmente");
+    const [, legacy] = renderDigest([{ category: "manual_attention", title: "Audio viejo" }]).split(
+      "\n",
+    );
+    expect(legacy).toBe("• 🎧 Audio viejo");
+  });
+});
+
 describe("hourly cap", () => {
   const now = new Date("2026-10-05T10:00:00Z");
   const ago = (min: number) => new Date(now.getTime() - min * 60_000);
@@ -161,11 +226,20 @@ describe("supplier acknowledgement text", () => {
   };
   it("summarizes what was applied, never prices or product names", () => {
     expect(ackText(ctx)).toBe(
-      "¡Gracias! Recibimos tu lista: 5 precios actualizados, 1 producto nuevo. Un punto queda para revisión de nuestro equipo.",
+      "¡Gracias! Recibimos su lista: 5 precios actualizados, 1 producto nuevo. Un punto queda para revisión de nuestro equipo.",
     );
     expect(ackText({ ...ctx, counts: { updated: 0 }, pendingReviews: 0 })).toBe(
-      "¡Gracias! Recibimos tu lista; no hubo cambios de precio.",
+      "¡Gracias! Recibimos su lista; no hubo cambios de precio.",
     );
     expect(ackText({ ...ctx, status: "needs_review" })).toMatch(/nuestro equipo lo revisa/);
+  });
+
+  it("in English when the business language is English", () => {
+    expect(ackText(ctx, "en")).toBe(
+      "Thank you! We received your list: 5 prices updated, 1 new product. One item is pending review by our team.",
+    );
+    expect(ackText({ ...ctx, counts: { updated: 2 }, pendingReviews: 3 }, "en")).toBe(
+      "Thank you! We received your list: 2 prices updated. 3 items are pending review by our team.",
+    );
   });
 });

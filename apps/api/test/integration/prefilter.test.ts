@@ -146,7 +146,12 @@ describe.skipIf(!testDatabaseUrl)("pre-filter and long voice notes (Postgres)", 
     });
     const alert = await prisma.alert.findFirstOrThrow();
     expect(alert).toMatchObject({ type: "manual_attention" });
-    expect(alert.title).toBe("Audio de 4:12 sin transcribir (límite 3 min): escuchar manualmente");
-    expect(alert.payload).toMatchObject({ messageId: msg.id, reason: "audio_too_long" });
+    expect(alert.title).toBe("Voice note of 4:12 not transcribed (limit 3 min): listen by hand");
+    expect(alert.payload).toMatchObject({
+      messageId: msg.id,
+      reason: "audio_too_long",
+      durationSeconds: 252,
+      maxSeconds: 180,
+    });
   });
 });
