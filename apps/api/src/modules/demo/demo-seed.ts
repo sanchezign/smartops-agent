@@ -279,8 +279,10 @@ export async function seedDemo(deps: {
     contactId: string,
   ) {
     const extract = task === "extract";
-    const input = extract ? 900 + Math.floor(rand() * 1200) : 1050 + Math.floor(rand() * 60);
-    const output = extract ? 300 + Math.floor(rand() * 700) : 55 + Math.floor(rand() * 10);
+    // Classify: the ~1,050-token prompt + the message; the output includes the short reasoning of
+    // effort "low" (thinking tokens bill as output, ADR-011).
+    const input = extract ? 900 + Math.floor(rand() * 1200) : 1080 + Math.floor(rand() * 420);
+    const output = extract ? 300 + Math.floor(rand() * 700) : 60 + Math.floor(rand() * 110);
     const cacheRead = extract ? 4392 : 0;
     // Sonnet 5: $2 / $10 per MTok, cache read 0.1x (ADR-011).
     const usd = (input * 2 + output * 10 + cacheRead * 0.2) / 1_000_000;

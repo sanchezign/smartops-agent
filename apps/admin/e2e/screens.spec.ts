@@ -7,14 +7,14 @@ import { login } from "./helpers";
  */
 const PAGES = [
   "/",
-  "/revisiones",
-  "/conversaciones",
-  "/conversaciones/bajas",
-  "/catalogo",
-  "/alertas",
-  "/reglas",
-  "/usuarios",
-  "/probar",
+  "/reviews",
+  "/conversations",
+  "/conversations/opted-out",
+  "/catalog",
+  "/alerts",
+  "/rules",
+  "/users",
+  "/try",
 ];
 
 const REVIEWS: [string, string][] = [
@@ -45,7 +45,7 @@ test("screenshots", async ({ page }, info) => {
     ["Norte", "chat-norte"],
     ["Luis", "chat-luis"],
   ] as const) {
-    await page.goto("/conversaciones");
+    await page.goto("/conversations");
     await page.getByLabel("Search by name, supplier or phone").fill(search);
     await page.getByRole("list", { name: "Conversations" }).getByRole("link").first().click();
     await page.getByRole("region", { name: "Messages" }).waitFor();
@@ -53,7 +53,7 @@ test("screenshots", async ({ page }, info) => {
     await page.screenshot({ path: `e2e/screens/${info.project.name}-${name}.png` });
   }
   // Product with its price history.
-  await page.goto("/catalogo");
+  await page.goto("/catalog");
   await page.getByLabel("Search product").fill("tornillo 6mm");
   await page.getByRole("list", { name: "Products" }).getByRole("link").first().click();
   await page.getByRole("heading", { name: "Price history" }).waitFor();
@@ -61,7 +61,7 @@ test("screenshots", async ({ page }, info) => {
   await page.screenshot({ path: `e2e/screens/${info.project.name}-producto.png`, fullPage: true });
   // Review detail screens (one per resolver).
   for (const [title, name] of REVIEWS) {
-    await page.goto("/revisiones");
+    await page.goto("/reviews");
     await page.getByRole("list", { name: "Reviews" }).getByText(title).first().click();
     // (never "networkidle": the real-time stream stays open, ADR-020)
     await page.getByRole("heading", { level: 1 }).first().waitFor();

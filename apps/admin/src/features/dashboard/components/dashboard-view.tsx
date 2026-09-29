@@ -81,21 +81,21 @@ function DashboardContent({ data }: { data: DashboardData }) {
           label={t("pendingReviews")}
           value={formatInt(data.pending.reviews)}
           icon={ClipboardCheck}
-          href="/revisiones"
+          href="/reviews"
           tone={data.pending.reviews > 0 ? "attention" : "default"}
         />
         <StatCard
           label={t("openAlerts")}
           value={formatInt(data.pending.openAlerts)}
           icon={AlertTriangle}
-          href="/alertas"
+          href="/alerts"
           tone={data.pending.openAlerts > 0 ? "attention" : "default"}
         />
         <StatCard
           label={t("humanChats")}
           value={formatInt(data.pending.humanConversations)}
           icon={UserRound}
-          href="/conversaciones"
+          href="/conversations"
         />
         <StatCard
           label={t("periodErrors")}

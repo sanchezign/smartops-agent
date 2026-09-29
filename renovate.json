@@ -15,12 +15,13 @@
       "groupName": "non-major dependencies"
     },
     {
-      "description": "Pinned on purpose (CLAUDE.md): Prisma 7.10 (8 only with a plan), ESLint 9 (eslint-config-next 15.5), Next 15.5 / React 19.1. Majors never proposed automatically.",
+      "description": "Pinned on purpose (CLAUDE.md): Prisma 7.10 (8 only with a plan), ESLint 9 with @eslint/js 9 (eslint-config-next 15.5), Next 15.5 / React 19.1. Majors never proposed automatically.",
       "matchPackageNames": [
         "prisma",
         "@prisma/client",
         "@prisma/adapter-pg",
         "eslint",
+        "@eslint/js",
         "next",
         "eslint-config-next",
         "react",
@@ -35,6 +36,11 @@
       "matchPackageNames": ["node", "postgres"],
       "matchUpdateTypes": ["major"],
       "enabled": false
+    },
+    {
+      "description": "vitest and @vitest/coverage-v8 always move together to the same exact version (phase 10 rule, guarded by coverage-thresholds.test.ts): one PR for any update type, majors included.",
+      "matchPackageNames": ["vitest", "@vitest/coverage-v8"],
+      "groupName": "vitest"
     }
   ],
   "customManagers": [

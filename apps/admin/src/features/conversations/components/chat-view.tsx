@@ -25,7 +25,7 @@ export function ChatView({ id }: { id: string }) {
   return (
     <div className="mx-auto flex max-w-3xl flex-col">
       <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2 w-fit min-h-9">
-        <Link href="/conversaciones">
+        <Link href="/conversations">
           <ArrowLeft aria-hidden /> {t("back")}
         </Link>
       </Button>
@@ -35,7 +35,7 @@ export function ChatView({ id }: { id: string }) {
         <ErrorState
           error={header.error}
           onRetry={() => void header.refetch()}
-          back={{ href: "/conversaciones", label: t("backTo") }}
+          back={{ href: "/conversations", label: t("backTo") }}
         />
       ) : (
         <>
@@ -114,7 +114,7 @@ function MessageList({ id }: { id: string }) {
       <ErrorState
         error={query.error}
         onRetry={() => void query.refetch()}
-        back={{ href: "/conversaciones", label: t("backTo") }}
+        back={{ href: "/conversations", label: t("backTo") }}
       />
     );
 

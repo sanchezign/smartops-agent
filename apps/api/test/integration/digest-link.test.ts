@@ -106,10 +106,10 @@ describe.skipIf(!testDatabaseUrl)("digest link (Postgres)", () => {
     const repo = createDigestLinkRepository(prisma);
     const found = await repo.byToken(token);
     expect(found!.items.map((i) => [i.title, i.path])).toEqual([
-      ["Pedido de Luis", `/conversaciones/${conversation.id}`],
-      ["Norte: 1 revisión", "/revisiones"],
-      ["Sur: 3 aumentos", "/catalogo"],
-      ["Audio largo", "/alertas"],
+      ["Pedido de Luis", `/conversations/${conversation.id}`],
+      ["Norte: 1 revisión", "/reviews"],
+      ["Sur: 3 aumentos", "/catalog"],
+      ["Audio largo", "/alerts"],
     ]);
     expect(await repo.byToken(newLinkToken())).toBeNull(); // unknown
     expect(await repo.byToken(digest.id)).toBeNull(); // the id is not a key

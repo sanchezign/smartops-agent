@@ -4,8 +4,8 @@ import { isPanelPath } from "../src/features/digests/paths";
 /** The digest page only follows in-panel paths (phase 9 M7): never an open redirect. */
 describe("isPanelPath", () => {
   it.each([
-    ["/revisiones", true],
-    ["/conversaciones/01a0dc63-e4b1-716c-a982-fbceaa90e2ba", true],
+    ["/reviews", true],
+    ["/conversations/01a0dc63-e4b1-716c-a982-fbceaa90e2ba", true],
     ["//evil.example", false],
     ["https://evil.example", false],
     [null, false],

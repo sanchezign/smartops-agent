@@ -26,14 +26,14 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { href: "/", labelKey: "home", icon: LayoutDashboard, primary: true },
-  { href: "/revisiones", labelKey: "reviews", icon: ClipboardCheck, primary: true },
-  { href: "/conversaciones", labelKey: "conversations", icon: MessagesSquare, primary: true },
-  { href: "/catalogo", labelKey: "catalog", icon: Package, primary: true },
-  { href: "/alertas", labelKey: "alerts", icon: Bell, primary: false },
-  { href: "/reglas", labelKey: "rules", icon: SlidersHorizontal, primary: false },
-  { href: "/usuarios", labelKey: "users", icon: Users, primary: false, adminOnly: true },
+  { href: "/reviews", labelKey: "reviews", icon: ClipboardCheck, primary: true },
+  { href: "/conversations", labelKey: "conversations", icon: MessagesSquare, primary: true },
+  { href: "/catalog", labelKey: "catalog", icon: Package, primary: true },
+  { href: "/alerts", labelKey: "alerts", icon: Bell, primary: false },
+  { href: "/rules", labelKey: "rules", icon: SlidersHorizontal, primary: false },
+  { href: "/users", labelKey: "users", icon: Users, primary: false, adminOnly: true },
   {
-    href: "/probar",
+    href: "/try",
     labelKey: "try",
     icon: FlaskConical,
     primary: false,

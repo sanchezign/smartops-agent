@@ -46,7 +46,7 @@ test.describe("every sample goes through the real pipeline (desktop: shared demo
 
   test("photo, PDF, voice note, known and new spreadsheet, prompt injection", async ({ page }) => {
     await loginWithDemoCard(page);
-    await page.goto("/probar");
+    await page.goto("/try");
     for (const [button, outcome] of cases) {
       await page.getByRole("button", { name: button }).click();
       const card = page
@@ -65,7 +65,7 @@ test.describe("every sample goes through the real pipeline (desktop: shared demo
   test("Reset demo brings the sample data back and keeps the session", async ({ page }) => {
     await loginWithDemoCard(page);
     // Open screens before the reset: a chat (stable id) and a review (recreated → new id).
-    await page.goto("/conversaciones");
+    await page.goto("/conversations");
     await page.getByLabel("Search by name, supplier or phone").fill("Luis");
     await page
       .getByRole("list", { name: "Conversations" })
@@ -73,11 +73,11 @@ test.describe("every sample goes through the real pipeline (desktop: shared demo
       .click();
     await expect(page.getByRole("heading", { name: "Luis Fernández" })).toBeVisible();
     const chatUrl = page.url();
-    await page.goto("/revisiones");
+    await page.goto("/reviews");
     await page.getByRole("list", { name: "Reviews" }).getByText("Across-the-board change").click();
     await expect(page.getByRole("heading", { name: "Across-the-board change" })).toBeVisible();
     const reviewUrl = page.url();
-    await page.goto("/probar");
+    await page.goto("/try");
     await page.getByRole("button", { name: "Reset demo" }).click();
     await page.getByRole("button", { name: "Reset", exact: true }).click();
     await expect(page.getByText("Demo reset:")).toBeVisible({ timeout: 60_000 });

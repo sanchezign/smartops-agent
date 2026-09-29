@@ -34,7 +34,7 @@ describe("timeline", () => {
     expect(view.outcome).toMatchObject({
       key: "updated",
       counts: { prices: 5, created: 0, reviews: 0 },
-      href: "/catalogo",
+      href: "/catalog",
       linkKey: "viewCatalog",
     });
   });
@@ -59,7 +59,7 @@ describe("timeline", () => {
       media: { status: "stored", transcription: "done", conversion: null },
       run: run({ pendingReviews: 1 }),
     });
-    expect(done.outcome).toMatchObject({ tone: "review", href: "/revisiones" });
+    expect(done.outcome).toMatchObject({ tone: "review", href: "/reviews" });
   });
 
   it("prompt injection and a new spreadsheet format stop with their own explanation", () => {

@@ -35,7 +35,7 @@ test("screenshots, light and dark", async ({ page, isMobile }, info) => {
     await settle(page);
     await shoot(`dashboard-${scheme}`);
 
-    await page.goto("/revisiones");
+    await page.goto("/reviews");
     await settle(page);
     if (isMobile) await shoot(`reviews-${scheme}`);
     await page
@@ -45,7 +45,7 @@ test("screenshots, light and dark", async ({ page, isMobile }, info) => {
     await settle(page);
     await shoot(`review-columns-${scheme}`);
 
-    await page.goto("/conversaciones");
+    await page.goto("/conversations");
     await settle(page);
     // Phones: the inbox with its "who is answering" badges (a chat opens at its newest message).
     if (isMobile) await shoot(`inbox-${scheme}`);
@@ -56,7 +56,7 @@ test("screenshots, light and dark", async ({ page, isMobile }, info) => {
     await shoot(`chat-${scheme}`);
 
     if (!isMobile) {
-      await page.goto("/catalogo");
+      await page.goto("/catalog");
       await settle(page);
       await page.getByLabel("Search product").fill("tornillo 6mm");
       await page.getByRole("list", { name: "Products" }).getByRole("link").first().click();
@@ -124,7 +124,7 @@ test("demo video", async ({ browser, isMobile }) => {
   await pause(3_500);
 
   // 2. A photo of a printed list through the real pipeline.
-  await page.goto("/probar");
+  await page.goto("/try");
   await settle(page);
   await say("photo");
   await pause(2_000);
@@ -138,7 +138,7 @@ test("demo video", async ({ browser, isMobile }) => {
   await pause(2_500);
 
   // 3. The catalog with the new prices and their history.
-  await page.goto("/catalogo");
+  await page.goto("/catalog");
   await settle(page);
   await page.getByLabel("Search product").fill("tornillo 6mm");
   await page.getByRole("list", { name: "Products" }).getByRole("link").first().click();
@@ -147,7 +147,7 @@ test("demo video", async ({ browser, isMobile }) => {
   await pause(3_500);
 
   // 4. A spreadsheet in a new format → a person picks the price column.
-  await page.goto("/probar");
+  await page.goto("/try");
   await settle(page);
   await say("sheet");
   await page.getByRole("button", { name: "Send a new spreadsheet" }).click();
@@ -163,7 +163,7 @@ test("demo video", async ({ browser, isMobile }) => {
   await pause(3_500);
 
   // 5. A chat handled by a person.
-  await page.goto("/conversaciones");
+  await page.goto("/conversations");
   await settle(page);
   await page.getByLabel("Search by name, supplier or phone").fill("Luis");
   await page.getByRole("list", { name: "Conversations" }).getByRole("link").first().click();

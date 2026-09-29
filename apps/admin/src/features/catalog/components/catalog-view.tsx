@@ -172,7 +172,7 @@ function ProductRowLink({ product, showSupplier }: { product: ProductRow; showSu
   const { formatInt, formatMoney, formatPct } = useFormat();
   return (
     <Link
-      href={`/catalogo/${product.id}`}
+      href={`/catalog/${product.id}`}
       className="flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
     >
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">

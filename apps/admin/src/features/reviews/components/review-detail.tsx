@@ -27,13 +27,13 @@ export function ReviewDetail({ id }: { id: string }) {
   const router = useRouter();
   const query = useReview(id);
   const user = useAuthStore((s) => s.user);
-  const mutation = useResolveReview(id, () => router.push("/revisiones"));
+  const mutation = useResolveReview(id, () => router.push("/reviews"));
   const t = useTranslations("reviews");
 
   return (
     <div className="mx-auto max-w-3xl">
       <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2 min-h-9">
-        <Link href="/revisiones">
+        <Link href="/reviews">
           <ArrowLeft aria-hidden /> {t("back")}
         </Link>
       </Button>
@@ -43,7 +43,7 @@ export function ReviewDetail({ id }: { id: string }) {
         <ErrorState
           error={query.error}
           onRetry={() => void query.refetch()}
-          back={{ href: "/revisiones", label: t("backTo") }}
+          back={{ href: "/reviews", label: t("backTo") }}
         />
       ) : (
         <DetailBody
@@ -162,7 +162,7 @@ function SourceCard({ item }: { item: ReviewItem }) {
           </blockquote>
         ) : null}
         <Link
-          href={`/conversaciones/${item.message.conversationId}`}
+          href={`/conversations/${item.message.conversationId}`}
           prefetch={false}
           className="flex min-h-9 w-fit items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline"
         >

@@ -73,7 +73,7 @@ export function timeline(
   if (!run || !FINAL_RUN.has(run.status) || !trace?.message) {
     return { steps, outcome: null, finished: false };
   }
-  const conversation = `/conversaciones/${trace.message.conversationId}`;
+  const conversation = `/conversations/${trace.message.conversationId}`;
   if (run.status === "needs_review") {
     const last = steps.at(-1)!;
     last.state = "held";
@@ -85,7 +85,7 @@ export function timeline(
         outcome: {
           key: "suspicious",
           tone: "review",
-          href: "/revisiones",
+          href: "/reviews",
           linkKey: "viewReviews",
         },
       };
@@ -97,7 +97,7 @@ export function timeline(
         outcome: {
           key: "newFormat",
           tone: "review",
-          href: "/revisiones",
+          href: "/reviews",
           linkKey: "pickColumn",
         },
       };
@@ -108,7 +108,7 @@ export function timeline(
       outcome: {
         key: "review",
         tone: "review",
-        href: "/revisiones",
+        href: "/reviews",
         linkKey: "viewReviews",
       },
     };
@@ -127,7 +127,7 @@ export function timeline(
         key: changed ? "updated" : "noChanges",
         ...(changed ? { counts } : {}),
         tone: run.pendingReviews > 0 ? "review" : "success",
-        href: run.pendingReviews > 0 ? "/revisiones" : "/catalogo",
+        href: run.pendingReviews > 0 ? "/reviews" : "/catalog",
         linkKey: run.pendingReviews > 0 ? "viewReviews" : "viewCatalog",
       },
     };

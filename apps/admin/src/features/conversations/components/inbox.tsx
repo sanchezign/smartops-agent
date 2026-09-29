@@ -34,7 +34,7 @@ export function Inbox() {
         description={t("description")}
         actions={
           <Button asChild variant="outline" className="min-h-11">
-            <Link href="/conversaciones/bajas">
+            <Link href="/conversations/opted-out">
               <UserX aria-hidden /> {t("optedOutLink")}
             </Link>
           </Button>
@@ -117,7 +117,7 @@ function InboxRow({ item }: { item: InboxItem }) {
   const line = m ? preview(m) : null;
   return (
     <Link
-      href={`/conversaciones/${item.id}`}
+      href={`/conversations/${item.id}`}
       className="flex min-h-16 flex-col gap-1 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
     >
       <div className="flex items-center justify-between gap-2">

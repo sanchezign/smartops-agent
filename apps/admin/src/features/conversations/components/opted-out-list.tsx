@@ -39,7 +39,7 @@ export function OptedOutList() {
   return (
     <>
       <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2 min-h-9">
-        <Link href="/conversaciones">
+        <Link href="/conversations">
           <ArrowLeft aria-hidden /> {t("back")}
         </Link>
       </Button>
@@ -76,7 +76,7 @@ export function OptedOutList() {
               <li key={c.id}>
                 {c.conversationId ? (
                   <Link
-                    href={`/conversaciones/${c.conversationId}`}
+                    href={`/conversations/${c.conversationId}`}
                     className="flex min-h-16 items-center gap-3 px-4 py-3 hover:bg-muted/50"
                   >
                     {body}

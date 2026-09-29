@@ -134,7 +134,7 @@ function ReviewRow({ item, readOnly }: { item: ReviewItem; readOnly: boolean }) 
   });
   return (
     <Link
-      href={`/revisiones/${item.id}`}
+      href={`/reviews/${item.id}`}
       className="flex min-h-16 items-center gap-3 rounded-xl border bg-card px-4 py-3 transition-colors hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     >
       <SourceIcon item={item} />

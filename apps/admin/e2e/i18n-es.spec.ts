@@ -38,12 +38,12 @@ test("main screens in Spanish, es-UY money, and accessible", async ({ page, isMo
     await expect(page.getByRole("heading", { name: heading, level: 1 })).toBeVisible();
     await expectAccessible(page);
   };
-  await open("/revisiones", "Revisiones");
+  await open("/reviews", "Revisiones");
   await expect(
     page.getByRole("list", { name: "Revisiones" }).getByText("Aumento general"),
   ).toBeVisible();
 
-  await open("/catalogo", "Catálogo");
+  await open("/catalog", "Catálogo");
   await page.getByLabel("Buscar producto").fill("tornillo 6");
   // es-UY money: "$ 1.234,50" (a space after "$", comma decimals).
   await expect(
@@ -53,11 +53,11 @@ test("main screens in Spanish, es-UY money, and accessible", async ({ page, isMo
       .first(),
   ).toBeVisible();
 
-  await open("/conversaciones", "Conversaciones");
+  await open("/conversations", "Conversaciones");
   await expect(page.getByText("Atiende una persona").first()).toBeVisible();
 
-  await open("/alertas", "Alertas");
-  await open("/reglas", "Reglas");
+  await open("/alerts", "Alertas");
+  await open("/rules", "Reglas");
   await expect(page.getByText("cambiarlas es solo para administradores")).toBeVisible();
 
   if (!isMobile) {

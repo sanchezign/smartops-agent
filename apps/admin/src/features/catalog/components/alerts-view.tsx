@@ -83,7 +83,7 @@ export function AlertsView() {
                     {formatRelative(a.createdAt)}
                     {a.product ? (
                       <Link
-                        href={`/catalogo/${a.product.id}`}
+                        href={`/catalog/${a.product.id}`}
                         className="font-medium text-foreground underline-offset-4 hover:underline"
                       >
                         {t("viewProduct")}
@@ -91,7 +91,7 @@ export function AlertsView() {
                     ) : null}
                     {a.conversationId ? (
                       <Link
-                        href={`/conversaciones/${a.conversationId}`}
+                        href={`/conversations/${a.conversationId}`}
                         className="font-medium text-foreground underline-offset-4 hover:underline"
                       >
                         {t("viewConversation")}

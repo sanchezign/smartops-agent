@@ -594,7 +594,7 @@ Each one gets an ADR in docs/adr/.
 `feat/phase-12-deploy`): M0 DONE; M1 done up to DuckDNS — the VM cannot be created yet (São Paulo
 has no A1 capacity). WAITING: the user runs `scripts/oci/launch-retry.ps1` for 3–5 days
 (guide `docs/deploy/m1-retry-launch.md`). Phase 13 (i18n + docs, branch `feat/phase-13-i18n-docs`)
-advances meanwhile: M0–M6 DONE — STOPPED for the user's review of the screenshots and the video (then M7 panel guide EN + ES). If the VM appears first, phase 12 does
+advances meanwhile: M0–M6 DONE and approved by the user (2026-09-28) + review adjustments; next M7 (panel guide EN + ES), M8, M9 (PR, then STOP: the user authorizes the merge). If the VM appears first, phase 12 does
 not wait (first deploy without i18n, updated later). M3b (phase 5) and MFA (TOTP) remain
 recommended/required before a real client.**
 
@@ -1800,12 +1800,30 @@ recommended/required before a real client.**
       HTML `src` / `srcset` / `href`. `test/unit/media-budget.test.ts` (README media ≤ 8 MB,
       `docs/guide/media-es` ≤ 4 MB, all docs + public media ≤ 12 MB, no video under docs/). The phone
       video with real WhatsApp is the user's (hide the phone number).
+    - Review adjustments (user, 2026-09-28, media approved): (1) demo seed classify usages now
+      realistic (input 1,080–1,500, output 60–170 tokens incl. low-effort reasoning) → "Estimated
+      saving US$0.1633" (45 × ≈ US$0.0036), total AI US$0.5143; only the dashboard WebPs, the GIF and
+      the kit video were regenerated. (2) Panel routes in English: /reviews, /conversations,
+      /conversations/opted-out, /catalog, /alerts, /rules, /users, /try (/d/<token> unchanged);
+      `src/legacy-routes.ts` → permanent (308) redirects from the Spanish routes incl. sub-paths
+      (next.config `redirects()`), unit test (targets exist, old folders gone, order) + E2E
+      (`legacy-routes.spec.ts`); the API digest deep-link paths are English too. Local note: stale
+      generated `.next/types` of the old routes broke the E2E build type check — moved (not deleted)
+      to the session scratchpad. (3) The "Reiniciar demo pending" entry had already been removed in
+      8eee297. (4) renovate.json: `@eslint/js` majors blocked with eslint; group `vitest` (vitest +
+      @vitest/coverage-v8, every update type) after the non-major group; `test/unit/renovate-config.test.ts`;
+      validated with renovate 44.107.0 --strict. PR #7 closed with a comment; PR #6 left open (to
+      review at the phase close; Renovate will move vitest out of it into its own group PR). (5)
+      WhatsApp pricing change in Known issues.
 
 ## Known issues (out of scope)
-- **Phase 13 M2 — decision pending (user):** the panel ROUTES are still Spanish (/revisiones,
-  /conversaciones, /catalogo, /alertas, /reglas, /usuarios, /probar). Renaming them to English
-  (with redirects from the old paths) also changes the digest deep-link paths the API builds
-  (`GET /admin/digests/:token`) — proposed, not done.
+- **WhatsApp pricing change (Meta, effective 2026-10-01):** service messages and utility messages
+  inside the 24 h customer service window become PAID per message (no free allowance; rates by
+  market, Uruguay = "Rest of Latin America"; Meta's main pricing page still said they were free on
+  2026-09-28 — see docs/costs.md). BEFORE ANY TEST WITH A REAL NUMBER after that date, check the
+  current prices. The Meta account has NO payment method (confirmed by the user, 2026-09-28): a
+  paid message fails instead of being charged — expect sends (acks, opt-out confirmations,
+  digests, panel replies) to fail, not to cost money.
 - **Phase 13 M3:** the extraction / column-mapping `warnings` shown in reviews are written by the
   model (Spanish prompts) and a failed-read `detail` is technical English: shown as they are in
   both panel languages (data, not interface text).

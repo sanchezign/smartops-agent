@@ -25,7 +25,7 @@ export function ProductDetail({ id }: { id: string }) {
   return (
     <div className="mx-auto max-w-3xl">
       <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2 min-h-9">
-        <Link href="/catalogo">
+        <Link href="/catalog">
           <ArrowLeft aria-hidden /> {t("back")}
         </Link>
       </Button>
@@ -35,7 +35,7 @@ export function ProductDetail({ id }: { id: string }) {
         <ErrorState
           error={query.error}
           onRetry={() => void query.refetch()}
-          back={{ href: "/catalogo", label: t("backTo") }}
+          back={{ href: "/catalog", label: t("backTo") }}
         />
       ) : (
         <Body product={query.data.product} />
@@ -175,7 +175,7 @@ function HistoryList({ history }: { history: PriceHistoryEntry[] }) {
             ) : null}
             {h.conversationId ? (
               <Link
-                href={`/conversaciones/${h.conversationId}`}
+                href={`/conversations/${h.conversationId}`}
                 className="inline-flex min-h-9 items-center gap-1 text-xs font-medium underline-offset-4 hover:underline"
                 aria-label={t("viewMessage")}
               >

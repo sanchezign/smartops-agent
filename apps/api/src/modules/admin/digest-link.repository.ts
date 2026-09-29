@@ -59,15 +59,15 @@ export function createDigestLinkRepository(prisma: PrismaClient) {
           case "order":
           case "customer_query": {
             const conversationId = conversationOf.get(data.messageId);
-            path = conversationId ? `/conversaciones/${conversationId}` : null;
+            path = conversationId ? `/conversations/${conversationId}` : null;
             break;
           }
           case "run_summary":
-            path = data.pendingReviews > 0 ? "/revisiones" : "/catalogo";
+            path = data.pendingReviews > 0 ? "/reviews" : "/catalog";
             break;
           case "manual_attention":
           case "integration_error":
-            path = "/alertas";
+            path = "/alerts";
             break;
         }
         return {

@@ -60,7 +60,7 @@ test.describe("digest deep link (phase 9 M7)", () => {
     await page.goto(`/d/${single}`);
     await loginHere(page);
     await expect(page.getByRole("heading", { name: "Luis Fernández" })).toBeVisible();
-    await expect(page).toHaveURL(/\/conversaciones\//);
+    await expect(page).toHaveURL(/\/conversations\//);
   });
 
   test("an unknown token says so (same answer as a malformed one)", async ({ page }) => {
