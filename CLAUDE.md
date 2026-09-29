@@ -594,7 +594,7 @@ Each one gets an ADR in docs/adr/.
 `feat/phase-12-deploy`): M0 DONE; M1 done up to DuckDNS — the VM cannot be created yet (São Paulo
 has no A1 capacity). WAITING: the user runs `scripts/oci/launch-retry.ps1` for 3–5 days
 (guide `docs/deploy/m1-retry-launch.md`). Phase 13 (i18n + docs, branch `feat/phase-13-i18n-docs`)
-advances meanwhile: M0–M5 DONE, next M6 (screenshots + video / GIF, then STOP for the user's review). If the VM appears first, phase 12 does
+advances meanwhile: M0–M6 DONE — STOPPED for the user's review of the screenshots and the video (then M7 panel guide EN + ES). If the VM appears first, phase 12 does
 not wait (first deploy without i18n, updated later). M3b (phase 5) and MFA (TOTP) remain
 recommended/required before a real client.**
 
@@ -1787,6 +1787,19 @@ recommended/required before a real client.**
       Meta charges service messages and in-window utility messages per message from 2026-10-01 (no
       free allowance; rates by market published by 2026-09-01) — the main pricing page still says
       non-template messages are free; Vercel Hobby is non-commercial only.
+    - M6 screenshots + video — DONE (2026-09-28), WAITING for the user's review. `apps/admin/e2e/media.spec.ts`
+      (MEDIA=1; not an assertion suite): English screenshots light + dark, desktop 1440×900 (dashboard,
+      column picker, product history, chat) and iPhone 15 (dashboard, reviews, inbox); the demo flow
+      recorded twice on a fresh E2E DB — with English captions drawn in the page (re-drawn on every
+      navigation) for the GIF, and clean with measured step times → `.en.srt` / `.es.srt`. Captions in
+      `e2e/media-captions.ts` (EN + neutral ES). `scripts/media/build-media.sh` (ffmpeg
+      `jrottenberg/ffmpeg:7.1-alpine@sha256:8ec1ee1f…`, a tool container, not a dependency): 14 WebP
+      (≈ 0.5 MB) + `demo.gif` (3.9 MB, 880 px, 7 fps) in `docs/media/` (4.2 MB total); the clean MP4
+      (1.2 MB, 1440×900) + subtitles in `C:/dev/smartops-portfolio-kit/video/` (outside the repo).
+      README "See it" section (GIF + `<picture>` light/dark by GitHub theme). Link checker also reads
+      HTML `src` / `srcset` / `href`. `test/unit/media-budget.test.ts` (README media ≤ 8 MB,
+      `docs/guide/media-es` ≤ 4 MB, all docs + public media ≤ 12 MB, no video under docs/). The phone
+      video with real WhatsApp is the user's (hide the phone number).
 
 ## Known issues (out of scope)
 - **Phase 13 M2 — decision pending (user):** the panel ROUTES are still Spanish (/revisiones,

@@ -24,6 +24,17 @@ describe("parsing", () => {
     ]);
   });
 
+  it("also checks HTML src / srcset / href inside Markdown", () => {
+    const md =
+      '<picture><source srcset="media/dark.webp 1x, media/dark@2x.webp 2x"><img src="media/light.webp" alt=""></picture> <a href="docs/x.md">x</a>';
+    expect(linkTargets(md)).toEqual([
+      "media/dark.webp",
+      "media/dark@2x.webp",
+      "media/light.webp",
+      "docs/x.md",
+    ]);
+  });
+
   it("GitHub-style heading slugs, with repeats numbered", () => {
     const slugs = headingSlugs(
       "# Setup\n## Panel login (phase 8)\n## Costs: $0!\n## Setup\n### `code` and [link](x.md)",

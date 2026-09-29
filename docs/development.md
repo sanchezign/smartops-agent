@@ -267,6 +267,26 @@ Validated end to end on 2026-09-26:
 - **Resilience:** n8n stopped and restarted. Every message was delivered once, with one run
   each.
 
+## README media (phase 13)
+
+The screenshots and the demo GIF in `docs/media/` are produced from the real panel on a fresh
+E2E database, never edited by hand:
+
+```bash
+cd apps/admin
+MEDIA=1 pnpm e2e media.spec.ts --project desktop --project iphone -g "screenshots"
+MEDIA=1 MEDIA_CAPTIONS=1 pnpm e2e media.spec.ts --project desktop -g "demo video"   # GIF source
+MEDIA=1 MEDIA_CAPTIONS=0 pnpm e2e media.spec.ts --project desktop -g "demo video"   # clean video + .srt
+cd ../..
+scripts/media/build-media.sh [kit folder]   # ffmpeg in a pinned container
+```
+
+The captions (English on the GIF, English and Spanish subtitles for the video) are in
+`apps/admin/e2e/media-captions.ts`. The MP4 and its `.en.srt` / `.es.srt` go to the portfolio
+kit folder outside the repository (default `../smartops-portfolio-kit/video`). A test keeps the
+README media at 8 MB at most, the Spanish guide's screenshots at 4 MB, and all media together at
+12 MB.
+
 ## Scripts (root)
 
 | Script              | What it does                            |

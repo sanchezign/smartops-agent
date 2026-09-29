@@ -36,8 +36,14 @@ export function stripCode(markdown: string): string {
 /** Link targets of `[text](target)` and `[text](target "title")`, images included. */
 export function linkTargets(markdown: string): string[] {
   const targets: string[] = [];
-  for (const match of stripCode(markdown).matchAll(/\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g)) {
+  const text = stripCode(markdown);
+  for (const match of text.matchAll(/\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g)) {
     targets.push(match[1]!);
+  }
+  // HTML inside Markdown (<img src>, <picture><source srcset>): every URL of a srcset list.
+  for (const match of text.matchAll(/\b(src|srcset|href)="([^"]+)"/g)) {
+    const urls = match[1] === "srcset" ? match[2]!.split(",") : [match[2]!];
+    for (const url of urls) targets.push(url.trim().split(/\s+/)[0]!);
   }
   return targets;
 }
