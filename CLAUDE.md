@@ -594,7 +594,7 @@ Each one gets an ADR in docs/adr/.
 `feat/phase-12-deploy`): M0 DONE; M1 done up to DuckDNS — the VM cannot be created yet (São Paulo
 has no A1 capacity). WAITING: the user runs `scripts/oci/launch-retry.ps1` for 3–5 days
 (guide `docs/deploy/m1-retry-launch.md`). Phase 13 (i18n + docs, branch `feat/phase-13-i18n-docs`)
-advances meanwhile: M0–M6 DONE and approved by the user (2026-09-28) + review adjustments + M7 DONE; next M8 (kit outside the repo), M9 (PR, then STOP: the user authorizes the merge). If the VM appears first, phase 12 does
+advances meanwhile: M0–M6 DONE and approved by the user (2026-09-28) + review adjustments + M7 + M8 DONE; next M9 (close: PR, checks, then STOP — the user authorizes the merge). If the VM appears first, phase 12 does
 not wait (first deploy without i18n, updated later). M3b (phase 5) and MFA (TOTP) remain
 recommended/required before a real client.**
 
@@ -1824,6 +1824,12 @@ recommended/required before a real client.**
       "guide screenshots" (MEDIA_GUIDE=en|es, language-independent selectors, locale cookie) →
       `build-media.sh --guide` → `docs/guide/media-{en,es}/*.webp` (672 KB for both; Spanish budget
       4 MB). Linked from the README and docs/README.md.
+    - M8 case study + portfolio kit — DONE (2026-09-29). `docs/case-study.md` + `docs/caso-de-estudio.md`
+      (problem, goal, approach, architecture, MEASURED results only, lessons, next steps). Kit OUTSIDE
+      the repo at `C:/dev/smartops-portfolio-kit/` (not versioned): README (index + checklist before
+      publishing: [DEMO_URL] / [REPO_URL] placeholders, hide the phone number, WhatsApp prices),
+      `workana.md` (ES + EN variant), `linkedin.md` (project, Featured, headline; ES + EN),
+      `post-borrador.md` (launch post ES + EN), `video/` (MP4 47 s + .en.srt / .es.srt).
 
 ## Known issues (out of scope)
 - **WhatsApp pricing change (Meta, effective 2026-10-01):** service messages and utility messages

@@ -3,6 +3,7 @@
 | Document                                                                        | What it covers                                                                      |
 | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | [Panel guide](guide/panel-guide.md) · [Guía del panel](guide/guia-del-panel.md) | For the business owner and the team: every screen, in English and in Spanish        |
+| [Case study](case-study.md) · [Caso de estudio](caso-de-estudio.md)             | The problem, the approach, measured results and lessons learned                     |
 | [Architecture](architecture.md)                                                 | Components, the path of a message, design choices, the data model, code layout      |
 | [Development](development.md)                                                   | Local setup, the WhatsApp simulator, the demo mode, scripts, environment variables  |
 | [Testing](testing.md)                                                           | Test layers, coverage, mutation testing, what each suite proves                     |
