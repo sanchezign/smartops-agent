@@ -594,7 +594,8 @@ Each one gets an ADR in docs/adr/.
 `feat/phase-12-deploy`): M0 DONE; M1 done up to DuckDNS — the VM cannot be created yet (São Paulo
 has no A1 capacity). WAITING: the user runs `scripts/oci/launch-retry.ps1` for 3–5 days
 (guide `docs/deploy/m1-retry-launch.md`). Phase 13 (i18n + docs, branch `feat/phase-13-i18n-docs`)
-advances meanwhile: M0–M6 DONE and approved by the user (2026-09-28) + review adjustments + M7 + M8 DONE; next M9 (close: PR, checks, then STOP — the user authorizes the merge). If the VM appears first, phase 12 does
+is COMPLETE (M0–M9, 2026-09-29): its PR is open with green checks, WAITING for the user to authorize
+the rebase-merge (Renovate PR #6 is reviewed at that moment too). If the VM appears first, phase 12 does
 not wait (first deploy without i18n, updated later). M3b (phase 5) and MFA (TOTP) remain
 recommended/required before a real client.**
 
@@ -1976,6 +1977,17 @@ recommended/required before a real client.**
   `prisma.$queryRaw()` invocation"); the cause is in `err.meta`. Cosmetic.
 
 ## Conventions in this project
+- Languages (user, 2026-09-28): the REPOSITORY is in English (code, comments, commits, README,
+  technical docs, ADRs, CLAUDE.md, runbook); the user is addressed in Spanish. The panel is
+  English + neutral Spanish ("tú", never voseo): every visible text in
+  `apps/admin/src/i18n/messages/{en,es}.json` (ESLint `i18next/no-literal-string`, catalog parity
+  and anti-voseo tests), pure modules return codes; numbers / dates through `useFormat()`.
+  WhatsApp texts in `apps/api/src/common/business-texts.ts` (business language; Spanish "usted").
+  Sample / demo data stays Spanish. Panel routes are English (`/reviews`, `/conversations`…);
+  the old Spanish ones only live in `src/legacy-routes.ts` as redirects.
+- Docs: index `docs/README.md`; relative links checked offline in CI (`doc-links.ts`); README
+  media only from `media.spec.ts` + `scripts/media/build-media.sh` (budgets tested); the portfolio
+  kit and videos live outside the repo (`C:/dev/smartops-portfolio-kit/`).
 - Costs: never create or enable anything that generates charges without asking first
   (see "Cost constraint").
 - Deploy (phase 12): the server only runs `deploy/bin/*.sh` of a RELEASED version (the bundle
@@ -1999,8 +2011,8 @@ recommended/required before a real client.**
   are pinned by full SHA with a version comment, tool images by `tag@sha256`; lint workflows with
   actionlint + zizmor (see docs/ci-cd.md). The user applies GitHub repository settings by hand.
 - WhatsApp fixtures: `apps/api/test/fixtures/whatsapp/`
-- Local WhatsApp without Meta: `wa:simulate` + `wa:fake-graph` (README "Desarrollo
-  sin Meta"). New WhatsApp features must work against the fake Graph API; extend
+- Local WhatsApp without Meta: `wa:simulate` + `wa:fake-graph` (docs/development.md,
+  "Development without Meta"). New WhatsApp features must work against the fake Graph API; extend
   `fake-graph.ts` when a phase needs a new Graph endpoint.
 - Prompts: `apps/api/src/ai/prompts/*.md`
 - n8n workflows: `n8n/workflows/{receiver,processor,notifier,errors}.json`, exported ONLY with
