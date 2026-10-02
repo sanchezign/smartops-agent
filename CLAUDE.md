@@ -1757,6 +1757,20 @@ a real client.**
       idle policy), deploy/README, ci-cd, development, architecture. Test rig removed (user OK).
       NEXT = M3 (the user runs `host-diagnose.sh` then `host-setup.sh --profile micro`; the Oracle
       Cloud Agent keeps ONLY Compute Instance Monitoring), M3b Bastion script, M4 first deploy.
+    - M3 prep (2026-10-02, after the user ran `host-diagnose.sh` on the VM; output kept OUTSIDE the
+      repo): 602 MiB available, no swap, Docker not installed, paravirtualized disk (no iSCSI),
+      base ≈ 350 MiB (oracle agent 85 + updater 23, snapd 48, fwupd 41, multipathd 20, udev 25,
+      cloud-init, unattended-upgrades 11, ModemManager 6). The user already turned OFF every Oracle
+      Cloud Agent plugin except Compute Instance Monitoring through the OCI CLI (the console failed:
+      Custom Logs plugin "not supported" on E2.1.Micro). Approved trims in `host-setup.sh --profile
+      micro` (disable + mask, idempotent, verified at the end): fwupd (+ refresh timer / service),
+      multipathd, iscsid / open-iscsi, udisks2, ModemManager, rpcbind (also listened on port 111),
+      open-vm-tools / vgauth; KEPT: oracle-cloud-agent (and snapd), unattended-upgrades, cloud-init,
+      sysstat. SSH: PermitRootLogin no (the image had without-password), MaxAuthTries 3, and
+      `AllowTcpForwarding no` in the micro profile (no n8n to tunnel to, Postgres never published;
+      the Bastion tunnel is client-side and does not need it on the VM); vm.swappiness 60 on micro
+      (the value the simulation used; standard keeps 10). iptables already allows 22 (OCI image
+      rule; the security list limits it to the Bastion subnet).
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs

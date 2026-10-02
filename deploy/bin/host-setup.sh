@@ -7,7 +7,12 @@
 #
 # --profile micro (default on a machine with < 2 GB of RAM): no fail2ban. Port 22 is only
 # reachable from the Bastion subnet (OCI security list) and SSH is keys-only, so fail2ban adds
-# little and its Python process costs memory a 1 GB machine does not have.
+# little and its Python process costs memory a 1 GB machine does not have. It also:
+#   - disables AND masks services a headless VM does not use (firmware updater, multipath, iSCSI,
+#     udisks, ModemManager, rpcbind — which also listened on port 111 —, VMware tools): ~75 MiB;
+#     the Oracle Cloud Agent snap (and so snapd), unattended-upgrades, cloud-init and sysstat stay;
+#   - SSH without TCP forwarding (nothing to tunnel without n8n; Postgres is never published)
+#     and vm.swappiness=60 (the value the memory simulation was measured with).
 #
 # What it does:
 #   - timezone America/Montevideo (the 03:30 backup and 04:00 reboot are local times)
@@ -76,6 +81,43 @@ apt-get install -y -q ca-certificates curl gnupg age unattended-upgrades \
   iptables-persistent netfilter-persistent >/dev/null
 [ "$profile" = "standard" ] && apt-get install -y -q fail2ban >/dev/null
 
+# Services of the stock image that a headless 1 GB demo VM does not use (profile micro only).
+# Disable + mask is idempotent; a missing unit is skipped. Each is verified at the end.
+TRIM_UNITS=(
+  fwupd.service fwupd-refresh.timer fwupd-refresh.service
+  multipathd.service multipathd.socket
+  iscsid.service iscsid.socket open-iscsi.service
+  udisks2.service ModemManager.service
+  rpcbind.service rpcbind.socket
+  open-vm-tools.service vgauth.service
+)
+if [ "$profile" = "micro" ]; then
+  log "trimming unused services (disable + mask)"
+  for unit in "${TRIM_UNITS[@]}"; do
+    if systemctl list-unit-files "$unit" --no-legend 2>/dev/null | grep -q .; then
+      systemctl disable --now "$unit" >/dev/null 2>&1 || true
+      systemctl mask "$unit" >/dev/null 2>&1 || true
+    fi
+  done
+  trim_failed=0
+  for unit in "${TRIM_UNITS[@]}"; do
+    state="$(systemctl is-enabled "$unit" 2>/dev/null || true)"
+    active="$(systemctl is-active "$unit" 2>/dev/null || true)"
+    if [ "$active" = "active" ]; then
+      echo "NOT STOPPED: $unit" >&2
+      trim_failed=1
+    fi
+    [ -z "$state" ] || [ "$state" = "masked" ] || {
+      echo "NOT MASKED: $unit ($state)" >&2
+      trim_failed=1
+    }
+  done
+  [ "$trim_failed" -eq 0 ] || {
+    echo "some unused services could not be trimmed (see above)" >&2
+    exit 1
+  }
+fi
+
 log "Docker Engine (official apt repository)"
 if ! command -v docker >/dev/null 2>&1; then
   install -m 0755 -d /etc/apt/keyrings
@@ -97,7 +139,11 @@ if [ "$(cat /etc/docker/daemon.json 2>/dev/null)" != "$daemon_json" ]; then
 fi
 systemctl enable --now docker >/dev/null
 
-log "SSH: keys only, no root, only $admin_user"
+# micro (light profile): no n8n to tunnel to and Postgres is never published, so no forwarding at
+# all; standard keeps "local" (a developer may tunnel to a bound-to-localhost service).
+forwarding=local
+[ "$profile" = "micro" ] && forwarding=no
+log "SSH: keys only, no root, only $admin_user (TCP forwarding: $forwarding)"
 cat >/etc/ssh/sshd_config.d/10-smartops.conf <<EOF
 # SmartOps demo (phase 12): managed by host-setup.sh
 PasswordAuthentication no
@@ -109,7 +155,7 @@ MaxAuthTries 3
 LoginGraceTime 30
 X11Forwarding no
 AllowAgentForwarding no
-AllowTcpForwarding local
+AllowTcpForwarding $forwarding
 EOF
 sshd -t
 systemctl reload ssh
@@ -161,7 +207,11 @@ if ! swapon --show=NAME --noheadings | grep -q '^/swapfile$'; then
   swapon /swapfile
   grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >>/etc/fstab
 fi
-echo 'vm.swappiness=10' >/etc/sysctl.d/90-smartops.conf
+# micro: 60 = the value the 550 MiB simulation was measured with (cold pages may go to swap so
+# the page cache stays); standard: 10.
+swappiness=10
+[ "$profile" = "micro" ] && swappiness=60
+echo "vm.swappiness=$swappiness" >/etc/sysctl.d/90-smartops.conf
 sysctl -q --system
 
 log "journald capped at 500 MB"
@@ -172,5 +222,11 @@ systemctl restart systemd-journald
 log "directories"
 install -d -m 700 /etc/smartops
 install -d -m 750 /opt/smartops /opt/smartops/releases /opt/smartops/state /opt/smartops/backups
+
+log "verification"
+sshd -T 2>/dev/null | grep -Ei '^(permitrootlogin|maxauthtries|allowtcpforwarding|passwordauthentication|allowusers) '
+free -m | awk '/^Mem:/ {print "memory: " $3 " MB used, " $7 " MB available of " $2} /^Swap:/ {print "swap: " $2 " MB"}'
+sysctl vm.swappiness
+printf 'listening TCP ports: %s\n' "$(ss -tlnH | awk '{print $4}' | sed 's/.*://' | sort -un | tr '\n' ' ')"
 
 log "done. Next: GHCR login, first bundle, init-secrets.sh, deploy.sh (docs/runbook.md)"
