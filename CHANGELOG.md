@@ -6,6 +6,45 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.12.0](https://github.com/sanchezign/smartops-agent/compare/v0.11.0...v0.12.0) (2026-10-02)
+
+
+### Features
+
+* **admin:** English panel routes with permanent redirects; review adjustments (phase 13) ([ba76e07](https://github.com/sanchezign/smartops-agent/commit/ba76e07b5137ba6f4a112213946913b8873a4d58))
+* **api:** light demo mode with an in-process orchestrator (phase 12 M2.1) ([c2aa436](https://github.com/sanchezign/smartops-agent/commit/c2aa4366759a459b75a8e18e0ee537c512e1fb5a))
+* **demo:** one public demo reset per 10 minutes for everyone; M1 Oracle guide (phase 12) ([8eee297](https://github.com/sanchezign/smartops-agent/commit/8eee2975515dc1ef93f780f73bd9903d78cc4f5e))
+* **deploy:** automatic retry to create the demo VM with a least-privilege OCI user (phase 12 M1) ([bc4fc41](https://github.com/sanchezign/smartops-agent/commit/bc4fc410d7ff6972cc9c967b68eea14c7c958631))
+* **deploy:** light profile for a 1 GB machine (phase 12 M2.2) ([9db00f5](https://github.com/sanchezign/smartops-agent/commit/9db00f58fb9e3f14bde08d5cae75f652f9178d73))
+* **deploy:** micro profile trims unused services and tightens SSH (phase 12 M3 prep) ([68b09ac](https://github.com/sanchezign/smartops-agent/commit/68b09ac34f41ba1f71bb6510675918f3b9cc5a0d))
+* **deploy:** public demo bundle, shared-account safety and local deploy harness (phase 12 M0) ([14d4bac](https://github.com/sanchezign/smartops-agent/commit/14d4baced49bb25dd9cd8bd9835de684244db7e9))
+* **i18n:** business language for WhatsApp texts; panel writes API texts (phase 13 M3) ([cdabcaf](https://github.com/sanchezign/smartops-agent/commit/cdabcaf17a95fd25d8c12a88f3d1d805dca9c19f))
+* **i18n:** every panel text in English and neutral Spanish (phase 13 M2) ([486406a](https://github.com/sanchezign/smartops-agent/commit/486406adf385f8869077863421f1f4c5d1bb6bf3))
+* **i18n:** panel in English and Spanish with a per-user language (phase 13 M1) ([e40ae0d](https://github.com/sanchezign/smartops-agent/commit/e40ae0d3f7846c8d25d1ae9a5a0da879117b76b7))
+
+
+### Bug Fixes
+
+* **deploy:** host-setup waits for the apt lock, moves apt-daily to the small hours, masks packagekit ([8403f26](https://github.com/sanchezign/smartops-agent/commit/8403f26eb676482fa79f3eb7f823b6e0c38032b5))
+* **deploy:** launch retry treats network failures as transient; 2-5 min waits (phase 12 M1) ([3bcc0de](https://github.com/sanchezign/smartops-agent/commit/3bcc0de2a63356e982c2c436a6399e8f58c6bef1))
+
+
+### Documentation
+
+* case study in English and Spanish (phase 13 M8) ([bbc59b6](https://github.com/sanchezign/smartops-agent/commit/bbc59b61dbfb9c6c6316e6efd470a0d871585cff))
+* close phase 11 — v0.11.0 released, release timings and lessons ([5e2ebb2](https://github.com/sanchezign/smartops-agent/commit/5e2ebb239d3c8fa72c2d8f707f37c2620168e749))
+* close phase 13 — i18n, English docs and portfolio (phase 13 M9) ([7e34f20](https://github.com/sanchezign/smartops-agent/commit/7e34f205289f6bb3db5c4045526e164080cf1eeb))
+* deploy on an Oracle E2.1.Micro with a light demo profile (phase 12 M2.0) ([a032c59](https://github.com/sanchezign/smartops-agent/commit/a032c59c6f13ab726153a0ed98aae84778ab3733))
+* English documentation, portfolio README and link checker (phase 13 M5) ([4204ad6](https://github.com/sanchezign/smartops-agent/commit/4204ad64d1f92488ad684c3baf788c027a79812f))
+* panel guide for the business owner in English and Spanish (phase 13 M7) ([1647cfa](https://github.com/sanchezign/smartops-agent/commit/1647cfa47c4be800c19899f384c65b53ab3e4cd4))
+* README screenshots and demo GIF, reproducible media pipeline (phase 13 M6) ([672c180](https://github.com/sanchezign/smartops-agent/commit/672c18061f3dabeca388db23243515d33ddd4bf2))
+* use the author's full name in the license ([9a5f359](https://github.com/sanchezign/smartops-agent/commit/9a5f3598c750dd1a4d010738ff22454d77ebbe1c))
+
+
+### Tests
+
+* **i18n:** E2E in English, Spanish smoke with axe, language switch (phase 13 M4) ([dd18f3e](https://github.com/sanchezign/smartops-agent/commit/dd18f3e39cc79f81ef8cff1deef9b385700971dd))
+
 ## [0.11.0](https://github.com/sanchezign/smartops-agent/compare/v0.1.0...v0.11.0) (2026-09-28)
 
 
