@@ -4,7 +4,7 @@
 set -euo pipefail
 image="$1"
 # Release workflow: the image must declare the version being released (EXPECTED_VERSION).
-[ -z "${EXPECTED_VERSION:-}" ] || "$(dirname "$0")/image-version-check.sh" local "$image" "$EXPECTED_VERSION"
+[ -z "${EXPECTED_VERSION:-}" ] || bash "$(dirname "$0")/image-version-check.sh" local "$image" "$EXPECTED_VERSION"
 name="smartops-admin-smoke-$$"
 trap 'docker rm -f "$name" >/dev/null 2>&1 || true' EXIT
 docker run -d --name "$name" "$image" >/dev/null

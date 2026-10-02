@@ -202,4 +202,4 @@ jobs:
         run: |
           docker buildx imagetools inspect "$IMAGE:$VERSION"
           # The published image (every platform) declares the version it is tagged with.
-          scripts/ci/image-version-check.sh published "$IMAGE:$VERSION" "$VERSION"
+          bash scripts/ci/image-version-check.sh published "$IMAGE:$VERSION" "$VERSION"

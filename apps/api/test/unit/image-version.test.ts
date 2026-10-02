@@ -41,14 +41,16 @@ describe("release workflow: the image version comes from the release tag", () =>
     );
     for (const app of ["api", "admin"]) {
       expect(readFileSync(join(ROOT, `scripts/ci/${app}-container-smoke.sh`), "utf8")).toContain(
-        'image-version-check.sh" local "$image" "$EXPECTED_VERSION"',
+        'bash "$(dirname "$0")/image-version-check.sh" local "$image" "$EXPECTED_VERSION"',
       );
     }
   });
 
   it("after publishing, every platform of the multi-arch image is checked", () => {
     const merge = workflow.slice(workflow.indexOf("  merge:"));
-    expect(merge).toContain('image-version-check.sh published "$IMAGE:$VERSION" "$VERSION"');
+    expect(merge).toContain(
+      'bash scripts/ci/image-version-check.sh published "$IMAGE:$VERSION" "$VERSION"',
+    );
   });
 });
 

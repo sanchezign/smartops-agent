@@ -229,5 +229,5 @@ scanning + push protection, CodeQL and private vulnerability reporting, and swit
 from the version asked for. The release workflow therefore checks the same thing itself:
 the build job passes the release tag to the metadata step, `scripts/ci/image-version-check.sh local`
 runs in both container smoke tests **before** anything is pushed, and `… published` inspects every
-platform (amd64 and arm64) of the published `X.Y.Z` tag. (v0.12.0 was published declaring `main`;
-v0.12.1 replaced it.)
+platform (amd64 and arm64) of the published `X.Y.Z` tag. (v0.12.0 was published declaring `main`, v0.12.1 never got images;
+v0.12.2 replaced them.)

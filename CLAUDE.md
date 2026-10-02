@@ -1788,7 +1788,7 @@ a real client.**
       both container smoke scripts (EXPECTED_VERSION) BEFORE anything is pushed, `published` checks
       every platform (amd64 AND arm64) of `ghcr.io/…:X.Y.Z` after the multi-arch tags are created;
       `test/unit/image-version.test.ts` guards the wiring and the script (fake docker). Republish =
-      v0.12.1 through release-please (a published tag is never rewritten); the v0.12.0 images stay in
+      v0.12.2 through release-please (a published tag is never rewritten: v0.12.1's tag exists WITHOUT images because the new check script lost its exec bit on Windows and the smoke ran it directly; now called with `bash`, mode fixed); the v0.12.0 images stay in
       GHCR with the wrong label (the user may delete that package version in the GitHub UI).
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
