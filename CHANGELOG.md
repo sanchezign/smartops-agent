@@ -6,6 +6,13 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.12.3](https://github.com/sanchezign/smartops-agent/compare/v0.12.2...v0.12.3) (2026-10-02)
+
+
+### Bug Fixes
+
+* **ci:** publish job checks out the tag and does not cancel the other app ([4ee6fee](https://github.com/sanchezign/smartops-agent/commit/4ee6fee01481a147d891d05993091933b656449e))
+
 ## [0.12.2](https://github.com/sanchezign/smartops-agent/compare/v0.12.1...v0.12.2) (2026-10-02)
 
 
