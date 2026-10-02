@@ -2,7 +2,8 @@
 # Deploy bundle checks (phase 12), run by the quick CI job and locally:
 #   - shellcheck on every server / CI script
 #   - `caddy validate` + `caddy fmt` on deploy/Caddyfile
-#   - `docker compose config` on deploy/compose.yaml with FAKE values, then its invariants
+#   - `docker compose config` on deploy/compose.yaml (full) and deploy/compose.light.yaml (the
+#     1 GB profile, ADR-025) with FAKE values, then their invariants
 #     (scripts/ci/check-deploy-compose.mjs)
 # Tool images pinned by digest (Renovate keeps them current).
 set -euo pipefail
@@ -24,7 +25,7 @@ docker run --rm -v "$mount/deploy:/c:ro" -e DEMO_DOMAIN=demo.example.duckdns.org
   sh -c 'caddy validate --config /c/Caddyfile --adapter caddyfile >/dev/null 2>&1 || caddy validate --config /c/Caddyfile --adapter caddyfile
          caddy fmt /c/Caddyfile | diff -u /c/Caddyfile - && echo "Caddyfile valid and formatted"'
 
-echo "== compose.yaml"
+echo "== compose.yaml and compose.light.yaml"
 env_file="$(native "$(mktemp)")"
 trap 'rm -f "$env_file"' EXIT
 for key in POSTGRES_SUPERUSER_PASSWORD POSTGRES_APP_PASSWORD N8N_DB_PASSWORD N8N_ENCRYPTION_KEY \
@@ -34,4 +35,6 @@ for key in POSTGRES_SUPERUSER_PASSWORD POSTGRES_APP_PASSWORD N8N_DB_PASSWORD N8N
 done
 echo "DEMO_DOMAIN=demo.example.duckdns.org" >>"$env_file"
 SMARTOPS_VERSION=0.0.0 docker compose -f "$root/deploy/compose.yaml" --env-file "$env_file" \
-  --profile tools config --format json | node "$root/scripts/ci/check-deploy-compose.mjs"
+  --profile tools config --format json | node "$root/scripts/ci/check-deploy-compose.mjs" full
+SMARTOPS_VERSION=0.0.0 docker compose -f "$root/deploy/compose.light.yaml" --env-file "$env_file" \
+  --profile tools config --format json | node "$root/scripts/ci/check-deploy-compose.mjs" light

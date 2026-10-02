@@ -67,14 +67,27 @@ assert_no_real_keys() {
   fi
 }
 
+# Profile of this server: "full" (n8n; the default) or "light" (ADR-025: no n8n, API + worker +
+# orchestrator in one process, for a 1 GB machine). Set by init-secrets.sh --profile.
+demo_profile() {
+  local p
+  p="$(grep -E '^DEMO_PROFILE=' "$SMARTOPS_ENV_FILE" 2>/dev/null | tail -n 1 | cut -d= -f2- || true)"
+  case "${p:-full}" in
+    light) echo light ;;
+    *) echo full ;;
+  esac
+}
+is_light() { [ "$(demo_profile)" = "light" ]; }
+
 # `docker compose` for one release, with the secrets file and the project name.
 compose_for() {
-  local version="$1"
+  local version="$1" file=compose.yaml
   shift
+  is_light && file=compose.light.yaml
   SMARTOPS_VERSION="$version" docker compose \
     --project-name "$SMARTOPS_PROJECT" \
     --project-directory "$RELEASES_DIR/$version" \
-    -f "$RELEASES_DIR/$version/compose.yaml" \
+    -f "$RELEASES_DIR/$version/$file" \
     --env-file "$SMARTOPS_ENV_FILE" \
     "$@"
 }

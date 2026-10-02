@@ -103,12 +103,16 @@ else
   compose_for "$version" --profile tools run --rm seed || die "the demo seed failed"
 fi
 
-# ── n8n workflows (no editor: CLI) ─────────────────────────────────────────────────────────
-"$here/bin/n8n-import.sh" "$version"
+# ── n8n workflows (no editor: CLI). The light profile has no n8n (ADR-025). ────────────────
+if is_light; then
+  log "light profile: no n8n (the orchestrator runs inside the API process)"
+else
+  "$here/bin/n8n-import.sh" "$version"
+fi
 
 # ── Services ───────────────────────────────────────────────────────────────────────────────
 compose_for "$version" up -d --remove-orphans
-compose_for "$version" restart n8n >/dev/null # loads the freshly imported workflows
+is_light || compose_for "$version" restart n8n >/dev/null # loads the freshly imported workflows
 if ! wait_healthy "$version" 300; then
   compose_for "$version" ps >&2
   die "$version is not healthy. Logs: docker compose -p $SMARTOPS_PROJECT logs --tail 100. Back: sudo $here/bin/rollback.sh"

@@ -7,7 +7,7 @@
 # /etc/smartops/monitor.env (root, 600):
 #   HC_MONITOR_URL=https://hc-ping.com/<uuid>
 #   DISK_MAX_PCT=85            (root filesystem)
-#   MEM_MIN_AVAILABLE_MB=400
+#   MEM_MIN_AVAILABLE_MB=400   (default 400; 100 in the light profile — a 1 GB machine)
 # shellcheck source=deploy/bin/lib.sh
 . "$(dirname "$0")/lib.sh"
 require_root
@@ -18,7 +18,7 @@ hc="$(cfg HC_MONITOR_URL)"
 disk_max="$(cfg DISK_MAX_PCT)"
 disk_max="${disk_max:-85}"
 mem_min="$(cfg MEM_MIN_AVAILABLE_MB)"
-mem_min="${mem_min:-400}"
+mem_min="${mem_min:-$(is_light && echo 100 || echo 400)}" # a 1 GB machine (light) has less to spare
 
 problems=()
 disk="$(df --output=pcent / | tail -n 1 | tr -dc '0-9')"

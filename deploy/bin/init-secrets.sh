@@ -3,7 +3,10 @@
 # variables that are missing are generated; an existing value is NEVER overwritten (rotating
 # one is a runbook step). Values never leave this file: nothing is printed, nothing is logged.
 #
-#   sudo ./init-secrets.sh --domain smartops-demo.duckdns.org
+#   sudo ./init-secrets.sh --domain smartops-demo.duckdns.org [--profile light|full]
+#
+# --profile light = the 1 GB profile (ADR-025): no n8n keys are generated. Default: full (n8n).
+# The profile is recorded as DEMO_PROFILE and never changes by itself.
 #
 # Result: /etc/smartops/demo.env, root:root, mode 600.
 # shellcheck source=deploy/bin/lib.sh
@@ -11,10 +14,15 @@
 require_root
 
 domain=""
+profile=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --domain)
       domain="${2:-}"
+      shift 2
+      ;;
+    --profile)
+      profile="${2:-}"
       shift 2
       ;;
     *) die "unknown argument: $1" ;;
@@ -42,10 +50,25 @@ elif [ -n "$domain" ] && ! grep -qxF "DEMO_DOMAIN=$domain" "$SMARTOPS_ENV_FILE";
   die "DEMO_DOMAIN is already set to another value; edit $SMARTOPS_ENV_FILE on purpose to change it"
 fi
 
-for key in \
-  POSTGRES_SUPERUSER_PASSWORD POSTGRES_APP_PASSWORD N8N_DB_PASSWORD N8N_ENCRYPTION_KEY \
-  INTERNAL_API_KEY JWT_ACCESS_SECRET N8N_WEBHOOK_SECRET \
-  DEMO_FAKE_WHATSAPP_TOKEN DEMO_FAKE_WHATSAPP_APP_SECRET DEMO_FAKE_WHATSAPP_VERIFY_TOKEN; do
+case "$profile" in
+  "" | light | full) ;;
+  *) die "--profile must be light or full" ;;
+esac
+if has DEMO_PROFILE; then
+  current="$(grep -E '^DEMO_PROFILE=' "$SMARTOPS_ENV_FILE" | tail -n 1 | cut -d= -f2-)"
+  [ -z "$profile" ] || [ "$profile" = "$current" ] ||
+    die "DEMO_PROFILE is already $current; edit $SMARTOPS_ENV_FILE on purpose to change it"
+  profile="$current"
+else
+  profile="${profile:-full}"
+  add DEMO_PROFILE "$profile"
+fi
+
+keys=(POSTGRES_SUPERUSER_PASSWORD POSTGRES_APP_PASSWORD INTERNAL_API_KEY JWT_ACCESS_SECRET
+  DEMO_FAKE_WHATSAPP_TOKEN DEMO_FAKE_WHATSAPP_APP_SECRET DEMO_FAKE_WHATSAPP_VERIFY_TOKEN)
+# n8n's own secrets only exist in the full profile.
+[ "$profile" = "full" ] && keys+=(N8N_DB_PASSWORD N8N_ENCRYPTION_KEY N8N_WEBHOOK_SECRET)
+for key in "${keys[@]}"; do
   has "$key" || add "$key" "$(random)"
 done
 

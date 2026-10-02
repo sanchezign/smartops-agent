@@ -597,7 +597,7 @@ Each one gets an ADR in docs/adr/.
 #9 for v0.12.0 stays open until the first deploy; Renovate PR #6 untouched). Phase 12 (deploy $0)
 continues on branch `feat/phase-12-micro`: M0 DONE; M1 DONE with an E2.1.Micro VM (A1 never had
 capacity: 420 attempts) — see item 12. Plan approved 2026-10-02: M2.0 docs/decision, M2.1 light mode
-in the API, M2.2 light deploy bundle (the assistant), then STOP: M3 (host hardening) is run by the
+in the API (DONE), M2.2 light deploy bundle (DONE), then STOP: M3 (host hardening) is run by the
 user with the assistant's scripts. M3b (phase 5) and MFA (TOTP) remain recommended/required before
 a real client.**
 
@@ -1733,6 +1733,30 @@ a real client.**
       the same orchestrator. Tests: API 1,128 unit + 223 integration (new smoke: demo-server on a
       scratch `_demo` DB, 3 samples in order, one SIGTERM stops both halves, exit 0), E2E demo spec
       green on desktop; coverage ratchet raised.
+    - M2.2 light deploy bundle — DONE (2026-10-02). `deploy/compose.light.yaml` (postgres tuned for
+      1 GB, migrate, seed, ONE `api` service running `node --max-old-space-size=192
+      dist/demo-server.js` with DEMO_ORCHESTRATOR=internal, admin heap 96, caddy; mem caps 192 / 320 /
+      128 / 64 MiB; SSE_MAX_STREAMS 100; no n8n, no worker). Profile = `DEMO_PROFILE` in demo.env
+      (`init-secrets.sh --profile light|full`, default full, never changes by itself; light generates
+      no n8n keys); `lib.sh` `demo_profile` / `is_light` / profile-aware `compose_for`; `deploy.sh`
+      skips n8n import + restart in light; `backup.sh` dumps only smartops_demo in light and
+      `restore-test.sh` accepts backups without n8n (checks JWT_ACCESS_SECRET instead of
+      N8N_ENCRYPTION_KEY); `monitor.sh` default MEM_MIN_AVAILABLE_MB 100 in light (400 full);
+      `postgres-init` creates the n8n role/db only when N8N_DB_PASSWORD is set; `host-setup.sh
+      --profile micro|standard` (micro = default under 2 GB RAM: no fail2ban) and NEW read-only
+      `deploy/bin/host-diagnose.sh` (memory, top processes, services, snaps, Oracle agent, SSH,
+      firewall, Docker; no secrets) for M3. CI: `check-deploy-compose.mjs full|light` (light: no
+      n8n/worker, one process, orchestrator internal, caps ≤ 768 MiB total, small-memory Postgres;
+      7 mutations all caught) wired into `check-deploy-bundle.sh`; `local-harness.sh` got
+      `HARNESS_PROFILE` and `HARNESS_PROJECT`. Verified: shellcheck + caddy + both compose checks,
+      local harness PASSED in light (deploy 44 s, smoke through Caddy incl. SSE 6–12 ms and a sample
+      through the orchestrator, backup, restore test, rollback, newer-schema refusal) AND in full
+      (no regression), and the REAL light deploy.sh inside the capped simulation (550 MiB + 2 GiB
+      swap + 0.125 CPU): first install 2 m 35 s, 6 samples 2.0–10.8 s (median 6.7 s), demand
+      410 MiB (286 RAM + 124 swap), 0 OOM. Docs: runbook (profiles, "full only" steps, Bastion,
+      idle policy), deploy/README, ci-cd, development, architecture. Test rig removed (user OK).
+      NEXT = M3 (the user runs `host-diagnose.sh` then `host-setup.sh --profile micro`; the Oracle
+      Cloud Agent keeps ONLY Compute Instance Monitoring), M3b Bastion script, M4 first deploy.
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs

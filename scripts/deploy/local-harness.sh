@@ -2,7 +2,7 @@
 # Local deploy harness (phase 12): runs the REAL server scripts of deploy/bin against a local
 # Docker (Linux, or Windows with Git Bash + Docker Desktop), with images built locally — before
 # a release, and to reproduce a server problem. Nothing reaches a registry or the internet
-# except the pinned tool images. Isolated: project "smartops-m0test", ports on 127.0.0.1 only,
+# except the pinned tool images. Isolated: project "smartops-m0test" (HARNESS_PROJECT), ports on 127.0.0.1 only,
 # its own state under <workdir>. Needs images tagged <prefix>/smartops-{api,admin}:<a> and :<b>:
 #
 #   docker build -f apps/api/Dockerfile   -t smartops-local/smartops-api:m0a .
@@ -24,17 +24,20 @@ work="$(native "$(cd "$work" && pwd)")"
 repo="$(native "$(cd "$(dirname "$0")/../.." && pwd)")"
 A="${HARNESS_VERSION_A:-m0a}"
 B="${HARNESS_VERSION_B:-m0b}"
+# HARNESS_PROFILE=light tests the 1 GB profile (ADR-025: no n8n); HARNESS_PROJECT isolates a run.
+PROFILE="${HARNESS_PROFILE:-full}"
+PROJECT="${HARNESS_PROJECT:-smartops-m0test}"
 export SMARTOPS_LOCAL=1 SMARTOPS_HOME="$work/opt" SMARTOPS_ETC="$work/etc" \
-  SMARTOPS_PROJECT=smartops-m0test SMARTOPS_IMAGE_PREFIX="${HARNESS_IMAGE_PREFIX:-smartops-local}" \
+  SMARTOPS_PROJECT="$PROJECT" SMARTOPS_IMAGE_PREFIX="${HARNESS_IMAGE_PREFIX:-smartops-local}" \
   CADDY_BIND_ADDRESS=127.0.0.1
 step() { printf '\n══ %s\n' "$*"; }
 bin() { printf '%s/opt/releases/%s/bin' "$work" "$1"; }
 
 step "bundle $A + secrets"
 bash "$repo/deploy/bin/fetch-bundle.sh" "$A"
-bash "$(bin "$A")/init-secrets.sh" --domain localhost
+bash "$(bin "$A")/init-secrets.sh" --domain localhost --profile "$PROFILE"
 before="$(sha256sum "$work/etc/demo.env")"
-bash "$(bin "$A")/init-secrets.sh" --domain localhost
+bash "$(bin "$A")/init-secrets.sh" --domain localhost --profile "$PROFILE"
 [ "$before" = "$(sha256sum "$work/etc/demo.env")" ] || {
   echo "init-secrets is not idempotent" >&2
   exit 1
@@ -73,16 +76,16 @@ bash "$(bin "$B")/rollback.sh"
 }
 
 step "a newer schema makes the rollback refuse (expand/contract confirmation)"
-docker compose -p smartops-m0test exec -T postgres psql -U postgres -d smartops_demo -qc \
+docker compose -p "$PROJECT" exec -T postgres psql -U postgres -d smartops_demo -qc \
   "INSERT INTO _prisma_migrations (id, checksum, migration_name, finished_at, applied_steps_count) VALUES ('harness', 'x', '29991231000000_harness_future', now(), 1)"
 if bash "$(bin "$A")/rollback.sh" "$B" 2>/dev/null; then
   echo "rollback should have refused" >&2
   exit 1
 fi
 bash "$(bin "$A")/rollback.sh" "$B" --accept-newer-schema
-docker compose -p smartops-m0test exec -T postgres psql -U postgres -d smartops_demo -qc \
+docker compose -p "$PROJECT" exec -T postgres psql -U postgres -d smartops_demo -qc \
   "DELETE FROM _prisma_migrations WHERE id = 'harness'"
 
 step "HARNESS PASSED — teardown when you are done (it deletes this test stack's data):"
-echo "  docker compose -p smartops-m0test down"
-echo "  docker volume rm smartops-m0test_postgres_data smartops-m0test_n8n_data smartops-m0test_caddy_data smartops-m0test_caddy_config"
+echo "  docker compose -p $PROJECT down"
+echo "  docker volume rm ${PROJECT}_postgres_data ${PROJECT}_n8n_data ${PROJECT}_caddy_data ${PROJECT}_caddy_config"

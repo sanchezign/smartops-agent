@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
-# One-time (and re-runnable) hardening + setup of the demo VM — Ubuntu 24.04 on OCI Ampere A1
-# (phase 12, M2). Idempotent: every step checks before it changes anything.
+# One-time (and re-runnable) hardening + setup of the demo VM — Ubuntu 24.04 on OCI (phase 12).
+# Written for the Always Free E2.1.Micro (1 GB, x86_64; ADR-023) and valid on any Ubuntu 24.04 VM.
+# Idempotent: every step checks before it changes anything.
 #
-#   sudo ./host-setup.sh [--admin-user ubuntu]
+#   sudo ./host-setup.sh [--admin-user ubuntu] [--profile micro|standard]
+#
+# --profile micro (default on a machine with < 2 GB of RAM): no fail2ban. Port 22 is only
+# reachable from the Bastion subnet (OCI security list) and SSH is keys-only, so fail2ban adds
+# little and its Python process costs memory a 1 GB machine does not have.
 #
 # What it does:
 #   - timezone America/Montevideo (the 03:30 backup and 04:00 reboot are local times)
@@ -16,8 +21,13 @@
 set -euo pipefail
 
 admin_user="ubuntu"
+profile=""
 while [ $# -gt 0 ]; do
   case "$1" in
+    --profile)
+      profile="${2:-}"
+      shift 2
+      ;;
     --admin-user)
       admin_user="${2:-}"
       shift 2
@@ -28,6 +38,16 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
+if [ -z "$profile" ]; then
+  if [ "$(awk '/^MemTotal:/ {print int($2 / 1024)}' /proc/meminfo)" -lt 2048 ]; then profile=micro; else profile=standard; fi
+fi
+case "$profile" in
+  micro | standard) ;;
+  *)
+    echo "--profile must be micro or standard" >&2
+    exit 2
+    ;;
+esac
 [ "$(id -u)" -eq 0 ] || {
   echo "run it with sudo" >&2
   exit 1
@@ -52,8 +72,9 @@ timedatectl set-timezone America/Montevideo
 
 log "packages"
 apt-get update -q
-apt-get install -y -q ca-certificates curl gnupg age fail2ban unattended-upgrades \
+apt-get install -y -q ca-certificates curl gnupg age unattended-upgrades \
   iptables-persistent netfilter-persistent >/dev/null
+[ "$profile" = "standard" ] && apt-get install -y -q fail2ban >/dev/null
 
 log "Docker Engine (official apt repository)"
 if ! command -v docker >/dev/null 2>&1; then
@@ -105,8 +126,9 @@ for port in 80 443; do
   fi
 done
 
-log "fail2ban (sshd)"
-cat >/etc/fail2ban/jail.d/smartops.local <<'EOF'
+if [ "$profile" = "standard" ]; then
+  log "fail2ban (sshd)"
+  cat >/etc/fail2ban/jail.d/smartops.local <<'EOF'
 [sshd]
 enabled = true
 backend = systemd
@@ -114,8 +136,11 @@ maxretry = 5
 findtime = 10m
 bantime = 1h
 EOF
-systemctl enable --now fail2ban >/dev/null
-systemctl restart fail2ban
+  systemctl enable --now fail2ban >/dev/null
+  systemctl restart fail2ban
+else
+  log "profile micro: no fail2ban (SSH is keys-only and reachable only from the Bastion subnet)"
+fi
 
 log "unattended security upgrades, automatic reboot at 04:00"
 cat >/etc/apt/apt.conf.d/20auto-upgrades <<'EOF'

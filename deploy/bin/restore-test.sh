@@ -82,7 +82,12 @@ done
 sleep 2
 psql_q() { docker exec -i "$name" psql -U postgres -v ON_ERROR_STOP=1 -Atq "$@"; }
 
-for db in smartops_demo n8n; do
+# The light profile (ADR-025) has no n8n database: its backups carry only smartops_demo.
+has_n8n=0
+[ -f "$dir/n8n.dump.age" ] && has_n8n=1
+databases=(smartops_demo)
+[ "$has_n8n" -eq 1 ] && databases+=(n8n)
+for db in "${databases[@]}"; do
   [ -f "$dir/$db.dump.age" ] || {
     log "missing $db.dump.age"
     exit 1
@@ -97,20 +102,28 @@ migrations="$(count smartops_demo _prisma_migrations)"
 users="$(count smartops_demo users)"
 products="$(count smartops_demo products)"
 messages="$(count smartops_demo messages)"
-workflows="$(count n8n workflow_entity)"
-credentials="$(count n8n credentials_entity)"
-printf '    migrations=%s users=%s products=%s messages=%s n8n_workflows=%s n8n_credentials=%s\n' \
-  "$migrations" "$users" "$products" "$messages" "$workflows" "$credentials" >&2
+printf '    migrations=%s users=%s products=%s messages=%s\n' \
+  "$migrations" "$users" "$products" "$messages" >&2
+if [ "$has_n8n" -eq 1 ]; then
+  workflows="$(count n8n workflow_entity)"
+  credentials="$(count n8n credentials_entity)"
+  printf '    n8n_workflows=%s n8n_credentials=%s\n' "$workflows" "$credentials" >&2
+fi
 
 ok=1
 [ "$migrations" -gt 0 ] || ok=0
 [ "$users" -gt 0 ] || ok=0
 [ "$products" -gt 0 ] || ok=0
-[ "$workflows" -ge 4 ] || ok=0
-[ "$credentials" -ge 2 ] || ok=0
-# The secrets file decrypts too (without it n8n's credentials cannot be read).
-decrypt demo.env.age | grep -qE '^N8N_ENCRYPTION_KEY=.{32,}' || {
-  log "demo.env.age does not decrypt to a secrets file with N8N_ENCRYPTION_KEY"
+if [ "$has_n8n" -eq 1 ]; then
+  [ "$workflows" -ge 4 ] || ok=0
+  [ "$credentials" -ge 2 ] || ok=0
+  # The secrets file decrypts too (without it n8n's credentials cannot be read).
+  secret_key=N8N_ENCRYPTION_KEY
+else
+  secret_key=JWT_ACCESS_SECRET
+fi
+decrypt demo.env.age | grep -qE "^$secret_key=.{32,}" || {
+  log "demo.env.age does not decrypt to a secrets file with $secret_key"
   ok=0
 }
 

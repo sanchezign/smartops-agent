@@ -1,0 +1,177 @@
+# SmartOps — PUBLIC DEMO, LIGHT PROFILE (phase 12, ADR-023 + ADR-025): for a 1 GB machine (Oracle
+# Always Free E2.1.Micro). Same one-origin layout as compose.yaml, without n8n:
+#   https://<DEMO_DOMAIN>/      → panel (Next.js standalone)
+#   https://<DEMO_DOMAIN>/api/* → API (Express), except /api/v1/internal/* and /webhooks/* (404)
+# The API, the worker and the orchestrator that plays the n8n workflows run in ONE Node process
+# (`dist/demo-server.js`, DEMO_ORCHESTRATOR=internal); samples are processed one at a time.
+# DEMO_MODE: fake LLM, fake transcriber, fake Graph API inside the API — no real WhatsApp, no real
+# key anywhere on this server (the API refuses to start if one is present).
+#
+# Selected by `DEMO_PROFILE=light` in /etc/smartops/demo.env (init-secrets.sh --profile light);
+# run ONLY through deploy/bin/deploy.sh. Memory measured in a simulation capped at 550 MiB
+# (Docker included): ~420 MiB of demand; the caps below are ceilings, not reservations.
+
+name: smartops-demo
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+
+x-app-env: &app-env
+  NODE_ENV: production
+  PORT: "4000"
+  LOG_LEVEL: info
+  DATABASE_URL: postgresql://smartops:${POSTGRES_APP_PASSWORD:?}@postgres:5432/smartops_demo
+  # Behind Caddy (one hop): rate limits and logs see the real client IP.
+  TRUST_PROXY: "1"
+  CORS_ORIGINS: https://${DEMO_DOMAIN:?}
+  PANEL_PUBLIC_URL: https://${DEMO_DOMAIN:?}
+  # Public demo (ADR-021): forces the fakes and the API's own Graph API.
+  DEMO_MODE: "true"
+  DEMO_GRAPH_URL: http://api:4000
+  DEMO_RESET_INTERVAL_MINUTES: ${DEMO_RESET_INTERVAL_MINUTES:-60}
+  DEMO_OPERATOR_EMAIL: ${DEMO_OPERATOR_EMAIL:-demo@ferreteria.demo}
+  DEMO_OPERATOR_PASSWORD: ${DEMO_OPERATOR_PASSWORD:-probá el panel sin miedo}
+  DEMO_RATE_LIMIT_MAX: ${DEMO_RATE_LIMIT_MAX:-20}
+  DEMO_GLOBAL_INJECT_PER_HOUR: ${DEMO_GLOBAL_INJECT_PER_HOUR:-120}
+  AI_PROVIDER: fake
+  TRANSCRIPTION_PROVIDER: fake
+  # Required by the env schema; random values that only the fake Graph API knows.
+  WHATSAPP_PHONE_NUMBER_ID: "100000000000001"
+  WHATSAPP_WABA_ID: "200000000000002"
+  WHATSAPP_ACCESS_TOKEN: ${DEMO_FAKE_WHATSAPP_TOKEN:?}
+  WHATSAPP_APP_SECRET: ${DEMO_FAKE_WHATSAPP_APP_SECRET:?}
+  WHATSAPP_VERIFY_TOKEN: ${DEMO_FAKE_WHATSAPP_VERIFY_TOKEN:?}
+  INTERNAL_API_KEY: ${INTERNAL_API_KEY:?}
+  JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?}
+  # ADR-025: the n8n workflows are played in-process, one sample at a time (no n8n here).
+  DEMO_ORCHESTRATOR: internal
+  N8N_DELIVERY_ENABLED: "true"
+  # A micro has 1/8 of a CPU: few simultaneous panel streams.
+  SSE_MAX_STREAMS: "100"
+
+services:
+  postgres:
+    <<: *hardening
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    # Tuned for a 1 GB machine shared with everything else.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=32MB
+      - -c
+      - max_connections=40
+      - -c
+      - work_mem=2MB
+      - -c
+      - maintenance_work_mem=16MB
+      - -c
+      - effective_cache_size=128MB
+      - -c
+      - wal_buffers=1MB
+      - -c
+      - max_wal_size=256MB
+      - -c
+      - autovacuum_max_workers=2
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?}
+      POSTGRES_DB: postgres
+      # Consumed by postgres-init/ (first volume creation only). No n8n database here.
+      APP_DB_PASSWORD: ${POSTGRES_APP_PASSWORD:?}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    networks: [backend]
+    mem_limit: 192m
+    shm_size: 64m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d smartops_demo"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  # One-off: `prisma migrate deploy` (deploy.sh runs it before starting the new version).
+  migrate:
+    <<: *hardening
+    restart: "no"
+    image: ${SMARTOPS_IMAGE_PREFIX:-ghcr.io/sanchezign}/smartops-api:${SMARTOPS_VERSION:?}
+    command: ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://smartops:${POSTGRES_APP_PASSWORD:?}@postgres:5432/smartops_demo
+    networks: [backend]
+    profiles: [tools]
+    cap_drop: [ALL]
+
+  # One-off: (re)seeds the demo data after the migrations; users and live sessions are kept.
+  seed:
+    <<: *hardening
+    restart: "no"
+    image: ${SMARTOPS_IMAGE_PREFIX:-ghcr.io/sanchezign}/smartops-api:${SMARTOPS_VERSION:?}
+    command: ["node", "dist/demo-seed.js"]
+    environment: *app-env
+    networks: [backend]
+    profiles: [tools]
+    cap_drop: [ALL]
+
+  # API + worker + orchestrator in ONE process. The service keeps the name "api": Caddy and the
+  # demo's own Graph API (DEMO_GRAPH_URL) address it by that name.
+  api:
+    <<: *hardening
+    image: ${SMARTOPS_IMAGE_PREFIX:-ghcr.io/sanchezign}/smartops-api:${SMARTOPS_VERSION:?}
+    command: ["node", "--max-old-space-size=192", "dist/demo-server.js"]
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [edge, backend]
+    mem_limit: 320m
+    cap_drop: [ALL]
+    stop_grace_period: 40s
+
+  admin:
+    <<: *hardening
+    image: ${SMARTOPS_IMAGE_PREFIX:-ghcr.io/sanchezign}/smartops-admin:${SMARTOPS_VERSION:?}
+    networks: [edge]
+    mem_limit: 128m
+    cap_drop: [ALL]
+    environment:
+      # Phase 13: the public demo starts in English (visitors can switch to Spanish).
+      PANEL_DEFAULT_LOCALE: en
+      NODE_OPTIONS: --max-old-space-size=96
+
+  caddy:
+    <<: *hardening
+    image: caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
+    environment:
+      DEMO_DOMAIN: ${DEMO_DOMAIN:?}
+    ports:
+      # CADDY_BIND_ADDRESS: 127.0.0.1 in the local test harness only (never exposed to the LAN).
+      - "${CADDY_BIND_ADDRESS:-0.0.0.0}:80:80"
+      - "${CADDY_BIND_ADDRESS:-0.0.0.0}:443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge]
+    mem_limit: 64m
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    depends_on: [api, admin]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:2019/config/ > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  edge: {}
+  backend:
+    internal: true
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

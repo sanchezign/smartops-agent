@@ -66,7 +66,9 @@ fail() {
   die "$1"
 }
 
-for db in smartops_demo n8n; do
+databases=(smartops_demo)
+is_light || databases+=(n8n) # the light profile has no n8n database (ADR-025)
+for db in "${databases[@]}"; do
   log "dumping $db"
   compose_for "$version" exec -T postgres pg_dump -U postgres -Fc --no-owner -d "$db" | encrypt >"$dir/$db.dump.age" ||
     fail "pg_dump of $db failed"

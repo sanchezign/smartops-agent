@@ -29,7 +29,10 @@ audit (user decision, 2026-09-27).
   `caddy validate` + `caddy fmt`, `docker compose config` of `deploy/compose.yaml` with fake
   values and its invariants — only Caddy publishes ports, Postgres / n8n / worker on the
   internal network, n8n without editor or telemetry, demo without any real key, third-party
-  images pinned by digest).
+  images pinned by digest). The 1 GB **light profile** (`deploy/compose.light.yaml`, ADR-025) gets
+  the same treatment plus its own invariants: no n8n or worker service, one process
+  (`dist/demo-server.js`, `DEMO_ORCHESTRATOR=internal`), a memory cap on every service that adds
+  up to at most 768 MiB.
 - **plan** — pull requests, nightly and manual runs. Decides:
   - `code`: false for docs-only changes and for release-please's PRs (then the slow jobs skip);
   - `docker`: Dockerfiles, `.dockerignore`, any `package.json`, the lockfile, Prisma,

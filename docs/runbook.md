@@ -21,8 +21,16 @@ restore test, which runs **on your computer**.
 | `/opt/smartops/state/`        | `current`, `previous`, `deploy.log`                                            |
 | `/opt/smartops/backups/`      | local encrypted copies (7 days)                                                |
 
-Containers (project `smartops-demo`): `caddy` (the only one with ports: 80/443), `admin`, `api`,
-`worker`, `n8n` (no editor), `postgres`. Status at a glance:
+Two profiles (`DEMO_PROFILE` in `demo.env`, chosen once with `init-secrets.sh --profile`):
+
+- **light** (the Oracle E2.1.Micro, 1 GB; ADR-025): `caddy` (the only one with ports: 80/443),
+  `admin`, `api` (API + worker + the orchestrator that plays the n8n workflows, one process,
+  samples one at a time) and `postgres`. No n8n. `compose.light.yaml`.
+- **full** (a bigger server): `caddy`, `admin`, `api`, `worker`, `n8n` (no editor), `postgres`.
+  `compose.yaml`.
+
+The sections below say "(full only)" where a step does not exist in the light profile. Status at a
+glance:
 
 ```bash
 sudo /opt/smartops/current/bin/status.sh
@@ -48,7 +56,7 @@ keeps running):
 4. makes an **encrypted backup before migrating** (not on the first install);
 5. runs `prisma migrate deploy` (forward only);
 6. re-seeds the demo data (users and sessions are kept);
-7. imports and publishes the n8n workflows from the command line;
+7. imports and publishes the n8n workflows from the command line (full only);
 8. starts everything, waits for the health checks and tests `https://<domain>/api/v1/health` and
    `/login` through Caddy;
 9. records `current` / `previous` and updates the timers.
@@ -70,8 +78,8 @@ version). If the database has migrations the target version does not know, the r
 
 ## 3. Backups
 
-Daily at 03:30 (Montevideo time) and before every deploy: both databases (demo + n8n) and
-`demo.env` (without it, the credentials stored in n8n cannot be read), **encrypted with age to
+Daily at 03:30 (Montevideo time) and before every deploy: the databases (demo, and n8n in the
+full profile) and `demo.env` (without it, the credentials stored in n8n cannot be read), **encrypted with age to
 your public key**. The private key lives only on your computer: whoever takes the VM cannot read
 the backups.
 
@@ -98,7 +106,7 @@ deploy/bin/restore-test.sh --dir <downloaded folder> --identity <your age key> \
 ```
 
 It verifies the checksums, decrypts in memory, restores into a **throw-away** Postgres, counts
-rows (migrations, users, products, messages, n8n workflows and credentials) and removes the
+rows (migrations, users, products, messages; n8n workflows and credentials in the full profile) and removes the
 container. The monthly Healthchecks.io check (period 30 days) emails you only if a month passes
 without a successful restore: that is the reminder (there is no timer on the VM).
 
@@ -114,6 +122,7 @@ without a successful restore: that is the reminder (there is no timer on the VM)
    the tunnel):
 
 ```bash
+# light profile: stop api, restore only smartops_demo; full profile: stop api worker n8n
 sudo docker compose -p smartops-demo stop api worker n8n
 for db in smartops_demo n8n; do
   sudo docker compose -p smartops-demo exec -T postgres \
@@ -161,8 +170,10 @@ docker tag smartops-local/smartops-admin:m0a smartops-local/smartops-admin:m0b
 scripts/deploy/local-harness.sh <empty folder>
 ```
 
+`HARNESS_PROFILE=light` tests the 1 GB profile; `HARNESS_PROJECT=<name>` isolates a run.
 It runs the real `deploy/bin` scripts against your Docker (ports on 127.0.0.1 only): deploy, a
-smoke test through Caddy (headers, blocked internal routes, SSE, a sample through n8n), a second
+smoke test through Caddy (headers, blocked internal routes, SSE, a sample through n8n or the
+orchestrator), a second
 deploy with a backup, the restore test, a rollback and the refusal on a newer schema. At the end
 it prints the commands to tear it down (it does not run them).
 
