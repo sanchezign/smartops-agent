@@ -165,3 +165,39 @@ It runs the real `deploy/bin` scripts against your Docker (ports on 127.0.0.1 on
 smoke test through Caddy (headers, blocked internal routes, SSE, a sample through n8n), a second
 deploy with a backup, the restore test, a rollback and the refusal on a newer schema. At the end
 it prints the commands to tear it down (it does not run them).
+
+## 9. Access through Bastion when your home IP changes
+
+The VM has no open SSH port: you reach it through an OCI Bastion **port forwarding** session
+(`smartopsbastion`). The bastion only accepts connections from its **CIDR allowlist** (your home
+IP as a `/32`). When your IP changes the connection fails; update the list. Changes apply to NEW
+sessions only. Oracle's guidance: keep the range as small as possible and **never `0.0.0.0/0`**.
+
+**Manual procedure (works from a phone)**
+
+1. Find your public IP (any "what is my IP" page).
+2. Console → _Identity & Security_ → _Bastion_ → `smartopsbastion` → _Edit_ → _CIDR block
+   allowlist_ → replace the address with `<your-ip>/32` → _Save changes_.
+3. Create a new port forwarding session (target: the VM's private IP `10.0.0.21`, port 22) with a
+   **new ephemeral key pair for each session**; the maximum session time is 3 hours.
+4. Connect with the command the console shows for that session.
+
+The same from a terminal with the OCI CLI (flags checked in Oracle's CLI reference):
+
+```bash
+oci bastion bastion update --bastion-id <bastion-ocid> --client-cidr-list '["<your-ip>/32"]' --force
+oci bastion session create-port-forwarding --bastion-id <bastion-ocid>   --target-private-ip 10.0.0.21 --target-port 22 --ssh-public-key-file <new-key>.pub   --session-ttl 10800 --wait-for-state SUCCEEDED
+```
+
+An on-demand script that does this with a least-privilege IAM user (API key with its own
+passphrase) is planned (phase 12, M3b); this manual procedure stays as the fallback.
+
+## 10. Oracle's idle policy (Always Free VMs)
+
+Oracle may reclaim a VM that is idle for 7 days: CPU p95 under 20 % **and** network under 20 %
+(the memory criterion is for A1 only). A reclaimed VM is **stopped**, not deleted, according to
+third-party reports; to start it again its shape must be available and a free account cannot open
+support requests. What to do: the Healthchecks alert arrives (no pings) → start it from the console
+or the CLI (section 7). We never create artificial load. How "CPU utilization" is computed for a
+1/8-OCPU shape is not documented: it is calibrated on the real VM by comparing the `CpuUtilization`
+metric (Oracle Cloud Agent, Compute Instance Monitoring plugin) with the CPU time of a demo reset.

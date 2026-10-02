@@ -5,6 +5,12 @@ budget with alerts, the network, a fixed public IP, the VM, SSH access through B
 DuckDNS name. It is written for someone who has **never used Oracle Cloud**. Nothing in this
 guide installs the demo yet: that is M2 (hardening the VM) and M3 (first deploy).
 
+> **Update (2026-10-02, ADR-023):** the Ampere A1 VM of this guide could never be created (no
+> capacity in São Paulo). The demo runs on an **Always Free `VM.Standard.E2.1.Micro`** instead:
+> 1/8 OCPU, 1 GB RAM, x86_64, Ubuntu 24.04, home region, one availability domain, 50 Mbps to the
+> internet, no Pay As You Go. Where a step says A1 / ARM / 3 GB, create the micro (same network,
+> reserved IP, Bastion and DuckDNS steps). It runs the light demo profile (ADR-025).
+
 > Oracle's screens are renamed often. If a button is not called exactly the same, pick the
 > closest one; the **values** to enter are the ones in this guide.
 

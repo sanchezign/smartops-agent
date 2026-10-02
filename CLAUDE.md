@@ -14,13 +14,14 @@ express-postgres
 
 ## Deploy target
 Custom $0 target (user decision 2026-09-24, see "Cost constraint"; replaces `render`):
-- Option A (preferred): Oracle Cloud Always Free VM (ARM, 2 OCPU / 12 GB) running the
-  same docker compose (api, worker, n8n, postgres) + Caddy (Let's Encrypt HTTPS);
-  admin panel on Vercel Hobby.
-- Option B (fallback): Render free (api + worker in ONE process in demo mode; n8n
-  separate) + Supabase free Postgres + Vercel Hobby.
-This is not one of the standard targets (`vercel-render` | `render`): record it in an
-ADR (superseding ADR-007) when phase 12 starts.
+DECIDED (user, 2026-10-02, ADR-023): ONE Oracle Cloud Always Free **VM.Standard.E2.1.Micro**
+(1/8 OCPU, 1 GB, x86_64, no Pay As You Go, no card) running the LIGHT demo profile (ADR-025: no
+n8n, API + worker + internal orchestrator in one process, Postgres, panel, Caddy) with Docker
+Compose; the admin panel is served by the same VM (one origin). The "full demo with n8n" (A1 VM
+2 OCPU / 12 GB, or a bigger server) is for when A1 capacity or a larger server exists.
+Discarded: Pay As You Go (US$100 hold, no capacity guarantee), Render free + Supabase free (sleep,
+pausing, bandwidth meter), Hugging Face Docker Spaces (paid plan required).
+This is not one of the standard targets (`vercel-render` | `render`): ADR-023 supersedes ADR-007.
 
 ## Cost constraint (user rule, 2026-09-24)
 Portfolio demo with a target of **$0 infrastructure** (max ~5 USD of Claude API
@@ -236,12 +237,14 @@ Alert · Setting/Rule · User (admin|operator) · AuditLog
   release-please (single version + changelog), Trivy (image OS vulnerabilities), actionlint +
   zizmor (workflow lint). All free, pinned by SHA / digest. Docker images for API and panel
   (GHCR, private while the repo is private).
-- Phase 12 deploy tooling (plan approved 2026-09-28; ADR-023 at the phase close): Oracle Cloud
-  Always Free (home region São Paulo, Santiago second; A1 VM, Bastion, Object Storage,
+- Phase 12 deploy tooling (plan approved 2026-09-28; ADR-023 written 2026-10-02; target changed to
+  E2.1.Micro + light profile, ADR-025): Oracle Cloud
+  Always Free (home region São Paulo, Santiago second; E2.1.Micro VM, Bastion, Object Storage,
   Budgets), Caddy 2.11 (HTTPS + one origin), DuckDNS (free subdomain, reserved IP), age (backup
   encryption, private key only on the owner's PC), OCI CLI container (instance principal
   uploads), Healthchecks.io + UptimeRobot (monitoring), shellcheck in CI. The real WhatsApp
   instance is OUT of phase 12 (the VM only runs the public demo, without real keys).
+- Light demo profile (phase 12, approved 2026-10-02, ADR-025): in DEMO_MODE only, an in-process orchestrator replaces n8n and API + worker run in one process, so the public demo fits a 1 GB E2.1.Micro; the real system keeps n8n (a parity test guards both).
 - Panel i18n (phase 13, plan approved 2026-09-28, ADR-024): next-intl 4.14.7 (exact; App Router
   WITHOUT i18n routing) + eslint-plugin-i18next (`no-literal-string`, M2).
 Each one gets an ADR in docs/adr/.
@@ -590,14 +593,13 @@ Each one gets an ADR in docs/adr/.
   `ghcr.io/sanchezign/smartops-{api,admin}`.
 
 ## Current phase
-**Phase 11 (CI/CD) COMPLETE (2026-09-28): v0.11.0 released. Phase 12 (deploy $0, branch
-`feat/phase-12-deploy`): M0 DONE; M1 done up to DuckDNS — the VM cannot be created yet (São Paulo
-has no A1 capacity). WAITING: the user runs `scripts/oci/launch-retry.ps1` for 3–5 days
-(guide `docs/deploy/m1-retry-launch.md`). Phase 13 (i18n + docs, branch `feat/phase-13-i18n-docs`)
-is COMPLETE (M0–M9, 2026-09-29): its PR is open with green checks, WAITING for the user to authorize
-the rebase-merge (Renovate PR #6 is reviewed at that moment too). If the VM appears first, phase 12 does
-not wait (first deploy without i18n, updated later). M3b (phase 5) and MFA (TOTP) remain
-recommended/required before a real client.**
+**Phases 1–11 and 13 COMPLETE and merged (v0.11.0 released; phase 13 merged 2026-10-02; release PR
+#9 for v0.12.0 stays open until the first deploy; Renovate PR #6 untouched). Phase 12 (deploy $0)
+continues on branch `feat/phase-12-micro`: M0 DONE; M1 DONE with an E2.1.Micro VM (A1 never had
+capacity: 420 attempts) — see item 12. Plan approved 2026-10-02: M2.0 docs/decision, M2.1 light mode
+in the API, M2.2 light deploy bundle (the assistant), then STOP: M3 (host hardening) is run by the
+user with the assistant's scripts. M3b (phase 5) and MFA (TOTP) remain recommended/required before
+a real client.**
 
 1. scaffold — done (2026-09-24).
 2. config/env/logging + initial Prisma schema — done (2026-09-24). Migrations:
@@ -1555,7 +1557,7 @@ recommended/required before a real client.**
       EMPTY commits — a `Release-As` footer must ride on a commit that changes files; (3) sonner's
       default light rich colors fail WCAG AA — keep the override in globals.css; (4) timing-heavy
       unit tests need headroom on 2-vCPU runners with coverage (size the data, per-test timeout).
-12. deploy ($0) — IN PROGRESS on `feat/phase-12-deploy`. Approved plan (2026-09-28) + user answers:
+12. deploy ($0) — IN PROGRESS (branch `feat/phase-12-deploy` merged; now `feat/phase-12-micro`). Approved plan (2026-09-28) + user answers:
     region São Paulo (Santiago second, chosen by the user at signup); the VM runs ONLY the public
     demo (real WhatsApp instance out of this phase); SSH via OCI Bastion (plan B: 22 only to the
     user's /32 if the M1 test fails); DuckDNS subdomain + reserved public IP, record set once by
@@ -1680,7 +1682,40 @@ recommended/required before a real client.**
       in the console, kept only on the user's PC (`oci setup repair-file-permissions`); user, key,
       group, policy, local key, config section and the RM stack are deleted as soon as the VM is
       RUNNING.
-13. i18n + docs + portfolio — IN PROGRESS on `feat/phase-13-i18n-docs` (created from main after PR
+    - TARGET CHANGE (user, 2026-10-02, ADR-023 + ADR-025): A1 never had capacity (420 attempts, also
+      after Oracle's "fully provisioned" notice); Pay As You Go discarded; an E2.1.Micro was created
+      without a card: `smartops-demo-micro`, Ubuntu 24.04.5 x86_64, AD-1, subnet smartops-public,
+      private IP 10.0.0.21, reserved IP 163.176.132.161 (smartops-demo.duckdns.org), Bastion
+      `smartopsbastion` (allowlist = the user's /32), SSH works through a port-forwarding session.
+      Measured on the VM: 954 MiB total, ~386 MiB used by the base system, ~567 MiB available, no
+      swap. `launch-retry.ps1` is ON HOLD (kept, untouched; do not touch it nor ~/.oci).
+    - Simulation (Docker `dind` capped at 550 MiB RAM + 2 GiB swap + 0.125 CPU; Docker itself inside
+      the cap; 6 "Probar el sistema" samples): current stack with n8n → 6/6 timeouts at 240 s (swap
+      567 MiB); light profile, API and worker separate → 610 MiB demand, 7.8 s median; light profile
+      in ONE process → 423 MiB demand (RAM + swap), API ready in 34 s, 1.8–8.4 s per sample (median
+      5.9 s), 0 OOM. Docker daemon ≈ 105–130 MiB PSS (biggest lever left; not touched). Memory tuning
+      (glibc arenas, smaller heaps / Postgres) gained nothing. Idle CPU 2.59 % of 1 OCPU = 20.8 % of
+      1/8; a real demo reset = 21.8 s, 3 CPU-seconds, peak 325 MiB anon + 62 MiB swap.
+    - Approved plan (2026-10-02) + user answers: M2.0 decision docs (this); M2.1 light mode in the API
+      (`DEMO_ORCHESTRATOR=internal|n8n`, only in DEMO_MODE; in-process orchestrator behind the same
+      `N8nClient.send` seam; combined API+worker entry; parity test against the exported workflows;
+      REQUIRED (user): in light mode the "Probar el sistema" samples are processed ONE AT A TIME
+      (queue with concurrency 1) on top of the existing global cap; README and docs must say that the
+      public demo uses the light orchestrator while the real system uses n8n); M2.2 light deploy
+      bundle (compose without n8n, Postgres tuned, memory caps for 550 MiB, deploy / backup / restore
+      / monitor adapted, monitor MEM threshold ~80–100 MB, harness + CI checks); then STOP before M3.
+      M3 (host, run by the user with the assistant's scripts): `host-diagnose.sh` first (read-only),
+      then micro profile of `host-setup.sh`: Oracle Cloud Agent keeps ONLY Compute Instance Monitoring
+      (everything else off, Cloud Guard Workload Protection included; the snap stays because the agent
+      needs snapd), no fail2ban (22 only reachable from the Bastion subnet), 2 GB swap kept, security
+      upgrades + 04:00 reboot kept. M3b Bastion: on-demand script with a least-privilege IAM user in
+      compartment `smartops` (API key WITH its own passphrase, asked on use, never in plain text; the
+      narrowest policy is verified with the owner's account before creating the user) + manual
+      console procedure as backup; `0.0.0.0/0` rejected (Oracle: "Do not specify an open CIDR range").
+      M4 v0.12.0 + first deploy + external checks + `CpuUtilization` calibration; M5 backups + real
+      restore (measure the backup's memory peak); M6 monitoring + abuse checks + bounded load smoke;
+      M7 close (delete the local images, ADR/CLAUDE.md).
+13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs
       (architecture, security, costs, development, ADRs), CLAUDE.md, runbook and deploy guides.
@@ -1843,11 +1878,13 @@ recommended/required before a real client.**
 - **Phase 13 M3:** the extraction / column-mapping `warnings` shown in reviews are written by the
   model (Spanish prompts) and a failed-read `detail` is technical English: shown as they are in
   both panel languages (data, not interface text).
-- **Phase 12 — idle reclamation risk (open until M3):** the demo stack uses ≈ 0.7 GB (+ OS).
-  Oracle deems an A1 idle when, over 7 days, CPU p95, network AND memory are all < 20 %. User
-  decision (2026-09-28): VM of **1 OCPU / 3 GB** (threshold 0.6 GB); measure in M3 with the OCI
-  memory metric + the 25 % alarm and resize if needed — never artificial load. Note: the compose
-  mem_limits add up to ~3.1 GB (caps, not reservations) — revisit after measuring.
+- **Phase 12 — idle reclamation risk (open until the first deploy):** Oracle deems a VM idle when,
+  over 7 days, CPU p95 AND network are < 20 % (memory only for A1). A micro can never exceed 12.5 %
+  of one OCPU, so the denominator of "CPU utilization" is unknown (relative to the 1/8 allocation
+  or never enforced). Measured in simulation: the light stack idles at 20.8 % of 1/8 OCPU. Calibrate
+  on the real VM with the first demo reset (≈ 3 CPU-seconds) against the `CpuUtilization` metric;
+  never artificial load. If reclaimed the VM is STOPPED (not deleted) per third-party reports:
+  alert + `oci compute instance action --action START`; backups live off the VM.
 - **Phase 12 — at the phase close:** delete the local test images
   `smartops-local/smartops-{api,admin}:m0a|m0b` (user, 2026-09-28).
 - **Phase 11:** the 4 accepted audit exceptions (postcss ×2 via next 15.5, deepmerge-ts,

@@ -1,7 +1,7 @@
 # Architecture decision records
 
 One record per significant decision: context, decision, consequences. ADR-023 (the $0 deploy on
-Oracle Cloud) is written when phase 12 closes; it supersedes ADR-007.
+one Oracle Cloud E2.1.Micro) supersedes ADR-007.
 
 - [ADR-001](ADR-001-pnpm-monorepo.md) — pnpm workspaces monorepo
 - [ADR-002](ADR-002-n8n-orchestration.md) — n8n for multi-agent orchestration
@@ -25,4 +25,6 @@ Oracle Cloud) is written when phase 12 closes; it supersedes ADR-007.
 - [ADR-020](ADR-020-panel-real-time.md) — Panel real time: DB triggers → one LISTEN per API process → SSE
 - [ADR-021](ADR-021-public-demo-mode.md) — Public demo: DEMO_MODE with the real pipeline, fakes and no Meta
 - [ADR-022](ADR-022-ci-cd.md) — CI/CD on GitHub Actions for a private repo on GitHub Free
+- [ADR-023](ADR-023-deploy-oracle-micro.md) — $0 public demo on one Oracle Always Free E2.1.Micro
 - [ADR-024](ADR-024-panel-i18n.md) — Panel in English and Spanish with next-intl; WhatsApp texts in the business language
+- [ADR-025](ADR-025-light-demo-profile.md) — Light demo profile: in-process orchestrator, API + worker in one process

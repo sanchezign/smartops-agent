@@ -1,5 +1,8 @@
 # M1 — Automatic retry to create the VM (phase 12)
 
+> **ON HOLD (2026-10-02).** After 420 failed attempts the demo moved to an E2.1.Micro (ADR-023).
+> The script and this guide stay in the repository for when A1 capacity is wanted again.
+
 São Paulo has no ARM capacity ("500-InternalError, Out of host capacity"). Instead of retrying
 by hand, a script runs **on your computer** and tries to create the VM every 2–5 minutes (with
 random jitter) for up to 5 days, without Pay As You Go. It uses the **OCI CLI** with a

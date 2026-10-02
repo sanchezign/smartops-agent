@@ -9,6 +9,10 @@ over any chat at any moment.
 > Status: built to production standards and tested end to end. The public demo server is being
 > deployed (phase 12). This README will link to it once it is live.
 
+> **Public demo vs the real system.** The public demo runs on a 1 GB free VM, so it uses a light
+> in-process orchestrator instead of n8n (and API + worker in one process). The real system uses
+> n8n; a parity test checks that both make the same calls ([ADR-025](docs/adr/ADR-025-light-demo-profile.md)).
+
 ## See it
 
 ![The demo flow: a photo of a printed price list goes through the real pipeline and updates the catalog; a new spreadsheet format waits for a person; a person takes over a chat; the panel switches to Spanish](docs/media/demo.gif)
@@ -75,15 +79,15 @@ workflows. Every step is idempotent, so retries never duplicate anything. Detail
 
 ## Tech stack
 
-| Layer          | Technology                                                                       |
-| -------------- | -------------------------------------------------------------------------------- |
-| Backend        | Node.js 24, Express 5, TypeScript, Zod, Prisma 7, PostgreSQL 17, pg-boss         |
-| AI             | Claude (Anthropic SDK), Whisper on Groq, behind swappable provider interfaces    |
-| Orchestration  | n8n (self-hosted)                                                                |
-| Frontend       | Next.js 15, React 19, Tailwind CSS 4, shadcn/ui, TanStack Query, next-intl       |
-| Messaging      | WhatsApp Business Cloud API                                                      |
-| Tooling        | pnpm workspaces, Vitest, Playwright, ESLint, Prettier, GitHub Actions, Docker    |
-| Hosting (demo) | Oracle Cloud Always Free VM, Caddy, Docker Compose — $0 ([costs](docs/costs.md)) |
+| Layer          | Technology                                                                             |
+| -------------- | -------------------------------------------------------------------------------------- |
+| Backend        | Node.js 24, Express 5, TypeScript, Zod, Prisma 7, PostgreSQL 17, pg-boss               |
+| AI             | Claude (Anthropic SDK), Whisper on Groq, behind swappable provider interfaces          |
+| Orchestration  | n8n (self-hosted)                                                                      |
+| Frontend       | Next.js 15, React 19, Tailwind CSS 4, shadcn/ui, TanStack Query, next-intl             |
+| Messaging      | WhatsApp Business Cloud API                                                            |
+| Tooling        | pnpm workspaces, Vitest, Playwright, ESLint, Prettier, GitHub Actions, Docker          |
+| Hosting (demo) | Oracle Cloud Always Free micro VM, Caddy, Docker Compose — $0 ([costs](docs/costs.md)) |
 
 ## Run it locally
 

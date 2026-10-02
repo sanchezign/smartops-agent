@@ -8,15 +8,15 @@ again before quoting a client.
 
 The demo server is being set up (phase 12); these are the services it uses.
 
-| Item                  | Service                                                                           | Cost |
-| --------------------- | --------------------------------------------------------------------------------- | ---- |
-| Server                | Oracle Cloud Always Free, Ampere A1 VM (the allowance is 2 OCPU / 12 GB in total) | $0   |
-| Storage and traffic   | Always Free block volume (200 GB) and outbound data (10 TB / month)               | $0   |
-| Domain and HTTPS      | DuckDNS subdomain, Let's Encrypt certificates (Caddy)                             | $0   |
-| AI and speech-to-text | `DEMO_MODE` forces fake providers with recorded outputs                           | $0   |
-| WhatsApp              | Not used: the demo has its own simulated Graph API                                | $0   |
-| CI/CD                 | GitHub Actions on a private repository (≈ 830 of the 2,000 free minutes a month)  | $0   |
-| Monitoring (planned)  | UptimeRobot and Healthchecks.io free plans                                        | $0   |
+| Item                  | Service                                                                          | Cost |
+| --------------------- | -------------------------------------------------------------------------------- | ---- |
+| Server                | Oracle Cloud Always Free E2.1.Micro VM (1/8 OCPU, 1 GB; ADR-023)                 | $0   |
+| Storage and traffic   | Always Free block volume (200 GB) and outbound data (10 TB / month)              | $0   |
+| Domain and HTTPS      | DuckDNS subdomain, Let's Encrypt certificates (Caddy)                            | $0   |
+| AI and speech-to-text | `DEMO_MODE` forces fake providers with recorded outputs                          | $0   |
+| WhatsApp              | Not used: the demo has its own simulated Graph API                               | $0   |
+| CI/CD                 | GitHub Actions on a private repository (≈ 830 of the 2,000 free minutes a month) | $0   |
+| Monitoring (planned)  | UptimeRobot and Healthchecks.io free plans                                       | $0   |
 
 A budget of USD 1 with alerts is set in the Oracle account, so any unexpected charge is visible
 at once. Total real AI spend while building the project: **$0.24** (Claude, recorded in the
