@@ -6,6 +6,18 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.12.2](https://github.com/sanchezign/smartops-agent/compare/v0.12.1...v0.12.2) (2026-10-02)
+
+
+### Bug Fixes
+
+* **ci:** call the image version check with bash ([5ca301e](https://github.com/sanchezign/smartops-agent/commit/5ca301e21615d04a8208e857b230c3524a601526))
+
+
+### Tests
+
+* **admin:** E2E login waits for hydration before filling ([3f6efcb](https://github.com/sanchezign/smartops-agent/commit/3f6efcb7332bcba3268798db8d66584a332d244b))
+
 ## [0.12.1](https://github.com/sanchezign/smartops-agent/compare/v0.12.0...v0.12.1) (2026-10-02)
 
 
