@@ -1771,6 +1771,14 @@ a real client.**
       the Bastion tunnel is client-side and does not need it on the VM); vm.swappiness 60 on micro
       (the value the simulation used; standard keeps 10). iptables already allows 22 (OCI image
       rule; the security list limits it to the Bastion subnet).
+    - M3 DONE (2026-10-03, run by the user; logs outside the repo): `host-setup.sh --profile micro`
+      applied (SSH hardened, iptables 80/443, 2 GB swap, Docker 29.8.2, trims, port 111 closed);
+      564 MiB available WITH Docker (dockerd 87 + containerd 41 MiB). The first run failed on the dpkg
+      lock held by unattended-upgrades; fixes (fix/host-setup-apt-lock): `apt_get` waits for the lock
+      (≤ 10 min, says so) with `DPkg::Lock::Timeout`; apt-daily / apt-daily-upgrade moved to 02:20 /
+      02:50 (local, ±5 min; before the 03:30 backup and the 04:00 reboot; security updates kept);
+      packagekit masked on micro (18 MiB). M4 (first deploy) goes BEFORE M3b (the user's IP did not
+      change).
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs

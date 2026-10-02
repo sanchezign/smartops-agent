@@ -9,7 +9,7 @@
 # reachable from the Bastion subnet (OCI security list) and SSH is keys-only, so fail2ban adds
 # little and its Python process costs memory a 1 GB machine does not have. It also:
 #   - disables AND masks services a headless VM does not use (firmware updater, multipath, iSCSI,
-#     udisks, ModemManager, rpcbind — which also listened on port 111 —, VMware tools): ~75 MiB;
+#     udisks, ModemManager, packagekit, rpcbind — which also listened on port 111 —, VMware tools): ~95 MiB;
 #     the Oracle Cloud Agent snap (and so snapd), unattended-upgrades, cloud-init and sysstat stay;
 #   - SSH without TCP forwarding (nothing to tunnel without n8n; Postgres is never published)
 #     and vm.swappiness=60 (the value the memory simulation was measured with).
@@ -72,14 +72,35 @@ id "$admin_user" >/dev/null 2>&1 || {
 log() { printf '== %s\n' "$*"; }
 export DEBIAN_FRONTEND=noninteractive
 
+# The image's automatic updates may hold the dpkg lock right when this runs (it happened on the
+# first real run: "Could not get lock /var/lib/dpkg/lock-frontend"). Wait for it (up to 10 min),
+# say so, and let dpkg wait too.
+wait_for_apt() {
+  command -v fuser >/dev/null 2>&1 || return 0
+  local waited=0
+  while fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock >/dev/null 2>&1; do
+    [ "$waited" -ne 0 ] || echo "another apt/dpkg process is running (automatic updates?): waiting up to 10 minutes" >&2
+    waited=$((waited + 5))
+    [ "$waited" -lt 600 ] || {
+      echo "apt/dpkg stayed locked for 10 minutes: try again later" >&2
+      exit 1
+    }
+    sleep 5
+  done
+}
+apt_get() {
+  wait_for_apt
+  apt-get -o DPkg::Lock::Timeout=600 "$@"
+}
+
 log "timezone"
 timedatectl set-timezone America/Montevideo
 
 log "packages"
-apt-get update -q
-apt-get install -y -q ca-certificates curl gnupg age unattended-upgrades \
+apt_get update -q
+apt_get install -y -q ca-certificates curl gnupg age unattended-upgrades \
   iptables-persistent netfilter-persistent >/dev/null
-[ "$profile" = "standard" ] && apt-get install -y -q fail2ban >/dev/null
+[ "$profile" = "standard" ] && apt_get install -y -q fail2ban >/dev/null
 
 # Services of the stock image that a headless 1 GB demo VM does not use (profile micro only).
 # Disable + mask is idempotent; a missing unit is skipped. Each is verified at the end.
@@ -90,6 +111,7 @@ TRIM_UNITS=(
   udisks2.service ModemManager.service
   rpcbind.service rpcbind.socket
   open-vm-tools.service vgauth.service
+  packagekit.service
 )
 if [ "$profile" = "micro" ]; then
   log "trimming unused services (disable + mask)"
@@ -125,8 +147,8 @@ if ! command -v docker >/dev/null 2>&1; then
   chmod a+r /etc/apt/keyrings/docker.asc
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${UBUNTU_CODENAME:-$VERSION_CODENAME} stable" \
     >/etc/apt/sources.list.d/docker.list
-  apt-get update -q
-  apt-get install -y -q docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin >/dev/null
+  apt_get update -q
+  apt_get install -y -q docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin >/dev/null
 fi
 daemon_json='{
   "log-driver": "local",
@@ -200,6 +222,23 @@ Unattended-Upgrade::Automatic-Reboot "true";
 Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
 Unattended-Upgrade::Automatic-Reboot-Time "04:00";
 EOF
+# The daily package-list refresh and upgrade run in the small hours (local time), after the demo
+# reset traffic and before the 03:30 backup and the 04:00 reboot, instead of at a random moment
+# of the day (they used > 300 MB for a while on a 1 GB machine). Security updates stay on.
+for timer in apt-daily:02:20 apt-daily-upgrade:02:50; do
+  name="${timer%%:*}"
+  at="${timer##*:}"
+  install -d "/etc/systemd/system/$name.timer.d"
+  cat >"/etc/systemd/system/$name.timer.d/90-smartops.conf" <<EOF
+[Timer]
+OnCalendar=
+OnCalendar=*-*-* $at
+RandomizedDelaySec=5min
+Persistent=true
+EOF
+done
+systemctl daemon-reload
+systemctl restart apt-daily.timer apt-daily-upgrade.timer
 
 log "swap (2 GB)"
 if ! swapon --show=NAME --noheadings | grep -q '^/swapfile$'; then
@@ -224,6 +263,7 @@ install -d -m 700 /etc/smartops
 install -d -m 750 /opt/smartops /opt/smartops/releases /opt/smartops/state /opt/smartops/backups
 
 log "verification"
+systemctl list-timers 'apt-daily*' --no-pager --no-legend | awk '{print "timer: " $0}' | cut -c1-120
 sshd -T 2>/dev/null | grep -Ei '^(permitrootlogin|maxauthtries|allowtcpforwarding|passwordauthentication|allowusers) '
 free -m | awk '/^Mem:/ {print "memory: " $3 " MB used, " $7 " MB available of " $2} /^Swap:/ {print "swap: " $2 " MB"}'
 sysctl vm.swappiness
