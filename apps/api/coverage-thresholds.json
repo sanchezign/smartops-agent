@@ -2,7 +2,7 @@
   "$comment": "Coverage ratchet (phase 10): measured - 2, only goes up (scripts/coverage-ratchet.mjs, guard test). Targets: 80 % lines global, 95/90 % lines/branches for critical pure modules.",
   "global": {
     "lines": 88,
-    "branches": 78,
+    "branches": 79,
     "functions": 89,
     "statements": 86
   },
@@ -69,9 +69,9 @@
     },
     "modules/notifications/digest-rules.ts": {
       "lines": 92,
-      "branches": 81,
+      "branches": 85,
       "functions": 98,
-      "statements": 92
+      "statements": 93
     },
     "modules/media/media-policy.ts": {
       "lines": 93,
@@ -123,7 +123,7 @@
     },
     "modules/events/event-hub.ts": {
       "lines": 98,
-      "branches": 75,
+      "branches": 78,
       "functions": 98,
       "statements": 92
     }

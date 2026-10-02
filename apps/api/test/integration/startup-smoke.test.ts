@@ -13,6 +13,7 @@ import { createUsersRepository } from "../../src/modules/users/users.repository.
 import { createUsersService } from "../../src/modules/users/users.service.js";
 import { TEST_ENV_SOURCE } from "../helpers/build-app.js";
 import { createTestPrisma, testDatabaseUrl } from "./db.js";
+import { createScratchDatabase, prismaCli, type ScratchDatabase } from "./scratch-db.js";
 
 /**
  * Real startup / shutdown of the two processes (phase 10 M3, user addendum A): `server.ts` and
@@ -240,9 +241,9 @@ describe.skipIf(!testDatabaseUrl)("startup smoke (server.ts, worker.ts)", () => 
       const code = await worker.exited;
 
       expect(code, worker.logs.map((l) => l.msg).join("\n")).toBe(0);
-      expect(
-        worker.logs.some((l) => l.msg === "worker shutting down" && l.reason === "SIGTERM"),
-      ).toBe(true);
+      expect(worker.logs.some((l) => l.msg === "shutting down" && l.reason === "SIGTERM")).toBe(
+        true,
+      );
       expect(requests).toBe(1);
       // The in-flight delivery completed before the process left.
       expect(
@@ -255,3 +256,101 @@ describe.skipIf(!testDatabaseUrl)("startup smoke (server.ts, worker.ts)", () => 
     }
   }, 90_000);
 });
+
+/**
+ * The 1 GB public demo (ADR-025): `demo-server.ts` runs the API, the worker and the in-process
+ * orchestrator in ONE process. On a fresh `<test>_demo` database: it starts, serves the demo,
+ * processes samples through the REAL pipeline (webhook → worker → orchestrator → extraction →
+ * catalog) one at a time, and one SIGTERM stops both halves cleanly (exit 0).
+ */
+describe.skipIf(!testDatabaseUrl)(
+  "demo-server.ts (API + worker + orchestrator, one process)",
+  () => {
+    let demo: ScratchDatabase;
+    const started: Proc[] = [];
+
+    beforeAll(async () => {
+      demo = await createScratchDatabase(testDatabaseUrl!, "demo");
+      const deploy = prismaCli(demo.url, ["migrate", "deploy"]);
+      expect(deploy.status, deploy.output).toBe(0);
+    }, 120_000);
+
+    afterAll(async () => {
+      for (const p of started) if (p.child.exitCode === null) p.child.kill();
+      await demo?.drop();
+    });
+
+    it("serves the demo, processes the samples in order and stops with one SIGTERM", async () => {
+      const port = await freePort();
+      const env = {
+        DATABASE_URL: demo.url,
+        DEMO_MODE: "true",
+        DEMO_RESET_INTERVAL_MINUTES: "0",
+        PORT: String(port),
+      };
+      const seed = launch("src/demo-seed.ts", env);
+      started.push(seed);
+      expect(await seed.exited, seed.logs.map((l) => l.msg).join("\n")).toBe(0);
+
+      const server = launch("src/demo-server.ts", env);
+      started.push(server);
+      await waitForLog(server, /api listening/, 60_000);
+      await waitForLog(server, /worker started/, 60_000);
+      expect(server.logs.some((l) => /worker started/.test(l.msg))).toBe(true);
+
+      const base = `http://127.0.0.1:${port}/api/v1`;
+      expect((await fetch(`${base}/health`)).status).toBe(200);
+      const info = (await (await fetch(`${base}/demo/info`)).json()) as {
+        operator: { email: string; password: string };
+      };
+      const login = await fetch(`${base}/auth/login`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-smartops-csrf": "1",
+          origin: TEST_ENV_SOURCE.CORS_ORIGINS,
+        },
+        body: JSON.stringify(info.operator),
+      });
+      expect(login.status).toBe(200);
+      const auth = {
+        authorization: `Bearer ${((await login.json()) as { accessToken: string }).accessToken}`,
+      };
+
+      // Three samples at once: the orchestrator takes them one at a time; all end in a final state.
+      const wamids: string[] = [];
+      for (const kind of ["injection", "foto", "pdf"]) {
+        const res = await fetch(`${base}/demo/inject`, {
+          method: "POST",
+          headers: { ...auth, "content-type": "application/json" },
+          body: JSON.stringify({ kind }),
+        });
+        expect(res.status).toBe(202);
+        wamids.push(((await res.json()) as { wamid: string }).wamid);
+      }
+      const FINAL = new Set(["ingested", "needs_review", "failed", "rejected"]);
+      for (const wamid of wamids) {
+        await expect
+          .poll(
+            async () => {
+              const trace = (await (
+                await fetch(`${base}/demo/trace/${wamid}`, { headers: auth })
+              ).json()) as {
+                run?: { status: string } | null;
+              };
+              return trace.run?.status ?? "none";
+            },
+            { timeout: 90_000, interval: 500 },
+          )
+          .toSatisfy((status: string) => FINAL.has(status));
+      }
+
+      terminate(server);
+      const code = await server.exited;
+      expect(code, server.logs.map((l) => l.msg).join("\n")).toBe(0);
+      const stopping = server.logs.find((l) => l.msg === "shutting down");
+      expect(stopping).toMatchObject({ reason: "SIGTERM", parts: ["api", "worker"] });
+      expect(server.logs.filter((l) => l.level >= 50)).toEqual([]);
+    }, 240_000);
+  },
+);

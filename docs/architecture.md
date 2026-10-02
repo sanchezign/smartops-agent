@@ -87,20 +87,21 @@ creates a second message, run, price change or notification.
 
 ## Design choices
 
-| Concern            | Choice                                                                                                                            | ADR      |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| Webhooks           | Signature over the raw body, store before 200, queue, idempotency by event hash and by `waMessageId`                              | 003      |
-| Hand-off to n8n    | Transactional outbox (`integration_events`), retries for ~24 h, a watchdog, manual replay                                         | 015      |
-| AI cost            | Deterministic pre-filter, known spreadsheet formats read without AI, spend caps checked before each call, a ledger per call       | 011, 014 |
-| AI safety          | Documents are data (tagged, neutralized); outputs validated with Zod; injection attempts stop the run for a person                | 011      |
-| Doubtful decisions | Never guessed: review items (uncertain matches, outliers, currency or tax changes, new formats, suspicious messages)              | 012      |
-| People and the bot | A human reply pauses only automatic replies to that contact; processing and team alerts go on                                     | 016      |
-| Consent            | Opt-in for business-initiated messages; deterministic opt-out keywords; gated at the outbound service                             | 009, 017 |
-| Panel security     | Short-lived JWT in memory, rotating refresh cookie with reuse detection, Argon2id, CSRF checks, roles, one origin                 | 018      |
-| Real time          | Postgres triggers → one LISTEN per API process → SSE to every open panel                                                          | 020      |
-| Public demo        | `DEMO_MODE`: the real pipeline with fake AI, transcriber and Graph API; it refuses real keys and any non-demo database            | 021      |
-| Languages          | Panel in English and Spanish (per user); WhatsApp texts in the business language                                                  | 024      |
-| CI/CD              | GitHub Actions: quick checks on every push; coverage, E2E and image checks on PRs; amd64 + arm64 images scanned before publishing | 022      |
+| Concern            | Choice                                                                                                                                                                                                                                              | ADR      |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| Webhooks           | Signature over the raw body, store before 200, queue, idempotency by event hash and by `waMessageId`                                                                                                                                                | 003      |
+| Hand-off to n8n    | Transactional outbox (`integration_events`), retries for ~24 h, a watchdog, manual replay                                                                                                                                                           | 015      |
+| AI cost            | Deterministic pre-filter, known spreadsheet formats read without AI, spend caps checked before each call, a ledger per call                                                                                                                         | 011, 014 |
+| AI safety          | Documents are data (tagged, neutralized); outputs validated with Zod; injection attempts stop the run for a person                                                                                                                                  | 011      |
+| Doubtful decisions | Never guessed: review items (uncertain matches, outliers, currency or tax changes, new formats, suspicious messages)                                                                                                                                | 012      |
+| People and the bot | A human reply pauses only automatic replies to that contact; processing and team alerts go on                                                                                                                                                       | 016      |
+| Consent            | Opt-in for business-initiated messages; deterministic opt-out keywords; gated at the outbound service                                                                                                                                               | 009, 017 |
+| Panel security     | Short-lived JWT in memory, rotating refresh cookie with reuse detection, Argon2id, CSRF checks, roles, one origin                                                                                                                                   | 018      |
+| Real time          | Postgres triggers → one LISTEN per API process → SSE to every open panel                                                                                                                                                                            | 020      |
+| Public demo        | `DEMO_MODE`: the real pipeline with fake AI, transcriber and Graph API; it refuses real keys and any non-demo database                                                                                                                              | 021      |
+| Light public demo  | On a 1 GB VM the demo plays the n8n workflows in-process (`DEMO_ORCHESTRATOR=internal`), one sample at a time, with API and worker in one process; a parity test checks it makes the same calls as the exported workflows. The real system uses n8n | 023, 025 |
+| Languages          | Panel in English and Spanish (per user); WhatsApp texts in the business language                                                                                                                                                                    | 024      |
+| CI/CD              | GitHub Actions: quick checks on every push; coverage, E2E and image checks on PRs; amd64 + arm64 images scanned before publishing                                                                                                                   | 022      |
 
 ## Data model (core)
 

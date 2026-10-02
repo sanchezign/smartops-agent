@@ -1715,6 +1715,24 @@ a real client.**
       M4 v0.12.0 + first deploy + external checks + `CpuUtilization` calibration; M5 backups + real
       restore (measure the backup's memory peak); M6 monitoring + abuse checks + bounded load smoke;
       M7 close (delete the local images, ADR/CLAUDE.md).
+    - M2.1 light mode in the API — DONE (2026-10-02). `src/modules/demo/demo-orchestrator.ts`:
+      `createOrchestrator` (receiver → processor → notifier over the internal API: classify, route by
+      classification, extract, wait 10 s while "extracting" at most 30 times, ingest, notify, supplier
+      ack; each call retried 3× 5 s apart; failures reported to `/internal/n8n/errors` once),
+      `createInternalApiCaller`, `createSerialQueue` (concurrency 1, bounded; a full queue answers 429
+      so the outbox retries) and `createOrchestratorClient` (drop-in for `createN8nClient`, accepts
+      the event at once). Env `DEMO_ORCHESTRATOR=n8n|internal` (internal only with DEMO_MODE; then no
+      N8N_WEBHOOK_SECRET needed) + `DEMO_ORCHESTRATOR_API_URL`. `src/common/shutdown.ts`: shared
+      shutdown coordinator (parts stopped in parallel, one exit, longest timeout); server.ts and
+      worker.ts register as parts (log is now "shutting down" with `parts`). `src/demo-server.ts` =
+      API + worker + orchestrator in ONE process (DEMO_MODE only; sets DEMO_ORCHESTRATOR=internal and
+      N8N_DELIVERY_ENABLED=true by default). Parity: `test/helpers/n8n-exec.ts` runs the EXPORTED
+      workflows (Switch/If/Wait/`$runIndex`) against scripted answers and
+      `test/unit/orchestrator-parity.test.ts` compares the call trace with the orchestrator in 9
+      scenarios (verified to fail when the poll limit changes). `scripts/demo/e2e-n8n.ts` now uses
+      the same orchestrator. Tests: API 1,128 unit + 223 integration (new smoke: demo-server on a
+      scratch `_demo` DB, 3 samples in order, one SIGTERM stops both halves, exit 0), E2E demo spec
+      green on desktop; coverage ratchet raised.
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs

@@ -53,6 +53,7 @@ import { createCatalogRepository } from "./modules/catalog/catalog.repository.js
 import { FAKE_RESPONDERS } from "./modules/extraction/fake-responders.js";
 import { createIngestionRepository } from "./modules/extraction/ingestion.repository.js";
 import { createIngestionService } from "./modules/extraction/ingestion.service.js";
+import { registerShutdownPart } from "./common/shutdown.js";
 import { createHealthRepository } from "./modules/health/health.repository.js";
 import { createPostgresMediaStorage } from "./modules/media/media-storage.js";
 import { createSheetExtraction } from "./modules/sheets/sheet-extraction.js";
@@ -328,39 +329,21 @@ const server = app.listen(env.PORT, () => {
   );
 });
 
-let shuttingDown = false;
-
-function shutdown(reason: string, exitCode: number): void {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  logger.info({ reason }, "shutting down");
-
-  setTimeout(() => {
-    logger.error("graceful shutdown timed out, forcing exit");
-    process.exit(1);
-  }, SHUTDOWN_TIMEOUT_MS).unref();
-
-  // Open SSE streams would keep server.close() waiting: end them (the panel reconnects).
-  eventHub.close();
-  demo?.reset.stop();
-  void listener.stop();
-  server.close(() => {
-    boss
+registerShutdownPart({
+  name: "api",
+  logger,
+  timeoutMs: SHUTDOWN_TIMEOUT_MS,
+  async stop() {
+    // Open SSE streams would keep server.close() waiting: end them (the panel reconnects).
+    eventHub.close();
+    demo?.reset.stop();
+    void listener.stop();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await boss
       .stop({ graceful: true, timeout: 5_000 })
-      .catch((err: unknown) => logger.error({ err }, "error stopping pg-boss"))
-      .then(() => prisma.$disconnect())
-      .catch((err: unknown) => logger.error({ err }, "error disconnecting prisma"))
-      .finally(() => process.exit(exitCode));
-  });
-}
-
-process.on("SIGTERM", () => shutdown("SIGTERM", 0));
-process.on("SIGINT", () => shutdown("SIGINT", 0));
-process.on("unhandledRejection", (reason) => {
-  logger.fatal({ err: reason }, "unhandled promise rejection");
-  shutdown("unhandledRejection", 1);
-});
-process.on("uncaughtException", (err) => {
-  logger.fatal({ err }, "uncaught exception");
-  process.exit(1);
+      .catch((err: unknown) => logger.error({ err }, "error stopping pg-boss"));
+    await prisma
+      .$disconnect()
+      .catch((err: unknown) => logger.error({ err }, "error disconnecting prisma"));
+  },
 });

@@ -391,57 +391,58 @@ Details, timings, budget and the GitHub settings checklist: [docs/ci-cd.md](ci-c
 
 ## Environment variables
 
-| Variable                                                             | Where        | Purpose                                                            |
-| -------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------ |
-| `POSTGRES_USER/PASSWORD/DB`                                          | root `.env`  | Postgres superuser and app database                                |
-| `N8N_DB_NAME/USER/PASSWORD`                                          | root `.env`  | n8n database and role (created on first volume init)               |
-| `N8N_ENCRYPTION_KEY`                                                 | root `.env`  | Encrypts n8n credentials — never change it                         |
-| `N8N_WEBHOOK_URL`                                                    | root `.env`  | Public base URL n8n uses for webhook URLs                          |
-| `TIMEZONE`                                                           | root `.env`  | n8n timezone (default `America/Montevideo`)                        |
-| `NODE_ENV`, `PORT`                                                   | `apps/api`   | Runtime mode and HTTP port (default 4000)                          |
-| `LOG_LEVEL`                                                          | `apps/api`   | Pino level (default `info`)                                        |
-| `DATABASE_URL`                                                       | `apps/api`   | Postgres connection string                                         |
-| `CORS_ORIGINS`                                                       | `apps/api`   | Comma-separated allowed origins (required in prod)                 |
-| `RATE_LIMIT_WINDOW_MS/MAX`                                           | `apps/api`   | Global /api/v1 rate limit per IP (300 / 60 s)                      |
-| `TRUST_PROXY`                                                        | `apps/api`   | Proxy hops in front of the API (0 local, 1 behind Caddy or Render) |
-| `WHATSAPP_*`                                                         | `apps/api`   | Meta app / WABA credentials — see `.env.example`                   |
-| `WHATSAPP_GRAPH_BASE_URL`                                            | `apps/api`   | Graph API host; `http://localhost:4010` = simulator                |
-| `WEBHOOK_RATE_LIMIT_MAX`                                             | `apps/api`   | Per-IP limit for the WhatsApp webhook                              |
-| `WORKER_CONCURRENCY`                                                 | `apps/api`   | Parallel webhook jobs per worker process                           |
-| `MEDIA_MAX_BYTES`                                                    | `apps/api`   | Own media size cap (25 MB), on top of Meta limits                  |
-| `MEDIA_DOWNLOAD_TIMEOUT_MS`                                          | `apps/api`   | Timeout per media download (60 s)                                  |
-| `MEDIA_WORKER_CONCURRENCY`                                           | `apps/api`   | Parallel media downloads per worker process                        |
-| `OUTBOUND_WORKER_CONCURRENCY`                                        | `apps/api`   | Parallel outbound sends (order kept per conversation)              |
-| `TRANSCRIPTION_PROVIDER`                                             | `apps/api`   | `groq` \| `openai` \| `fake` (default; not allowed in production)  |
-| `TRANSCRIPTION_API_KEY`                                              | `apps/api`   | Provider key (Groq free plan); required unless `fake`              |
-| `TRANSCRIPTION_BASE_URL/MODEL`                                       | `apps/api`   | Optional overrides (Groq: whisper-large-v3)                        |
-| `TRANSCRIPTION_LANGUAGE`, `_TIMEOUT_MS`                              | `apps/api`   | Language hint (`es`) and request timeout                           |
-| `TRANSCRIPTION_WORKER_CONCURRENCY`                                   | `apps/api`   | Parallel transcriptions (Groq free: 20 req/min)                    |
-| `TRANSCRIPTION_DAILY_LIMIT_PER_CONTACT`                              | `apps/api`   | Max transcriptions per contact per 24h (50)                        |
-| `AI_PROVIDER`                                                        | `apps/api`   | `anthropic` \| `fake` (default; not allowed in production)         |
-| `ANTHROPIC_API_KEY`                                                  | `apps/api`   | Claude API key; required when `AI_PROVIDER=anthropic`              |
-| `AI_CLASSIFIER_MODEL`, `AI_EXTRACTOR_MODEL`                          | `apps/api`   | Model ids (default `claude-sonnet-5`)                              |
-| `AI_TOTAL_BUDGET_USD`, `AI_DAILY_BUDGET_USD`                         | `apps/api`   | Own spend caps checked before every call ($4 / $0.50)              |
-| `AI_DAILY_LIMIT_PER_CONTACT`                                         | `apps/api`   | Max extractions per contact per UTC day (20)                       |
-| `AI_MAX_RUN_USD`                                                     | `apps/api`   | Cap for all AI calls of one message/run ($0.30)                    |
-| `DOC_CONVERT_MAX_BYTES/_SHEETS/_ROWS/_COLUMNS/_CHARS`                | `apps/api`   | Document conversion limits (10 MB, 10, 2000, 50, 40k)              |
-| `DOC_CONVERT_TIMEOUT_MS`, `_WORKER_CONCURRENCY`                      | `apps/api`   | Isolated conversion timeout (20 s) and parallelism (1)             |
-| `AI_TIMEOUT_MS`, `AI_PROMPT_CACHE`, `AI_FAKE_GOLDEN_DIR`             | `apps/api`   | Call timeout, prompt caching, fake golden outputs                  |
-| `INTERNAL_API_KEY`                                                   | `apps/api`   | Secret for `/api/v1/internal/*` (n8n); min 32 chars                |
-| `INTERNAL_RATE_LIMIT_MAX`                                            | `apps/api`   | Per-IP limit for the internal API (600 / window)                   |
-| `JWT_ACCESS_SECRET`                                                  | `apps/api`   | HS256 key for the 15-min panel access tokens; random, min 32 chars |
-| `ACCESS_TOKEN_TTL_SECONDS`, `SESSION_IDLE_HOURS`, `SESSION_MAX_DAYS` | `apps/api`   | Access token 900 s; session 24 h idle / 7 days max                 |
-| `AUTH_COOKIE_SAMESITE/SECURE/PARTITIONED`                            | `apps/api`   | Refresh cookie by deploy mode (strict = same origin; see ADR-018)  |
-| `LOGIN_RATE_LIMIT_MAX`                                               | `apps/api`   | Login attempts per IP per 15 min (10)                              |
-| `N8N_DELIVERY_ENABLED`                                               | `apps/api`   | Deliver message.ready events to n8n (default `false`)              |
-| `N8N_RECEIVER_WEBHOOK_URL`                                           | `apps/api`   | n8n receiver webhook (production URL, `/webhook/…`)                |
-| `N8N_WEBHOOK_SECRET`                                                 | `apps/api`   | `X-SmartOps-Secret` value; required when delivery is on            |
-| `TEST_DATABASE_URL`                                                  | `apps/api`   | Optional; enables integration tests (`*_test` DB)                  |
-| `DEMO_MODE` and `DEMO_*`                                             | `apps/api`   | Public demo: fakes, reset interval, limits (ADR-021)               |
-| `PANEL_PUBLIC_URL`                                                   | `apps/api`   | Panel URL for the digest deep link `/d/<token>` (optional)         |
-| `NEXT_PUBLIC_API_BASE`                                               | `apps/admin` | Where the browser calls the API (default `/api/v1`, same origin)   |
-| `API_PROXY_TARGET`                                                   | `apps/admin` | Server only: API origin for the local `/api/*` rewrite             |
-| `PANEL_DEFAULT_LOCALE`                                               | `apps/admin` | Server only: `en` / `es` for people who did not choose (demo: en)  |
+| Variable                                                             | Where        | Purpose                                                                  |
+| -------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------ |
+| `POSTGRES_USER/PASSWORD/DB`                                          | root `.env`  | Postgres superuser and app database                                      |
+| `N8N_DB_NAME/USER/PASSWORD`                                          | root `.env`  | n8n database and role (created on first volume init)                     |
+| `N8N_ENCRYPTION_KEY`                                                 | root `.env`  | Encrypts n8n credentials — never change it                               |
+| `N8N_WEBHOOK_URL`                                                    | root `.env`  | Public base URL n8n uses for webhook URLs                                |
+| `TIMEZONE`                                                           | root `.env`  | n8n timezone (default `America/Montevideo`)                              |
+| `NODE_ENV`, `PORT`                                                   | `apps/api`   | Runtime mode and HTTP port (default 4000)                                |
+| `LOG_LEVEL`                                                          | `apps/api`   | Pino level (default `info`)                                              |
+| `DATABASE_URL`                                                       | `apps/api`   | Postgres connection string                                               |
+| `CORS_ORIGINS`                                                       | `apps/api`   | Comma-separated allowed origins (required in prod)                       |
+| `RATE_LIMIT_WINDOW_MS/MAX`                                           | `apps/api`   | Global /api/v1 rate limit per IP (300 / 60 s)                            |
+| `TRUST_PROXY`                                                        | `apps/api`   | Proxy hops in front of the API (0 local, 1 behind Caddy or Render)       |
+| `WHATSAPP_*`                                                         | `apps/api`   | Meta app / WABA credentials — see `.env.example`                         |
+| `WHATSAPP_GRAPH_BASE_URL`                                            | `apps/api`   | Graph API host; `http://localhost:4010` = simulator                      |
+| `WEBHOOK_RATE_LIMIT_MAX`                                             | `apps/api`   | Per-IP limit for the WhatsApp webhook                                    |
+| `WORKER_CONCURRENCY`                                                 | `apps/api`   | Parallel webhook jobs per worker process                                 |
+| `MEDIA_MAX_BYTES`                                                    | `apps/api`   | Own media size cap (25 MB), on top of Meta limits                        |
+| `MEDIA_DOWNLOAD_TIMEOUT_MS`                                          | `apps/api`   | Timeout per media download (60 s)                                        |
+| `MEDIA_WORKER_CONCURRENCY`                                           | `apps/api`   | Parallel media downloads per worker process                              |
+| `OUTBOUND_WORKER_CONCURRENCY`                                        | `apps/api`   | Parallel outbound sends (order kept per conversation)                    |
+| `TRANSCRIPTION_PROVIDER`                                             | `apps/api`   | `groq` \| `openai` \| `fake` (default; not allowed in production)        |
+| `TRANSCRIPTION_API_KEY`                                              | `apps/api`   | Provider key (Groq free plan); required unless `fake`                    |
+| `TRANSCRIPTION_BASE_URL/MODEL`                                       | `apps/api`   | Optional overrides (Groq: whisper-large-v3)                              |
+| `TRANSCRIPTION_LANGUAGE`, `_TIMEOUT_MS`                              | `apps/api`   | Language hint (`es`) and request timeout                                 |
+| `TRANSCRIPTION_WORKER_CONCURRENCY`                                   | `apps/api`   | Parallel transcriptions (Groq free: 20 req/min)                          |
+| `TRANSCRIPTION_DAILY_LIMIT_PER_CONTACT`                              | `apps/api`   | Max transcriptions per contact per 24h (50)                              |
+| `AI_PROVIDER`                                                        | `apps/api`   | `anthropic` \| `fake` (default; not allowed in production)               |
+| `ANTHROPIC_API_KEY`                                                  | `apps/api`   | Claude API key; required when `AI_PROVIDER=anthropic`                    |
+| `AI_CLASSIFIER_MODEL`, `AI_EXTRACTOR_MODEL`                          | `apps/api`   | Model ids (default `claude-sonnet-5`)                                    |
+| `AI_TOTAL_BUDGET_USD`, `AI_DAILY_BUDGET_USD`                         | `apps/api`   | Own spend caps checked before every call ($4 / $0.50)                    |
+| `AI_DAILY_LIMIT_PER_CONTACT`                                         | `apps/api`   | Max extractions per contact per UTC day (20)                             |
+| `AI_MAX_RUN_USD`                                                     | `apps/api`   | Cap for all AI calls of one message/run ($0.30)                          |
+| `DOC_CONVERT_MAX_BYTES/_SHEETS/_ROWS/_COLUMNS/_CHARS`                | `apps/api`   | Document conversion limits (10 MB, 10, 2000, 50, 40k)                    |
+| `DOC_CONVERT_TIMEOUT_MS`, `_WORKER_CONCURRENCY`                      | `apps/api`   | Isolated conversion timeout (20 s) and parallelism (1)                   |
+| `AI_TIMEOUT_MS`, `AI_PROMPT_CACHE`, `AI_FAKE_GOLDEN_DIR`             | `apps/api`   | Call timeout, prompt caching, fake golden outputs                        |
+| `INTERNAL_API_KEY`                                                   | `apps/api`   | Secret for `/api/v1/internal/*` (n8n); min 32 chars                      |
+| `INTERNAL_RATE_LIMIT_MAX`                                            | `apps/api`   | Per-IP limit for the internal API (600 / window)                         |
+| `JWT_ACCESS_SECRET`                                                  | `apps/api`   | HS256 key for the 15-min panel access tokens; random, min 32 chars       |
+| `ACCESS_TOKEN_TTL_SECONDS`, `SESSION_IDLE_HOURS`, `SESSION_MAX_DAYS` | `apps/api`   | Access token 900 s; session 24 h idle / 7 days max                       |
+| `AUTH_COOKIE_SAMESITE/SECURE/PARTITIONED`                            | `apps/api`   | Refresh cookie by deploy mode (strict = same origin; see ADR-018)        |
+| `LOGIN_RATE_LIMIT_MAX`                                               | `apps/api`   | Login attempts per IP per 15 min (10)                                    |
+| `N8N_DELIVERY_ENABLED`                                               | `apps/api`   | Deliver message.ready events to n8n (default `false`)                    |
+| `N8N_RECEIVER_WEBHOOK_URL`                                           | `apps/api`   | n8n receiver webhook (production URL, `/webhook/…`)                      |
+| `N8N_WEBHOOK_SECRET`                                                 | `apps/api`   | `X-SmartOps-Secret` value; required when delivery is on                  |
+| `TEST_DATABASE_URL`                                                  | `apps/api`   | Optional; enables integration tests (`*_test` DB)                        |
+| `DEMO_MODE` and `DEMO_*`                                             | `apps/api`   | Public demo: fakes, reset interval, limits (ADR-021)                     |
+| `DEMO_ORCHESTRATOR`, `DEMO_ORCHESTRATOR_API_URL`                     | `apps/api`   | `internal` = in-process orchestrator instead of n8n, demo only (ADR-025) |
+| `PANEL_PUBLIC_URL`                                                   | `apps/api`   | Panel URL for the digest deep link `/d/<token>` (optional)               |
+| `NEXT_PUBLIC_API_BASE`                                               | `apps/admin` | Where the browser calls the API (default `/api/v1`, same origin)         |
+| `API_PROXY_TARGET`                                                   | `apps/admin` | Server only: API origin for the local `/api/*` rewrite                   |
+| `PANEL_DEFAULT_LOCALE`                                               | `apps/admin` | Server only: `en` / `es` for people who did not choose (demo: en)        |
 
 ## Privacy: speech-to-text (Groq)
 
@@ -451,3 +452,11 @@ for up to 30 days for reliability and abuse monitoring **unless Zero Data Retent
 enabled**. **Requirement:** every Groq account used with this project (development,
 demo and any real client) must enable ZDR in the Groq console → Settings → Data Controls
 (Global ZDR, or at least Inference APIs ZDR) before `TRANSCRIPTION_PROVIDER=groq` is used.
+
+### Public demo vs the real system
+
+The public demo runs on a 1 GB free VM, so it uses the **light profile** (ADR-025): the n8n
+workflows are played by an in-process orchestrator (`DEMO_ORCHESTRATOR=internal`, one sample at a
+time) and the API and the worker run in one process (`node dist/demo-server.js`). The real system
+uses n8n and separate processes. `apps/api/test/unit/orchestrator-parity.test.ts` runs the
+exported workflows and the orchestrator side by side and fails if they ever make different calls.

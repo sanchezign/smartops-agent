@@ -204,6 +204,17 @@ export const envSchema = z.object({
   DEMO_ADMIN_EMAIL: z.string().email().default("admin@ferreteria.demo"),
   DEMO_ADMIN_PASSWORD: optionalString(z.string().min(15)),
 
+  /**
+   * Who plays the n8n workflows. "n8n" (default): the real n8n, reached by webhook. "internal"
+   * (ADR-025, DEMO_MODE only): an in-process orchestrator with the same steps, for a demo that
+   * must fit a 1 GB VM. Its samples are processed one at a time.
+   */
+  DEMO_ORCHESTRATOR: z.enum(["n8n", "internal"]).default("n8n"),
+  /** Where the internal orchestrator reaches the API (default http://127.0.0.1:PORT). */
+  DEMO_ORCHESTRATOR_API_URL: optionalString(
+    z.string().refine(isBaseUrl, { message: "must be an http(s) URL without path" }),
+  ),
+
   // ─── n8n (phase 6, ADR-015) ───
   /** Deliver "message.ready" events to n8n. Off: events accumulate and go out when enabled. */
   N8N_DELIVERY_ENABLED: z
@@ -304,7 +315,14 @@ function crossFieldIssues(source: Record<string, string | undefined>): string[] 
   if (source.NODE_ENV === "production" && provider === "fake" && !demo) {
     issues.push("TRANSCRIPTION_PROVIDER: the fake provider is not allowed in production");
   }
-  if (source.N8N_DELIVERY_ENABLED === "true" && !source.N8N_WEBHOOK_SECRET?.trim()) {
+  if (source.DEMO_ORCHESTRATOR === "internal" && !demo) {
+    issues.push("DEMO_ORCHESTRATOR=internal: only allowed with DEMO_MODE=true (ADR-025)");
+  }
+  if (
+    source.N8N_DELIVERY_ENABLED === "true" &&
+    source.DEMO_ORCHESTRATOR !== "internal" &&
+    !source.N8N_WEBHOOK_SECRET?.trim()
+  ) {
     issues.push("N8N_WEBHOOK_SECRET: is required when N8N_DELIVERY_ENABLED=true");
   }
   const aiProvider = source.AI_PROVIDER ?? "fake";

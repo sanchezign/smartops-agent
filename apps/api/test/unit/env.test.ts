@@ -278,3 +278,36 @@ describe("panel auth env (phase 8, ADR-018)", () => {
     ).toThrow(/AUTH_COOKIE_SECURE/);
   });
 });
+
+describe("DEMO_ORCHESTRATOR (ADR-025)", () => {
+  const demoDb = "postgresql://u:p@localhost:5432/smartops_demo";
+
+  it("defaults to n8n", () => {
+    expect(parseEnv(base).DEMO_ORCHESTRATOR).toBe("n8n");
+  });
+
+  it("the internal orchestrator is only allowed in DEMO_MODE", () => {
+    expect(issuesOf({ ...base, DEMO_ORCHESTRATOR: "internal" })).toContain(
+      "DEMO_ORCHESTRATOR=internal: only allowed with DEMO_MODE=true (ADR-025)",
+    );
+    const env = parseEnv({
+      ...base,
+      DATABASE_URL: demoDb,
+      DEMO_MODE: "true",
+      DEMO_ORCHESTRATOR: "internal",
+    });
+    expect(env.DEMO_ORCHESTRATOR).toBe("internal");
+  });
+
+  it("the internal orchestrator needs no n8n webhook secret; the real n8n still does", () => {
+    const demo = { ...base, DATABASE_URL: demoDb, DEMO_MODE: "true", N8N_DELIVERY_ENABLED: "true" };
+    expect(parseEnv({ ...demo, DEMO_ORCHESTRATOR: "internal" }).N8N_DELIVERY_ENABLED).toBe(true);
+    expect(issuesOf(demo).join("\n")).toMatch(/N8N_WEBHOOK_SECRET/);
+  });
+
+  it("its API URL is a base URL without a path", () => {
+    expect(
+      issuesOf({ ...base, DEMO_ORCHESTRATOR_API_URL: "http://127.0.0.1:4000/x" }).join("\n"),
+    ).toMatch(/DEMO_ORCHESTRATOR_API_URL/);
+  });
+});

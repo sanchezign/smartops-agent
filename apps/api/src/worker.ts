@@ -1,4 +1,10 @@
 import { createPrismaClient } from "./common/db.js";
+import { registerShutdownPart } from "./common/shutdown.js";
+import {
+  createInternalApiCaller,
+  createOrchestrator,
+  createOrchestratorClient,
+} from "./modules/demo/demo-orchestrator.js";
 import { createLogger } from "./common/logger.js";
 import { loadEnv } from "./config/env.js";
 import {
@@ -261,10 +267,23 @@ if (env.N8N_DELIVERY_ENABLED) {
   await registerN8nDeliveryWorkers(boss, {
     service: createN8nDeliveryService({
       repository: integrationRepository,
-      client: createN8nClient({
-        url: env.N8N_RECEIVER_WEBHOOK_URL,
-        secret: env.N8N_WEBHOOK_SECRET ?? "",
-      }),
+      client:
+        env.DEMO_ORCHESTRATOR === "internal"
+          ? // ADR-025 (DEMO_MODE only): the workflows played in this process, one sample at a time.
+            createOrchestratorClient({
+              orchestrator: createOrchestrator({
+                call: createInternalApiCaller({
+                  baseUrl: env.DEMO_ORCHESTRATOR_API_URL ?? `http://127.0.0.1:${env.PORT}`,
+                  apiKey: env.INTERNAL_API_KEY,
+                }),
+                logger,
+              }),
+              logger,
+            })
+          : createN8nClient({
+              url: env.N8N_RECEIVER_WEBHOOK_URL,
+              secret: env.N8N_WEBHOOK_SECRET ?? "",
+            }),
     }),
     repository: integrationRepository,
     watchdog: createN8nWatchdog({
@@ -278,6 +297,7 @@ if (env.N8N_DELIVERY_ENABLED) {
 logger.info(
   {
     n8nDelivery: env.N8N_DELIVERY_ENABLED,
+    orchestrator: env.DEMO_ORCHESTRATOR,
     transcriptionProvider: transcriber.provider,
     transcriptionModel: transcriber.model,
     concurrency: env.WORKER_CONCURRENCY,
@@ -288,33 +308,16 @@ logger.info(
   "worker started",
 );
 
-let shuttingDown = false;
-
-function shutdown(reason: string, exitCode: number): void {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  logger.info({ reason }, "worker shutting down");
-
-  setTimeout(() => {
-    logger.error("graceful shutdown timed out, forcing exit");
-    process.exit(1);
-  }, SHUTDOWN_TIMEOUT_MS).unref();
-
-  boss
-    .stop({ graceful: true, timeout: BOSS_STOP_TIMEOUT_MS })
-    .catch((err: unknown) => logger.error({ err }, "error stopping pg-boss"))
-    .then(() => prisma.$disconnect())
-    .catch((err: unknown) => logger.error({ err }, "error disconnecting prisma"))
-    .finally(() => process.exit(exitCode));
-}
-
-process.on("SIGTERM", () => shutdown("SIGTERM", 0));
-process.on("SIGINT", () => shutdown("SIGINT", 0));
-process.on("unhandledRejection", (reason) => {
-  logger.fatal({ err: reason }, "unhandled promise rejection");
-  shutdown("unhandledRejection", 1);
-});
-process.on("uncaughtException", (err) => {
-  logger.fatal({ err }, "uncaught exception");
-  process.exit(1);
+registerShutdownPart({
+  name: "worker",
+  logger,
+  timeoutMs: SHUTDOWN_TIMEOUT_MS,
+  async stop() {
+    await boss
+      .stop({ graceful: true, timeout: BOSS_STOP_TIMEOUT_MS })
+      .catch((err: unknown) => logger.error({ err }, "error stopping pg-boss"));
+    await prisma
+      .$disconnect()
+      .catch((err: unknown) => logger.error({ err }, "error disconnecting prisma"));
+  },
 });
