@@ -5,6 +5,9 @@ import { E2E } from "./env";
 export async function login(page: Page, who: "operator" | "admin" = "admin") {
   const creds = E2E[who];
   await page.goto("/login");
+  // The submit button is disabled until the page hydrated; filling before that can lose the
+  // value on WebKit (CI iPhone runs: "Enter a valid email address" with an empty field).
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeEnabled();
   await page.getByLabel("Email").fill(creds.email);
   await page.getByLabel("Password").fill(creds.password);
   await page.getByRole("button", { name: "Sign in" }).click();
