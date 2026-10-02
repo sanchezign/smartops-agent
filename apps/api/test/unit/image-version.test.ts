@@ -48,6 +48,12 @@ describe("release workflow: the image version comes from the release tag", () =>
 
   it("after publishing, every platform of the multi-arch image is checked", () => {
     const merge = workflow.slice(workflow.indexOf("  merge:"));
+    // The job runs a repo script, so it must check the tag out; one app failing must not cancel the other.
+    expect(merge).toContain("actions/checkout@");
+    expect(merge).toContain("fail-fast: false");
+    expect(merge.indexOf("actions/checkout@")).toBeLessThan(
+      merge.indexOf("image-version-check.sh"),
+    );
     expect(merge).toContain(
       'bash scripts/ci/image-version-check.sh published "$IMAGE:$VERSION" "$VERSION"',
     );
