@@ -1779,6 +1779,17 @@ a real client.**
       02:50 (local, ±5 min; before the 03:30 backup and the 04:00 reboot; security updates kept);
       packagekit masked on micro (18 MiB). M4 (first deploy) goes BEFORE M3b (the user's IP did not
       change).
+    - M4 incident (2026-10-03): the first deploy stopped at `fetch-bundle.sh`: the published
+      v0.12.0 images declared `org.opencontainers.image.version=main`. ROOT CAUSE: the `build` job of
+      release.yml ran docker/metadata-action with no `tags`, so the label came from the git ref; only
+      the `merge` job knew the tag. fetch-bundle.sh's check was right and stays untouched. FIX
+      (fix/image-version-label): the build job passes the semver tag (`type=semver,{{version}}`) to
+      the metadata step; `scripts/ci/image-version-check.sh local|published` — `local` runs inside
+      both container smoke scripts (EXPECTED_VERSION) BEFORE anything is pushed, `published` checks
+      every platform (amd64 AND arm64) of `ghcr.io/…:X.Y.Z` after the multi-arch tags are created;
+      `test/unit/image-version.test.ts` guards the wiring and the script (fake docker). Republish =
+      v0.12.1 through release-please (a published tag is never rewritten); the v0.12.0 images stay in
+      GHCR with the wrong label (the user may delete that package version in the GitHub UI).
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs

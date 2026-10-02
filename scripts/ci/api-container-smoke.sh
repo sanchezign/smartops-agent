@@ -7,6 +7,8 @@
 set -euo pipefail
 
 image="$1"
+# Release workflow: the image must declare the version being released (EXPECTED_VERSION).
+[ -z "${EXPECTED_VERSION:-}" ] || "$(dirname "$0")/image-version-check.sh" local "$image" "$EXPECTED_VERSION"
 net="smartops-smoke-$$"
 pg_image="postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24"
 db_url="postgresql://postgres:postgres@pg:5432/smartops_smoke_demo"

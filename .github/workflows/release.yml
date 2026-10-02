@@ -73,6 +73,12 @@ jobs:
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ${{ steps.name.outputs.image }}
+          # The image's version label (org.opencontainers.image.version) comes from the tag given
+          # here. Without it the label was the git ref ("main") and deploy/bin/fetch-bundle.sh
+          # refused the first published images (phase 12 M4).
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.release-please.outputs.tag_name }}
+          flavor: latest=false
       # 1. Build once into the local Docker engine and check that exact build.
       - name: Build (local, for the checks)
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -92,9 +98,10 @@ jobs:
           dirs=(/app)
           [ "$APP" = api ] && dirs+=(/opt/smartops-deploy) # the deploy bundle (phase 12)
           scripts/ci/image-secrets-check.sh "smartops-${APP}:release" "${dirs[@]}"
-      - name: Container smoke test (fake values only)
+      - name: Container smoke test (fake values only; the declared version must be the release's)
         env:
           APP: ${{ matrix.app }}
+          EXPECTED_VERSION: ${{ needs.release-please.outputs.version }}
         run: scripts/ci/"${APP}"-container-smoke.sh "smartops-${APP}:release"
       - name: OS-package vulnerabilities (Trivy 0.74.0; fixable HIGH/CRITICAL block)
         env:
@@ -192,4 +199,7 @@ jobs:
         env:
           IMAGE: ${{ steps.name.outputs.image }}
           VERSION: ${{ needs.release-please.outputs.version }}
-        run: docker buildx imagetools inspect "$IMAGE:$VERSION"
+        run: |
+          docker buildx imagetools inspect "$IMAGE:$VERSION"
+          # The published image (every platform) declares the version it is tagged with.
+          scripts/ci/image-version-check.sh published "$IMAGE:$VERSION" "$VERSION"

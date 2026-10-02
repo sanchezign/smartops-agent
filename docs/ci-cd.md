@@ -222,3 +222,12 @@ When the repository goes public (after the security audit): create a branch rule
 `main` (pull request required, required checks, no force push, no deletion), enable secret
 scanning + push protection, CodeQL and private vulnerability reporting, and switch
 `E2E_POLICY` to `public`.
+
+### The image declares the version it is tagged with
+
+`deploy/bin/fetch-bundle.sh` refuses an image whose `org.opencontainers.image.version` label differs
+from the version asked for. The release workflow therefore checks the same thing itself:
+the build job passes the release tag to the metadata step, `scripts/ci/image-version-check.sh local`
+runs in both container smoke tests **before** anything is pushed, and `… published` inspects every
+platform (amd64 and arm64) of the published `X.Y.Z` tag. (v0.12.0 was published declaring `main`;
+v0.12.1 replaced it.)
