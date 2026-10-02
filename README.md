@@ -116,5 +116,5 @@ All documents are listed in [docs/README.md](docs/README.md). The main ones:
 
 ## License
 
-Copyright (c) 2026 [sanchezign](https://github.com/sanchezign). All rights reserved: this
+Copyright (c) 2026 Ignacio Sánchez ([sanchezign](https://github.com/sanchezign)). All rights reserved: this
 repository is shared for portfolio review only. See [LICENSE](LICENSE).
