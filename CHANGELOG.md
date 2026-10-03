@@ -6,6 +6,28 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.13.0](https://github.com/sanchezign/smartops-agent/compare/v0.12.3...v0.13.0) (2026-10-03)
+
+
+### Features
+
+* **deploy:** append-only backups to Object Storage (phase 12 M5) ([32628c2](https://github.com/sanchezign/smartops-agent/commit/32628c27cde1b36cb7a75ba2cacc23cc1efdfdb9))
+* **deploy:** on-demand Bastion tunnel with a least-privilege IAM user (phase 12 M3b) ([5befab8](https://github.com/sanchezign/smartops-agent/commit/5befab873c907c7c49cda067d1ee7392c614d021))
+
+
+### Bug Fixes
+
+* **deploy:** Bastion tunnel retries while the session spreads its key, never shares the console ([17a8f38](https://github.com/sanchezign/smartops-agent/commit/17a8f3866fc96edcea073eeb66af785d20b7ee8e))
+* **deploy:** interactive ssh uses only the option set proven on the VM; -SshDebug logs every attempt ([8a0c224](https://github.com/sanchezign/smartops-agent/commit/8a0c224d215613b9ffd06f137b2b15d6cdb012d5))
+* **deploy:** validated apt timer drop-ins (OnCalendar had only the minutes) ([77c0013](https://github.com/sanchezign/smartops-agent/commit/77c0013c9823ea7ac43b9b9ec853d5ffce495311))
+* **deploy:** wait for a usable Bastion tunnel and retry an ssh that never got established ([8dd867e](https://github.com/sanchezign/smartops-agent/commit/8dd867e0de9b60f93882759ee5153c09698eabaa))
+
+
+### Documentation
+
+* Bastion first real runs, how to test the tunnel again ([70865fe](https://github.com/sanchezign/smartops-agent/commit/70865fe8d7f278fa8cac85fbbcd4dd31db9a1425))
+* **deploy:** final Bastion policy, verified security updates, backup resources via the web console ([948916c](https://github.com/sanchezign/smartops-agent/commit/948916cec14ea0f5bfc2776430635224ac7fa1b2))
+
 ## [0.12.3](https://github.com/sanchezign/smartops-agent/compare/v0.12.2...v0.12.3) (2026-10-02)
 
 
