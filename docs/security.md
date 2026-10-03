@@ -95,8 +95,38 @@ outside on the live server (`scripts/deploy/demo-abuse-check.mjs`).
   client sends a different `X-Forwarded-For` on every attempt; the event-stream, global and sample
   limits answer 429; 100 health requests, ten at a time, took p95 294 ms.
 - MDN HTTP Observatory (2026-10-03): **B+ (80)**, 11 of 12 tests passed. The only deduction is
-  `'unsafe-inline'` in `script-src` (-20): Next.js hydrates with inline scripts, and a per-request
-  nonce policy is the known way to remove it.
+  `'unsafe-inline'` in `script-src` (-20): Next.js hydrates with inline scripts. Why the demo stays at
+  B+, and what it would take to go higher: see "Why the public demo stays at B+" below.
+
+## Why the public demo stays at B+
+
+The Content-Security-Policy allows `'unsafe-inline'` for scripts and styles because the Next.js panel
+hydrates with inline scripts and the charts use inline styles. Everything else in the policy is strict
+(same-origin only, no framing, no objects, `upgrade-insecure-requests`), and the other eleven Observatory
+tests pass. A decision, not an oversight (2026-10-03):
+
+- **What it would take:** a per-request nonce policy. A Next.js middleware generates a nonce on every request
+  and sends `script-src 'self' 'nonce-…' 'strict-dynamic'`; Next puts the nonce on its own inline scripts; the
+  charts' inline `style` attributes need a separate `style-src-attr` rule; the proxy must stop adding its own
+  CSP; the E2E suite must fail on any console CSP violation in every screen, in three browsers.
+- **Why not on the demo server:** the work runs on every request, on a 1/8-OCPU VM that already idles near
+  Oracle's reclaim threshold (see `docs/deploy/cpu-calibration.md`). A nonce makes every HTML response
+  unique, so nothing about the panel can be cached or served statically, now or later. (The panel pages are
+  already rendered per request, because the language comes from a cookie / `Accept-Language`; the nonce adds
+  the middleware and forbids caching on top.) The risk is a broken hydration or broken charts on the one
+  public URL that is the portfolio's front door, to gain 20 points on a scanner for a demo with sample data.
+- **Viable on a bigger server:** on a real client's server (more than a fraction of a CPU, a CDN not required)
+  the middleware cost is negligible and the nonce policy is the right default. It is on the roadmap below.
+- **What already protects the panel without it:** the access token lives only in memory, the refresh cookie is
+  `HttpOnly` and `SameSite=Strict`, the panel renders no user-supplied HTML, and the CSP still blocks
+  framing, plugins, foreign origins for scripts / images / connections and form posts to other sites.
+
+## Roadmap (security)
+
+- Nonce-based CSP for the panel (A+ on Observatory) on the paid deployment, with the E2E CSP-violation guard.
+- MFA (TOTP) for panel users, before a real client.
+- Retention for stored webhook payloads and media.
+- A separate full security audit before the repository goes public and before v1.0.0.
 
 ## Known limits
 

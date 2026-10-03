@@ -1966,6 +1966,11 @@ a real client.**
       is compared with the Console metric (`docs/deploy/cpu-calibration.md`; MQL `CpuUtilization[1d]{resourceId = "…"}
       .percentile(0.95)`, intervals 1m–60m, 1h–24h, 1d). If the metric is the guest's busy%, an idle demo is far under
       20 % and the reclaim risk is real: the plan is unchanged (alerts, start the VM, restore from backup), never fake load.
+      DECISION (user, 2026-10-03): the demo STAYS at Observatory B+ — no nonce CSP (middleware cost on every request on a
+      1/8-OCPU VM, nothing cacheable, hydration / chart risk on the portfolio's front door). Documented in docs/security.md
+      ("Why the public demo stays at B+" + "Roadmap (security)"; viable on a bigger server). NOTE: the panel pages are ALREADY
+      rendered per request (next-intl reads cookies() / headers() for the language), so the cost is the middleware + the
+      nonce plumbing + no caching, not "making pages dynamic".
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs
