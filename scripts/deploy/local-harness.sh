@@ -119,6 +119,12 @@ latest="$(find "$work/bucket" -mindepth 1 -maxdepth 1 -type d -name "*pre-deploy
 step "restore test of $(basename "$latest") (owner's PC path)"
 bash "$repo/deploy/bin/restore-test.sh" --dir "$latest" --identity "$work/pc-key/key.txt"
 
+step "restore test again with the names a browser download gives (<folder>_<name>)"
+prefixed="$work/browser-download"
+mkdir -p "$prefixed"
+for f in "$latest"/*; do cp "$f" "$prefixed/$(basename "$latest")_$(basename "$f")"; done
+bash "$repo/deploy/bin/restore-test.sh" --dir "$prefixed" --identity "$work/pc-key/key.txt"
+
 step "rollback to $A"
 bash "$(bin "$B")/rollback.sh"
 [ "$(cat "$work/opt/state/current")" = "$A" ] || {

@@ -151,7 +151,9 @@ Check in the Console (Storage → Buckets → `smartops-backups`) that a folder
 Download the three files of that folder from the web console, signed in as yourself (the VM could
 not do this, you can): Storage → Buckets → `smartops-backups` → Objects → the folder
 `<UTC stamp>-manual/` → for each of `smartops_demo.dump.age`, `demo.env.age` and `manifest.txt`,
-_⋮ → Download_. Put them together in `C:\restore-test\<UTC stamp>-manual\`.
+_⋮ → Download_. Put them together in `C:\restore-test\<UTC stamp>-manual\`. The browser names each
+file `<UTC stamp>-manual_<name>` (for example `20261003T203033Z-manual_demo.env.age`): leave them as
+they are, `restore-test.sh` accepts that prefix (and the plain names).
 (With an administrator CLI profile, `oci os object bulk-download --prefix "<UTC stamp>-manual/"`
 does the same in one command.)
 

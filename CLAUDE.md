@@ -1909,6 +1909,13 @@ a real client.**
       exit code, after the `--no-overwrite` attempt and after every refused attempt; `backup-selftest.test.ts`
       runs it against a fake docker emulating the CLI (5 scenarios; the old script fails 4 of them, reproducing the
       user's exact output).
+    - M5 REAL RESULTS (user, 2026-10-03): manual backup `20261003T203033Z-manual` ok (472K; lowest available memory
+      during the backup 498 MB — far above the 268 MiB feared); restore test on the user's PC PASSED (checksums OK,
+      migrations=24 users=1 products=54 messages=156, throw-away database removed). A browser download names the
+      files `<folder>_<name>` (`20261003T203033Z-manual_demo.env.age`): `restore-test.sh` now accepts that prefix
+      (`file_of`, the manifest is checked against the prefixed names; the harness runs the restore test a second time
+      with prefixed copies). Selftest fix released as 0.13.1 (release PR #27) — needs the user's OK to merge and a
+      deploy before the selftest is re-run on the VM.
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs

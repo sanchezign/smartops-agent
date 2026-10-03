@@ -8,7 +8,9 @@
 #     [--hc-url https://hc-ping.com/<uuid>]
 #
 # <downloaded backup folder> = one "<UTC>-<reason>/" folder from the bucket (Object Storage →
-# bucket → objects → download, or `oci os object bulk-download` with YOUR OCI CLI).
+# bucket → objects → download, or `oci os object bulk-download` with YOUR OCI CLI). A browser
+# download names each file "<folder>_<name>" (e.g. 20261003T203033Z-manual_demo.env.age): that is
+# accepted as it is, no renaming needed.
 # --hc-url: the monthly "restore tested" Healthchecks.io check — it only emails you when a
 # month goes by without a successful restore test (the reminder, not a server timer).
 set -euo pipefail
@@ -55,7 +57,29 @@ log() { printf '%s  %s\n' "$(date -u +%H:%M:%SZ)" "$*" >&2; }
 cleanup() { docker rm -f "$name" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
-decrypt() { # $1 = file name inside $dir → plaintext on stdout (never written to disk)
+# The files of a backup by their canonical name; the Console download prefixes them with the folder
+# ("<folder>_<name>"), so accept exactly one file ending in "_<name>" / "-<name>" too.
+file_of() {
+  local n="$1" candidates
+  if [ -f "$dir/$n" ]; then
+    echo "$n"
+    return 0
+  fi
+  candidates=("$dir"/*[_-]"$n")
+  if [ "${#candidates[@]}" -eq 1 ] && [ -f "${candidates[0]}" ]; then
+    basename "${candidates[0]}"
+    return 0
+  fi
+  return 1
+}
+
+decrypt() { # $1 = canonical file name of the backup → plaintext on stdout (never written to disk)
+  local actual
+  actual="$(file_of "$1")" || {
+    log "missing $1 in $dir"
+    return 1
+  }
+  set -- "$actual"
   if command -v age >/dev/null 2>&1; then
     age -d -i "$identity_dir/$identity_file" "$dir/$1"
   else
@@ -64,12 +88,25 @@ decrypt() { # $1 = file name inside $dir → plaintext on stdout (never written 
   fi
 }
 
-[ -f "$dir/manifest.txt" ] && sed 's/^/    /' "$dir/manifest.txt" >&2
-if command -v sha256sum >/dev/null 2>&1 && [ -f "$dir/manifest.txt" ]; then
-  (cd "$dir" && grep -E '^[0-9a-f]{64} [ *]' manifest.txt | sha256sum -c --quiet -) || {
+manifest="$(file_of manifest.txt)" || manifest=""
+[ -n "$manifest" ] && sed 's/^/    /' "$dir/$manifest" >&2
+if command -v sha256sum >/dev/null 2>&1 && [ -n "$manifest" ]; then
+  # The manifest names the files as the server wrote them; they may carry the download prefix here.
+  checks="$(mktemp)"
+  while read -r hash path; do
+    path="${path#\*}"
+    actual="$(file_of "${path#./}")" || {
+      log "the manifest lists ${path#./} but it is not in $dir"
+      exit 1
+    }
+    printf '%s  %s\n' "$hash" "$actual" >>"$checks"
+  done < <(grep -E '^[0-9a-f]{64} [ *]' "$dir/$manifest")
+  (cd "$dir" && sha256sum -c --quiet "$checks") || {
     log "checksums do not match the manifest"
+    rm -f "$checks"
     exit 1
   }
+  rm -f "$checks"
   log "checksums OK"
 fi
 
@@ -84,11 +121,11 @@ psql_q() { docker exec -i "$name" psql -U postgres -v ON_ERROR_STOP=1 -Atq "$@";
 
 # The light profile (ADR-025) has no n8n database: its backups carry only smartops_demo.
 has_n8n=0
-[ -f "$dir/n8n.dump.age" ] && has_n8n=1
+file_of n8n.dump.age >/dev/null && has_n8n=1
 databases=(smartops_demo)
 [ "$has_n8n" -eq 1 ] && databases+=(n8n)
 for db in "${databases[@]}"; do
-  [ -f "$dir/$db.dump.age" ] || {
+  file_of "$db.dump.age" >/dev/null || {
     log "missing $db.dump.age"
     exit 1
   }
