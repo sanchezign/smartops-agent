@@ -1820,6 +1820,25 @@ a real client.**
       user `smartops-launcher` + group + policy + API key + the Resource Manager stack in OCI AND, on
       the user's PC, `~/.oci/smartops_launcher.pem` and the [SMARTOPS] section of `~/.oci/config`
       (the whole file if it ends up empty) — until then NEVER touch ~/.oci nor launch-retry.ps1.
+    - M3b Bastion on demand — WRITTEN (2026-10-03), WAITING for the user's IAM setup + first run:
+      `scripts/oci/bastion-connect.ps1` (PowerShell 5.1, ASCII, runs on the user's PC): finds the public
+      IPv4 (checkip.amazonaws.com or -PublicIp), sets the allowlist to exactly `<ip>/32` only when it
+      differs (`oci bastion bastion update --client-cidr-list file://…`; never 0.0.0.0/0), creates an
+      ephemeral ed25519 key + a port forwarding session to 10.0.0.21:22 (TTL 3 h), opens the tunnel
+      and the interactive ssh (ServerAliveInterval=30, HostKeyAlias=smartops-demo-vm), and ALWAYS
+      cleans up (tunnel tree, session delete, key dir). The API key has its OWN passphrase: asked
+      once (hidden) and handed to the CLI via the process-only `OCI_CLI_PASSPHRASE`, never written;
+      the script only READS ~/.oci/config (region) and never writes there. `-Probe` reports which
+      permission is missing (GetBastion / UpdateBastion / session create+delete), `-DryRun`,
+      `-TunnelOnly`. Policy to start from (verified against Oracle's policy reference): `use bastion`,
+      `manage bastion … where request.operation = 'UpdateBastion'`, `manage bastion-session`; the
+      reads Oracle lists for CreateSession (instances, subnets, vcns, vnics, instance-agent-plugins,
+      work-requests) are added ONLY if the probe asks, then pruned one by one (the user iterates with
+      the console). Tests: `scripts/oci/tests/bastion-connect.tests.ps1` (fake oci / ssh / ssh-keygen;
+      25 checks, run by hand on Windows) + CI static guards `test/unit/bastion-script.test.ts`. The
+      tests found a real bug: icacls left the ephemeral private key read-only so it could not be
+      deleted from %TEMP% (now full control + a warning when cleanup fails). Guide:
+      `docs/deploy/bastion-access.md`.
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs

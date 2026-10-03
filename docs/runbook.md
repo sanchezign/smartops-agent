@@ -200,8 +200,10 @@ oci bastion bastion update --bastion-id <bastion-ocid> --client-cidr-list '["<yo
 oci bastion session create-port-forwarding --bastion-id <bastion-ocid>   --target-private-ip 10.0.0.21 --target-port 22 --ssh-public-key-file <new-key>.pub   --session-ttl 10800 --wait-for-state SUCCEEDED
 ```
 
-An on-demand script that does this with a least-privilege IAM user (API key with its own
-passphrase) is planned (phase 12, M3b); this manual procedure stays as the fallback.
+The same, in one command, with a least-privilege IAM user (API key with its own passphrase):
+[`scripts/oci/bastion-connect.ps1`](../scripts/oci/bastion-connect.ps1), set up in
+[`docs/deploy/bastion-access.md`](deploy/bastion-access.md). This manual procedure stays as the
+fallback.
 
 ## 10. Oracle's idle policy (Always Free VMs)
 
