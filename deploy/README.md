@@ -18,6 +18,7 @@ read-only GHCR token). The full procedure is in [`docs/runbook.md`](../docs/runb
 | `bin/backup.sh`          | encrypted dumps (age, public key only) → Object Storage (instance principal)                                                                      |
 | `bin/restore-test.sh`    | runs on the OWNER'S PC: decrypts with the private key, restores into a throw-away DB                                                              |
 | `bin/backup-selftest.sh` | proves from the VM that the backup bucket is append-only (create + list work; overwrite, delete, read are refused)                                |
+| `bin/hc-test.sh`         | checks the Healthchecks.io URLs on the server without changing a status (`--fail <check>` proves the alert email)                                 |
 | `bin/monitor.sh`         | every 5 min: disk, memory, containers, HTTPS → Healthchecks.io                                                                                    |
 | `bin/boot-check.sh`      | after each boot: containers back + demo answering → Healthchecks.io                                                                               |
 | `bin/status.sh`          | one-screen status                                                                                                                                 |
