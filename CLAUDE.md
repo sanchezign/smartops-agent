@@ -1840,6 +1840,16 @@ a real client.**
       tests found a real bug: icacls left the ephemeral private key read-only so it could not be
       deleted from %TEMP% (now full control + a warning when cleanup fails). Guide:
       `docs/deploy/bastion-access.md`.
+    - M3b first real runs (2026-10-03, user): `-Probe` PASSED with the initial three statements plus
+      `read instance-family`, `read virtual-network-family` and `inspect work-requests` in `smartops`
+      (to be PRUNED one by one with the probe). Two bugs found (fix/bastion-tunnel-retry): (1) 2 of 3
+      runs failed "Permission denied (publickey)" — the session is ACTIVE before the Bastion accepts its
+      key: the tunnel is retried up to 90 s (`-TunnelWaitSeconds`, backoff) and the final message tells
+      "key not accepted (NOT the allowlist)" from "NETWORK or the allowlist" by ssh's own words;
+      (2) typing the VM key's passphrase in the interactive ssh killed the tunnel
+      (`ssh_dispatch_run_fatal`): the tunnel's ssh inherited the console — now `-n` + stdin / stdout
+      redirected to files (hypothesis, to confirm on the user's PC with `-TunnelOnly` + a second
+      terminal); `-SshDebug` = `ssh -v` with a sanitized log (session OCID redacted).
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs

@@ -92,15 +92,40 @@ powershell -ExecutionPolicy Bypass -File scripts\oci\bastion-connect.ps1
 | To find a missing permission       | add `-Probe`                                                                   |
 | Another local port / VM user / key | `-LocalPort 2223`, `-VmUser ubuntu`, `-IdentityFile <path>`                    |
 
+## First real runs: what we learned (2026-10-03)
+
+- **The probe passed with the initial three statements plus three reads** in the compartment:
+  `read instance-family`, `read virtual-network-family` and `inspect work-requests`. Pruning them
+  one by one (probe after each) is the next step.
+- **"Permission denied (publickey)" right after the session is ACTIVE** is a propagation delay: the
+  Bastion accepts the session's key a little later. The tool now retries the tunnel for up to 90 s
+  (`-TunnelWaitSeconds`) and says so; if it still fails it tells apart "the key is not accepted" from
+  "network / allowlist".
+- **Typing the VM key's passphrase killed the tunnel** (`ssh_dispatch_run_fatal … Unknown error`):
+  the tunnel's ssh shared the Windows console with the interactive ssh. It now runs with `-n` and with
+  stdin / stdout redirected to files, so it cannot share the console.
+- **`-SshDebug`** runs the tunnel's ssh with `-v` and writes what ssh said (the session OCID redacted,
+  never a key or a passphrase) to `%LOCALAPPDATA%smartopsastion-ssh-debug.log`.
+
+### Testing it again
+
+1. `... bastion-connect.ps1 -TunnelOnly -SshDebug` in terminal 1: it prints the `ssh` command and waits.
+2. In terminal 2, paste that `ssh` command and type the VM key's passphrase. The tunnel must stay up.
+3. Back in terminal 1 press Enter: tunnel closed, session deleted.
+4. Then the normal mode (`... bastion-connect.ps1`) a few times: every run should open the tunnel,
+   some after a "tunnel attempt N … retrying" line. If one fails, send
+   `%LOCALAPPDATA%smartopsastion-ssh-debug.log`.
+
 ## If it fails
 
-| Message                                           | What to do                                                                                  |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `Updating the allowlist: NotAuthorizedOrNotFound` | the `UpdateBastion` statement is missing or has the wrong compartment / group (step 2)      |
-| `Creating the session: NotAuthorizedOrNotFound`   | run `-Probe`; add the statement it names                                                    |
-| `NotAuthenticated`                                | wrong passphrase, or the public key / fingerprint in the Console does not match the profile |
-| `The tunnel did not come up`                      | your IP is not in the allowlist yet (run again) or your network blocks outbound port 22     |
-| `No [SMARTOPS_BASTION] profile with a region`     | step 3 (the profile name must match `-OciProfile`)                                          |
+| Message                                                 | What to do                                                                                  |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `Updating the allowlist: NotAuthorizedOrNotFound`       | the `UpdateBastion` statement is missing or has the wrong compartment / group (step 2)      |
+| `Creating the session: NotAuthorizedOrNotFound`         | run `-Probe`; add the statement it names                                                    |
+| `NotAuthenticated`                                      | wrong passphrase, or the public key / fingerprint in the Console does not match the profile |
+| `The Bastion still does not accept the session's key`   | not the allowlist: the key had not spread yet; run again, or with `-SshDebug`               |
+| `The tunnel did not come up … NETWORK or the allowlist` | your IP is not in the allowlist yet, or your network blocks outbound port 22                |
+| `No [SMARTOPS_BASTION] profile with a region`           | step 3 (the profile name must match `-OciProfile`)                                          |
 
 ## What a stolen API key could do (and why that is acceptable)
 
