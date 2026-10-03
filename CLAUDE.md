@@ -1820,6 +1820,7 @@ a real client.**
       user `smartops-launcher` + group + policy + API key + the Resource Manager stack in OCI AND, on
       the user's PC, `~/.oci/smartops_launcher.pem` and the [SMARTOPS] section of `~/.oci/config`
       (the whole file if it ends up empty) — until then NEVER touch ~/.oci nor launch-retry.ps1.
+    - Audit gate (2026-10-03): new HIGH GHSA-vfj7-8cjw-p6xm (braces 3.0.3, no fix) blocked CI; build-time only via shadcn > ts-morph > fast-glob > micromatch, absent from both images → exception added until 2026-10-31 like the other four (all five expire together).
     - M3b Bastion on demand — WRITTEN (2026-10-03), WAITING for the user's IAM setup + first run:
       `scripts/oci/bastion-connect.ps1` (PowerShell 5.1, ASCII, runs on the user's PC): finds the public
       IPv4 (checkip.amazonaws.com or -PublicIp), sets the allowlist to exactly `<ip>/32` only when it

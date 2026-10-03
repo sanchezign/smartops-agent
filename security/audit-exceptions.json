@@ -28,6 +28,13 @@
       "reason": "Transitive dependency of the Prisma CLI; SmartOps uses PostgreSQL only, the MySQL driver is never loaded.",
       "expires": "2026-10-31",
       "addedAt": "2026-09-27"
+    },
+    {
+      "advisory": "GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "reason": "Build-time only: braces 3.0.3 comes in through shadcn (a dependency of the panel because globals.css imports shadcn/tailwind.css) > ts-morph > fast-glob > micromatch. It expands glob patterns in the shadcn CLI; the stack exhaustion needs an attacker-supplied, deeply nested pattern, and no untrusted pattern ever reaches it. Neither the API nor the panel image contains braces (checked 2026-10-03). No fixed version exists yet (fix: null): re-check when the exception expires.",
+      "expires": "2026-10-31",
+      "addedAt": "2026-10-03"
     }
   ]
 }
