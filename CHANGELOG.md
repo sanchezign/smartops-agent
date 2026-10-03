@@ -6,6 +6,24 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.14.0](https://github.com/sanchezign/smartops-agent/compare/v0.13.0...v0.14.0) (2026-10-03)
+
+
+### Features
+
+* **deploy:** monitoring setup, hc-test.sh and a bounded abuse/load check (phase 12 M6) ([353be65](https://github.com/sanchezign/smartops-agent/commit/353be650e0586727f21251f9025f81181f4bee2f))
+
+
+### Bug Fixes
+
+* **deploy:** backup selftest judges overwrite by the object, not by the CLI exit code ([d4a4dd9](https://github.com/sanchezign/smartops-agent/commit/d4a4dd9ed0563b653b214f13693169f9dd033167))
+* **deploy:** restore-test accepts the folder prefix a browser download adds ([f6f547a](https://github.com/sanchezign/smartops-agent/commit/f6f547aeeab68c70e407f7cacc82eb3228093395))
+
+
+### Documentation
+
+* record M5 closing and M6 preparation ([80c2850](https://github.com/sanchezign/smartops-agent/commit/80c2850c521e61f7d1ebb56c5d4e8e9aaf08c944))
+
 ## [0.13.0](https://github.com/sanchezign/smartops-agent/compare/v0.12.3...v0.13.0) (2026-10-03)
 
 
