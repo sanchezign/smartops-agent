@@ -1916,6 +1916,23 @@ a real client.**
       (`file_of`, the manifest is checked against the prefixed names; the harness runs the restore test a second time
       with prefixed copies). Selftest fix released as 0.13.1 (release PR #27) — needs the user's OK to merge and a
       deploy before the selftest is re-run on the VM.
+    - M5 CLOSED (2026-10-03): backups append-only, real backup + real restore passed; the selftest fix and the
+      restore-test prefix fix are on main (PRs #26, #28). The selftest must still be re-run on the VM after the next
+      release is deployed (0.13.0's script has the old, wrong check).
+    - M6 monitoring — PREPARED (2026-10-03, branch `feat/phase-12-monitoring`), WAITING for the user's accounts
+      (guide `docs/deploy/monitoring.md`). Free limits verified on the pricing pages: UptimeRobot 50 monitors /
+      5-min interval / 5 integrations / "hobby and non-profit"; Healthchecks.io 20 checks / 100 log entries / email.
+      Healthchecks answers "200 OK (not found)" for a well-formed UUID that does not exist, so `deploy/bin/hc-test.sh`
+      reads the BODY (`/log` pings change no status; `--fail <check>` proves the alert email) and never prints a URL.
+      Five checks: monitor 5 min / 10 min grace, boot 365 d (only its /fail matters: the VM reboots only when an
+      update needs it), backup 1 d / 3 h, restore-test 30 d / 5 d, ghcr-token **60 d / 5 d** (the old 85 + 5 would only
+      alert on the expiry day, 2026-12-31). monitor.env does not exist yet: monitoring is enabled by creating it and
+      running `install-units.sh`. UptimeRobot: HTTP(s) on /api/v1/health + keyword "SmartOps" on /login.
+      `scripts/deploy/demo-abuse-check.mjs` (capped, ~600 requests): closed surface (401/404, 2 MB body 413), 100 health
+      requests ×10 (p95 < 3 s), 6th event stream refused, shared account logout-all 403, global limit 429 + Retry-After,
+      login limit still 429 with a spoofed X-Forwarded-For per attempt, optional sample burst (`--inject-burst`);
+      tested against a fake demo API with three modes (strict / no limits / spoofable). `hc-test.sh` and the abuse
+      check are new, so the VM gets `hc-test.sh` only with the next release (0.14.0, which also carries the selftest fix).
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs
