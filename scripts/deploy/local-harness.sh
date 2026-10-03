@@ -57,6 +57,57 @@ time bash "$(bin "$A")/deploy.sh" "$A"
 step "smoke through Caddy"
 node "$repo/scripts/deploy/local-smoke.mjs"
 
+step "backup through the OCI CLI path (a FAKE CLI image: exact arguments, readable files, append-only flags)"
+fake="$work/fake-oci-ctx"
+rec="$work/oci-rec"
+mkdir -p "$fake" "$rec"
+cat >"$fake/fake-oci" <<'FAKE'
+#!/bin/sh
+# Records what backup.sh asks the OCI CLI to do and proves this container can READ the file it is given.
+echo "uid=$(id -u) args: $*" >>/rec/calls.log
+case " $* " in *" --force "*) echo "FORBIDDEN --force" >>/rec/errors.log ;; esac
+for need in "--auth instance_principal" "--namespace-name fakens" "--bucket-name smartops-backups" "--no-multipart" "--no-overwrite"; do
+  case "$*" in *"$need"*) ;; *) echo "MISSING $need" >>/rec/errors.log ;; esac
+done
+file=""
+name=""
+while [ $# -gt 0 ]; do
+  case "$1" in --file) file=$2; shift ;; --name) name=$2; shift ;; esac
+  shift
+done
+[ -r "$file" ] || { echo "UNREADABLE $file" >>/rec/errors.log; exit 1; }
+mkdir -p "/rec/up/$(dirname "$name")"
+cp "$file" "/rec/up/$name"
+FAKE
+docker build -q -t smartops-local/fake-oci-cli:harness -f - "$fake" >/dev/null <<'DOCKERFILE'
+FROM alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+COPY fake-oci /fake-oci
+RUN chmod 755 /fake-oci
+ENTRYPOINT ["/fake-oci"]
+DOCKERFILE
+printf 'BACKUP_AGE_RECIPIENT=%s\nBACKUP_TARGET=oci\nOCI_BUCKET=smartops-backups\nOCI_NAMESPACE=fakens\n' \
+  "$(grep -o 'age1[0-9a-z]*' "$work/pc-key/key.txt")" >"$work/etc/backup-oci.env"
+BACKUP_ENV="$work/etc/backup-oci.env" SMARTOPS_OCI_CLI_IMAGE=smartops-local/fake-oci-cli:harness \
+  SMARTOPS_OCI_DOCKER_ARGS="-v $rec:/rec" bash "$(bin "$A")/backup.sh" --reason oci-fake --version "$A"
+[ ! -s "$rec/errors.log" ] || {
+  echo "the OCI upload path is wrong:" >&2
+  cat "$rec/errors.log" >&2
+  exit 1
+}
+uploaded="$(find "$rec/up" -type f | sort)"
+while read -r line; do echo "  uploaded: ${line#*/up/}"; done <<<"$uploaded"
+for expected in smartops_demo.dump.age demo.env.age manifest.txt; do
+  echo "$uploaded" | grep -q "oci-fake/$expected$" || {
+    echo "missing upload: $expected" >&2
+    exit 1
+  }
+done
+grep -q '^uid=0 ' "$rec/calls.log" || {
+  echo "the CLI container must run as root with no capabilities (files are root's, mode 600)" >&2
+  exit 1
+}
+echo "ok   OCI path: $(wc -l <"$rec/calls.log") uploads, readable as the container user, --no-overwrite, no --force, namespace given"
+
 step "deploy $B (with the pre-deploy backup)"
 time bash "$(bin "$A")/deploy.sh" "$B"
 latest="$(find "$work/bucket" -mindepth 1 -maxdepth 1 -type d -name "*pre-deploy-$B" | sort | tail -n 1)"

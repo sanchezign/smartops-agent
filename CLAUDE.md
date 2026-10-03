@@ -1869,6 +1869,21 @@ a real client.**
       ssh that ends with 255 within 60 s (up to 2 more tries, same tunnel); -SshDebug logs the stability
       wait and every interactive try (exit code, seconds). ssh-agent is documented as the option that
       removes the idle-while-typing window. 54 checks against the fake oci / ssh.
+    - M5 backups — PREPARED (2026-10-03, branch `feat/phase-12-backups`), WAITING for the user's steps
+      (guide `docs/deploy/backups.md`, ADR-026). Uploader measured (3 MiB upload, fake endpoint): OCI CLI
+      in the pinned container 62 MiB peak RSS (cgroup 58), CLI in a venv 71–74 MiB + 768 MiB disk, SDK
+      only 53 MiB + 543 MiB disk → the container stays (digest pin, no host Python, no code of ours); the
+      whole pipeline is ~100 MB, the real dump 321 KiB. FOUND: the old `oci` branch of `backup.sh` could
+      never work (root-owned 600 files unreadable by the image's user, `--force`, no namespace) — fixed:
+      root + `--cap-drop ALL` + `--memory 192m`, `--no-overwrite`, explicit `OCI_NAMESPACE`, 3 tries, lowest
+      MemAvailable logged and sent to Healthchecks; the harness runs the real script against a fake CLI
+      image. Append-only: dynamic group `smartops-vm` (`instance.id`), policy = read the one bucket +
+      `OBJECT_CREATE`/`OBJECT_INSPECT` on it, service principal deletes via a 30-day lifecycle rule;
+      `scripts/oci/setup-backup-bucket.ps1` (idempotent, `-DryRun`, 26 checks against a fake oci) and
+      `deploy/bin/backup-selftest.sh` (proves create + list work, overwrite / delete / read are refused).
+      The real instance-principal path can only be proven on the VM (a dynamic group can take ~1 h);
+      `BACKUP_TARGET=oci` only once the VM runs 0.13.0 (v0.12.3's script is the broken one). Bastion
+      policy pruning (user, with `-Probe`) still pending.
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs

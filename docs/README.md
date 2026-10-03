@@ -14,6 +14,7 @@
 | [Coexistence guide](coexistence-client-guide.md)                                | Using one WhatsApp number from the app and from SmartOps: options for a client      |
 | [Runbook](runbook.md)                                                           | Operating the demo server: deploy, rollback, backups, restore, secrets, incidents   |
 | [SSH through Bastion, on demand (M3b)](deploy/bastion-access.md)                | One command when your home IP changes: allowlist, ephemeral key, tunnel, cleanup    |
+| [Backups to Object Storage (M5)](deploy/backups.md)                             | Age key, append-only bucket, VM setup, proof and restore test                       |
 | [Oracle Cloud setup (M1)](deploy/m1-oracle-setup.md)                            | Creating the $0 demo infrastructure step by step                                    |
 | [Automatic VM launch retry](deploy/m1-retry-launch.md)                          | Retrying the VM creation while the region has no capacity                           |
 | [Deploy bundle](../deploy/README.md)                                            | What runs on the server and how the scripts fit together                            |

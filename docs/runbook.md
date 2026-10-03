@@ -89,15 +89,21 @@ the backups.
 BACKUP_AGE_RECIPIENT=age1…          # your PUBLIC key (age-keygen -y key.txt)
 BACKUP_TARGET=oci
 OCI_BUCKET=smartops-backups         # retention: the bucket's lifecycle policy (30 days)
+OCI_NAMESPACE=…                     # tenancy namespace (printed by scripts/oci/setup-backup-bucket.ps1)
 HC_BACKUP_URL=https://hc-ping.com/… # optional: Healthchecks warns if a backup fails or never arrives
 ```
 
-By hand: `sudo /opt/smartops/current/bin/backup.sh --reason manual`.
+The VM may only **create** objects in the bucket (instance principal, append-only policy): it cannot
+overwrite, delete or read a backup, and Oracle's lifecycle rule removes them after 30 days. Setup,
+the policy and its proof (`backup-selftest.sh`): [backups guide](deploy/backups.md), ADR-026.
+
+By hand: `sudo /opt/smartops/current/bin/backup.sh --reason manual`. The last log line (and the
+Healthchecks body) says the lowest available memory during the run.
 
 ## 4. Restore test (on your computer, once a month)
 
-1. Download one backup folder from the bucket (Object Storage → bucket → folder
-   `<date>-<reason>/` → download the 4 files).
+1. Download one backup folder from the bucket with your administrator profile
+   (`oci os object bulk-download --prefix "<date>-<reason>/"`, see the backups guide).
 2. In the repository:
 
 ```bash
