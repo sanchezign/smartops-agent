@@ -285,7 +285,7 @@ creates a temporary tunnel (3 h at most) to the VM.
 Terminal 1 (the tunnel; it seems to "hang", which is normal):
 
 ```powershell
-ssh -i $HOME\.ssh\smartops_oci -N -L 2222:10.0.0.23:22 -p 22 ocid1.bastionsession....@host.bastion.sa-saopaulo-1.oci.oraclecloud.com
+ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -i $HOME\.ssh\smartops_oci -N -L 2222:10.0.0.23:22 -p 22 ocid1.bastionsession....@host.bastion.sa-saopaulo-1.oci.oraclecloud.com
 ```
 
 (replace `<privateKey>` with your key and `<localPort>` with `2222`; the rest exactly as copied.)
@@ -293,10 +293,14 @@ ssh -i $HOME\.ssh\smartops_oci -N -L 2222:10.0.0.23:22 -p 22 ocid1.bastionsessio
 Terminal 2 (into the VM through the tunnel):
 
 ```powershell
-ssh -i $HOME\.ssh\smartops_oci -p 2222 ubuntu@localhost
+ssh -o ServerAliveInterval=30 -i $HOME\.ssh\smartops_oci -p 2222 ubuntu@localhost
 ```
 
 The first time it asks whether you trust the server's fingerprint: answer `yes`.
+
+> **Keep-alive:** a long session through the Bastion can drop with `client_loop: send disconnect:
+Connection reset`. `-o ServerAliveInterval=30` (as above; also on `scp`) keeps it alive. Add
+> `ServerAliveCountMax=4` to the tunnel command as well.
 
 **Check, once inside the VM:**
 

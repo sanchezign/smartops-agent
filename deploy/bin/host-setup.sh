@@ -69,6 +69,9 @@ id "$admin_user" >/dev/null 2>&1 || {
 . /etc/os-release
 [ "${ID:-}" = "ubuntu" ] || echo "WARNING: written for Ubuntu 24.04, this is ${PRETTY_NAME:-unknown}" >&2
 
+# shellcheck source=deploy/lib/apt-timer.sh
+. "$(dirname "$0")/../lib/apt-timer.sh"
+
 log() { printf '== %s\n' "$*"; }
 export DEBIAN_FRONTEND=noninteractive
 
@@ -225,17 +228,10 @@ EOF
 # The daily package-list refresh and upgrade run in the small hours (local time), after the demo
 # reset traffic and before the 03:30 backup and the 04:00 reboot, instead of at a random moment
 # of the day (they used > 300 MB for a while on a 1 GB machine). Security updates stay on.
-for timer in apt-daily:02:20 apt-daily-upgrade:02:50; do
-  name="${timer%%:*}"
-  at="${timer##*:}"
+for timer in "apt-daily 02:20" "apt-daily-upgrade 02:50"; do
+  read -r name at <<<"$timer"
   install -d "/etc/systemd/system/$name.timer.d"
-  cat >"/etc/systemd/system/$name.timer.d/90-smartops.conf" <<EOF
-[Timer]
-OnCalendar=
-OnCalendar=*-*-* $at
-RandomizedDelaySec=5min
-Persistent=true
-EOF
+  render_apt_timer "$at" >"/etc/systemd/system/$name.timer.d/90-smartops.conf"
 done
 systemctl daemon-reload
 systemctl restart apt-daily.timer apt-daily-upgrade.timer

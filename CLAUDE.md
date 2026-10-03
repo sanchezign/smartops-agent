@@ -1790,6 +1790,36 @@ a real client.**
       `test/unit/image-version.test.ts` guards the wiring and the script (fake docker). Republish =
       v0.12.2 through release-please (a published tag is never rewritten: v0.12.1's tag exists WITHOUT images because the new check script lost its exec bit on Windows and the smoke ran it directly; now called with `bash`, mode fixed); v0.12.2 then published the api image but its post-publish check failed because the merge job had no checkout (script missing) and fail-fast cancelled the admin publish: merge job now checks the tag out and has fail-fast false; republish = v0.12.3. the v0.12.0 images stay in
       GHCR with the wrong label (the user may delete that package version in the GitHub UI).
+    - M4 DONE (2026-10-03): v0.12.3 is ONLINE at https://smartops-demo.duckdns.org (first deploy by the
+      user). Verified from the user's PC: health 200 (db up), http→https 308, Let's Encrypt cert
+      (TLS 1.3, expires 31/12), HSTS / CSP / X-Frame / nosniff / Referrer / Permissions headers,
+      internal and webhook routes 404, SSE first frame ≈ 50 ms (GET and POST), `demo-check.mjs`
+      PASSED (photo 7.9 s, pdf 3.1, audio 6.1, spreadsheet 6.5, new spreadsheet 5.5 needs_review,
+      injection 2.4 needs_review). Memory after the samples: 268 MiB available, 106 MiB swap;
+      containers api 187/320, admin 78/128, postgres 38/192, caddy 36/64 MiB.
+      BUG FOUND: host-setup.sh 0.12.3 wrote `OnCalendar=*-*-* 20` / `50` (`${timer##*:}` kept only the
+      minutes of "02:20"); systemd rejected them, automatic updates did not run. Fixed by hand on the
+      VM (02:20:00 / 02:50:00); root fix (fix/apt-timer-calendar): `deploy/lib/apt-timer.sh`
+      `render_apt_timer` validates the time, `test/unit/apt-timer.test.ts` renders what host-setup.sh
+      passes and has `systemd-analyze calendar` judge it (also proves it rejects the old values).
+      Also learned: the Bastion SSH drops on long sessions → `-o ServerAliveInterval=30` (runbook §11);
+      the user's home IP changed AGAIN → M3b is needed. GHCR token (classic, read:packages) created
+      2026-10-02, expires 2026-12-31 (renew by 12-15; Healthchecks reminder check, runbook §11).
+    - PLAN to close phase 12 (approved 2026-10-03; each STOP = a step of the user): R0 this fix + runbook
+      (no deploy yet: the VM is already correct; it ships in 0.13.0); M3b Bastion script (PowerShell,
+      least-privilege IAM user in `smartops`, API key WITH passphrase asked on use, narrowest policy
+      verified with the owner's account); M5 backups to Object Storage with instance principal and a
+      restore test on the user's PC — if the OCI CLI container makes the backup's memory peak risky
+      with ~268 MiB free, evaluate a lighter way (OCI CLI in a venv, or the minimal SDK with instance
+      principal) and choose by measurement; M6 monitoring (UptimeRobot + Healthchecks.io: monitor,
+      boot, backup, restore reminder, token reminder) + bounded abuse / load checks; M7 CpuUtilization
+      calibration, Mozilla Observatory, README + sales kit with the demo URL; M8 close: CLAUDE.md,
+      release 0.13.0 (1.0.0 only after the separate security audit), one `deploy.sh` by the user, and
+      cleanup WITH the user's OK: local images `smartops-local/*:m0a|m0b` and harness volumes
+      `smartops-m2light_*` / `smartops-m2full_*`, GHCR versions 0.12.0–0.12.2, and the launcher: IAM
+      user `smartops-launcher` + group + policy + API key + the Resource Manager stack in OCI AND, on
+      the user's PC, `~/.oci/smartops_launcher.pem` and the [SMARTOPS] section of `~/.oci/config`
+      (the whole file if it ends up empty) — until then NEVER touch ~/.oci nor launch-retry.ps1.
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs

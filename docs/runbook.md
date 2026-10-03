@@ -136,14 +136,14 @@ sudo /opt/smartops/current/bin/status.sh
 
 ## 6. Rotating secrets
 
-| Secret                                                           | How                                                                                                                                              |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| GHCR token (classic PAT, `read:packages`, expires after 90 days) | Create a new one on GitHub → `sudo docker login ghcr.io -u <user>` (paste it on stdin) → revoke the old one                                      |
-| `INTERNAL_API_KEY`, `N8N_WEBHOOK_SECRET`                         | delete the line from `demo.env`, `sudo init-secrets.sh` generates a new one, then `deploy.sh <current version>` (re-imports the n8n credentials) |
-| `JWT_ACCESS_SECRET`                                              | the same; visitors sign in again (expected)                                                                                                      |
-| Postgres passwords                                               | `ALTER ROLE … PASSWORD` inside the container, update `demo.env`, `deploy.sh <current version>`                                                   |
-| `N8N_ENCRYPTION_KEY`                                             | **not rotated** without re-encrypting the n8n credentials; on the demo it is enough to delete the n8n volume and deploy (they are re-imported)   |
-| age key                                                          | a new key on your computer, a new `BACKUP_AGE_RECIPIENT`; keep the old one while backups encrypted with it exist (30 days)                       |
+| Secret                                                           | How                                                                                                                                                                                                                                                                                               |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GHCR token (classic PAT, `read:packages`, expires after 90 days) | Create a new one on GitHub → `sudo docker login ghcr.io -u <user>` (paste it on stdin) → revoke the old one. **Current token: created 2026-10-02, expires 2026-12-31 — renew by 2026-12-15.** Reminder: a Healthchecks check with an 85-day period that you ping after each rotation (section 11) |
+| `INTERNAL_API_KEY`, `N8N_WEBHOOK_SECRET`                         | delete the line from `demo.env`, `sudo init-secrets.sh` generates a new one, then `deploy.sh <current version>` (re-imports the n8n credentials)                                                                                                                                                  |
+| `JWT_ACCESS_SECRET`                                              | the same; visitors sign in again (expected)                                                                                                                                                                                                                                                       |
+| Postgres passwords                                               | `ALTER ROLE … PASSWORD` inside the container, update `demo.env`, `deploy.sh <current version>`                                                                                                                                                                                                    |
+| `N8N_ENCRYPTION_KEY`                                             | **not rotated** without re-encrypting the n8n credentials; on the demo it is enough to delete the n8n volume and deploy (they are re-imported)                                                                                                                                                    |
+| age key                                                          | a new key on your computer, a new `BACKUP_AGE_RECIPIENT`; keep the old one while backups encrypted with it exist (30 days)                                                                                                                                                                        |
 
 Never paste a secret into a command (it stays in the shell history): use 600 files or stdin.
 
@@ -212,3 +212,16 @@ support requests. What to do: the Healthchecks alert arrives (no pings) → star
 or the CLI (section 7). We never create artificial load. How "CPU utilization" is computed for a
 1/8-OCPU shape is not documented: it is calibrated on the real VM by comparing the `CpuUtilization`
 metric (Oracle Cloud Agent, Compute Instance Monitoring plugin) with the CPU time of a demo reset.
+
+## 11. Connection tips and reminders
+
+- **SSH through the Bastion** drops on long sessions ("client_loop: send disconnect: Connection
+  reset"). Always pass `-o ServerAliveInterval=30` (and `-o ServerAliveCountMax=4` on the
+  tunnel); the same for `scp`: `scp -o ServerAliveInterval=30 …`.
+- **GHCR token expiry:** created 2026-10-02 with 90 days → **expires 2026-12-31**. Renew by
+  2026-12-15 (section 6). To not depend on memory, create a Healthchecks.io check "ghcr-token" with
+  a period of 85 days and a grace of 5 days, and ping its URL (`curl -fsS <url>`) every time you
+  rotate the token: if you forget, it emails you.
+- **Automatic updates run at 02:20 and 02:50** (local time; the timers are validated by a test with
+  `systemd-analyze calendar`). Check on the VM: `systemctl list-timers 'apt-daily*'`; an invalid
+  timer would show `Failed to parse calendar specification` in `journalctl -u apt-daily.timer`.

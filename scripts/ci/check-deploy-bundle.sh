@@ -16,7 +16,7 @@ mount="$root"
 echo "== shellcheck"
 docker run --rm -v "$mount:/mnt:ro" -w /mnt \
   koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d \
-  -x -P deploy/bin deploy/bin/*.sh deploy/postgres-init/*.sh scripts/ci/*.sh scripts/deploy/*.sh \
+  -x -P deploy/bin deploy/bin/*.sh deploy/lib/*.sh deploy/postgres-init/*.sh scripts/ci/*.sh scripts/deploy/*.sh \
   scripts/git-hooks/pre-push
 
 echo "== Caddyfile"
