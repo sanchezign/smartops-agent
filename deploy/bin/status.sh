@@ -11,7 +11,10 @@ echo "last deploys:"
 tail -n 5 "$STATE_DIR/deploy.log" 2>/dev/null | sed 's/^/  /' || true
 echo
 if [ -n "$version" ]; then
-  compose_for "$version" ps --format 'table {{.Service}}\t{{.State}}\t{{.Health}}\t{{.RunningFor}}'
+  # Our own header: with "table" Compose has no column title for .Health and printed "<no value>".
+  compose_for "$version" ps --format '{{.Service}}\t{{.State}}\t{{.Health}}\t{{.RunningFor}}' |
+    awk -F'\t' 'BEGIN { printf "%-10s %-9s %-10s %s\n", "SERVICE", "STATE", "HEALTH", "UP FOR" }
+      { printf "%-10s %-9s %-10s %s\n", $1, $2, ($3 == "" ? "-" : $3), $4 }'
   echo
   docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}' |
     grep -E "NAME|$SMARTOPS_PROJECT" || true

@@ -36,6 +36,21 @@ for (const path of ["/api/v1/internal/rules", "/api/v1/internal", "/api/v1/webho
   check(status === 404, `${path} → ${status} (never public)`);
 }
 
+// An oversized JSON body is refused at the edge (Caddy request_body max_size = the API's JSON limit).
+const json = { "content-type": "application/json", "x-smartops-csrf": "1", origin };
+const huge = await fetch(`${base}/auth/login`, {
+  method: "POST",
+  headers: json,
+  body: JSON.stringify({ x: "a".repeat(2 * 1024 * 1024) }),
+});
+check(huge.status === 413, `2 MiB JSON body → ${huge.status} (refused at the edge)`);
+const small = await fetch(`${base}/auth/login`, {
+  method: "POST",
+  headers: json,
+  body: JSON.stringify({ x: "a" }),
+});
+check(small.status !== 413, `a small body is not refused as too large → ${small.status}`);
+
 // ── Login as the public operator ─────────────────────────────────────────────────────────────
 const info = await (await fetch(`${base}/demo/info`)).json();
 const login = await fetch(`${base}/auth/login`, {

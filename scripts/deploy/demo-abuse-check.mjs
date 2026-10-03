@@ -42,7 +42,12 @@ const step = (title) => console.log(`\n== ${title}`);
 async function call(method, path, { headers = {}, body, raw } = {}) {
   const res = await fetch(`${api}${path}`, {
     method,
-    headers: { ...(body !== undefined ? { "content-type": "application/json" } : {}), ...headers },
+    // A raw body is JSON too: without the content type Express does not parse it, so the size
+    // limit is never reached and the API answers a validation error instead of 413.
+    headers: {
+      ...(body !== undefined || raw !== undefined ? { "content-type": "application/json" } : {}),
+      ...headers,
+    },
     body: raw ?? (body !== undefined ? JSON.stringify(body) : undefined),
     redirect: "manual",
   });
@@ -90,7 +95,10 @@ const big = await call("POST", "/auth/login", {
   headers: csrf,
   raw: JSON.stringify({ x: "a".repeat(2 * 1024 * 1024) }),
 });
-check(big.status === 413, `2 MB body to /auth/login -> ${big.status} (expected 413)`);
+check(
+  big.status === 413,
+  `2 MB body to /auth/login -> ${big.status} ${code(big) ?? ""} (expected 413)`,
+);
 
 // 2) a small load smoke
 step("2. a burst of 100 health requests, 10 at a time");

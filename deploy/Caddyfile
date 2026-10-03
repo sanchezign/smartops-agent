@@ -11,8 +11,11 @@
 {$DEMO_DOMAIN} {
 	encode zstd gzip
 
+	# The API reads JSON up to 1 MiB (express.json) and the panel posts nothing bigger, so anything
+	# larger is refused HERE with 413, before it is forwarded: the API would otherwise keep reading
+	# (draining) an oversized upload from a slow client. Meta's webhook (3 MB) is not public here.
 	request_body {
-		max_size 5MB
+		max_size 1MiB
 	}
 
 	# Security headers (user addendum C). ">" = set after the upstream answered (always ours);

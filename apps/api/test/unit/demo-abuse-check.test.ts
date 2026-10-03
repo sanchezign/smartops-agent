@@ -64,6 +64,10 @@ function fakeApi(mode: Mode): Promise<{ server: Server; url: string }> {
       return err(res, 404, "NOT_FOUND");
     if (path === "/demo/info") return json(res, 200, { operator });
     if (path === "/auth/login") {
+      // Like Express: only application/json is parsed (and limited); anything else is an empty body,
+      // which the login route rejects as a validation error.
+      if (!String(req.headers["content-type"] ?? "").includes("application/json"))
+        return err(res, 400, "VALIDATION_ERROR");
       if (size > 1024 * 1024 && mode !== "no-limits") return err(res, 413, "PAYLOAD_TOO_LARGE");
       const body = JSON.parse(Buffer.concat(chunks).toString() || "{}") as { email?: string };
       if (body.email === operator.email) return json(res, 200, { accessToken: "token" });

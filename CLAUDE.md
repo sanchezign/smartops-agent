@@ -1933,6 +1933,23 @@ a real client.**
       login limit still 429 with a spoofed X-Forwarded-For per attempt, optional sample burst (`--inject-burst`);
       tested against a fake demo API with three modes (strict / no limits / spoofable). `hc-test.sh` and the abuse
       check are new, so the VM gets `hc-test.sh` only with the next release (0.14.0, which also carries the selftest fix).
+    - M6 REAL RESULTS (user, 2026-10-03, VM on 0.14.0): deploy OK, demo-check PASSED (samples 2.8–8.2 s), selftest PASSED
+      (8 PASS), monitor.env + HC_BACKUP_URL loaded, `install-units.sh` enabled smartops-monitor.timer, hc-test PASSED
+      (3 checked), backup 20261003T220059Z-manual 492K (lowest available memory 438 MB), daily backup now 03:34,
+      the 3 `--fail` alert emails arrived and the checks went green, ghcr-token + restore-test armed, UptimeRobot
+      "demo health" (HTTP) + "demo login page" (keyword SmartOps). `demo-abuse-check --inject-burst` on the PUBLIC demo:
+      surface 401/404, 100 health requests p50 96 ms / p95 294 ms / max 448 ms, 6th stream refused, logout-all 403,
+      global 429 at ~301 requests (Retry-After 56 s), login 429 at attempt 9 despite a spoofed X-Forwarded-For (no
+      hints), sample cap 429 after 20, queue drained in 22 s, health 200 after. VM during the burst: 476 MB available,
+      swap 231 MB, api 161/320 MiB, admin 59/128, postgres 38/192 (13.9 % CPU), caddy 32/64. The one FAIL ("2 MB body
+      -> 400, expected 413") was a BUG IN THE CHECK, not in the server: a raw body was sent without
+      `Content-Type: application/json`, so Express never parsed it and the login route answered VALIDATION_ERROR
+      (reproduced on the local stack, then fixed; the API answers 413 over a real socket with the header — new
+      `body-limit.test.ts`; the fake API of the abuse-check test now parses only JSON like Express). Found on the way:
+      the API DRAINS an oversized JSON body before answering (10 s for 2.2 MB at 200 KB/s), so Caddy's
+      `request_body max_size` went from 5MB to **1MiB** (= `express.json` limit, guarded by a test; a slow 2.2 MB upload
+      is now refused at ~1 MiB) and local-smoke checks it through Caddy. `status.sh` printed "<no value>" as the Health
+      column title (Compose has no title for .Health with `table`): it builds its own header now (test with a fake docker).
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs
