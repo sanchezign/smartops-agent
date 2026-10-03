@@ -38,6 +38,28 @@ describe("bastion-connect.ps1 (static guards)", () => {
     expect(finalBlock).toContain("Remove-Item -Recurse -Force $script:tempDir");
   });
 
+  it("the tunnel's ssh never shares the console: -n and stdin / stdout redirected", () => {
+    const tunnel = text.slice(
+      text.indexOf("function Start-Tunnel"),
+      text.indexOf("function Stop-Tunnel"),
+    );
+    expect(tunnel).toContain('@("-4", "-n", "-N")');
+    expect(tunnel).toContain("-RedirectStandardInput");
+    expect(tunnel).toContain("-RedirectStandardOutput");
+  });
+
+  it("retries the tunnel while the session spreads its key, and tells key from network", () => {
+    const tunnel = text.slice(
+      text.indexOf("function Start-Tunnel"),
+      text.indexOf("function Stop-Tunnel"),
+    );
+    expect(tunnel).toContain("while ($true)");
+    expect(tunnel).toContain("$TunnelWaitSeconds");
+    expect(text).toContain("Permission denied \\(publickey");
+    expect(text).toContain("NOT the allowlist");
+    expect(text).toContain("NETWORK or the allowlist");
+  });
+
   it("keeps the connection alive (the Bastion drops idle SSH)", () => {
     expect(text).toContain("ServerAliveInterval=30");
   });

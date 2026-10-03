@@ -52,6 +52,13 @@ exit 0
 $a = $args
 Add-Content $env:FAKE_LOG ("ssh " + ($a -join " "))
 if ($a -contains "-N") {
+  Add-Content $env:FAKE_LOG ("   tunnel-stdin-redirected=" + [Console]::IsInputRedirected + " has-n=" + ($a -contains "-n"))
+  $countFile = Join-Path $env:FAKE_DIR "ssh-count.txt"
+  $n = 1 + $(if (Test-Path $countFile) { [int](Get-Content $countFile) } else { 0 })
+  Set-Content $countFile $n
+  if ($env:FAKE_SSH_FAIL_N -and $n -le [int]$env:FAKE_SSH_FAIL_N) {
+    [Console]::Error.WriteLine($env:FAKE_SSH_FAIL_TEXT); exit 255
+  }
   $l = ($a | Where-Object { $_ -match '^\d+:[\d.]+:22$' } | Select-Object -First 1)
   $port = [int]($l -split ":")[0]
   $listener = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, $port)
@@ -71,8 +78,10 @@ exit 0
 Set-Content (Join-Path $work "id_vm") "KEY"
 
 # --- runner: a clean child process per scenario --------------------------------------------------
-function Run-Tool([string]$allowlist, [string]$deny, [string[]]$extra, [switch]$feedEnter) {
+function Run-Tool([string]$allowlist, [string]$deny, [string[]]$extra, [switch]$feedEnter, [int]$sshFailN = 0, [string]$sshFailText = "") {
   Remove-Item $log -ErrorAction SilentlyContinue
+  Remove-Item (Join-Path $work "ssh-count.txt") -ErrorAction SilentlyContinue
+  $env:FAKE_SSH_FAIL_N = "$sshFailN"; $env:FAKE_SSH_FAIL_TEXT = $sshFailText
   Remove-Item (Join-Path $work "allow.txt") -ErrorAction SilentlyContinue
   $env:FAKE_LOG = $log; $env:FAKE_DIR = $work; $env:FAKE_ALLOWLIST = $allowlist; $env:FAKE_DENY = $deny
   $env:OCI_CLI_PASSPHRASE = "secret-passphrase"
@@ -108,7 +117,7 @@ $dirsBefore = @(Get-ChildItem $tmp -Directory -Filter "smartops-bastion-*" -Erro
 $r = Run-Tool "198.51.100.1/32" "" @()
 Check ($r.Calls -match "allowlist set to 203\.0\.113\.7/32") "changed IP -> the allowlist becomes <ip>/32"
 Check ($r.Calls -match "pubkey exists: True") "the session is created with an ephemeral public key that exists"
-Check ($r.Calls -match "ssh -4 -N .*-L ${testPort}:10\.0\.0\.21:22 .*ocid1\.bastionsession\.oc1\.sa-saopaulo-1\.fake@host\.bastion\.sa-saopaulo-1\.oci\.oraclecloud\.com") "the tunnel goes to the VM's private IP through the session host"
+Check ($r.Calls -match "ssh -4 -n -N .*-L ${testPort}:10\.0\.0\.21:22 .*ocid1\.bastionsession\.oc1\.sa-saopaulo-1\.fake@host\.bastion\.sa-saopaulo-1\.oci\.oraclecloud\.com") "the tunnel goes to the VM's private IP through the session host"
 Check ($r.Calls -match "ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o HostKeyAlias=smartops-demo-vm .*-p ${testPort} ubuntu@localhost") "the interactive ssh keeps the connection alive"
 Check ($r.Calls -match "bastion session delete") "the session is deleted at the end"
 Check ($r.Calls -notmatch "secret-passphrase") "the passphrase never reaches a command line"
@@ -146,6 +155,37 @@ Check ($r.Out -match "PROBE PASSED") "probe: passes with every permission"
 $r = Run-Tool "203.0.113.7/32" "" @("-TunnelOnly") -feedEnter
 Check ($r.Out -match "scp  : scp .*-P ${testPort} .* ubuntu@localhost:/tmp/") "tunnel-only prints the scp command and then closes everything"
 Check ($r.Calls -match "bastion session delete") "tunnel-only also deletes the session"
+
+# 6b) the tunnel's ssh never shares the console: -n, and stdin redirected to a file
+$r = Run-Tool "203.0.113.7/32" "" @()
+Check ($r.Calls -match "tunnel-stdin-redirected=True has-n=True") "the tunnel's ssh has -n and its stdin redirected (it cannot steal your keystrokes)"
+
+# 6c) the session is ACTIVE before the Bastion accepts its key: retry, then succeed
+$keyText = "Warning: ocid1.bastionsession.oc1.sa-saopaulo-1.fake@host.bastion: Permission denied (publickey)."
+$r = Run-Tool "203.0.113.7/32" "" @("-TunnelRetrySeconds", "1", "-TunnelWaitSeconds", "60") -sshFailN 2 -sshFailText $keyText
+Check ((([regex]::Matches($r.Calls, "ssh -4 -n -N")).Count) -eq 3) "key not accepted yet: the tunnel is retried (3 attempts, the third works)"
+Check ($r.Out -match "tunnel attempt 1: the session is ACTIVE but the Bastion has not accepted its key yet; retrying") "...and says why it retries"
+Check ($r.Calls -match "-p ${testPort} ubuntu@localhost") "...and the interactive ssh still opens afterwards"
+Check ($r.Calls -match "bastion session delete") "...and the session is deleted"
+
+# 6d) the key never gets accepted: a clear message that it is NOT the allowlist
+$r = Run-Tool "203.0.113.7/32" "" @("-TunnelRetrySeconds", "1", "-TunnelWaitSeconds", "4") -sshFailN 99 -sshFailText $keyText
+Check ($r.Out -match "does not accept the session's key") "persistent Permission denied -> 'the Bastion does not accept the session key'"
+Check ($r.Out -match "NOT the allowlist") "...and it says it is not the allowlist"
+Check ($r.Calls -notmatch "ubuntu@localhost") "...and no interactive ssh is attempted"
+Check ($r.Calls -match "bastion session delete") "...and the session is still deleted"
+
+# 6e) network / allowlist problem: a different message
+$r = Run-Tool "203.0.113.7/32" "" @("-TunnelRetrySeconds", "1", "-TunnelWaitSeconds", "4") -sshFailN 99 -sshFailText "ssh: connect to host host.bastion.sa-saopaulo-1.oci.oraclecloud.com port 22: Connection timed out"
+Check ($r.Out -match "NETWORK or the allowlist") "Connection timed out -> points at the network / allowlist, not the key"
+Check ($r.Out -notmatch "NOT the allowlist") "...and does not blame the key"
+
+# 6f) -SshDebug: ssh -v and a sanitized log (no session OCID)
+$r = Run-Tool "203.0.113.7/32" "" @("-SshDebug", "-TunnelRetrySeconds", "1", "-TunnelWaitSeconds", "30") -sshFailN 1 -sshFailText $keyText
+$dbg = Join-Path $work "smartops\bastion-ssh-debug.log"
+Check ($r.Calls -match "ssh -4 -n -N -v ") "-SshDebug adds -v to the tunnel"
+Check ((Test-Path $dbg) -and ((Get-Content $dbg -Raw) -match "Permission denied") -and ((Get-Content $dbg -Raw) -match "bastionsession\.<redacted>")) "-SshDebug logs ssh's own words with the session OCID redacted"
+Check ((Test-Path $dbg) -and -not ((Get-Content $dbg -Raw) -match "oc1\.sa-saopaulo-1\.fake")) "...and the OCID itself is not in the log"
 
 # 7) the script never writes to the OCI config and is plain ASCII
 $text = Get-Content $script -Raw

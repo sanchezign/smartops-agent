@@ -20,6 +20,10 @@
   file, to the OCI config or to the log. This script only READS the OCI config (to find the
   region); it never writes to ~/.oci.
 
+  The tunnel is retried for up to 90 s: a session is ACTIVE a little before the Bastion accepts its
+  key ("Permission denied (publickey)"). The tunnel's ssh runs with -n and with stdin / stdout redirected
+  to files, so it can never share the console (and steal the keystrokes) of your interactive ssh.
+
   -Probe  checks, step by step, which permission the IAM user is missing (used to find the
           narrowest policy: it changes nothing except a throw-away session it deletes).
   -DryRun resolves everything and prints what it would do, without changing anything.
@@ -44,6 +48,12 @@ param(
   [switch]$TunnelOnly,
   [switch]$Probe,
   [switch]$DryRun,
+  # ssh -v on the tunnel; its output (sanitized: no session OCID) goes to %LOCALAPPDATA%\smartops\bastion-ssh-debug.log
+  [switch]$SshDebug,
+  # How long to keep retrying the tunnel while the session spreads its key (Permission denied), and the
+  # pause between attempts (grows up to 3x).
+  [int]$TunnelWaitSeconds = 90,
+  [int]$TunnelRetrySeconds = 5,
   # Testing / overrides (a fake oci and ssh, a fixed IP or region).
   [string]$OciCommand = "oci",
   [string]$SshCommand = "ssh",
@@ -218,17 +228,71 @@ function New-EphemeralKey {
   return $key
 }
 
+# What a failed tunnel attempt means, from ssh's own words (never from a guess).
+function Get-SshFailureClass([string]$text) {
+  if ($text -match "Permission denied \(publickey") { return "key" }
+  if ($text -match "REMOTE HOST IDENTIFICATION HAS CHANGED") { return "hostkey" }
+  if ($text -match "Connection timed out|Connection refused|No route to host|Network is unreachable|Could not resolve hostname|timed out") { return "network" }
+  if ($text -match "kex_exchange_identification|Connection closed by remote host|Connection reset|banner exchange") { return "closed" }
+  return "unknown"
+}
+
+function Protect-SshLog([string]$text) {
+  # The session OCID is the ssh user name: not a secret, but not worth keeping in a log either.
+  return ($text -replace "ocid1\.bastionsession\.[A-Za-z0-9._-]+", "ocid1.bastionsession.<redacted>")
+}
+
 function Start-Tunnel([string]$key, [string]$sessionHost, [string]$user, [int]$port) {
-  $err = Join-Path $script:tempDir "tunnel.err"
-  $sshArgs = @("-4", "-N", "-o", "ExitOnForwardFailure=yes", "-o", "ServerAliveInterval=30",
-    "-o", "ServerAliveCountMax=4", "-o", "StrictHostKeyChecking=accept-new", "-o", "IdentitiesOnly=yes",
-    "-i", ('"' + $key + '"'), "-L", ("{0}:{1}:22" -f $port, $TargetIp), "-p", "22", ("{0}@{1}" -f $user, $sessionHost))
-  $script:tunnel = Start-Process -FilePath $SshCommand -ArgumentList ($sshArgs -join " ") -PassThru `
-    -WindowStyle Hidden -RedirectStandardError $err
-  if (-not (Wait-Port $port 30 $script:tunnel)) {
-    $tail = ""
-    if (Test-Path $err) { $tail = (Get-Content $err -Tail 3) -join " | " }
-    Fail "The tunnel did not come up ($tail)" "Is your IP in the allowlist? Run again, or see the runbook (section 9)."
+  # Own stdin / stdout (files): the tunnel's ssh must not share the console with your interactive ssh.
+  $emptyIn = Join-Path $script:tempDir "tunnel.in"
+  Set-Content -Path $emptyIn -Value "" -Encoding ASCII
+  $debugLog = Join-Path $stateDir "bastion-ssh-debug.log"
+  if ($SshDebug) { New-Item -ItemType Directory -Force -Path $stateDir | Out-Null; Say "ssh debug log: $debugLog" }
+  $deadline = (Get-Date).AddSeconds($TunnelWaitSeconds)
+  $pause = $TunnelRetrySeconds
+  $attempt = 0
+  while ($true) {
+    $attempt += 1
+    $err = Join-Path $script:tempDir ("tunnel{0}.err" -f $attempt)
+    $out = Join-Path $script:tempDir ("tunnel{0}.out" -f $attempt)
+    $sshArgs = @("-4", "-n", "-N")
+    if ($SshDebug) { $sshArgs += "-v" }
+    $sshArgs += @("-o", "ExitOnForwardFailure=yes", "-o", "ConnectTimeout=15", "-o", "ServerAliveInterval=30",
+      "-o", "ServerAliveCountMax=4", "-o", "StrictHostKeyChecking=accept-new", "-o", "IdentitiesOnly=yes",
+      "-i", ('"' + $key + '"'), "-L", ("{0}:{1}:22" -f $port, $TargetIp), "-p", "22", ("{0}@{1}" -f $user, $sessionHost))
+    $script:tunnel = Start-Process -FilePath $SshCommand -ArgumentList ($sshArgs -join " ") -PassThru -WindowStyle Hidden `
+      -RedirectStandardInput $emptyIn -RedirectStandardOutput $out -RedirectStandardError $err
+    if (Wait-Port $port 20 $script:tunnel) { return }
+
+    if (-not $script:tunnel.HasExited) { & taskkill.exe /PID $script:tunnel.Id /T /F 2>&1 | Out-Null }
+    $text = ""
+    if (Test-Path $err) { $text = (Get-Content $err -Raw) }
+    if ($SshDebug -and $text) {
+      Add-Content -Path $debugLog -Value ("--- attempt {0} {1}" -f $attempt, (Get-Date -Format "yyyy-MM-dd HH:mm:ss")) -Encoding ASCII
+      Add-Content -Path $debugLog -Value (Protect-SshLog $text) -Encoding ASCII
+    }
+    $class = Get-SshFailureClass $text
+    $tail = (Protect-SshLog (($text -split "`r?`n" | Where-Object { $_ -and $_ -notmatch "^debug1:" } | Select-Object -Last 2) -join " | "))
+
+    if ($class -eq "hostkey") {
+      Fail "ssh refused the Bastion's host key ($tail)" "Remove the old host.bastion.$region.oci.oraclecloud.com line from %USERPROFILE%\.ssh\known_hosts and run again."
+    }
+    if ((Get-Date) -ge $deadline) {
+      if ($class -eq "key") {
+        Fail ("The Bastion still does not accept the session's key after {0} s ({1})" -f $TunnelWaitSeconds, $tail) "The session was ACTIVE, so this is NOT the allowlist: the key had not spread yet. Run again; if it repeats, run with -SshDebug and look at the log."
+      }
+      Fail ("The tunnel did not come up after {0} s ({1})" -f $TunnelWaitSeconds, $tail) `
+        "This looks like the NETWORK or the allowlist (your IP $cidr), not the key: check the allowlist in the Console, that your network allows outbound port 22, then run again (runbook, section 9)."
+    }
+    $why = switch ($class) {
+      "key" { "the session is ACTIVE but the Bastion has not accepted its key yet" }
+      "network" { "cannot reach the Bastion yet" }
+      "closed" { "the Bastion closed the connection (allowlist still applying?)" }
+      default { "ssh failed: $tail" }
+    }
+    Say ("tunnel attempt {0}: {1}; retrying in {2} s" -f $attempt, $why, $pause)
+    Start-Sleep -Seconds $pause
+    $pause = [Math]::Min($pause + $TunnelRetrySeconds, $TunnelRetrySeconds * 3)
   }
 }
 
