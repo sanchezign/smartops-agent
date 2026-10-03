@@ -102,8 +102,8 @@ Healthchecks body) says the lowest available memory during the run.
 
 ## 4. Restore test (on your computer, once a month)
 
-1. Download one backup folder from the bucket with your administrator profile
-   (`oci os object bulk-download --prefix "<date>-<reason>/"`, see the backups guide).
+1. Download one backup folder from the bucket in the web console (the files of
+   `<date>-<reason>/`, see the backups guide).
 2. In the repository:
 
 ```bash
@@ -230,6 +230,9 @@ metric (Oracle Cloud Agent, Compute Instance Monitoring plugin) with the CPU tim
   2026-12-15 (section 6). To not depend on memory, create a Healthchecks.io check "ghcr-token" with
   a period of 85 days and a grace of 5 days, and ping its URL (`curl -fsS <url>`) every time you
   rotate the token: if you forget, it emails you.
+- **Automatic updates verified on the real VM (2026-10-03):** the night's security updates and the 04:00
+  reboot ran (kernel 6.17.0-1020 → 7.0.0-1012; pending updates went from 39, 28 of them security, to 15
+  with none of security) and the demo came back by itself after the reboot.
 - **Automatic updates run at 02:20 and 02:50** (local time; the timers are validated by a test with
   `systemd-analyze calendar`). Check on the VM: `systemctl list-timers 'apt-daily*'`; an invalid
   timer would show `Failed to parse calendar specification` in `journalctl -u apt-daily.timer`.

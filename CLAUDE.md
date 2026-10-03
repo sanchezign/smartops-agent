@@ -1883,7 +1883,19 @@ a real client.**
       `deploy/bin/backup-selftest.sh` (proves create + list work, overwrite / delete / read are refused).
       The real instance-principal path can only be proven on the VM (a dynamic group can take ~1 h);
       `BACKUP_TARGET=oci` only once the VM runs 0.13.0 (v0.12.3's script is the broken one). Bastion
-      policy pruning (user, with `-Probe`) still pending.
+      policy pruning DONE (user, 2026-10-03, `-Probe` + a real connection that worked): FINAL four statements
+      for group `'Default'/'smartops-bastion-users'` in compartment smartops: `use bastion`; `manage bastion where
+      request.operation = 'UpdateBastion'`; `manage bastion-session`; `read virtual-network-family` (without it the
+      probe fails creating the session); `read instance-family` and `inspect work-requests` removed as not
+      needed (docs/deploy/bastion-access.md). Automatic security updates VERIFIED on the real VM: 02:20/02:50
+      updates + 04:00 reboot ran (kernel 6.17.0-1020 → 7.0.0-1012; pending 39 incl. 28 security → 15 with no
+      security) and the demo came back by itself.
+    - M5 admin step (user, 2026-10-03): no admin API key on the PC (profiles: SMARTOPS = launcher,
+      SMARTOPS_BASTION). OCI Cloud Shell has NO pwsh (bash + pre-authenticated CLI; checked in Oracle's
+      docs), so bucket, dynamic group, policy and lifecycle rule are created in the web console with the
+      exact statements of `setup-backup-bucket.ps1 -DryRun` (guide `docs/deploy/backups.md`); the script
+      stays for anyone with an admin profile. Order: age key → console resources → merge release 0.13.0
+      → deploy by Bastion → backup.env, selftest, manual backup, restore test.
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs

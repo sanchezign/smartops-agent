@@ -24,21 +24,24 @@ _Users → Create user_ `smartops-bastion` (no password login is needed; add it 
 ### 2. The policy (the narrowest that works)
 
 _Identity & Security → Policies → Create policy_ in the **root** compartment, name
-`smartops-bastion-policy`. Start with these three statements (replace `smartops` with the
-compartment of the bastion if it differs):
+`smartops-bastion-policy`. These four statements are the **final minimum**, verified with `-Probe`
+and a real connection on 2026-10-03 (replace `smartops` with the compartment of the bastion if it
+differs):
 
 ```text
 Allow group 'Default'/'smartops-bastion-users' to use bastion in compartment smartops
 Allow group 'Default'/'smartops-bastion-users' to manage bastion in compartment smartops where request.operation = 'UpdateBastion'
 Allow group 'Default'/'smartops-bastion-users' to manage bastion-session in compartment smartops
+Allow group 'Default'/'smartops-bastion-users' to read virtual-network-family in compartment smartops
 ```
 
 Why: `use bastion` covers reading the bastion and creating / deleting sessions; updating the
 allowlist is `UpdateBastion`, which Oracle files under `manage bastion`, so it is allowed **only for
-that operation** (the `request.operation` variable); sessions need `manage bastion-session`. Oracle's
-policy reference also lists reads of instances, subnets, VCNs and VNICs, the instance-agent plugins
-and work requests for `CreateSession`; for a target given by **IP address** they may not be needed.
-The probe tells you:
+that operation** (the `request.operation` variable); sessions need `manage bastion-session`; creating
+a session for a target given by IP address also needs `read virtual-network-family` (without it the
+probe fails at the session step). `read instance-family` and `inspect work-requests`, which Oracle's
+policy reference lists for `CreateSession`, turned out **not** to be needed and were removed. If
+your setup differs, the probe tells you:
 
 1. Run the tool with `-Probe` (step 4 below). Every `FAIL` line names what to add.
 2. Add only that (for example `Allow group … to read instances in compartment smartops`), run the
@@ -95,8 +98,11 @@ powershell -ExecutionPolicy Bypass -File scripts\oci\bastion-connect.ps1
 ## First real runs: what we learned (2026-10-03)
 
 - **The probe passed with the initial three statements plus three reads** in the compartment:
-  `read instance-family`, `read virtual-network-family` and `inspect work-requests`. Pruning them
-  one by one (probe after each) is the next step.
+  `read instance-family`, `read virtual-network-family` and `inspect work-requests`. Pruned one by one
+  with `-Probe` (2026-10-03): `read instance-family` and `inspect work-requests` were removed;
+  `read virtual-network-family` stays (without it the probe fails creating the session). The final
+  four statements are in step 2 above; a real connection five minutes later worked (stability wait +
+  one tunnel retry).
 - **"Permission denied (publickey)" right after the session is ACTIVE** is a propagation delay: the
   Bastion accepts the session's key a little later. The tool now retries the tunnel for up to 90 s
   (`-TunnelWaitSeconds`) and says so; if it still fails it tells apart "the key is not accepted" from
@@ -105,7 +111,7 @@ powershell -ExecutionPolicy Bypass -File scripts\oci\bastion-connect.ps1
   the tunnel's ssh shared the Windows console with the interactive ssh. It now runs with `-n` and with
   stdin / stdout redirected to files, so it cannot share the console.
 - **`-SshDebug`** runs the tunnel's ssh with `-v` and writes what ssh said (the session OCID redacted,
-  never a key or a passphrase) to `%LOCALAPPDATA%smartopsastion-ssh-debug.log`.
+  never a key or a passphrase) to `%LOCALAPPDATA%\smartops\bastion-ssh-debug.log`.
 
 - **The interactive ssh uses only `-o ServerAliveInterval=30 -i <key> -p <port>`** (second real test).
   The first version also passed `HostKeyAlias=smartops-demo-vm`, `StrictHostKeyChecking=accept-new` and
@@ -166,7 +172,7 @@ ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -i $HOME\.ssh\smartops_oc
 3. Back in terminal 1 press Enter: tunnel closed, session deleted.
 4. Then the normal mode (`... bastion-connect.ps1`) a few times: every run should open the tunnel,
    some after a "tunnel attempt N … retrying" line. If one fails, send
-   `%LOCALAPPDATA%smartopsastion-ssh-debug.log`.
+   `%LOCALAPPDATA%\smartops\bastion-ssh-debug.log`.
 
 ## Pruning the policy to the minimum, one statement at a time
 
@@ -181,8 +187,8 @@ The probe passed with the three initial statements plus three reads. Remove each
 | 4    | (only if step 2 failed) replace the family by the resource types Oracle lists for `CreateSession`: `read vcns`, `read subnets`, `read vnics`, one at a time | `-Probe` after each          | keep only the ones needed | —                          |
 | 5    | (only if step 3 failed) replace the family by `read instances`, `read vnic-attachments`, `read instance-agent-plugins`, one at a time                       | `-Probe` after each          | keep only the ones needed | —                          |
 
-The result is the narrowest policy that still lets the tool update the allowlist and create / delete
-sessions. Write the final statements here (and in CLAUDE.md) when you have them.
+**Done (2026-10-03).** Result: the four statements of step 2 (steps 1 and 3 passed, step 2 failed).
+It is the narrowest policy that still lets the tool update the allowlist and create / delete sessions.
 
 ## If it fails
 

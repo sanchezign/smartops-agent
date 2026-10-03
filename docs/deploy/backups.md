@@ -31,40 +31,65 @@ It prints `Public key: age1…`. Show it again any time with `age-keygen -y smar
   Without it the backups are unreadable, and nobody (including me) can recover it.
 - Never copy it to the VM, the repository or a chat. Only the `age1…` line travels.
 
-## 2. The bucket, group and policy (your PC, administrator profile)
+## 2. The bucket, group and policy (Oracle web console, no admin API key)
 
-You need the OCI CLI with your **administrator** profile (not the Bastion or launcher users) and:
+You do **not** need an administrator API key on your PC: everything below is done in the web
+console, signed in as yourself. (OCI Cloud Shell would also work, but it has no PowerShell, so it
+could not run `setup-backup-bucket.ps1`; see "Alternative" at the end of this step.)
 
-- the compartment OCID of `smartops` (Console → Identity → Compartments);
-- the VM's OCID (Console → Compute → Instances → `smartops-demo-micro` → OCID → Copy).
+Get two values first:
 
-Look at the plan first, nothing changes with `-DryRun`:
+- the VM's OCID: Compute → Instances → `smartops-demo-micro` → OCID → _Copy_;
+- the **namespace**: Storage → Buckets, shown at the top of the page (a short string). It becomes
+  `OCI_NAMESPACE`.
+
+Do the four parts **in this order** (the lifecycle rule needs the policy):
+
+**a) Dynamic group** — Identity & Security → Domains → `Default` → Dynamic groups → _Create dynamic
+group_. Name `smartops-vm` (it cannot be changed later), description "SmartOps demo VM", matching
+rule (type it, replacing the OCID; Oracle does not verify OCIDs, so check it twice):
+
+```text
+instance.id = 'ocid1.instance.oc1.sa-saopaulo-1.xxxx'
+```
+
+**b) Policy** — Identity & Security → Policies → _Create policy_, **in the root compartment**
+(the tenancy), name `smartops-backups`, description "SmartOps demo: append-only backups". In the
+policy builder switch to the manual editor and paste exactly these three statements (one per line;
+the region in the last one is yours if it is not São Paulo):
+
+```text
+Allow dynamic-group 'Default'/'smartops-vm' to read buckets in compartment smartops where target.bucket.name = 'smartops-backups'
+Allow dynamic-group 'Default'/'smartops-vm' to manage objects in compartment smartops where all {target.bucket.name = 'smartops-backups', any {request.permission = 'OBJECT_CREATE', request.permission = 'OBJECT_INSPECT'}}
+Allow service objectstorage-sa-saopaulo-1 to manage object-family in compartment smartops where any {request.permission = 'BUCKET_INSPECT', request.permission = 'BUCKET_READ', request.permission = 'OBJECT_INSPECT', request.permission = 'OBJECT_DELETE', request.permission = 'OBJECT_VERSION_DELETE'}
+```
+
+What they say: the VM may read that one bucket's metadata and **create / inspect** objects in it, and
+nothing else (no overwrite, delete or read). The third one lets the Object Storage _service_ delete
+expired objects for the lifecycle rule. If the console shows your identity domain with another
+name (Identity → Domains), use that name instead of `Default` in the first two.
+
+**c) Bucket** — Storage → Buckets → _Create bucket_, compartment `smartops`, name
+`smartops-backups`, tier **Standard**, **no** auto-tiering, **no** object versioning, no events,
+Oracle-managed encryption (the default), visibility private (the default; never public).
+
+**d) Lifecycle rule** — open the bucket → _Lifecycle policy rules_ (called _Policies_ in some console
+versions) → _Create rule_: name `expire-backups`, target **all objects in the bucket**, action
+**Delete**, **30 days**, enabled. Oracle applies rules within 10 minutes of each trigger (up to about
+a day for the first pass). The console may warn that it needs a policy: that is statement 3 above,
+already created in part b.
+
+Check it: the bucket page must say Visibility _Private_, and Identity → Policies →
+`smartops-backups` must list exactly those three statements.
+
+**Alternative (an administrator profile in the OCI CLI):**
+`scripts\oci\setup-backup-bucket.ps1` does all four parts, idempotently, and prints the same
+statements. Look at the plan with `-DryRun` first:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\oci\setup-backup-bucket.ps1 `
   -CompartmentId ocid1.compartment.oc1..xxxx -InstanceId ocid1.instance.oc1.sa-saopaulo-1.xxxx -DryRun
 ```
-
-Read the three policy statements it prints. They must say exactly this (domain and region may
-differ):
-
-```text
-Allow dynamic-group 'Default'/'smartops-vm' to read buckets in compartment smartops where target.bucket.name = 'smartops-backups'
-Allow dynamic-group 'Default'/'smartops-vm' to manage objects in compartment smartops where all {target.bucket.name = 'smartops-backups', any {request.permission = 'OBJECT_CREATE', request.permission = 'OBJECT_INSPECT'}}
-Allow service objectstorage-sa-saopaulo-1 to manage object-family in compartment smartops where any {…delete permissions…}
-```
-
-If it all looks right, run it again without `-DryRun` and type `yes`. It is **idempotent**: running it
-again changes nothing that is already right. At the end it prints two lines:
-
-```ini
-OCI_BUCKET=smartops-backups
-OCI_NAMESPACE=<your tenancy namespace>
-```
-
-If the Console shows your identity domain with another name (Identity → Domains), pass
-`-IdentityDomain <name>`. If your tenancy has no identity domains, tell me: the statement uses
-`dynamic-group smartops-vm` without the domain prefix.
 
 ## 3. Configure the VM (through Bastion)
 
@@ -120,12 +145,12 @@ Check in the Console (Storage → Buckets → `smartops-backups`) that a folder
 
 ## 6. Restore test on your PC
 
-Download that folder with your administrator profile (the VM could not do this, you can):
-
-```powershell
-oci os object bulk-download --namespace-name <namespace> --bucket-name smartops-backups `
-  --prefix "<UTC stamp>-manual/" --download-dir C:\restore-test
-```
+Download the three files of that folder from the web console, signed in as yourself (the VM could
+not do this, you can): Storage → Buckets → `smartops-backups` → Objects → the folder
+`<UTC stamp>-manual/` → for each of `smartops_demo.dump.age`, `demo.env.age` and `manifest.txt`,
+_⋮ → Download_. Put them together in `C:\restore-test\<UTC stamp>-manual\`.
+(With an administrator CLI profile, `oci os object bulk-download --prefix "<UTC stamp>-manual/"`
+does the same in one command.)
 
 Then, from the repository (Git Bash, Docker running):
 
@@ -138,10 +163,9 @@ downloaded folder afterwards. Repeat monthly; the Healthchecks reminder arrives 
 
 ## Troubleshooting
 
-| Symptom                                               | Likely cause                                                                        |
-| ----------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `NotAuthorizedOrNotFound` on the first upload         | Dynamic group or policy not applied yet (up to ~1 h), or wrong `OCI_NAMESPACE`      |
-| Selftest says "it WORKED, it must be refused"         | The policy is wider than planned: run the setup script again, it rewrites it        |
-| `upload … failed` three times, error mentions DNS     | The VM has no route to Object Storage: check the subnet's route table / egress rule |
-| `BucketNotFound`                                      | Wrong `OCI_BUCKET` or namespace in `backup.env`                                     |
-| Setup script: "Listing dynamic groups: NotAuthorized" | You ran it with a restricted profile; use the administrator one                     |
+| Symptom                                           | Likely cause                                                                        |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `NotAuthorizedOrNotFound` on the first upload     | Dynamic group or policy not applied yet (up to ~1 h), or wrong `OCI_NAMESPACE`      |
+| Selftest says "it WORKED, it must be refused"     | The policy is wider than planned: run the setup script again, it rewrites it        |
+| `upload … failed` three times, error mentions DNS | The VM has no route to Object Storage: check the subnet's route table / egress rule |
+| `BucketNotFound`                                  | Wrong `OCI_BUCKET` or namespace in `backup.env`                                     |
