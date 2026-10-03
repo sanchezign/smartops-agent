@@ -117,6 +117,37 @@ powershell -ExecutionPolicy Bypass -File scripts\oci\bastion-connect.ps1
 - **`-SshDebug` now logs every attempt**, the one that worked included, and everything the live tunnel
   said until it closed.
 
+- **Intermittent drops (third real test).** On the VM, `journalctl -u ssh` shows
+  `Connection closed by 10.0.0.181` — that address is the **Bastion's**, so it is the Bastion that
+  closes some forwarded connections, mostly right after a session is activated (the same window in
+  which it still rejects the key). Two things in the tool deal with it:
+  1. **Wait until the tunnel is usable, measured.** After "tunnel up" it reads the VM's sshd banner
+     (`SSH-2.0-…`) through the tunnel and waits until it answers twice in a row
+     (`-StableCount`, `-StableIntervalSeconds`, `-StableWaitSeconds`); it prints how long that took
+     ("tunnel stable: … (4.2 s)"). In `-TunnelOnly` the `ssh`/`scp` lines are printed only after that.
+  2. **Retry an interactive ssh that never got established.** Exit code 255 within
+     `-ConnectGraceSeconds` (60 s) means the connection was dropped before the session existed: the tool
+     checks the tunnel again and retries, keeping the SAME tunnel, up to `-ConnectRetries` (2) more
+     times, and says so. A 255 after the grace period is a real session that dropped: not retried.
+     You will have to type the key passphrase again on a retry.
+- **Typing the passphrase is slow for the Bastion.** `ssh` connects first and asks for the passphrase
+  after, so the forwarded connection sits idle while you type. If drops keep happening, load the key
+  into the Windows ssh-agent once (the passphrase is then asked only then, not on every connection):
+
+  ```powershell
+  # once, in an elevated PowerShell
+  Set-Service ssh-agent -StartupType Manual; Start-Service ssh-agent
+  # as you
+  ssh-add $HOME\.ssh\smartops_oci
+  ```
+
+  Trade-off: while the agent holds the key, anything running as you can use it. That is your call.
+
+- **To collect evidence when it fails**: run with `-SshDebug` and, on the VM right after,
+  `sudo journalctl -u ssh --since "10 min ago" | grep -E "Accepted|closed"`. The debug log has
+  `tunnel stable after …` and `interactive ssh try N ended: exit … after … s` lines to line the
+  timestamps up with the VM's.
+
 ### Which option broke it? (optional, to find out)
 
 With a `-TunnelOnly` tunnel up on port 2222, one at a time (each should either work or die after the

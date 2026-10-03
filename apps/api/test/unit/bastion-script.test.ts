@@ -73,6 +73,14 @@ describe("bastion-connect.ps1 (static guards)", () => {
     expect(text).toContain("tunnel closed (everything the live tunnel logged)");
   });
 
+  it("waits for the VM's banner through the tunnel and retries an interactive ssh that never established", () => {
+    expect(text).toContain("function Wait-TunnelStable");
+    expect(text).toContain('-like "SSH-*"');
+    expect(text).toContain("-ne 255");
+    expect(text).toContain("$ConnectRetries");
+    expect(text).toContain("$ConnectGraceSeconds");
+  });
+
   it("keeps the connection alive (the Bastion drops idle SSH)", () => {
     expect(text).toContain("ServerAliveInterval=30");
   });

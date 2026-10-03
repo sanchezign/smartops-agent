@@ -1859,6 +1859,16 @@ a real client.**
       the working set (guarded by a test: the `$sshOpts` line is pinned). `-SshDebug` now logs every
       attempt (success included) and what the live tunnel said until it closed. Policy pruning steps
       are in docs/deploy/bastion-access.md.
+    - M3b third real test (2026-10-03, user): works but intermittently. VM journal: `Connection closed
+      by 10.0.0.181` — 10.0.0.181 is the BASTION's private IP, so the Bastion drops some forwarded
+      connections (right after a session activates; also the idle connection while the user types the
+      key passphrase is a suspect). The `-SshDebug` log showed that the tool's own Wait-Port probe is
+      a connect-and-close (the harmless `Connection closed` line at 02:44:05). Fix
+      (fix/bastion-stable-tunnel): after "tunnel up" wait until the VM's sshd banner (`SSH-2.0-…`)
+      answers twice in a row THROUGH the tunnel (measured; printed and logged), and retry an interactive
+      ssh that ends with 255 within 60 s (up to 2 more tries, same tunnel); -SshDebug logs the stability
+      wait and every interactive try (exit code, seconds). ssh-agent is documented as the option that
+      removes the idle-while-typing window. 54 checks against the fake oci / ssh.
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs

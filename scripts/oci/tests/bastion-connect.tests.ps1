@@ -63,8 +63,16 @@ if ($a -contains "-N") {
   $l = ($a | Where-Object { $_ -match '^\d+:[\d.]+:22$' } | Select-Object -First 1)
   $port = [int]($l -split ":")[0]
   $listener = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, $port)
-  $listener.Start(); Start-Sleep -Seconds 120
+  $listener.Start()
+  while ($true) {   # like the VM's sshd behind the tunnel: it greets with its banner
+    $c = $listener.AcceptTcpClient()
+    $w = New-Object System.IO.StreamWriter($c.GetStream()); $w.Write("SSH-2.0-FakeOpenSSH`r`n"); $w.Flush(); $c.Close()
+  }
 }
+$ic = Join-Path $env:FAKE_DIR "ssh-interactive-count.txt"
+$k = 1 + $(if (Test-Path $ic) { [int](Get-Content $ic) } else { 0 })
+Set-Content $ic $k
+if ($env:FAKE_ISSH_FAIL_N -and $k -le [int]$env:FAKE_ISSH_FAIL_N) { exit 255 }
 exit 0
 '@ | Set-Content -Path (Join-Path $work "fake-ssh.ps1") -Encoding ASCII
 "@echo off`r`npowershell -NoProfile -ExecutionPolicy Bypass -File `"%~dp0fake-ssh.ps1`" %*" | Set-Content -Path (Join-Path $work "ssh.cmd") -Encoding ASCII
@@ -79,7 +87,9 @@ exit 0
 Set-Content (Join-Path $work "id_vm") "KEY"
 
 # --- runner: a clean child process per scenario --------------------------------------------------
-function Run-Tool([string]$allowlist, [string]$deny, [string[]]$extra, [switch]$feedEnter, [int]$sshFailN = 0, [string]$sshFailText = "") {
+function Run-Tool([string]$allowlist, [string]$deny, [string[]]$extra, [switch]$feedEnter, [int]$sshFailN = 0, [string]$sshFailText = "", [int]$interactiveFailN = 0) {
+  Remove-Item (Join-Path $work "ssh-interactive-count.txt") -ErrorAction SilentlyContinue
+  $env:FAKE_ISSH_FAIL_N = "$interactiveFailN"
   Remove-Item $log -ErrorAction SilentlyContinue
   Remove-Item (Join-Path $work "ssh-count.txt") -ErrorAction SilentlyContinue
   $env:FAKE_SSH_FAIL_N = "$sshFailN"; $env:FAKE_SSH_FAIL_TEXT = $sshFailText
@@ -90,7 +100,7 @@ function Run-Tool([string]$allowlist, [string]$deny, [string[]]$extra, [switch]$
   $args2 = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $script, "-BastionId", "ocid1.bastion.x",
     "-OciCommand", (Join-Path $work "oci.cmd"), "-SshCommand", (Join-Path $work "ssh.cmd"),
     "-SshKeygenCommand", (Join-Path $work "ssh-keygen.cmd"), "-PublicIp", "203.0.113.7", "-Region", "sa-saopaulo-1",
-    "-IdentityFile", (Join-Path $work "id_vm"), "-LocalPort", "$testPort") + $extra
+    "-IdentityFile", (Join-Path $work "id_vm"), "-LocalPort", "$testPort", "-StableIntervalSeconds", "1") + $extra
   if ($feedEnter) {
     # -TunnelOnly waits for Enter: stdin comes from a file with one empty line; a hung run is killed.
     $script:runNo += 1
@@ -194,6 +204,29 @@ Check ((Test-Path $dbg) -and -not ((Get-Content $dbg -Raw) -match "oc1\.sa-saopa
 $dbgText = if (Test-Path $dbg) { Get-Content $dbg -Raw } else { "" }
 Check ($dbgText -match "attempt 1: FAILED" -and $dbgText -match "attempt 2: tunnel UP") "-SshDebug logs EVERY attempt, the one that worked included"
 Check ($dbgText -match "tunnel closed \(everything the live tunnel logged\)" -and $dbgText -match "Authenticated to host\.bastion") "-SshDebug logs what the live tunnel said until it closed"
+
+# 6g) the tunnel is waited for until the VM's sshd answers through it (a measured wait)
+$r = Run-Tool "203.0.113.7/32" "" @()
+Check ($r.Out -match "tunnel stable: the VM's sshd answered 2 times in a row") "waits until the VM's banner arrives through the tunnel, twice in a row"
+Check ($r.Out.IndexOf("tunnel stable") -lt $r.Out.IndexOf("session deleted")) "...before the interactive ssh and the clean-up"
+
+# 6h) the interactive ssh is dropped once (exit 255 right away): retried, the tunnel stays up
+$r = Run-Tool "203.0.113.7/32" "" @("-SshDebug") -interactiveFailN 1
+Check (([regex]::Matches($r.Calls, "ubuntu@localhost")).Count -eq 2) "ssh exit 255 before establishing -> retried once"
+Check (([regex]::Matches($r.Calls, "ssh -4 -n -N")).Count -eq 1) "...with the SAME tunnel (it is not restarted)"
+Check ($r.Out -match "retrying \(1/3\)") "...and it says so"
+Check ($r.Calls -match "bastion session delete") "...and the session is still deleted"
+$dbgText = Get-Content (Join-Path $work "smartops\bastion-ssh-debug.log") -Raw
+Check ($dbgText -match "interactive ssh try 1 ended: exit 255" -and $dbgText -match "interactive ssh try 2 ended: exit 0" -and $dbgText -match "tunnel stable after") "-SshDebug logs the stability wait and every interactive try with its exit code and duration"
+
+# 6i) it never connects: 3 tries, then a clear message (the tunnel is fine)
+$r = Run-Tool "203.0.113.7/32" "" @() -interactiveFailN 99
+Check (([regex]::Matches($r.Calls, "ubuntu@localhost")).Count -eq 3) "persistent 255 -> 3 tries in total, not more"
+Check ($r.Out -match "could not establish the session after 3 tries") "...then says the tunnel is fine and the session was not established"
+
+# 6j) a 255 AFTER the grace period (a long session that dropped) is not retried
+$r = Run-Tool "203.0.113.7/32" "" @("-ConnectGraceSeconds", "0") -interactiveFailN 1
+Check (([regex]::Matches($r.Calls, "ubuntu@localhost")).Count -eq 1) "255 after the grace period -> no retry (it was a real session)"
 
 # 7) the script never writes to the OCI config and is plain ASCII
 $text = Get-Content $script -Raw

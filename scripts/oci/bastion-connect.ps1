@@ -54,6 +54,15 @@ param(
   # pause between attempts (grows up to 3x).
   [int]$TunnelWaitSeconds = 90,
   [int]$TunnelRetrySeconds = 5,
+  # After the tunnel is up, wait until the VM's sshd answers (its "SSH-2.0-..." banner) this many times in
+  # a row through it: the Bastion drops the first forwarded connections of a new session.
+  [int]$StableCount = 2,
+  [int]$StableIntervalSeconds = 2,
+  [int]$StableWaitSeconds = 30,
+  # An interactive ssh that ends with 255 within this many seconds never got established (the Bastion
+  # dropped it): it is retried, with the tunnel kept up, at most -ConnectRetries more times.
+  [int]$ConnectGraceSeconds = 60,
+  [int]$ConnectRetries = 2,
   # Testing / overrides (a fake oci and ssh, a fixed IP or region).
   [string]$OciCommand = "oci",
   [string]$SshCommand = "ssh",
@@ -156,6 +165,42 @@ function Wait-Port([int]$port, [int]$seconds, $proc) {
     } catch { Start-Sleep -Milliseconds 300 }
   }
   return $false
+}
+
+# What the VM's sshd says through the tunnel: its banner ("SSH-2.0-OpenSSH_..."), or "" if nothing.
+function Read-SshBanner([int]$port) {
+  $c = New-Object System.Net.Sockets.TcpClient
+  try {
+    $pending = $c.BeginConnect("127.0.0.1", $port, $null, $null)
+    if (-not $pending.AsyncWaitHandle.WaitOne(3000)) { return "" }
+    $c.EndConnect($pending)
+    $c.ReceiveTimeout = 4000
+    $buffer = New-Object byte[] 255
+    $n = $c.GetStream().Read($buffer, 0, 255)
+    if ($n -le 0) { return "" }
+    return [Text.Encoding]::ASCII.GetString($buffer, 0, $n).Trim()
+  } catch { return "" } finally { $c.Close() }
+}
+
+# The tunnel is "up" as soon as ssh listens; it is USABLE when the VM's sshd answers through it,
+# repeatedly. Measured, not slept: the elapsed time goes to the screen and to the debug log.
+function Wait-TunnelStable([int]$port) {
+  $clock = [Diagnostics.Stopwatch]::StartNew()
+  $good = 0
+  while ($clock.Elapsed.TotalSeconds -lt $StableWaitSeconds) {
+    if ($script:tunnel.HasExited) { Fail "The tunnel closed by itself while waiting for it to settle" "Run again; with -SshDebug the log says what the Bastion did." }
+    if ((Read-SshBanner $port) -like "SSH-*") {
+      $good += 1
+      if ($good -ge $StableCount) {
+        Say ("tunnel stable: the VM's sshd answered {0} times in a row ({1:N1} s)" -f $good, $clock.Elapsed.TotalSeconds)
+        Write-SshDebugLog ("tunnel stable after {0:N1} s ({1} banners)" -f $clock.Elapsed.TotalSeconds, $good) ""
+        return
+      }
+    } else { $good = 0 }
+    Start-Sleep -Seconds $StableIntervalSeconds
+  }
+  Say ("WARNING: the VM's sshd did not answer {0} times in a row through the tunnel within {1} s; trying anyway" -f $StableCount, $StableWaitSeconds)
+  Write-SshDebugLog ("tunnel NOT stable after {0} s" -f $StableWaitSeconds) ""
 }
 
 function Read-Passphrase {
@@ -394,6 +439,7 @@ try {
   $sessionHost = "host.bastion.$region.oci.oraclecloud.com"
   Start-Tunnel $key $sessionHost $script:sessionId $port
   Say "tunnel up: localhost:$port -> ${TargetIp}:22"
+  Wait-TunnelStable $port
 
   # EXACTLY the option set proven on the real VM (2026-10-03). Adding HostKeyAlias,
   # StrictHostKeyChecking=accept-new and ServerAliveCountMax=4 made the connection die right after the
@@ -405,7 +451,22 @@ try {
     Say ("scp  : scp " + ($sshOpts -join " ").Replace("-p $port", "-P $port") + " <file> ${VmUser}@localhost:/tmp/")
     [void](Read-Host "Press Enter to close the tunnel and delete the session")
   } else {
-    & $SshCommand @sshOpts "$VmUser@localhost"
+    $try = 0
+    while ($true) {
+      $try += 1
+      $clock = [Diagnostics.Stopwatch]::StartNew()
+      & $SshCommand @sshOpts "$VmUser@localhost"
+      $code = $LASTEXITCODE
+      Write-SshDebugLog ("interactive ssh try {0} ended: exit {1} after {2:N1} s" -f $try, $code, $clock.Elapsed.TotalSeconds) ""
+      if ($code -ne 255 -or $clock.Elapsed.TotalSeconds -gt $ConnectGraceSeconds) { break }
+      if ($try -gt $ConnectRetries) {
+        Say ("ssh could not establish the session after {0} tries (exit 255 each time); the tunnel itself is fine. Run again, or see the runbook (section 9)." -f $try)
+        break
+      }
+      if ($script:tunnel.HasExited) { Say "the tunnel is gone: not retrying"; break }
+      Say ("ssh ended with 255 after {0:N0} s, before the session was established (the Bastion sometimes drops the first connections): checking the tunnel and retrying ({1}/{2})" -f $clock.Elapsed.TotalSeconds, $try, ($ConnectRetries + 1))
+      Wait-TunnelStable $port
+    }
   }
 } catch {
   if ($_.Exception.Message -ne "bastion-connect stopped") { Write-Host ("[bastion] ERROR: " + $_.Exception.Message) -ForegroundColor Red }
