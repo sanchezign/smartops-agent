@@ -240,7 +240,8 @@ The backend decides; n8n only orchestrates (ADR-015). Four workflows live in
 `n8n/workflows/`: the receiver (webhook `smartops-message-ready` → classify → route), the
 processor (extract → ingest), the notifier (notifications → supplier ack) and the error
 workflow (→ critical alert). Their names in n8n are still Spanish ("SmartOps · Receptor"…);
-they become English when the demo server imports them (phase 12). Import, credentials and publishing:
+the public demo does not run n8n (it uses the light in-process orchestrator, ADR-025), so they stay
+Spanish until a full-profile deployment imports them. Import, credentials and publishing:
 [docs/n8n-setup.md](n8n-setup.md).
 
 - **Outbox:** every inbound message ready for processing writes a `message.ready` event

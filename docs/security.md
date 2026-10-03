@@ -73,8 +73,9 @@ tests unless noted.
 
 ## The public demo server
 
-The demo server is being set up (phase 12). This section describes its configuration, which
-is tested end to end on a local copy of the deployment (`scripts/deploy/local-harness.sh`).
+The demo server is live at https://smartops-demo.duckdns.org. This section describes its configuration, which is tested
+end to end on a local copy of the deployment (`scripts/deploy/local-harness.sh`) and checked from
+outside on the live server (`scripts/deploy/demo-abuse-check.mjs`).
 
 - It runs with `DEMO_MODE`: fake AI, fake transcriber and its own Graph API. It refuses to start
   if any real key (Anthropic, Groq, Meta) is present, and refuses any database whose name does
@@ -86,7 +87,16 @@ is tested end to end on a local copy of the deployment (`scripts/deploy/local-ha
 - The shared public operator cannot change passwords, roles or its saved language, cannot
   close other visitors' sessions, and is never locked out (a per-IP limit protects it). A demo
   reset is limited to once per 10 minutes for everyone.
-- Backups are encrypted with `age`; the private key lives only on the owner's computer.
+- Backups are encrypted with `age`; the private key lives only on the owner's computer. They go to a
+  private Object Storage bucket that the server can only **append** to: it cannot overwrite, delete or
+  read a backup (ADR-026); `backup-selftest.sh` proves it.
+- Measured on the live server (2026-10-03): admin, internal and webhook routes answer 401 / 404; a
+  2 MB JSON body gets 413 (refused at the proxy above 1 MiB); the login limit still answers 429 when a
+  client sends a different `X-Forwarded-For` on every attempt; the event-stream, global and sample
+  limits answer 429; 100 health requests, ten at a time, took p95 294 ms.
+- MDN HTTP Observatory (2026-10-03): **B+ (80)**, 11 of 12 tests passed. The only deduction is
+  `'unsafe-inline'` in `script-src` (-20): Next.js hydrates with inline scripts, and a per-request
+  nonce policy is the known way to remove it.
 
 ## Known limits
 

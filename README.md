@@ -6,8 +6,9 @@ spreadsheets, voice notes. SmartOps reads them, keeps the product catalog up to 
 person when something is doubtful, and tells the team only what needs action. People can take
 over any chat at any moment.
 
-> Status: built to production standards and tested end to end. The public demo server is being
-> deployed (phase 12). This README will link to it once it is live.
+> Status: built to production standards and tested end to end. **The public demo is live:**
+> [https://smartops-demo.duckdns.org](https://smartops-demo.duckdns.org) (sample data, free, resets every hour). The login screen shows the shared
+> demo account; "Try the system" sends sample messages through the real pipeline.
 
 > **Public demo vs the real system.** The public demo runs on a 1 GB free VM, so it uses a light
 > in-process orchestrator instead of n8n (and API + worker in one process). The real system uses

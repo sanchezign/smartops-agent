@@ -6,7 +6,7 @@ again before quoting a client.
 
 ## The public demo: $0
 
-The demo server is being set up (phase 12); these are the services it uses.
+The demo server runs at https://smartops-demo.duckdns.org; these are the services it uses.
 
 | Item                  | Service                                                                          | Cost |
 | --------------------- | -------------------------------------------------------------------------------- | ---- |

@@ -14,6 +14,7 @@
 | [Coexistence guide](coexistence-client-guide.md)                                | Using one WhatsApp number from the app and from SmartOps: options for a client      |
 | [Runbook](runbook.md)                                                           | Operating the demo server: deploy, rollback, backups, restore, secrets, incidents   |
 | [SSH through Bastion, on demand (M3b)](deploy/bastion-access.md)                | One command when your home IP changes: allowlist, ephemeral key, tunnel, cleanup    |
+| [CPU calibration vs Oracle's idle policy (M7)](deploy/cpu-calibration.md)       | Reading OCI's CpuUtilization against what the VM measures itself                    |
 | [Monitoring and abuse checks (M6)](deploy/monitoring.md)                        | Healthchecks.io + UptimeRobot setup, alert drills, bounded abuse / load check       |
 | [Backups to Object Storage (M5)](deploy/backups.md)                             | Age key, append-only bucket, VM setup, proof and restore test                       |
 | [Oracle Cloud setup (M1)](deploy/m1-oracle-setup.md)                            | Creating the $0 demo infrastructure step by step                                    |

@@ -1950,6 +1950,22 @@ a real client.**
       `request_body max_size` went from 5MB to **1MiB** (= `express.json` limit, guarded by a test; a slow 2.2 MB upload
       is now refused at ~1 MiB) and local-smoke checks it through Caddy. `status.sh` printed "<no value>" as the Health
       column title (Compose has no title for .Health with `table`): it builds its own header now (test with a fake docker).
+    - M6 CLOSED (2026-10-03): PR #30 merged (abuse-check content type, Caddy 1MiB, status.sh header).
+    - M7 — PREPARED (2026-10-03, branch `feat/phase-12-m7`), WAITING for the user's measurements.
+      Observatory (MDN HTTP Observatory v2 API, POST /api/v2/scan, algorithm v6) on the live demo: **B+ (80)**, 11 of 12
+      tests pass; the only deduction is `'unsafe-inline'` in script-src (-20, Next hydration scripts). Not fixed: a
+      per-request nonce CSP (middleware, `'strict-dynamic'`, every page dynamic) is a separate plan for the user to
+      approve (risk: broken hydration, charts' inline styles; E2E would watch console CSP errors). CORP is "not
+      implemented" with modifier 0 (no points). README, costs.md, security.md and the portfolio kit now carry the demo
+      URL (https://smartops-demo.duckdns.org); `[REPO_URL]` stays pending (private repo).
+      CPU calibration: Oracle's doc (checked 2026-10-03): idle = in 7 days CPU p95 < 20 % AND network < 20 % (memory only
+      A1), applies to E2.1.Micro ("1/8th of an OCPU with the ability to use additional CPU resources"); it says nothing
+      about stop vs terminate nor notification. `CpuUtilization` (oci_computeagent) is emitted by the Compute Instance
+      Monitoring plugin INSIDE the guest (10 s samples, 6 points a minute), so it probably equals the guest's own busy%:
+      `deploy/bin/cpu-calibrate.sh [minutes]` (no root; busy / steal / iowait per minute from /proc/stat deltas + p95)
+      is compared with the Console metric (`docs/deploy/cpu-calibration.md`; MQL `CpuUtilization[1d]{resourceId = "…"}
+      .percentile(0.95)`, intervals 1m–60m, 1h–24h, 1d). If the metric is the guest's busy%, an idle demo is far under
+      20 % and the reclaim risk is real: the plan is unchanged (alerts, start the VM, restore from backup), never fake load.
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs

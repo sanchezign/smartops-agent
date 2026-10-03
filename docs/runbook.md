@@ -221,7 +221,8 @@ third-party reports; to start it again its shape must be available and a free ac
 support requests. What to do: the Healthchecks alert arrives (no pings) → start it from the console
 or the CLI (section 7). We never create artificial load. How "CPU utilization" is computed for a
 1/8-OCPU shape is not documented: it is calibrated on the real VM by comparing the `CpuUtilization`
-metric (Oracle Cloud Agent, Compute Instance Monitoring plugin) with the CPU time of a demo reset.
+metric (Oracle Cloud Agent, Compute Instance Monitoring plugin) with the CPU time of a demo reset:
+step by step in [cpu-calibration.md](deploy/cpu-calibration.md) (`deploy/bin/cpu-calibrate.sh` on the VM).
 
 ## 11. Connection tips and reminders
 
