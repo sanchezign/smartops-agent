@@ -25,17 +25,19 @@ async function post(path: string, bytes: number, headers: Record<string, string>
 }
 
 describe("body size limit over a real socket", () => {
-  it.each(["/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/demo/inject", "/api/v1/anything"])(
-    "%s answers 413 PAYLOAD_TOO_LARGE for a 2 MB body",
-    async (path) => {
-      const r = await post(path, 2 * 1024 * 1024, {
-        "x-smartops-csrf": "1",
-        origin: "http://localhost:3000",
-      });
-      expect(r.status).toBe(413);
-      expect(r.json).toMatchObject({ error: { code: "PAYLOAD_TOO_LARGE" } });
-    },
-  );
+  it.each([
+    "/api/v1/auth/login",
+    "/api/v1/auth/refresh",
+    "/api/v1/demo/inject",
+    "/api/v1/anything",
+  ])("%s answers 413 PAYLOAD_TOO_LARGE for a 2 MB body", async (path) => {
+    const r = await post(path, 2 * 1024 * 1024, {
+      "x-smartops-csrf": "1",
+      origin: "http://localhost:3000",
+    });
+    expect(r.status).toBe(413);
+    expect(r.json).toMatchObject({ error: { code: "PAYLOAD_TOO_LARGE" } });
+  });
 
   it("still accepts a body under the limit (the login answers on its merits, not 413)", async () => {
     const r = await post("/api/v1/auth/login", 1000, {
