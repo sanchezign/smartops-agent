@@ -6,6 +6,23 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.15.0](https://github.com/sanchezign/smartops-agent/compare/v0.14.0...v0.15.0) (2026-10-03)
+
+
+### Features
+
+* **deploy:** CPU calibration tool and guide, demo URL in the docs (phase 12 M7) ([8beb998](https://github.com/sanchezign/smartops-agent/commit/8beb9985f5d62f193336aeead270f5f7547e5154))
+
+
+### Bug Fixes
+
+* **deploy:** edge body limit equal to the API's, status table header, abuse-check content type ([479220a](https://github.com/sanchezign/smartops-agent/commit/479220a7ddd1f8c29bc696056678b9ec3d967ba0))
+
+
+### Documentation
+
+* **security:** why the public demo stays at Observatory B+, what would raise it, roadmap ([50f74eb](https://github.com/sanchezign/smartops-agent/commit/50f74ebc88d668a4f2d7156cd1854cd630eab4ba))
+
 ## [0.14.0](https://github.com/sanchezign/smartops-agent/compare/v0.13.0...v0.14.0) (2026-10-03)
 
 
