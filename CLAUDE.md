@@ -1896,6 +1896,19 @@ a real client.**
       exact statements of `setup-backup-bucket.ps1 -DryRun` (guide `docs/deploy/backups.md`); the script
       stays for anyone with an admin profile. Order: age key → console resources → merge release 0.13.0
       → deploy by Bastion → backup.env, selftest, manual backup, restore test.
+    - v0.13.0 RELEASED and DEPLOYED (2026-10-03): PRs #24 (M5) and #25 (docs) merged, release PR #20 merged,
+      run 37149488273 green (4 native builds, both multi-arch images checked: version 0.13.0 on amd64 and arm64).
+      The user deployed it on the VM: current 0.13.0 / previous 0.12.3, `demo-check.mjs` PASSED (samples 2.5–8 s,
+      SSE first frame 85–123 ms), `host-setup.sh` of 0.13.0 clean (apt timers 02:24 / 02:51, no bad unit file).
+    - M5 selftest FINDING (user, 2026-10-03, real VM): `backup-selftest.sh` said "write the same name again
+      (--no-overwrite) … it WORKED". Verified in Oracle's CLI reference and with the official oci-cli image against
+      a stateful fake endpoint: with `--no-overwrite` the CLI does a HEAD, and if the object exists it SKIPS the
+      upload and EXITS 0 ("The object already exists and was not overwritten", no PUT). It was the CLI, not the
+      policy (the refused `--force` already proved the policy). Fix (fix/backup-selftest-no-overwrite): the script
+      compares the object's etag + size (`os object head`, OBJECT_INSPECT) before and after instead of trusting the
+      exit code, after the `--no-overwrite` attempt and after every refused attempt; `backup-selftest.test.ts`
+      runs it against a fake docker emulating the CLI (5 scenarios; the old script fails 4 of them, reproducing the
+      user's exact output).
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs

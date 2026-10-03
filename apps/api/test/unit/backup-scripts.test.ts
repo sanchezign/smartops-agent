@@ -81,7 +81,10 @@ describe("backup-selftest.sh", () => {
     for (const refused of ["--force", "os object delete", "os object get", "os bucket delete"]) {
       expect(selftest).toContain(refused);
     }
-    expect(selftest.match(/expect_denied "/g)?.length).toBe(5);
+    expect(selftest.match(/expect_denied "/g)?.length).toBe(4);
+    // --no-overwrite exits 0 when the object exists (the CLI skips it): judged by the object, not the code.
+    expect(selftest.match(/expect_unchanged "/g)?.length).toBe(2);
+    expect(selftest).not.toMatch(/expect_denied "write the same name again/);
   });
 
   it("leaves a single probe object under selftest/ only", () => {

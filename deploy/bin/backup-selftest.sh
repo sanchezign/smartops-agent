@@ -6,7 +6,12 @@
 #   sudo ./backup-selftest.sh
 #
 # It leaves ONE tiny object under selftest/<UTC stamp>/ (nothing can delete it; the bucket's
-# lifecycle rule removes it after 30 days). Reads OCI_BUCKET / OCI_NAMESPACE from
+# lifecycle rule removes it after 30 days).
+#
+# Why it compares the object instead of trusting exit codes: with --no-overwrite the OCI CLI checks
+# first (HEAD) and, if the object exists, SKIPS the upload and exits 0 ("The object already exists
+# and was not overwritten"): that is the CLI, not the policy. So "write again" is judged by whether
+# the object (etag + size) CHANGED, and the policy itself is proven by the refused --force overwrite. Reads OCI_BUCKET / OCI_NAMESPACE from
 # /etc/smartops/backup.env. Exit code 0 only if every check behaves as the policy says.
 # shellcheck source=deploy/bin/lib.sh
 . "$(dirname "$0")/lib.sh"
@@ -30,7 +35,11 @@ printf 'backup-selftest %s\n' "$stamp" >"$work/probe.txt"
 
 cli() { # runs the OCI CLI with the VM's identity; prints nothing (only the exit code matters)
   docker run --rm --user 0:0 --cap-drop ALL --security-opt no-new-privileges:true --memory 192m \
-    -v "$work:/w" "$OCI_CLI_IMAGE" --auth instance_principal "$@" >/dev/null 2>"$work/last.err"
+    -v "$work:/w" "$OCI_CLI_IMAGE" --auth instance_principal "$@" >"$work/out.json" 2>"$work/last.err"
+}
+fingerprint() { # etag + size of the probe object ("" if it cannot be read)
+  cli os object head --namespace-name "$namespace" --bucket-name "$bucket" --name "$name" || return 0
+  grep -E '"(etag|content-length)"' "$work/out.json" | tr -d ' \n' || true
 }
 failures=0
 expect_ok() { # description, command…
@@ -38,6 +47,14 @@ expect_ok() { # description, command…
   shift
   if "$@"; then echo "PASS  $what"; else
     echo "FAIL  $what (it should work): $(tr '\n' ' ' <"$work/last.err" | cut -c1-200)"
+    failures=$((failures + 1))
+  fi
+}
+expect_unchanged() { # description, fingerprint taken before
+  local what="$1" before="$2" after
+  after="$(fingerprint)"
+  if [ -n "$after" ] && [ "$after" = "$before" ]; then echo "PASS  $what -> the object did not change"; else
+    echo "FAIL  $what (the object CHANGED or disappeared: before [$before] after [$after])"
     failures=$((failures + 1))
   fi
 }
@@ -55,15 +72,24 @@ expect_ok "create a new object" cli os object put --namespace-name "$namespace" 
   --file /w/probe.txt --name "$name" --no-multipart --no-overwrite
 expect_ok "list objects (needed to check before writing)" cli os object list --namespace-name "$namespace" \
   --bucket-name "$bucket" --prefix "selftest/$stamp/" --limit 1
-expect_denied "write the same name again (--no-overwrite)" cli os object put --namespace-name "$namespace" \
-  --bucket-name "$bucket" --file /w/probe.txt --name "$name" --no-multipart --no-overwrite
-expect_denied "overwrite it (--force)" cli os object put --namespace-name "$namespace" --bucket-name "$bucket" \
-  --file /w/probe.txt --name "$name" --no-multipart --force
+before="$(fingerprint)"
+if [ -z "$before" ]; then
+  echo "FAIL  read the new object's etag and size (needs OBJECT_INSPECT)"
+  failures=$((failures + 1))
+fi
+printf 'a different and longer replacement %s\n' "$stamp" >"$work/probe2.txt"
+# The CLI may skip (exit 0) or fail: both are fine, what matters is that the object stayed as it was.
+cli os object put --namespace-name "$namespace" --bucket-name "$bucket" --file /w/probe2.txt --name "$name" \
+  --no-multipart --no-overwrite || true
+expect_unchanged "write the same name again (--no-overwrite, the CLI skips it itself)" "$before"
+expect_denied "overwrite it (--force): this is the policy" cli os object put --namespace-name "$namespace" \
+  --bucket-name "$bucket" --file /w/probe2.txt --name "$name" --no-multipart --force
 expect_denied "delete it" cli os object delete --namespace-name "$namespace" --bucket-name "$bucket" \
   --object-name "$name" --force
 expect_denied "read it back" cli os object get --namespace-name "$namespace" --bucket-name "$bucket" \
   --name "$name" --file /w/readback.txt
 expect_denied "delete the bucket" cli os bucket delete --namespace-name "$namespace" --bucket-name "$bucket" --force
+expect_unchanged "after every attempt above" "$before"
 
 if [ "$failures" -eq 0 ]; then
   echo "SELFTEST PASSED: this VM can only append to the backup bucket."

@@ -126,8 +126,11 @@ with `NotAuthorizedOrNotFound`, wait and repeat before touching anything.
 sudo /opt/smartops/current/bin/backup-selftest.sh
 ```
 
-Expected: `PASS` for creating and listing, `PASS … -> refused` for writing the same name again,
-overwriting, deleting, reading back and deleting the bucket, then `SELFTEST PASSED`. It leaves one
+Expected: `PASS` for creating and listing; `PASS … the object did not change` after writing the same
+name again with `--no-overwrite` (the CLI skips it by itself and exits 0, so the script compares the
+object's etag and size instead of trusting the exit code); `PASS … -> refused` for overwriting with
+`--force` (this one proves the policy), deleting, reading back and deleting the bucket; a final
+`the object did not change`; then `SELFTEST PASSED`. It leaves one
 tiny object under `selftest/` that the lifecycle rule removes in 30 days. Any `FAIL` line says which
 rule is too wide or too narrow; send me the output.
 
