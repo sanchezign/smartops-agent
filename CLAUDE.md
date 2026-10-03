@@ -1850,6 +1850,15 @@ a real client.**
       (`ssh_dispatch_run_fatal`): the tunnel's ssh inherited the console — now `-n` + stdin / stdout
       redirected to files (hypothesis, to confirm on the user's PC with `-TunnelOnly` + a second
       terminal); `-SshDebug` = `ssh -v` with a sanitized log (session OCID redacted).
+    - M3b second real test (2026-10-03, user): the retry works ("Permission denied (publickey)" on
+      attempt 1, connected on 2). The VM connection died right after the key passphrase ("Unknown
+      error") because of the INTERACTIVE ssh's options, not the tunnel nor the console: this set FAILED
+      (ServerAliveInterval=30, ServerAliveCountMax=4, HostKeyAlias=smartops-demo-vm,
+      StrictHostKeyChecking=accept-new, -i, -p) and this one WORKS (`-o ServerAliveInterval=30 -i <key>
+      -p <port> user@localhost`). The tool, the line `-TunnelOnly` prints and the scp line now use ONLY
+      the working set (guarded by a test: the `$sshOpts` line is pinned). `-SshDebug` now logs every
+      attempt (success included) and what the live tunnel said until it closed. Policy pruning steps
+      are in docs/deploy/bastion-access.md.
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs

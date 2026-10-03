@@ -60,6 +60,19 @@ describe("bastion-connect.ps1 (static guards)", () => {
     expect(text).toContain("NETWORK or the allowlist");
   });
 
+  it("the interactive ssh keeps the option set proven on the real VM (more options broke it)", () => {
+    const line = text.split("\n").find((l) => l.includes("$sshOpts = @("))!;
+    expect(line.replaceAll(/\s+/g, " ").trim()).toBe(
+      '$sshOpts = @("-o", "ServerAliveInterval=30", "-i", $IdentityFile, "-p", "$port")',
+    );
+  });
+
+  it("logs every tunnel attempt and the live tunnel's output in -SshDebug", () => {
+    expect(text).toContain("function Write-SshDebugLog");
+    expect(text).toContain("tunnel UP (stderr so far)");
+    expect(text).toContain("tunnel closed (everything the live tunnel logged)");
+  });
+
   it("keeps the connection alive (the Bastion drops idle SSH)", () => {
     expect(text).toContain("ServerAliveInterval=30");
   });

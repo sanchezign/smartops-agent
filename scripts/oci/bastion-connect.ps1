@@ -70,6 +70,7 @@ $ErrorActionPreference = "Stop"
 $stateDir = Join-Path $env:LOCALAPPDATA "smartops"
 $stateFile = Join-Path $stateDir "bastion.json"
 $script:tunnel = $null
+$script:tunnelErr = ""
 $script:sessionId = ""
 $script:tempDir = ""
 
@@ -228,6 +229,22 @@ function New-EphemeralKey {
   return $key
 }
 
+# Reads a file another process still has open for writing (the tunnel's stderr).
+function Read-SharedText([string]$path) {
+  if (-not (Test-Path $path)) { return "" }
+  try {
+    $fs = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+    try { return (New-Object IO.StreamReader($fs)).ReadToEnd() } finally { $fs.Dispose() }
+  } catch { return "" }
+}
+
+function Write-SshDebugLog([string]$label, [string]$text) {
+  if (-not $SshDebug) { return }
+  $log = Join-Path $stateDir "bastion-ssh-debug.log"
+  Add-Content -Path $log -Value ("--- {0} {1}" -f $label, (Get-Date -Format "yyyy-MM-dd HH:mm:ss")) -Encoding ASCII
+  if ($text) { Add-Content -Path $log -Value (Protect-SshLog $text) -Encoding ASCII }
+}
+
 # What a failed tunnel attempt means, from ssh's own words (never from a guess).
 function Get-SshFailureClass([string]$text) {
   if ($text -match "Permission denied \(publickey") { return "key" }
@@ -262,15 +279,16 @@ function Start-Tunnel([string]$key, [string]$sessionHost, [string]$user, [int]$p
       "-i", ('"' + $key + '"'), "-L", ("{0}:{1}:22" -f $port, $TargetIp), "-p", "22", ("{0}@{1}" -f $user, $sessionHost))
     $script:tunnel = Start-Process -FilePath $SshCommand -ArgumentList ($sshArgs -join " ") -PassThru -WindowStyle Hidden `
       -RedirectStandardInput $emptyIn -RedirectStandardOutput $out -RedirectStandardError $err
-    if (Wait-Port $port 20 $script:tunnel) { return }
+    $script:tunnelErr = $err
+    if (Wait-Port $port 20 $script:tunnel) {
+      Write-SshDebugLog ("attempt {0}: tunnel UP (stderr so far)" -f $attempt) (Read-SharedText $err)
+      return
+    }
 
     if (-not $script:tunnel.HasExited) { & taskkill.exe /PID $script:tunnel.Id /T /F 2>&1 | Out-Null }
     $text = ""
     if (Test-Path $err) { $text = (Get-Content $err -Raw) }
-    if ($SshDebug -and $text) {
-      Add-Content -Path $debugLog -Value ("--- attempt {0} {1}" -f $attempt, (Get-Date -Format "yyyy-MM-dd HH:mm:ss")) -Encoding ASCII
-      Add-Content -Path $debugLog -Value (Protect-SshLog $text) -Encoding ASCII
-    }
+    Write-SshDebugLog ("attempt {0}: FAILED" -f $attempt) $text
     $class = Get-SshFailureClass $text
     $tail = (Protect-SshLog (($text -split "`r?`n" | Where-Object { $_ -and $_ -notmatch "^debug1:" } | Select-Object -Last 2) -join " | "))
 
@@ -301,6 +319,7 @@ function Stop-Tunnel {
     # The whole tree: a wrapper (or a future ssh helper) must not outlive the session.
     & taskkill.exe /PID $script:tunnel.Id /T /F 2>&1 | Out-Null
     Say "tunnel closed"
+    if ($script:tunnelErr) { Write-SshDebugLog "tunnel closed (everything the live tunnel logged)" (Read-SharedText $script:tunnelErr) }
   }
 }
 
@@ -376,8 +395,11 @@ try {
   Start-Tunnel $key $sessionHost $script:sessionId $port
   Say "tunnel up: localhost:$port -> ${TargetIp}:22"
 
-  $sshOpts = @("-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=4", "-o", "HostKeyAlias=smartops-demo-vm",
-    "-o", "StrictHostKeyChecking=accept-new", "-i", $IdentityFile, "-p", "$port")
+  # EXACTLY the option set proven on the real VM (2026-10-03). Adding HostKeyAlias,
+  # StrictHostKeyChecking=accept-new and ServerAliveCountMax=4 made the connection die right after the
+  # key passphrase ("ssh_dispatch_run_fatal: Connection to 127.0.0.1 port 2222: Unknown error"); do not
+  # add options here without testing them against the real tunnel.
+  $sshOpts = @("-o", "ServerAliveInterval=30", "-i", $IdentityFile, "-p", "$port")
   if ($TunnelOnly) {
     Say ("ssh  : ssh " + ($sshOpts -join " ") + " $VmUser@localhost")
     Say ("scp  : scp " + ($sshOpts -join " ").Replace("-p $port", "-P $port") + " <file> ${VmUser}@localhost:/tmp/")

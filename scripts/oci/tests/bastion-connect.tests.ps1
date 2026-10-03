@@ -59,6 +59,7 @@ if ($a -contains "-N") {
   if ($env:FAKE_SSH_FAIL_N -and $n -le [int]$env:FAKE_SSH_FAIL_N) {
     [Console]::Error.WriteLine($env:FAKE_SSH_FAIL_TEXT); exit 255
   }
+  [Console]::Error.WriteLine("Authenticated to host.bastion.sa-saopaulo-1.oci.oraclecloud.com (ocid1.bastionsession.oc1.sa-saopaulo-1.fake)")
   $l = ($a | Where-Object { $_ -match '^\d+:[\d.]+:22$' } | Select-Object -First 1)
   $port = [int]($l -split ":")[0]
   $listener = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, $port)
@@ -118,7 +119,9 @@ $r = Run-Tool "198.51.100.1/32" "" @()
 Check ($r.Calls -match "allowlist set to 203\.0\.113\.7/32") "changed IP -> the allowlist becomes <ip>/32"
 Check ($r.Calls -match "pubkey exists: True") "the session is created with an ephemeral public key that exists"
 Check ($r.Calls -match "ssh -4 -n -N .*-L ${testPort}:10\.0\.0\.21:22 .*ocid1\.bastionsession\.oc1\.sa-saopaulo-1\.fake@host\.bastion\.sa-saopaulo-1\.oci\.oraclecloud\.com") "the tunnel goes to the VM's private IP through the session host"
-Check ($r.Calls -match "ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o HostKeyAlias=smartops-demo-vm .*-p ${testPort} ubuntu@localhost") "the interactive ssh keeps the connection alive"
+$interactive = ($r.Calls -split "`r?`n" | Where-Object { $_ -match "ubuntu@localhost" } | Select-Object -First 1)
+Check ($interactive -match "^ssh -o ServerAliveInterval=30 -i .*id_vm -p ${testPort} ubuntu@localhost$") "the interactive ssh uses exactly the option set proven on the real VM"
+Check ($interactive -notmatch "HostKeyAlias|StrictHostKeyChecking|ServerAliveCountMax|IdentitiesOnly") "...and none of the options that killed the connection"
 Check ($r.Calls -match "bastion session delete") "the session is deleted at the end"
 Check ($r.Calls -notmatch "secret-passphrase") "the passphrase never reaches a command line"
 Check (([regex]::Matches($r.Calls, "\[pp\]")).Count -ge 4) "every oci call received the passphrase through the environment"
@@ -153,7 +156,9 @@ Check ($r.Out -match "PROBE PASSED") "probe: passes with every permission"
 
 # 6) tunnel-only prints scp / ssh commands and waits (stdin closed -> returns)
 $r = Run-Tool "203.0.113.7/32" "" @("-TunnelOnly") -feedEnter
-Check ($r.Out -match "scp  : scp .*-P ${testPort} .* ubuntu@localhost:/tmp/") "tunnel-only prints the scp command and then closes everything"
+Check ($r.Out -match "ssh  : ssh -o ServerAliveInterval=30 -i .*id_vm -p ${testPort} ubuntu@localhost") "tunnel-only prints the proven ssh command"
+Check ($r.Out -match "scp  : scp -o ServerAliveInterval=30 -i .*id_vm -P ${testPort} <file> ubuntu@localhost:/tmp/") "tunnel-only prints the scp command with the same options"
+Check ($r.Out -notmatch "HostKeyAlias|accept-new|ServerAliveCountMax") "...and neither line carries the options that broke it"
 Check ($r.Calls -match "bastion session delete") "tunnel-only also deletes the session"
 
 # 6b) the tunnel's ssh never shares the console: -n, and stdin redirected to a file
@@ -186,6 +191,9 @@ $dbg = Join-Path $work "smartops\bastion-ssh-debug.log"
 Check ($r.Calls -match "ssh -4 -n -N -v ") "-SshDebug adds -v to the tunnel"
 Check ((Test-Path $dbg) -and ((Get-Content $dbg -Raw) -match "Permission denied") -and ((Get-Content $dbg -Raw) -match "bastionsession\.<redacted>")) "-SshDebug logs ssh's own words with the session OCID redacted"
 Check ((Test-Path $dbg) -and -not ((Get-Content $dbg -Raw) -match "oc1\.sa-saopaulo-1\.fake")) "...and the OCID itself is not in the log"
+$dbgText = if (Test-Path $dbg) { Get-Content $dbg -Raw } else { "" }
+Check ($dbgText -match "attempt 1: FAILED" -and $dbgText -match "attempt 2: tunnel UP") "-SshDebug logs EVERY attempt, the one that worked included"
+Check ($dbgText -match "tunnel closed \(everything the live tunnel logged\)" -and $dbgText -match "Authenticated to host\.bastion") "-SshDebug logs what the live tunnel said until it closed"
 
 # 7) the script never writes to the OCI config and is plain ASCII
 $text = Get-Content $script -Raw

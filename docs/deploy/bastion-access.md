@@ -107,6 +107,27 @@ powershell -ExecutionPolicy Bypass -File scripts\oci\bastion-connect.ps1
 - **`-SshDebug`** runs the tunnel's ssh with `-v` and writes what ssh said (the session OCID redacted,
   never a key or a passphrase) to `%LOCALAPPDATA%smartopsastion-ssh-debug.log`.
 
+- **The interactive ssh uses only `-o ServerAliveInterval=30 -i <key> -p <port>`** (second real test).
+  The first version also passed `HostKeyAlias=smartops-demo-vm`, `StrictHostKeyChecking=accept-new` and
+  `ServerAliveCountMax=4`, and the connection died right after the key passphrase
+  (`ssh_dispatch_run_fatal: Connection to 127.0.0.1 port 2222: Unknown error`) while the tunnel itself
+  was fine. The tool now prints (and runs) the set that works. Because the host key is no longer
+  stored under an alias, a tunnel on another local port asks once whether to trust the VM
+  (`[localhost]:<port>`): answer `yes`.
+- **`-SshDebug` now logs every attempt**, the one that worked included, and everything the live tunnel
+  said until it closed.
+
+### Which option broke it? (optional, to find out)
+
+With a `-TunnelOnly` tunnel up on port 2222, one at a time (each should either work or die after the
+passphrase). Replace the key path with yours:
+
+```powershell
+ssh -o ServerAliveInterval=30 -o HostKeyAlias=smartops-demo-vm -i $HOME\.ssh\smartops_oci -p 2222 ubuntu@localhost
+ssh -o ServerAliveInterval=30 -o StrictHostKeyChecking=accept-new -i $HOME\.ssh\smartops_oci -p 2222 ubuntu@localhost
+ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -i $HOME\.ssh\smartops_oci -p 2222 ubuntu@localhost
+```
+
 ### Testing it again
 
 1. `... bastion-connect.ps1 -TunnelOnly -SshDebug` in terminal 1: it prints the `ssh` command and waits.
@@ -115,6 +136,22 @@ powershell -ExecutionPolicy Bypass -File scripts\oci\bastion-connect.ps1
 4. Then the normal mode (`... bastion-connect.ps1`) a few times: every run should open the tunnel,
    some after a "tunnel attempt N … retrying" line. If one fails, send
    `%LOCALAPPDATA%smartopsastion-ssh-debug.log`.
+
+## Pruning the policy to the minimum, one statement at a time
+
+The probe passed with the three initial statements plus three reads. Remove each extra statement
+**alone** and run `-Probe` after it (IAM changes can take about a minute to apply):
+
+| Step | Remove from the policy                                                                                                                                      | Run                          | If `PROBE PASSED`         | If it FAILS                |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ------------------------- | -------------------------- |
+| 1    | `… to inspect work-requests in compartment smartops`                                                                                                        | `bastion-connect.ps1 -Probe` | leave it removed          | put it back (it is needed) |
+| 2    | `… to read virtual-network-family in compartment smartops`                                                                                                  | `-Probe`                     | leave it removed          | put it back, go to step 4  |
+| 3    | `… to read instance-family in compartment smartops`                                                                                                         | `-Probe`                     | leave it removed          | put it back, go to step 5  |
+| 4    | (only if step 2 failed) replace the family by the resource types Oracle lists for `CreateSession`: `read vcns`, `read subnets`, `read vnics`, one at a time | `-Probe` after each          | keep only the ones needed | —                          |
+| 5    | (only if step 3 failed) replace the family by `read instances`, `read vnic-attachments`, `read instance-agent-plugins`, one at a time                       | `-Probe` after each          | keep only the ones needed | —                          |
+
+The result is the narrowest policy that still lets the tool update the allowlist and create / delete
+sessions. Write the final statements here (and in CLAUDE.md) when you have them.
 
 ## If it fails
 
