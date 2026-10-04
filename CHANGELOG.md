@@ -6,6 +6,18 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.16.0](https://github.com/sanchezign/smartops-agent/compare/v0.15.0...v0.16.0) (2026-10-04)
+
+
+### Features
+
+* **deploy:** nightly keep-alive CPU load, off by default, and the calibration conclusion (phase 12 M7) ([87ca323](https://github.com/sanchezign/smartops-agent/commit/87ca3235164596ae0fa1bbf95f76656cdf1475ba))
+
+
+### CI/CD
+
+* time-boxed Trivy exception for CVE-2026-103111, scan both images before failing ([4d037fd](https://github.com/sanchezign/smartops-agent/commit/4d037fd1f70ad8b6dfaf05d6e970ec521a32d848))
+
 ## [0.15.0](https://github.com/sanchezign/smartops-agent/compare/v0.14.0...v0.15.0) (2026-10-03)
 
 
