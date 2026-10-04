@@ -183,6 +183,12 @@ dist/worker.js`, `node node_modules/prisma/build/index.js migrate deploy` (relea
   unless listed in `security/audit-exceptions.json` with a justification and an expiry date.
   **The four current exceptions expire on 2026-10-31**: from that day `quick` fails until the
   dependency is updated or the exception is renewed with a new justification.
+- Docker image OS packages (Trivy, fixable HIGH/CRITICAL block; both images are always scanned, the step
+  fails at the end): accepted CVEs live in `.trivyignore` (mounted into the Trivy container, `--ignorefile`,
+  `--show-suppressed` prints what was ignored) and, with the reason and expiry, in the same
+  `security/audit-exceptions.json` under `imageExceptions` (a test keeps both identical). Current: CVE-2026-103111
+  (libpcre2, Debian 12) until 2026-10-18. **When Renovate moves `node:24.21.0-bookworm-slim` to a digest with
+  libpcre2-8-0 10.42-1+deb12u2, delete the exception from both files in that same PR.**
 - gitleaks: new commits on every push, the whole history weekly; `.gitleaks.toml` allowlists
   exact file + value pairs only (three fake test constants).
 - Workflows: `permissions: {}` at the top, the minimum per job, `persist-credentials: false`,

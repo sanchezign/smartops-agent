@@ -108,9 +108,10 @@ jobs:
           APP: ${{ matrix.app }}
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/.trivyignore:/.trivyignore:ro" \
             aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969 \
             image --quiet --scanners vuln --pkg-types os --severity HIGH,CRITICAL \
-            --ignore-unfixed --exit-code 1 "smartops-${APP}:release"
+            --ignore-unfixed --ignorefile /.trivyignore --show-suppressed --exit-code 1 "smartops-${APP}:release"
       # 2. Push by digest: same builder, every layer comes from the build above (cache hit),
       #    plus SBOM and provenance attestations.
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0

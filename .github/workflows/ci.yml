@@ -276,13 +276,21 @@ jobs:
       - name: Panel container smoke test (login page, SIGTERM)
         run: scripts/ci/admin-container-smoke.sh smartops-admin:ci
       - name: OS-package vulnerabilities (Trivy 0.74.0; fixable HIGH/CRITICAL block, npm deps are the audit gate)
+        # Both images are always scanned and both results are shown; the step fails at the end if any failed.
+        # .trivyignore (the accepted CVEs, with expiry; mirrored in security/audit-exceptions.json) is
+        # mounted into the Trivy container; --show-suppressed prints what it ignored, as proof it was read.
         run: |
+          failed=0
           for img in smartops-api:ci smartops-admin:ci; do
+            echo "::group::Trivy $img"
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+              -v "$PWD/.trivyignore:/.trivyignore:ro" \
               aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969 \
               image --quiet --scanners vuln --pkg-types os --severity HIGH,CRITICAL \
-              --ignore-unfixed --exit-code 1 "$img"
+              --ignore-unfixed --ignorefile /.trivyignore --show-suppressed --exit-code 1 "$img" || failed=1
+            echo "::endgroup::"
           done
+          exit "$failed"
 
   main-guard:
     name: main-guard

@@ -1996,6 +1996,12 @@ a real client.**
       `RuntimeMaxSec` does NOT apply to oneshot units (systemd.service man page): TimeoutStartSec=125min is the backstop. Trial of
       20 minutes by the owner decides 35 % (gates: samples ≤ 2× baseline, health p95 < 1 s, no alerts; else CPUQuota=25 % drop-in or
       leave off); must be ON before 2026-10-09 (7 days since the VM exists). Plan B (runbook §10, keepalive.md §4) stays either way.
+    - TRIVY BLOCKER (2026-10-04): the `images` job (and release.yml) failed on CVE-2026-103111 (HIGH, libpcre2-8-0 10.42-1+deb12u1,
+      fix deb12u2) in the node:24.21.0-bookworm-slim base (same digest still unpatched). Owner chose a time-boxed exception: `.trivyignore`
+      with ONLY that CVE, `exp:2026-10-18`, reason + Debian tracker; mirrored in `security/audit-exceptions.json` ("imageExceptions"),
+      test `image-exceptions.test.ts`; Trivy gets it mounted + `--ignorefile` + `--show-suppressed` in ci.yml and release.yml (verified
+      locally: exit 1 without it, exit 0 and "ignored" with it); the loop now scans BOTH images and fails at the end (admin was never
+      scanned before). Delete the exception in the same PR where Renovate bumps the node digest to one with deb12u2.
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs

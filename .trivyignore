@@ -1,0 +1,11 @@
+# Accepted OS-package finding in the Docker images (CI "images" job and release.yml, Trivy --ignorefile).
+# The same exception, with its reason, lives in security/audit-exceptions.json ("imageExceptions"):
+# a test keeps both identical. Trivy stops ignoring it on the date after exp, so it blocks again.
+#
+# CVE-2026-103111, libpcre2-8-0 10.42-1+deb12u1 (fixed in 10.42-1+deb12u2): out-of-bounds write via a crafted
+# regular expression. Node uses its own regex engine (V8 Irregexp), not pcre2; libpcre2 is only linked by
+# system tools in the base image that never receive user input. Tracker:
+# https://security-tracker.debian.org/tracker/CVE-2026-103111
+# REMOVE this line in the same PR in which Renovate moves node:24.21.0-bookworm-slim to a digest that
+# contains libpcre2-8-0 10.42-1+deb12u2.
+CVE-2026-103111 exp:2026-10-18

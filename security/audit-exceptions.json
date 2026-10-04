@@ -1,5 +1,5 @@
 {
-  "$comment": "Accepted HIGH/CRITICAL production advisories (phase 11 M3). Each entry needs a GHSA id, the package, a justification and an expiry date (YYYY-MM-DD); an expired entry blocks CI again. Checked by apps/api/scripts/security/audit-gate.ts.",
+  "$comment": "Accepted HIGH/CRITICAL production advisories (phase 11 M3). Each entry needs a GHSA id, the package, a justification and an expiry date (YYYY-MM-DD); an expired entry blocks CI again. Checked by apps/api/scripts/security/audit-gate.ts. \"imageExceptions\" are the accepted Trivy (OS package) findings of the Docker images: each has a CVE id, reason and expiry, and must match .trivyignore exactly (apps/api/test/unit/image-exceptions.test.ts).",
   "exceptions": [
     {
       "advisory": "GHSA-6g55-p6wh-862q",
@@ -35,6 +35,18 @@
       "reason": "Build-time only: braces 3.0.3 comes in through shadcn (a dependency of the panel because globals.css imports shadcn/tailwind.css) > ts-morph > fast-glob > micromatch. It expands glob patterns in the shadcn CLI; the stack exhaustion needs an attacker-supplied, deeply nested pattern, and no untrusted pattern ever reaches it. Neither the API nor the panel image contains braces (checked 2026-10-03). No fixed version exists yet (fix: null): re-check when the exception expires.",
       "expires": "2026-10-31",
       "addedAt": "2026-10-03"
+    }
+  ],
+  "imageExceptions": [
+    {
+      "cve": "CVE-2026-103111",
+      "package": "libpcre2-8-0",
+      "installed": "10.42-1+deb12u1",
+      "fixedIn": "10.42-1+deb12u2",
+      "reason": "Out-of-bounds write via a crafted regular expression in pcre2. Node uses its own regex engine (V8), not pcre2; libpcre2 is only used by system tools in the base image that never receive user input. Tracker: https://security-tracker.debian.org/tracker/CVE-2026-103111",
+      "removeWhen": "Renovate moves node:24.21.0-bookworm-slim to a digest with libpcre2-8-0 10.42-1+deb12u2: delete this entry and the line in .trivyignore in that same PR.",
+      "expires": "2026-10-18",
+      "addedAt": "2026-10-04"
     }
   ]
 }
