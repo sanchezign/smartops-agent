@@ -29,3 +29,4 @@ one Oracle Cloud E2.1.Micro) supersedes ADR-007.
 - [ADR-024](ADR-024-panel-i18n.md) — Panel in English and Spanish with next-intl; WhatsApp texts in the business language
 - [ADR-025](ADR-025-light-demo-profile.md) — Light demo profile: in-process orchestrator, API + worker in one process
 - [ADR-026](ADR-026-append-only-backups.md) — Append-only encrypted backups to Object Storage, uploaded by a pinned OCI CLI container
+- [ADR-027](ADR-027-keepalive-load.md) — A nightly keep-alive CPU load so the demo VM does not look idle to Oracle

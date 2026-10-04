@@ -16,6 +16,7 @@ restore test, which runs **on your computer**.
 | `/etc/smartops/demo.env`      | secrets + domain (root, **600**). Created by `init-secrets.sh`; never uploaded |
 | `/etc/smartops/backup.env`    | backup target, your **public** age key, Healthchecks URL (600)                 |
 | `/etc/smartops/monitor.env`   | Healthchecks URLs and disk / memory thresholds (600)                           |
+| `/etc/smartops/keepalive.env` | the keep-alive load switch: `KEEPALIVE_LOAD=on                                 | off`, minutes (644, no secrets) |
 | `/opt/smartops/releases/<v>/` | the bundle of each version (taken from its API image)                          |
 | `/opt/smartops/current`       | link to the version in use (the systemd timers follow it)                      |
 | `/opt/smartops/state/`        | `current`, `previous`, `deploy.log`                                            |
@@ -215,14 +216,34 @@ fallback.
 
 ## 10. Oracle's idle policy (Always Free VMs)
 
-Oracle may reclaim a VM that is idle for 7 days: CPU p95 under 20 % **and** network under 20 %
-(the memory criterion is for A1 only). A reclaimed VM is **stopped**, not deleted, according to
-third-party reports; to start it again its shape must be available and a free account cannot open
-support requests. What to do: the Healthchecks alert arrives (no pings) → start it from the console
-or the CLI (section 7). We never create artificial load. How "CPU utilization" is computed for a
-1/8-OCPU shape is not documented: it is calibrated on the real VM by comparing the `CpuUtilization`
-metric (Oracle Cloud Agent, Compute Instance Monitoring plugin) with the CPU time of a demo reset:
-step by step in [cpu-calibration.md](deploy/cpu-calibration.md) (`deploy/bin/cpu-calibrate.sh` on the VM).
+**The rule.** Oracle's documentation says an idle Always Free VM "may be reclaimed": idle = during 7 days CPU
+p95 under 20 %, network under 20 % (and memory under 20 % for A1 only). Sources:
+[Always Free Resources](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm).
+It does **not** say what happens to the instance, whether you are warned, whether it applies during the Free
+Trial, or on what granularity the p95 is computed. Third-party reports of Oracle's own e-mail
+([51sec.org](https://blog.51sec.org/2023/02/oracle-cloud-cleaning-up-idle-compute.html)) say: one week's notice,
+the instance is **stopped, not deleted**, and it can be started again "as long as the associated compute shape
+is available". The thresholds have changed over time (10 %, 15 %, now 20 %).
+
+**What we measured** (2026-10-04, [cpu-calibration.md](deploy/cpu-calibration.md)): the `CpuUtilization` metric is
+the guest's busy% plus steal (not scaled to the 1/8 OCPU); the quiet demo runs at about 3 % (p95 5 %), a normal
+day's p95 is 6–8 % and the busiest day measured 13 %. **The demo alone meets the literal criterion for idle.**
+
+**Decision (the owner, 2026-10-04).** Until now this runbook said "we never create artificial load". That rule
+is replaced: a nightly keep-alive load is allowed because losing the public demo to a reclaim costs more than two
+hours of a harmless process, and no official source forbids it. It is the lowest-priority, no-network, no-disk
+process of [ADR-027](adr/ADR-027-keepalive-load.md), **off by default**, trial and activation in
+[keepalive.md](deploy/keepalive.md). Switch it off at once with `sudo /opt/smartops/current/bin/keepalive.sh off`
+if Oracle ever forbids artificial load or it hurts the demo.
+
+**Plan B (applies with the load on or off).** If Oracle stops the VM (its e-mail, an UptimeRobot alert or no
+Healthchecks pings): Console → Compute → Instances → `smartops-demo-micro` → _Start_ (retry later if there is no
+capacity); wait about 3 minutes; verify that the health URL answers 200, the reserved IP is still attached,
+`status.sh` shows the containers healthy and the timers, `keepalive.sh status`, and `demo-check.mjs` passes; the
+monitors turn green by themselves. If the instance was terminated instead, section 5 (the backups are in Object
+Storage). Afterwards read the `CpuUtilization` p95 of the last 7 days: if the load was on and Oracle stopped the VM
+anyway, the policy is measuring something else; do not change anything before looking at the numbers. The full
+checklist is in [keepalive.md](deploy/keepalive.md), section 4.
 
 ## 11. Connection tips and reminders
 

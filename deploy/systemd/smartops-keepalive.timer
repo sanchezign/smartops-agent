@@ -1,0 +1,15 @@
+[Unit]
+Description=SmartOps demo: keep-alive load at 03:00 UTC (00:00 in Montevideo); the service does nothing while keepalive.env says off
+
+[Timer]
+# Everything here is UTC on purpose: the apt timers (02:20 / 02:50), the backup (03:30) and the reboot (04:00)
+# are Montevideo time (UTC-3), i.e. 05:20 / 05:50, 06:30 and 07:00 UTC. A 2-hour run that starts at
+# 03:00 UTC (+ up to 5 minutes) ends before 05:20 UTC. keepalive-schedule.test.ts keeps it that way.
+OnCalendar=*-*-* 03:00:00 UTC
+RandomizedDelaySec=5min
+AccuracySec=1min
+# A night the VM was off is skipped, never made up later in the day.
+Persistent=false
+
+[Install]
+WantedBy=timers.target

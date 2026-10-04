@@ -18,13 +18,15 @@ read-only GHCR token). The full procedure is in [`docs/runbook.md`](../docs/runb
 | `bin/backup.sh`          | encrypted dumps (age, public key only) → Object Storage (instance principal)                                                                      |
 | `bin/restore-test.sh`    | runs on the OWNER'S PC: decrypts with the private key, restores into a throw-away DB                                                              |
 | `bin/backup-selftest.sh` | proves from the VM that the backup bucket is append-only (create + list work; overwrite, delete, read are refused)                                |
+| `bin/keepalive.sh`       | switch for the nightly keep-alive load (`status`, `test`, `on`, `off`, `stop`); off by default (ADR-027)                                          |
+| `bin/cpu-calibrate.sh`   | busy / steal / iowait per minute from `/proc/stat`, to read the Console's CpuUtilization (run with sudo)                                          |
 | `bin/hc-test.sh`         | checks the Healthchecks.io URLs on the server without changing a status (`--fail <check>` proves the alert email)                                 |
 | `bin/monitor.sh`         | every 5 min: disk, memory, containers, HTTPS → Healthchecks.io                                                                                    |
 | `bin/boot-check.sh`      | after each boot: containers back + demo answering → Healthchecks.io                                                                               |
 | `bin/status.sh`          | one-screen status                                                                                                                                 |
 | `bin/n8n-import.sh`      | workflows + credentials by CLI (secrets never written to the server's disk)                                                                       |
 | `lib/render-n8n.mjs`     | restores the ids the workflows reference; credentials from the server's secrets                                                                   |
-| `systemd/`               | backup (03:30), monitor (5 min) and boot-check units                                                                                              |
+| `systemd/`               | backup (03:30), monitor (5 min), boot-check and keep-alive (03:00 UTC, off by default) units                                                      |
 
 Checked in CI by `scripts/ci/check-deploy-bundle.sh` (shellcheck, `caddy validate`, compose
 invariants) and `scripts/ci/api-container-smoke.sh` (bundle inside the image).

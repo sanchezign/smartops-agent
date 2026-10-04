@@ -5,7 +5,10 @@
 # whole vCPU the guest sees or to that 1/8 allocation. Run this for ~15 minutes, then compare each minute
 # with the Console metric (docs/deploy/cpu-calibration.md):
 #
-#   ./cpu-calibrate.sh [minutes]        # default 15; needs no root
+#   sudo ./cpu-calibrate.sh [minutes]   # default 15
+#
+# The script itself only reads /proc/stat (any user could), but /opt/smartops is root-only (drwxr-x---),
+# so on the VM it has to be started with sudo to be reached at all.
 #
 # Output per minute (UTC): busy% = user+nice+system+irq+softirq, steal% = time the hypervisor took the
 # CPU away (what throttling a 1/8 OCPU looks like inside the guest), iowait%.

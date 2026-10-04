@@ -3,6 +3,8 @@
 #   smartops-backup.timer      daily 03:30 (Montevideo) — only once backup.env exists
 #   smartops-monitor.timer     every 5 minutes          — only once monitor.env exists
 #   smartops-boot-check        after every boot          — the 04:00 security reboots
+#   smartops-keepalive.timer   03:00 UTC nightly         — always installed; does nothing while
+#                                                         /etc/smartops/keepalive.env says off (ADR-027)
 # The units always call /opt/smartops/current/bin/…, so a deploy switches them to the new
 # release through the "current" symlink.
 # shellcheck source=deploy/bin/lib.sh
@@ -31,4 +33,6 @@ if [ -f "$SMARTOPS_ETC/monitor.env" ]; then
 else
   log "monitor.env missing: monitoring NOT enabled yet (runbook: monitoring)"
 fi
+# The keep-alive timer is always enabled: with the switch off (the default) each run is skipped.
+systemctl enable --now smartops-keepalive.timer >/dev/null
 log "systemd units installed"

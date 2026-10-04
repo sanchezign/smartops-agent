@@ -1966,11 +1966,36 @@ a real client.**
       is compared with the Console metric (`docs/deploy/cpu-calibration.md`; MQL `CpuUtilization[1d]{resourceId = "…"}
       .percentile(0.95)`, intervals 1m–60m, 1h–24h, 1d). If the metric is the guest's busy%, an idle demo is far under
       20 % and the reclaim risk is real: the plan is unchanged (alerts, start the VM, restore from backup), never fake load.
+      (SUPERSEDED the same day: see the keep-alive decision below.)
       DECISION (user, 2026-10-03): the demo STAYS at Observatory B+ — no nonce CSP (middleware cost on every request on a
       1/8-OCPU VM, nothing cacheable, hydration / chart risk on the portfolio's front door). Documented in docs/security.md
       ("Why the public demo stays at B+" + "Roadmap (security)"; viable on a bigger server). NOTE: the panel pages are ALREADY
       rendered per request (next-intl reads cookies() / headers() for the language), so the cost is the middleware + the
       nonce plumbing + no caching, not "making pages dynamic".
+    - M7 CALIBRATION RESULTS (user, 2026-10-04, 0.15.0 deployed, status.sh clean, 497 MB available): quiet window
+      00:49–01:03 UTC busy mean 3.2 % / p95 4.9 % / steal 2.5–6.8 %; activity window 01:14–01:28 busy 2.8 % / p95 3.3 %;
+      Console `CpuUtilization` 1m mean for the same minutes ~5–11 % ≈ busy + steal (01:03: 4.9 + 6.8 = 11.7 → ~11), NOT 8×;
+      deploy + pre-deploy backup 00:42–00:45 ~70–73 %; 1d p95 points ~2 % (03/10), ~13 % (04/10 = all of 03/10 with 4 deploys
+      and every test), a normal day ~6–8 %. Conclusion in docs/deploy/cpu-calibration.md and runbook §10. `cpu-calibrate.sh`
+      needs sudo on the VM (`/opt/smartops` is root-only; permissions untouched), docs and comment fixed.
+    - KEEP-ALIVE LOAD (owner's decision 2026-10-04, ADR-027, branch `feat/phase-12-keepalive`, release 0.16.0): Oracle's docs
+      (Always Free Resources, read 2026-10-03/04): idle = 7 days with CPU p95 < 20 % AND network < 20 % (memory A1 only), applies
+      to E2.1.Micro; they do NOT say all conditions are mandatory (reads as a conjunction), the p95 granularity, whether it applies
+      during the trial, stop vs terminate, or a warning. Third-party reports of Oracle's e-mail (51sec.org 2023): one week's
+      notice, STOPPED not deleted, restart if the shape is available, PAYG avoids it, threshold was 10 % → 15 % → 20 %. Nothing
+      found allows or forbids a keep-alive load. Design: `smartops-keepalive.timer` 03:00:00 UTC (= 00:00 Montevideo),
+      RandomizedDelaySec 5 min, Persistent=false; service `timeout <min>m sha256sum /dev/zero`, Nice 19, SCHED_IDLE, IO idle,
+      CPUQuota 35 %, MemoryMax 32M, PrivateNetwork, PrivateDevices, ProtectSystem=strict, /opt + /etc/smartops + Docker
+      inaccessible, DynamicUser, no capabilities; switch `/etc/smartops/keepalive.env` (KEEPALIVE_LOAD on|off, KEEPALIVE_MINUTES
+      1–120) read at every start via ExecCondition (exit 1 = skipped, no failure); `deploy/bin/keepalive.sh
+      status|test|on|off|stop`; OFF by default; the monitor shows `keepalive off|on|on, running now` and has no CPU threshold.
+      Windows in UTC (tested: longest run ends 05:05, ≥ 10 min before the apt timers 05:20/05:50, before the backup 06:30 and the
+      reboot 07:00; Montevideo = UTC-3 without DST). Verified under REAL systemd 255 in a container (`jrei/systemd-ubuntu:24.04`):
+      `systemd-analyze verify`, skipped when off or minutes invalid, SCHED_IDLE, only `lo`, /dev/zero readable under
+      PrivateDevices + ProtectSystem=strict, root read-only, 21 CPU-s in 60 s (= 35 %), `keepalive.sh test` restores the saved file.
+      `RuntimeMaxSec` does NOT apply to oneshot units (systemd.service man page): TimeoutStartSec=125min is the backstop. Trial of
+      20 minutes by the owner decides 35 % (gates: samples ≤ 2× baseline, health p95 < 1 s, no alerts; else CPUQuota=25 % drop-in or
+      leave off); must be ON before 2026-10-09 (7 days since the VM exists). Plan B (runbook §10, keepalive.md §4) stays either way.
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs
@@ -2138,9 +2163,12 @@ a real client.**
   over 7 days, CPU p95 AND network are < 20 % (memory only for A1). A micro can never exceed 12.5 %
   of one OCPU, so the denominator of "CPU utilization" is unknown (relative to the 1/8 allocation
   or never enforced). Measured in simulation: the light stack idles at 20.8 % of 1/8 OCPU. Calibrate
-  on the real VM with the first demo reset (≈ 3 CPU-seconds) against the `CpuUtilization` metric;
-  never artificial load. If reclaimed the VM is STOPPED (not deleted) per third-party reports:
-  alert + `oci compute instance action --action START`; backups live off the VM.
+  on the real VM with the first demo reset (≈ 3 CPU-seconds) against the `CpuUtilization` metric.
+  CALIBRATED 2026-10-04: the metric is the guest's busy% PLUS steal (not scaled to 1/8 OCPU); the quiet demo
+  is at ~3 % busy, daily p95 6–8 % (13 % on the busiest day) → by the literal criterion it IS idle. The old
+  rule "never artificial load" was REVERSED by the owner on 2026-10-04: a nightly keep-alive load (ADR-027,
+  `docs/deploy/keepalive.md`), OFF by default, trial first. If reclaimed the VM is STOPPED (not deleted) per
+  third-party reports: alert + start it from the Console (runbook §10 plan B); backups live off the VM.
 - **Phase 12 — at the phase close:** delete the local test images
   `smartops-local/smartops-{api,admin}:m0a|m0b` (user, 2026-09-28).
 - **Phase 11:** the 4 accepted audit exceptions (postcss ×2 via next 15.5, deepmerge-ts,

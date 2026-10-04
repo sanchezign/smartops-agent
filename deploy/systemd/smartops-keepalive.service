@@ -1,0 +1,51 @@
+[Unit]
+Description=SmartOps demo: keep-alive CPU load (idle priority, no network, no disk); does nothing unless keepalive.env says on
+
+# Why this exists (ADR-027, docs/deploy/keepalive.md): Oracle may reclaim an Always Free VM that is "idle"
+# for 7 days (CPU p95 < 20 %, network < 20 %). The demo alone sits at ~3-8 %. This runs one CPU-bound
+# process for KEEPALIVE_MINUTES (default 120) once a night at the lowest possible priority.
+
+[Service]
+Type=oneshot
+# /etc/smartops/keepalive.env (no secrets) overrides these two; `keepalive.sh on|off|status` edits it.
+Environment=KEEPALIVE_LOAD=off
+Environment=KEEPALIVE_MINUTES=120
+EnvironmentFile=-/etc/smartops/keepalive.env
+# Exit 1 = skipped without failure: the flag is off, or the minutes are not a number from 1 to 120.
+# (120 is the longest allowed so the run always ends before the apt timers: see keepalive-schedule.test.ts.)
+ExecCondition=/bin/sh -c '[ "$$KEEPALIVE_LOAD" = on ] || { echo "keepalive: off"; exit 1; }; case "$$KEEPALIVE_MINUTES" in ""|*[!0-9]*) echo "keepalive: KEEPALIVE_MINUTES must be a number from 1 to 120"; exit 1;; esac; [ "$$KEEPALIVE_MINUTES" -ge 1 ] && [ "$$KEEPALIVE_MINUTES" -le 120 ] || { echo "keepalive: KEEPALIVE_MINUTES must be from 1 to 120"; exit 1; }'
+# One CPU-bound process (hashing the kernel's endless zeros): no files, no network, ~1 MB of memory.
+# timeout ends it with SIGTERM after the minutes (exit status 124, which is success here).
+ExecStart=/usr/bin/timeout --signal=TERM ${KEEPALIVE_MINUTES}m /usr/bin/sha256sum /dev/zero
+SuccessExitStatus=124
+# RuntimeMaxSec does not apply to oneshot services; this is the backstop.
+TimeoutStartSec=125min
+
+# Lowest priority everywhere, and at most 35 % of ONE vCPU.
+Nice=19
+CPUSchedulingPolicy=idle
+IOSchedulingClass=idle
+CPUQuota=35%
+MemoryMax=32M
+TasksMax=4
+
+# Nothing to read, write or reach.
+DynamicUser=yes
+PrivateNetwork=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+InaccessiblePaths=-/opt -/etc/smartops -/var/lib/docker -/run/docker.sock
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+SystemCallFilter=@system-service
+SystemCallArchitectures=native
+MemoryDenyWriteExecute=yes
+LockPersonality=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+UMask=0077

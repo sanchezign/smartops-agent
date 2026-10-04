@@ -97,6 +97,20 @@ env_value() { grep -E "^$1=" "$SMARTOPS_ENV_FILE" | tail -n 1 | cut -d= -f2- || 
 
 read_state() { cat "$STATE_DIR/$1" 2>/dev/null || true; }
 
+# The keep-alive load (ADR-027): "off" (also when the file is missing), "on", or "on, running now".
+# Information only: the monitor shows it and never raises a problem because of it.
+keepalive_state() {
+  local file="${KEEPALIVE_ENV:-$SMARTOPS_ETC/keepalive.env}" flag=""
+  [ -f "$file" ] && flag="$(grep -E '^KEEPALIVE_LOAD=' "$file" | tail -n 1 | cut -d= -f2- || true)"
+  if [ "$flag" != "on" ]; then
+    echo off
+  elif command -v systemctl >/dev/null 2>&1 && [ "$(systemctl is-active smartops-keepalive.service 2>/dev/null || true)" = "activating" ]; then
+    echo "on, running now"
+  else
+    echo on
+  fi
+}
+
 write_state() {
   mkdir -p "$STATE_DIR"
   printf '%s\n' "$2" >"$STATE_DIR/$1.tmp"

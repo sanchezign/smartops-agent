@@ -12,16 +12,16 @@ plugin of Oracle Cloud Agent, the one plugin kept on the VM: it samples every 10
 points a minute. So the question has a measurable part: **does the metric equal what the guest itself
 measures, or is it scaled to the 1/8 allocation?** `deploy/bin/cpu-calibrate.sh` measures the guest side.
 
-We never create artificial load to keep the VM "busy". This only tells us how real the risk is. Whatever the
-answer, the plan stays: Healthchecks / UptimeRobot email you, you start the VM from the console, and the
-backups in Object Storage cover the worst case (runbook sections 5, 7 and 10).
+This only tells us how real the risk is. Whatever the answer, plan B stays: Healthchecks / UptimeRobot email
+you, you start the VM from the console, and the backups in Object Storage cover the worst case (runbook sections
+5, 7 and 10). The answer is below, together with what was decided because of it.
 
 ## 1. On the VM: 15 quiet minutes, then a busy window
 
-Needs no root. It prints one line per minute (UTC).
+It prints one line per minute (UTC). It only reads `/proc/stat`, but `/opt/smartops` is root-only, so use `sudo`:
 
 ```bash
-/opt/smartops/current/bin/cpu-calibrate.sh 15
+sudo /opt/smartops/current/bin/cpu-calibrate.sh 15
 ```
 
 Write down the clock time (and your time zone) when you start. For a second run, do something real **in the
@@ -73,3 +73,30 @@ decide whether anything else is worth doing: for example, nothing, because the r
 below the bar, or a change to what the monitor reports.
 
 Re-run it after a week of real life; the first days of a new VM are not representative.
+
+## Result on the real VM (2026-10-04, release 0.15.0)
+
+| Measurement                                                            | Value                                                             |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Quiet window 00:49–01:03 UTC (the script)                              | busy mean 3.2 %, p95 4.9 %, steal 2.5–6.8 %                       |
+| Window with activity 01:14–01:28 UTC (the script)                      | busy mean 2.8 %, p95 3.3 % (the demo check made no visible spike) |
+| Console `CpuUtilization` 1m mean, the same minutes                     | about 5–11 %                                                      |
+| One minute compared (01:03)                                            | busy 4.9 % + steal 6.8 % = 11.7 %, Console about 11 %             |
+| Deploy + pre-deploy backup 00:42–00:45                                 | about 70–73 %                                                     |
+| Console `CpuUtilization[1d]` p95, the point of 03/10                   | about 2 % (the stack ran only part of 02/10)                      |
+| …the point of 04/10 (the whole of 03/10: four deploys, every test run) | about 13 %                                                        |
+| A normal day would be                                                  | about 6–8 %                                                       |
+
+**Conclusions**
+
+1. The metric is the guest's own CPU time **plus steal**, against the vCPU the guest sees. It is **not** eight
+   times the busy%: it is not scaled to the 1/8 OCPU allocation. The bar of 20 % is a fifth of that vCPU.
+2. A quiet demo meets Oracle's literal criterion for an idle instance (CPU p95 under 20 % over 7 days) by a wide
+   margin, and so does its network. Whether Oracle applies the policy during the Free Trial (which ends around
+   2026-10-28) is not documented. The documentation also does not say whether you are warned or whether the
+   instance is stopped or deleted; third-party reports of Oracle's e-mail say one week's notice and _stopped_.
+3. Even the busiest day measured (about 13 %, all deploys and tests) is under the bar. Only a deliberate load can
+   move the p95 above 20 %.
+
+That is why the owner decided on 2026-10-04 to run a small, harmless keep-alive load at night:
+[ADR-027](../adr/ADR-027-keepalive-load.md) and [keepalive.md](keepalive.md) (trial, activation, plan B).

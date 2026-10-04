@@ -43,7 +43,9 @@ else
     problems+=("https://$(env_value DEMO_DOMAIN)/api/v1/health does not answer through Caddy")
 fi
 
-summary="disk ${disk}% · mem available ${mem} MB · version ${version:-none}"
+# The keep-alive load is shown, never judged: the monitor has no CPU threshold, so a night with it
+# running cannot raise a problem (monitor-keepalive.test.ts).
+summary="disk ${disk}% · mem available ${mem} MB · version ${version:-none} · keepalive $(keepalive_state)"
 if [ "${#problems[@]}" -eq 0 ]; then
   hc_ping "$hc" "" "ok — $summary"
 else
