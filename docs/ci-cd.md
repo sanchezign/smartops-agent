@@ -186,9 +186,11 @@ dist/worker.js`, `node node_modules/prisma/build/index.js migrate deploy` (relea
 - Docker image OS packages (Trivy, fixable HIGH/CRITICAL block; both images are always scanned, the step
   fails at the end): accepted CVEs live in `.trivyignore` (mounted into the Trivy container, `--ignorefile`,
   `--show-suppressed` prints what was ignored) and, with the reason and expiry, in the same
-  `security/audit-exceptions.json` under `imageExceptions` (a test keeps both identical). Current: CVE-2026-103111
-  (libpcre2, Debian 12) until 2026-10-18. **When Renovate moves `node:24.21.0-bookworm-slim` to a digest with
-  libpcre2-8-0 10.42-1+deb12u2, delete the exception from both files in that same PR.**
+  `security/audit-exceptions.json` under `imageExceptions` (a test keeps both identical). Current: seven Perl CVEs
+  (perl-base 5.36.0-7+deb12u3, Debian 12 base image) until 2026-10-13. **When the node base digest contains perl-base
+  5.36.0-7+deb12u4, delete the exceptions from both files in that same PR.** Base-image digest bumps that fix OS
+  CVEs are security patches: the `minimumReleaseAge` rule does not apply to them (2026-10-06: digest moved to
+  `d6aa754f…`, which fixed libpcre2 CVE-2026-103111).
 - gitleaks: new commits on every push, the whole history weekly; `.gitleaks.toml` allowlists
   exact file + value pairs only (three fake test constants).
 - Workflows: `permissions: {}` at the top, the minimum per job, `persist-credentials: false`,

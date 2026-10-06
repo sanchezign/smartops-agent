@@ -7,7 +7,7 @@
 # Configuration only through environment variables at runtime (no .env inside the image).
 
 # Node 24.21 (≥ 24.19 for crypto.argon2), pinned by digest (multi-arch: amd64 + arm64).
-ARG NODE_IMAGE=node:24.21.0-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6
+ARG NODE_IMAGE=node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
 
 FROM ${NODE_IMAGE} AS build
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 CI=true

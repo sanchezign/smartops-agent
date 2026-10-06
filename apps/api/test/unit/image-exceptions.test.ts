@@ -43,10 +43,23 @@ describe("image (Trivy) exceptions", () => {
     expect(ignoreLines.sort()).toEqual(list.map((e) => `${e.cve} exp:${e.expires}`).sort());
   });
 
-  it("CVE-2026-103111 is the only one accepted today, and its reason cites the Debian tracker", () => {
-    expect(list.map((e) => e.cve)).toEqual(["CVE-2026-103111"]);
-    expect(list[0]!.reason).toContain("security-tracker.debian.org/tracker/CVE-2026-103111");
-    expect(read(".trivyignore")).toContain("security-tracker.debian.org/tracker/CVE-2026-103111");
+  it("only the seven Perl CVEs are accepted today, short-lived, each citing its Debian tracker", () => {
+    expect(list.map((e) => e.cve).sort()).toEqual(
+      [
+        "CVE-2026-13221",
+        "CVE-2026-42496",
+        "CVE-2026-8376",
+        "CVE-2026-42497",
+        "CVE-2026-48962",
+        "CVE-2026-57432",
+        "CVE-2026-57433",
+      ].sort(),
+    );
+    for (const e of list) {
+      expect(e.package).toBe("perl-base");
+      expect(e.expires).toBe("2026-10-13");
+      expect(e.reason).toContain(`security-tracker.debian.org/tracker/${e.cve}`);
+    }
   });
 
   for (const file of [".github/workflows/ci.yml", ".github/workflows/release.yml"]) {

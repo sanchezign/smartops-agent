@@ -39,14 +39,74 @@
   ],
   "imageExceptions": [
     {
-      "cve": "CVE-2026-103111",
-      "package": "libpcre2-8-0",
-      "installed": "10.42-1+deb12u1",
-      "fixedIn": "10.42-1+deb12u2",
-      "reason": "Out-of-bounds write via a crafted regular expression in pcre2. Node uses its own regex engine (V8), not pcre2; libpcre2 is only used by system tools in the base image that never receive user input. Tracker: https://security-tracker.debian.org/tracker/CVE-2026-103111",
-      "removeWhen": "Renovate moves node:24.21.0-bookworm-slim to a digest with libpcre2-8-0 10.42-1+deb12u2: delete this entry and the line in .trivyignore in that same PR.",
-      "expires": "2026-10-18",
-      "addedAt": "2026-10-04"
+      "cve": "CVE-2026-13221",
+      "package": "perl-base",
+      "installed": "5.36.0-7+deb12u3",
+      "fixedIn": "5.36.0-7+deb12u4",
+      "reason": "CRITICAL: perl: incorrect regular expression processing. Perl comes from the Debian 12 base image (node:24.21.0-bookworm-slim, republished 2026-10-06 still with deb12u3); neither the API nor the panel runs Perl, and no user input ever reaches it. Short exception until Debian publishes the fix in the node image. Tracker: https://security-tracker.debian.org/tracker/CVE-2026-13221",
+      "removeWhen": "Renovate (or a manual digest bump) moves node:24.21.0-bookworm-slim to a digest with perl-base 5.36.0-7+deb12u4: delete this entry and its line in .trivyignore in that same PR.",
+      "expires": "2026-10-13",
+      "addedAt": "2026-10-06"
+    },
+    {
+      "cve": "CVE-2026-42496",
+      "package": "perl-base",
+      "installed": "5.36.0-7+deb12u3",
+      "fixedIn": "5.36.0-7+deb12u4",
+      "reason": "CRITICAL: perl-archive-tar: path traversal. Perl comes from the Debian 12 base image (node:24.21.0-bookworm-slim, republished 2026-10-06 still with deb12u3); neither the API nor the panel runs Perl, and no user input ever reaches it. Short exception until Debian publishes the fix in the node image. Tracker: https://security-tracker.debian.org/tracker/CVE-2026-42496",
+      "removeWhen": "Renovate (or a manual digest bump) moves node:24.21.0-bookworm-slim to a digest with perl-base 5.36.0-7+deb12u4: delete this entry and its line in .trivyignore in that same PR.",
+      "expires": "2026-10-13",
+      "addedAt": "2026-10-06"
+    },
+    {
+      "cve": "CVE-2026-8376",
+      "package": "perl-base",
+      "installed": "5.36.0-7+deb12u3",
+      "fixedIn": "5.36.0-7+deb12u4",
+      "reason": "CRITICAL: perl: heap buffer overflow when compiling regular expressions. Perl comes from the Debian 12 base image (node:24.21.0-bookworm-slim, republished 2026-10-06 still with deb12u3); neither the API nor the panel runs Perl, and no user input ever reaches it. Short exception until Debian publishes the fix in the node image. Tracker: https://security-tracker.debian.org/tracker/CVE-2026-8376",
+      "removeWhen": "Renovate (or a manual digest bump) moves node:24.21.0-bookworm-slim to a digest with perl-base 5.36.0-7+deb12u4: delete this entry and its line in .trivyignore in that same PR.",
+      "expires": "2026-10-13",
+      "addedAt": "2026-10-06"
+    },
+    {
+      "cve": "CVE-2026-42497",
+      "package": "perl-base",
+      "installed": "5.36.0-7+deb12u3",
+      "fixedIn": "5.36.0-7+deb12u4",
+      "reason": "HIGH: perl-Archive-Tar: arbitrary file write. Perl comes from the Debian 12 base image (node:24.21.0-bookworm-slim, republished 2026-10-06 still with deb12u3); neither the API nor the panel runs Perl, and no user input ever reaches it. Short exception until Debian publishes the fix in the node image. Tracker: https://security-tracker.debian.org/tracker/CVE-2026-42497",
+      "removeWhen": "Renovate (or a manual digest bump) moves node:24.21.0-bookworm-slim to a digest with perl-base 5.36.0-7+deb12u4: delete this entry and its line in .trivyignore in that same PR.",
+      "expires": "2026-10-13",
+      "addedAt": "2026-10-06"
+    },
+    {
+      "cve": "CVE-2026-48962",
+      "package": "perl-base",
+      "installed": "5.36.0-7+deb12u3",
+      "fixedIn": "5.36.0-7+deb12u4",
+      "reason": "HIGH: perl-IO-Compress: arbitrary code execution. Perl comes from the Debian 12 base image (node:24.21.0-bookworm-slim, republished 2026-10-06 still with deb12u3); neither the API nor the panel runs Perl, and no user input ever reaches it. Short exception until Debian publishes the fix in the node image. Tracker: https://security-tracker.debian.org/tracker/CVE-2026-48962",
+      "removeWhen": "Renovate (or a manual digest bump) moves node:24.21.0-bookworm-slim to a digest with perl-base 5.36.0-7+deb12u4: delete this entry and its line in .trivyignore in that same PR.",
+      "expires": "2026-10-13",
+      "addedAt": "2026-10-06"
+    },
+    {
+      "cve": "CVE-2026-57432",
+      "package": "perl-base",
+      "installed": "5.36.0-7+deb12u3",
+      "fixedIn": "5.36.0-7+deb12u4",
+      "reason": "HIGH: perl: information disclosure via integer overflow. Perl comes from the Debian 12 base image (node:24.21.0-bookworm-slim, republished 2026-10-06 still with deb12u3); neither the API nor the panel runs Perl, and no user input ever reaches it. Short exception until Debian publishes the fix in the node image. Tracker: https://security-tracker.debian.org/tracker/CVE-2026-57432",
+      "removeWhen": "Renovate (or a manual digest bump) moves node:24.21.0-bookworm-slim to a digest with perl-base 5.36.0-7+deb12u4: delete this entry and its line in .trivyignore in that same PR.",
+      "expires": "2026-10-13",
+      "addedAt": "2026-10-06"
+    },
+    {
+      "cve": "CVE-2026-57433",
+      "package": "perl-base",
+      "installed": "5.36.0-7+deb12u3",
+      "fixedIn": "5.36.0-7+deb12u4",
+      "reason": "HIGH: Storable: denial of service via signed integer overflow. Perl comes from the Debian 12 base image (node:24.21.0-bookworm-slim, republished 2026-10-06 still with deb12u3); neither the API nor the panel runs Perl, and no user input ever reaches it. Short exception until Debian publishes the fix in the node image. Tracker: https://security-tracker.debian.org/tracker/CVE-2026-57433",
+      "removeWhen": "Renovate (or a manual digest bump) moves node:24.21.0-bookworm-slim to a digest with perl-base 5.36.0-7+deb12u4: delete this entry and its line in .trivyignore in that same PR.",
+      "expires": "2026-10-13",
+      "addedAt": "2026-10-06"
     }
   ]
 }

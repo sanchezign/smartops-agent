@@ -4,7 +4,7 @@
 # Build from the repository root:  docker build -f apps/admin/Dockerfile -t smartops-admin .
 # NEXT_PUBLIC_API_BASE is inlined into the browser bundle at BUILD time (default /api/v1).
 
-ARG NODE_IMAGE=node:24.21.0-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6
+ARG NODE_IMAGE=node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
 
 FROM ${NODE_IMAGE} AS build
 ARG NEXT_PUBLIC_API_BASE=/api/v1

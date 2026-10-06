@@ -1,11 +1,15 @@
-# Accepted OS-package finding in the Docker images (CI "images" job and release.yml, Trivy --ignorefile).
-# The same exception, with its reason, lives in security/audit-exceptions.json ("imageExceptions"):
-# a test keeps both identical. Trivy stops ignoring it on the date after exp, so it blocks again.
+# Accepted OS-package findings in the Docker images (CI "images" job and release.yml, Trivy --ignorefile).
+# The same exceptions, with their reasons, live in security/audit-exceptions.json ("imageExceptions"):
+# a test keeps both identical. Trivy stops ignoring them on the date after exp, so they block again.
 #
-# CVE-2026-103111, libpcre2-8-0 10.42-1+deb12u1 (fixed in 10.42-1+deb12u2): out-of-bounds write via a crafted
-# regular expression. Node uses its own regex engine (V8 Irregexp), not pcre2; libpcre2 is only linked by
-# system tools in the base image that never receive user input. Tracker:
-# https://security-tracker.debian.org/tracker/CVE-2026-103111
-# REMOVE this line in the same PR in which Renovate moves node:24.21.0-bookworm-slim to a digest that
-# contains libpcre2-8-0 10.42-1+deb12u2.
-CVE-2026-103111 exp:2026-10-18
+# perl-base 5.36.0-7+deb12u3 (fixed in 5.36.0-7+deb12u4), seven CVEs (3 CRITICAL, 4 HIGH) in perl, Archive-Tar,
+# IO-Compress and Storable. Perl comes from the Debian 12 base image; neither the API nor the panel runs it
+# and no user input reaches it. Short exception (7 days). Trackers: https://security-tracker.debian.org/tracker/<CVE>
+# REMOVE these lines in the same PR in which the node base image digest contains perl-base 5.36.0-7+deb12u4.
+CVE-2026-13221 exp:2026-10-13
+CVE-2026-42496 exp:2026-10-13
+CVE-2026-8376 exp:2026-10-13
+CVE-2026-42497 exp:2026-10-13
+CVE-2026-48962 exp:2026-10-13
+CVE-2026-57432 exp:2026-10-13
+CVE-2026-57433 exp:2026-10-13
