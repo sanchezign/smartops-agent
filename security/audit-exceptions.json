@@ -1,5 +1,5 @@
 {
-  "$comment": "Accepted HIGH/CRITICAL production advisories (phase 11 M3). Each entry needs a GHSA id, the package, a justification, a severity, and an expiry date (YYYY-MM-DD) that is at most 7 days (critical) or 30 days (high) after addedAt (ADR-028); an expired entry blocks again (in diff mode only when the change introduces the finding; the nightly scan always). Checked by apps/api/scripts/security/audit-gate.ts. \"imageExceptions\" are the accepted Trivy (OS package) findings of the Docker images: each has a CVE id, severity, reason and expiry under the same limits, and must match .trivyignore exactly (apps/api/test/unit/image-exceptions.test.ts).",
+  "$comment": "Accepted HIGH/CRITICAL production advisories (phase 11 M3). Each entry needs a GHSA id, the package, a justification, a severity, and an expiry date (YYYY-MM-DD) that is at most 7 days (critical) or 30 days (high) after addedAt (ADR-028); an expired entry blocks again (in diff mode only when the change introduces the finding; the nightly scan always). Checked by apps/api/scripts/security/audit-gate.ts. \"imageExceptions\" are the accepted Trivy findings of the Docker images (OS packages, and the library findings of the nightly scan): each has a CVE id, severity, reason and expiry under the same limits, and must match .trivyignore exactly (apps/api/test/unit/image-exceptions.test.ts).",
   "exceptions": [
     {
       "advisory": "GHSA-6g55-p6wh-862q",
@@ -111,6 +111,50 @@
       "severity": "high",
       "expires": "2026-10-13",
       "addedAt": "2026-10-06"
+    },
+    {
+      "cve": "CVE-2026-40345",
+      "package": "deepmerge-ts",
+      "installed": "7.1.5",
+      "fixedIn": "8.0.0",
+      "reason": "HIGH: deepmerge-ts stack exhaustion (only inside the Prisma CLI config loader, our own prisma.config.ts). Library finding in the api image (Trivy library scan of the nightly run); it is the same accepted risk as GHSA-ggr8-5vv4-36mx in the pnpm audit exceptions above, with the same reason and expiry.",
+      "removeWhen": "The dependency is updated (see the pnpm audit exception GHSA-ggr8-5vv4-36mx): delete this entry and its line in .trivyignore in that same PR.",
+      "severity": "high",
+      "expires": "2026-10-27",
+      "addedAt": "2026-09-27"
+    },
+    {
+      "cve": "GHSA-3f6p-5ww8-9rcr",
+      "package": "mysql2",
+      "installed": "3.15.3",
+      "fixedIn": "3.22.0",
+      "reason": "HIGH: mysql2 auth plugin downgrade (transitive of the Prisma CLI; SmartOps uses PostgreSQL only, the MySQL driver is never loaded). Library finding in the api image (Trivy library scan of the nightly run); it is the same accepted risk as GHSA-3f6p-5ww8-9rcr in the pnpm audit exceptions above, with the same reason and expiry.",
+      "removeWhen": "The dependency is updated (see the pnpm audit exception GHSA-3f6p-5ww8-9rcr): delete this entry and its line in .trivyignore in that same PR.",
+      "severity": "high",
+      "expires": "2026-10-27",
+      "addedAt": "2026-09-27"
+    },
+    {
+      "cve": "CVE-2026-45623",
+      "package": "postcss",
+      "installed": "8.4.31",
+      "fixedIn": "8.5.12",
+      "reason": "HIGH: postcss arbitrary file read via sourceMappingURL (build-time only, our own CSS). Library finding in the admin image (Trivy library scan of the nightly run); it is the same accepted risk as GHSA-6g55-p6wh-862q in the pnpm audit exceptions above, with the same reason and expiry.",
+      "removeWhen": "The dependency is updated (see the pnpm audit exception GHSA-6g55-p6wh-862q): delete this entry and its line in .trivyignore in that same PR.",
+      "severity": "high",
+      "expires": "2026-10-27",
+      "addedAt": "2026-09-27"
+    },
+    {
+      "cve": "CVE-2026-73646",
+      "package": "postcss",
+      "installed": "8.4.31",
+      "fixedIn": "8.5.18",
+      "reason": "HIGH: postcss path traversal in previous source map loading (build-time only, our own CSS). Library finding in the admin image (Trivy library scan of the nightly run); it is the same accepted risk as GHSA-r28c-9q8g-f849 in the pnpm audit exceptions above, with the same reason and expiry.",
+      "removeWhen": "The dependency is updated (see the pnpm audit exception GHSA-r28c-9q8g-f849): delete this entry and its line in .trivyignore in that same PR.",
+      "severity": "high",
+      "expires": "2026-10-27",
+      "addedAt": "2026-09-27"
     }
   ]
 }

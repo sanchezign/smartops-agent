@@ -13,3 +13,10 @@ CVE-2026-42497 exp:2026-10-13
 CVE-2026-48962 exp:2026-10-13
 CVE-2026-57432 exp:2026-10-13
 CVE-2026-57433 exp:2026-10-13
+#
+# Library findings seen by the NIGHTLY scan of the published images (security.yml; CI and the release only scan OS
+# packages). Same accepted risks as the pnpm audit exceptions (GHSA ids there, the id Trivy reports here); same expiry.
+CVE-2026-40345 exp:2026-10-27
+GHSA-3f6p-5ww8-9rcr exp:2026-10-27
+CVE-2026-45623 exp:2026-10-27
+CVE-2026-73646 exp:2026-10-27

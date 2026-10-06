@@ -31,7 +31,7 @@ describe("image (Trivy) exceptions", () => {
   it("each one has a CVE id, a real reason, dates and a removal condition", () => {
     expect(list.length).toBeGreaterThan(0);
     for (const e of list) {
-      expect(e.cve).toMatch(/^CVE-\d{4}-\d{4,}$/);
+      expect(e.cve).toMatch(/^(CVE-\d{4}-\d{4,}|GHSA(-[23456789cfghjmpqrvwx]{4}){3})$/);
       expect(e.package).not.toBe("");
       expect(e.reason.length).toBeGreaterThanOrEqual(40);
       expect(e.removeWhen.length).toBeGreaterThanOrEqual(20);
@@ -51,8 +51,9 @@ describe("image (Trivy) exceptions", () => {
     expect(ignoreLines.sort()).toEqual(list.map((e) => `${e.cve} exp:${e.expires}`).sort());
   });
 
-  it("only the seven Perl CVEs are accepted today, short-lived, each citing its Debian tracker", () => {
-    expect(list.map((e) => e.cve).sort()).toEqual(
+  it("the OS findings accepted today are the seven Perl CVEs, short-lived, each citing its Debian tracker", () => {
+    const os = list.filter((e) => e.package === "perl-base");
+    expect(os.map((e) => e.cve).sort()).toEqual(
       [
         "CVE-2026-13221",
         "CVE-2026-42496",
@@ -63,10 +64,29 @@ describe("image (Trivy) exceptions", () => {
         "CVE-2026-57433",
       ].sort(),
     );
-    for (const e of list) {
-      expect(e.package).toBe("perl-base");
+    for (const e of os) {
       expect(e.expires).toBe("2026-10-13");
       expect(e.reason).toContain(`security-tracker.debian.org/tracker/${e.cve}`);
+    }
+  });
+
+  it("the library findings accepted for the nightly scan mirror the pnpm audit exceptions (same expiry)", () => {
+    const audit = (
+      JSON.parse(read("security/audit-exceptions.json")) as {
+        exceptions: { package: string; expires: string }[];
+      }
+    ).exceptions;
+    const library = list.filter((e) => e.package !== "perl-base");
+    expect(library.map((e) => e.package).sort()).toEqual([
+      "deepmerge-ts",
+      "mysql2",
+      "postcss",
+      "postcss",
+    ]);
+    for (const e of library) {
+      const twin = audit.find((a) => a.package === e.package);
+      expect(twin, e.cve).toBeDefined();
+      expect(e.expires).toBe(twin?.expires);
     }
   });
 

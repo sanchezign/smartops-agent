@@ -15,6 +15,16 @@
       "groupName": "non-major dependencies"
     },
     {
+      "description": "Base images (node, postgres): digests are reviewed DAILY so a Debian / Alpine security rebuild reaches us in a day, not on Monday (ADR-028). Own PR, never automerged: the owner merges. Docker digests have no release timestamp, so the age check treats them as stable (timestamp-optional) — scoped to these two images only; everything else keeps the strict 3-day age.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["node", "postgres"],
+      "matchUpdateTypes": ["digest", "pinDigest"],
+      "groupName": "base image digests",
+      "schedule": ["before 6am"],
+      "minimumReleaseAgeBehaviour": "timestamp-optional",
+      "automerge": false
+    },
+    {
       "description": "Pinned on purpose (CLAUDE.md): Prisma 7.10 (8 only with a plan), ESLint 9 with @eslint/js 9 (eslint-config-next 15.5), Next 15.5 / React 19.1. Majors never proposed automatically.",
       "matchPackageNames": [
         "prisma",
