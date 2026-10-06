@@ -1,11 +1,44 @@
 # The keep-alive load: trial, activation and plan B (phase 12, ADR-027)
 
 Why it exists, what it does and what it cannot do: [ADR-027](../adr/ADR-027-keepalive-load.md). In one line:
-a process at the lowest priority, no network and no disk, at most 35 % of one vCPU, for up to 2 hours a night
+a process at the lowest priority, no network and no disk, at most 50 % of one vCPU (about 25 % on the Console metric), for up to 2 hours a night
 (03:00 UTC = 00:00 in Montevideo), so Oracle's idle test (CPU p95 < 20 % over 7 days) does not match the demo.
 It is **off** until you turn it on. The VM exists since 2026-10-02: turn it on **before 2026-10-09**.
 
-## 1. The 20-minute trial (decides whether 35 % stays)
+## 0. How the number is chosen: the Console averages the vCPUs
+
+`CPUQuota` is a share of **one** vCPU, but the Console's `CpuUtilization` averages **all** the vCPUs the guest sees
+(`nproc` = 2 on this E2.1.Micro). So:
+
+```
+Console plateau ≈ rest + CPUQuota / nproc + a little steal        (rest ≈ 5–7 %, steal ≈ 2 points)
+```
+
+Evidence (Console, Metrics Explorer, `CpuUtilization` 1-minute mean, UTC, measured by the owner):
+
+| Date       | Quota | What                                                                                    |
+| ---------- | ----- | --------------------------------------------------------------------------------------- |
+| 2026-10-05 | 35 %  | rest ~5–7 %; keep-alive 03:00–05:00 plateau ~23–28 % (peaks 30–33 %); back to ~5 %      |
+| 2026-10-05 | 35 %  | the apt timers at ~05:23 peak at ~57 %: normal, not the load                            |
+| daily p95  | —     | 10-02 ~2.6 %, 10-03 ~12.8 %, 10-04 ~15.8 %, **10-05 ~24.7 %** (first day with the load) |
+
+The model fits: 6 + 35/2 + 2 = 25.5 %. The daily p95 follows the plateau because the 2 hours are 8.3 % of the day's
+samples and the p95 needs only 5 %, so the 95th percentile sits inside the plateau: 24.7 % was a margin of only
+~5 points over Oracle's 20 % bar (and the bar has moved before, ADR-027). Predictions for other quotas:
+
+| CPUQuota | Plateau on the Console (rest 6 %) | Margin over 20 % |
+| -------- | --------------------------------- | ---------------- |
+| 35 %     | 23–28 % (measured)                | ~5 points        |
+| 40 %     | ~28 %                             | ~8 points        |
+| **50 %** | **~33 %** (the value now)         | **~13 points**   |
+| 60 %     | ~38 %                             | ~18 points       |
+
+50 % was chosen over 55–60 % because a bigger share asks the hypervisor for more of a 1/8 OCPU: **steal** is the unknown
+(at rest it is 2.5–6.8 %, and the metric counts it, so steal helps the number but can slow the demo). The load runs at
+idle priority inside the guest, so the demo wins there; it can still lose time to the hypervisor. The trial in
+section 1 measures it before the nightly run is relied on.
+
+## 1. The 20-minute trial (decides whether 50 % stays)
 
 Baseline you measured on 2026-10-04: busy 3.2 % (p95 4.9 %), steal 2.5–6.8 %, 100 health requests p95 294 ms,
 demo samples 2.8–8.2 s. Do the trial in a quiet moment.
@@ -44,27 +77,28 @@ namespace `oci_computeagent`, metric `CpuUtilization`, interval 1 minute, statis
 
 **What to look at**
 
-| What                                     | Expected                                                                            |
-| ---------------------------------------- | ----------------------------------------------------------------------------------- |
-| Console `CpuUtilization` during the load | about 35–45 % (35 % of a vCPU plus the demo's own 3–5 %)                            |
-| `busy%` and `steal%` in the recorder     | `busy` close to 35 %; `steal` may rise: that is the hypervisor sharing the 1/8 OCPU |
-| Demo samples (`demo-check`)              | all `ends as …` lines pass                                                          |
-| 100 health requests (`abuse-check`)      | p95 **under 1 s**                                                                   |
-| Healthchecks "monitor"                   | stays green (a ping every 5 minutes, with `keepalive on, running now`)              |
+| What                                     | Expected                                                                                                                    |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Console `CpuUtilization` during the load | about **30–36 %** (rest 5–7 % + 50 % / 2 vCPUs + a little steal)                                                            |
+| `busy%` and `steal%` in the recorder     | `busy` about 28–30 % (the recorder averages the 2 vCPUs too); `steal` may rise: that is the hypervisor sharing the 1/8 OCPU |
+| Demo samples (`demo-check`)              | all `ends as …` lines pass                                                                                                  |
+| 100 health requests (`abuse-check`)      | p95 **under 1 s**                                                                                                           |
+| Healthchecks "monitor"                   | stays green (a ping every 5 minutes, with `keepalive on, running now`)                                                      |
 
-**Decision gate** (all three must hold to keep 35 %):
+**Decision gate** (all four must hold to keep 50 %):
 
 1. every demo sample finishes and the slowest takes **no more than 2 × the baseline** (about 16 s);
 2. the 100-request burst has p95 **under 1 s**;
-3. no alert from UptimeRobot or Healthchecks during the 20 minutes.
+3. no alert from UptimeRobot or Healthchecks during the 20 minutes;
+4. the Console plateau is at least **30 %** (otherwise the quota is not doing what the formula says: tell me the numbers).
 
 If it fails, lower the quota and repeat the trial once:
 
 ```bash
-sudo systemctl edit smartops-keepalive.service     # add:  [Service]  CPUQuota=25%   → save
+sudo systemctl edit smartops-keepalive.service     # add:  [Service]  CPUQuota=40%   → save
 ```
 
-At 25 % the metric still reads about 28–30 %, enough for a 2-hour block. If it fails again, leave it **off** and
+At 40 % the metric reads about 28 % (~8 points of margin). **Do not go below 40 %**: at 25 % the plateau would be ~20 %, exactly the bar. If it fails again, leave it **off** and
 rely on plan B (section 4); tell me the numbers.
 
 ## 2. Turn it on

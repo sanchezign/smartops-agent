@@ -96,40 +96,46 @@ function run(mode: string): { code: number; out: string } {
   return { code: r.status ?? -1, out: `${r.stdout}${r.stderr}` };
 }
 
-describe.skipIf(!bash)("backup-selftest.sh against a fake OCI CLI container", () => {
-  it("passes when the policy is append-only, even though --no-overwrite exits 0", () => {
-    const r = run("policy-ok");
-    expect(r.out).toContain("SELFTEST PASSED");
-    expect(r.out).toContain(
-      "--no-overwrite, the CLI skips it itself) -> the object did not change",
-    );
-    expect(r.out).toContain("overwrite it (--force): this is the policy -> refused");
-    expect(r.code).toBe(0);
-  });
+// 30 s per test: the script starts several processes and the default 5 s timed out when the whole suite
+// ran in parallel on a busy machine (it passes alone in ~1 s).
+describe.skipIf(!bash)(
+  "backup-selftest.sh against a fake OCI CLI container",
+  { timeout: 30_000 },
+  () => {
+    it("passes when the policy is append-only, even though --no-overwrite exits 0", () => {
+      const r = run("policy-ok");
+      expect(r.out).toContain("SELFTEST PASSED");
+      expect(r.out).toContain(
+        "--no-overwrite, the CLI skips it itself) -> the object did not change",
+      );
+      expect(r.out).toContain("overwrite it (--force): this is the policy -> refused");
+      expect(r.code).toBe(0);
+    });
 
-  it("fails when the policy lets the VM overwrite (--force works)", () => {
-    const r = run("wide-force");
-    expect(r.out).toContain("FAIL  overwrite it (--force): this is the policy (it WORKED");
-    expect(r.out).toContain("the object CHANGED");
-    expect(r.out).toContain("SELFTEST FAILED");
-    expect(r.code).toBe(1);
-  });
+    it("fails when the policy lets the VM overwrite (--force works)", () => {
+      const r = run("wide-force");
+      expect(r.out).toContain("FAIL  overwrite it (--force): this is the policy (it WORKED");
+      expect(r.out).toContain("the object CHANGED");
+      expect(r.out).toContain("SELFTEST FAILED");
+      expect(r.code).toBe(1);
+    });
 
-  it("fails when a write with --no-overwrite really replaces the object (an exit code would hide it)", () => {
-    const r = run("cli-overwrites-silently");
-    expect(r.out).toMatch(/FAIL {2}write the same name again.*the object CHANGED/);
-    expect(r.code).toBe(1);
-  });
+    it("fails when a write with --no-overwrite really replaces the object (an exit code would hide it)", () => {
+      const r = run("cli-overwrites-silently");
+      expect(r.out).toMatch(/FAIL {2}write the same name again.*the object CHANGED/);
+      expect(r.code).toBe(1);
+    });
 
-  it("fails when the VM can delete the backup object", () => {
-    const r = run("wide-delete");
-    expect(r.out).toContain("FAIL  delete it (it WORKED, it must be refused)");
-    expect(r.code).toBe(1);
-  });
+    it("fails when the VM can delete the backup object", () => {
+      const r = run("wide-delete");
+      expect(r.out).toContain("FAIL  delete it (it WORKED, it must be refused)");
+      expect(r.code).toBe(1);
+    });
 
-  it("fails when the object's etag cannot be read (no OBJECT_INSPECT) instead of passing blind", () => {
-    const r = run("no-inspect");
-    expect(r.out).toContain("FAIL  read the new object's etag and size");
-    expect(r.code).toBe(1);
-  });
-});
+    it("fails when the object's etag cannot be read (no OBJECT_INSPECT) instead of passing blind", () => {
+      const r = run("no-inspect");
+      expect(r.out).toContain("FAIL  read the new object's etag and size");
+      expect(r.code).toBe(1);
+    });
+  },
+);

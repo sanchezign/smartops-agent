@@ -18,7 +18,7 @@ import { describe, expect, it } from "vitest";
  * no network or disk, off by default, finished long before the apt timers, the backup and the reboot,
  * and invisible to the monitor as a problem. The unit was also run for real under systemd 255 (the
  * Ubuntu 24.04 version) in a container: SCHED_IDLE, only `lo`, /dev/zero readable, root read-only,
- * 21 CPU-seconds in 60 s (= the 35 % quota).
+ * 21 CPU-seconds in 60 s (= the 35 % quota it had then; now 50 %, see the unit's comment).
  */
 const ROOT = fileURLToPath(new URL("../../../../", import.meta.url));
 const read = (path: string): string => readFileSync(join(ROOT, path), "utf8");
@@ -39,11 +39,11 @@ const directive = (text: string, key: string): string[] =>
   [...text.matchAll(new RegExp(`^${key}=(.*)$`, "gm"))].map((m) => m[1]!);
 
 describe("keep-alive unit", () => {
-  it("runs at the lowest priority and is capped at 35 % of one vCPU", () => {
+  it("runs at the lowest priority and is capped at 50 % of one vCPU", () => {
     expect(directive(service, "Nice")).toEqual(["19"]);
     expect(directive(service, "CPUSchedulingPolicy")).toEqual(["idle"]);
     expect(directive(service, "IOSchedulingClass")).toEqual(["idle"]);
-    expect(directive(service, "CPUQuota")).toEqual(["35%"]);
+    expect(directive(service, "CPUQuota")).toEqual(["50%"]);
     expect(directive(service, "MemoryMax")).toEqual(["32M"]);
   });
 

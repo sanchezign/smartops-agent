@@ -80,7 +80,7 @@ case "$cmd" in
     [ "${pid:-0}" != "0" ] || die "the load did not start: check 'journalctl -u $UNIT'"
     restore
     trap - EXIT
-    log "running for $minutes minutes now (priority idle, at most 35 % of one vCPU); saved settings untouched."
+    log "running for $minutes minutes now (priority idle, at most 50 % of one vCPU, about 25 % on the Console metric (2 vCPUs)); saved settings untouched."
     log "watch: sudo cpu-calibrate.sh $minutes   |   stop early: sudo keepalive.sh stop"
     ;;
   *) die "usage: keepalive.sh status | test [minutes] | on [minutes] | off | stop" ;;

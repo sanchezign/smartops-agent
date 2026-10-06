@@ -5,6 +5,11 @@ Description=SmartOps demo: keep-alive CPU load (idle priority, no network, no di
 # for 7 days (CPU p95 < 20 %, network < 20 %). The demo alone sits at ~3-8 %. This runs one CPU-bound
 # process for KEEPALIVE_MINUTES (default 120) once a night at the lowest possible priority.
 
+# The quota is a share of ONE vCPU, but the Oracle Console metric (CpuUtilization) averages ALL the vCPUs the
+# guest sees (2 on the E2.1.Micro: nproc=2), so:   console ≈ rest + CPUQuota / nproc + a little steal.
+# Measured 2026-10-05: rest 5-7 %, CPUQuota=35% gave a 23-28 % plateau (17.5 + ~2 + rest); the daily p95 was
+# 24.7 %, only ~5 points over the 20 % bar. 50 % gives a ~33 % plateau (docs/deploy/keepalive.md, ADR-027).
+
 [Service]
 Type=oneshot
 # /etc/smartops/keepalive.env (no secrets) overrides these two; `keepalive.sh on|off|status` edits it.
@@ -21,11 +26,11 @@ SuccessExitStatus=124
 # RuntimeMaxSec does not apply to oneshot services; this is the backstop.
 TimeoutStartSec=125min
 
-# Lowest priority everywhere, and at most 35 % of ONE vCPU.
+# Lowest priority everywhere, and at most 50 % of ONE vCPU (= ~25 % of the 2 vCPUs the metric averages).
 Nice=19
 CPUSchedulingPolicy=idle
 IOSchedulingClass=idle
-CPUQuota=35%
+CPUQuota=50%
 MemoryMax=32M
 TasksMax=4
 

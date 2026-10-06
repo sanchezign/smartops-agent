@@ -39,26 +39,43 @@ A systemd timer runs one CPU-bound process for up to 2 hours a night so the p95 
   the backup (03:30 local = 06:30 UTC) and the reboot (04:00 local = 07:00 UTC) are Montevideo time. The longest
   run ends at 05:05 UTC; a test keeps it at least 10 minutes before the first apt timer.
 - `smartops-keepalive.service`: `timeout <minutes>m sha256sum /dev/zero`, `Nice=19`, `CPUSchedulingPolicy=idle`,
-  `IOSchedulingClass=idle`, `CPUQuota=35%`, `MemoryMax=32M`; no network (`PrivateNetwork`), no files
+  `IOSchedulingClass=idle`, `CPUQuota=50%` (35 % until 2026-10-06, see "Amendment"), `MemoryMax=32M`; no network (`PrivateNetwork`), no files
   (`ProtectSystem=strict`, `/opt`, `/etc/smartops` and Docker inaccessible), a dynamic user, no capabilities.
 - **Off by default.** `/etc/smartops/keepalive.env` (`KEEPALIVE_LOAD=on|off`, `KEEPALIVE_MINUTES` 1–120) is read
   every time the unit starts; `deploy/bin/keepalive.sh on|off|status|test|stop` edits it. A 20-minute trial
-  (`keepalive.sh test`) decides whether the quota stays at 35 % before it is turned on.
+  (`keepalive.sh test`) decides whether the quota stays at 50 % before the nightly run is relied on.
 - The monitor shows `keepalive off|on|on, running now` in its summary and has no CPU threshold: it can never
   report the load as a problem.
-- 35 % × 120 min gives 8.3 % of the day's samples above 20 % (the p95 needs 5 %), a margin of 1.7×. It is
-  robust to a p95 over minutes, over hours (2 of 24 hourly points) or over days (each day's own p95).
+- 120 min of 1,440 gives 8.3 % of the day's samples on the plateau (the p95 needs 5 %), a margin of 1.7× in time.
+  It is robust to a p95 over minutes, over hours (2 of 24 hourly points) or over days (each day's own p95). The
+  margin in LEVEL is what the amendment below corrects.
 
 ## Consequences
 
 - The VM does real, useless work for two hours a night. It uses no network, no disk and about 1 MB of memory.
 - Inside the guest the demo always wins (SCHED_IDLE), but the hypervisor shares the same 1/8 OCPU: the load can
   raise steal and slow the demo while it runs. That is measured before turning it on (the 20-minute trial) and
-  the quota can be lowered with a drop-in (`CPUQuota=25%` still gives ~28–30 % on the metric).
+  the quota can be lowered with a drop-in, but not below 40 % (~28 % on the metric; 25 % would sit on the 20 % bar).
 - Plan B stays whatever the load does (runbook section 10): Healthchecks / UptimeRobot alert, start the VM
   from the Console, verify, restore from the backup if it was deleted.
 - If Oracle ever forbids artificial load, `keepalive.sh off` turns it off at once.
 - Verified under a real systemd 255 (Ubuntu 24.04's version) in a container: skipped quietly when off or when
   the minutes are invalid; with it on the process is SCHED_IDLE, has only a loopback interface, `/dev/zero` is
   readable under `PrivateDevices` + `ProtectSystem=strict`, the root is read-only, and 21 CPU-seconds were
-  consumed in 60 s (= the 35 % quota). What a container cannot show is the hypervisor's steal on the real VM.
+  consumed in 60 s (= the 35 % quota it had then). What a container cannot show is the hypervisor's steal on the real VM.
+
+## Amendment (2026-10-06): the quota is per vCPU, the metric averages them
+
+The first full day with the load (2026-10-05, `CPUQuota=35%`) gave a daily p95 of ~24.7 %: only ~5 points over the
+20 % bar. Cause: the guest has `nproc` = 2 and `CpuUtilization` averages both vCPUs, so a quota of 35 % **of one vCPU**
+is ~17.5 % of the metric (the Decision's "35 % reads as 35–45 %" and the `CPUQuota=25%` example above assumed one vCPU).
+
+Measured by the owner in the Console (Metrics Explorer, 1-minute mean, UTC): rest ~5–7 %; plateau 03:00–05:00 of
+~23–28 % (peaks 30–33 %), back to ~5 % at 05:00; ~57 % at ~05:23 is the apt timers. Daily p95: 2026-10-02 ~2.6 %,
+10-03 ~12.8 %, 10-04 ~15.8 %, 10-05 ~24.7 %.
+
+The formula that fits: **Console plateau ≈ rest + CPUQuota / nproc + ~2 points of steal** (6 + 17.5 + 2 = 25.5). The
+quota is now **50 %** (plateau ~33 %, ~13 points of margin; 40 % gives ~28 %, 60 % ~38 %). It was not raised to 55–60 %
+because more load asks the hypervisor for more of a 1/8 OCPU: the steal is the unknown, and a rise in it slows the
+demo (the metric counts it, so it does not hurt the number). The 20-minute trial is repeated with the new quota
+(`docs/deploy/keepalive.md`, section 1) with a fourth gate: the Console plateau must be at least 30 %.
