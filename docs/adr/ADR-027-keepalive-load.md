@@ -79,3 +79,10 @@ quota is now **50 %** (plateau ~33 %, ~13 points of margin; 40 % gives ~28 %, 60
 because more load asks the hypervisor for more of a 1/8 OCPU: the steal is the unknown, and a rise in it slows the
 demo (the metric counts it, so it does not hurt the number). The 20-minute trial is repeated with the new quota
 (`docs/deploy/keepalive.md`, section 1) with a fourth gate: the Console plateau must be at least 30 %.
+
+Result of the repeated trial (2026-10-06, 20:53–21:13 UTC, `CPUQuota=50%`, owner's measurements): recorder at rest
+busy ~2.7 % + steal ~3.5 %; with the load busy ~22.7 % + steal ~9–13 % (peak 26.3 % at 20:58), so the Console reads
+~33–35 %, inside the predicted 30–36 %. Under load the slowest `demo-check` sample took 9.9 s (2.3–5.3 s without
+load; gate: ≤ 2 × the baseline) and the 100-request health burst had p95 538 ms (391 ms without load; gate: < 1 s).
+Steal grew by 6–10 points: that was the unknown, and it stayed inside the gates. The keep-alive stays **on**; the
+Console plateau and the daily p95 of 2026-10-07 are to be confirmed by the owner.

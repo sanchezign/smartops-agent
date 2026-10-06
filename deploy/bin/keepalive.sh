@@ -62,6 +62,13 @@ case "$cmd" in
     minutes="${1:-20}"
     valid_minutes "$minutes" || die "minutes must be a number from 1 to $MAX_MINUTES"
     command -v systemctl >/dev/null 2>&1 || die "systemctl not found"
+    # A oneshot unit that is running is "activating": `systemctl start` on it does nothing, silently, and the new
+    # minutes would be ignored. Say so and touch nothing (not even the saved settings).
+    case "$(systemctl is-active "$UNIT" 2>/dev/null || true)" in
+      activating | active | reloading)
+        die "a run is already in progress; wait for it or stop it first: sudo keepalive.sh stop (nothing was changed)"
+        ;;
+    esac
     # Settings to put back: the saved file, or its absence.
     saved=""
     if [ -f "$KEEPALIVE_ENV" ]; then saved="$(mktemp)" && cp -p "$KEEPALIVE_ENV" "$saved"; fi

@@ -3,7 +3,7 @@
 Why it exists, what it does and what it cannot do: [ADR-027](../adr/ADR-027-keepalive-load.md). In one line:
 a process at the lowest priority, no network and no disk, at most 50 % of one vCPU (about 25 % on the Console metric), for up to 2 hours a night
 (03:00 UTC = 00:00 in Montevideo), so Oracle's idle test (CPU p95 < 20 % over 7 days) does not match the demo.
-It is **off** until you turn it on. The VM exists since 2026-10-02: turn it on **before 2026-10-09**.
+It is **off** until you turn it on (section 2). On the real VM it has been **on** since 2026-10-05.
 
 ## 0. How the number is chosen: the Console averages the vCPUs
 
@@ -33,6 +33,18 @@ samples and the p95 needs only 5 %, so the 95th percentile sits inside the plate
 | **50 %** | **~33 %** (the value now)         | **~13 points**   |
 | 60 %     | ~38 %                             | ~18 points       |
 
+**Trial with 50 % on the real VM (2026-10-06, 20:53–21:13 UTC, owner's measurements):**
+
+| What                           | At rest                   | With the load (50 %)                                      |
+| ------------------------------ | ------------------------- | --------------------------------------------------------- |
+| Recorder busy / steal          | busy ~2.7 %, steal ~3.5 % | busy ~22.7 %, steal ~9–13 % (one peak of 26.3 % at 20:58) |
+| Console plateau (busy + steal) | ~6 %                      | **~33–35 %** (predicted 30–36 %: the model holds)         |
+| `demo-check` slowest sample    | 2.3–5.3 s                 | 9.9 s (all samples `ends as …`)                           |
+| 100 health requests, p95       | 391 ms                    | 538 ms                                                    |
+
+Steal rose by 6–10 points with the load (the unknown below): it counts on the metric, and the demo stayed inside the
+gate (slowest sample 9.9 s against the 16 s limit, health p95 538 ms against 1 s).
+
 50 % was chosen over 55–60 % because a bigger share asks the hypervisor for more of a 1/8 OCPU: **steal** is the unknown
 (at rest it is 2.5–6.8 %, and the metric counts it, so steal helps the number but can slow the demo). The load runs at
 idle priority inside the guest, so the demo wins there; it can still lose time to the hypervisor. The trial in
@@ -52,7 +64,10 @@ sleep 120        # two minutes of "before"
 sudo /opt/smartops/current/bin/keepalive.sh test 20
 ```
 
-`keepalive.sh test 20` starts the load for 20 minutes and puts your saved settings back at once (it stays off).
+`keepalive.sh test 20` starts the load for 20 minutes and puts your saved settings back at once: if the keep-alive
+was **on** it stays on, if it was off it stays off (it never changes the switch). If a run is already in progress it
+does nothing and says so (`a run is already in progress; wait for it or stop it first: keepalive.sh stop`): the
+unit is a oneshot, so starting it again would be ignored silently.
 The recorder keeps going for 25 minutes: 2 before, 20 with the load, the rest after.
 
 **2. From your PC, about 10 minutes after the load started**, with the panel tabs closed:

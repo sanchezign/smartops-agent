@@ -261,6 +261,7 @@ describe.skipIf(!bash)("keepalive.sh", () => {
   const FAKE_SYSTEMCTL = `#!/usr/bin/env bash
 case "$*" in
   *"start --no-block"*) cat "$KEEPALIVE_ENV" >"$FAKE_STATE/env-at-start" 2>/dev/null || echo "(no file)" >"$FAKE_STATE/env-at-start"; echo 4242 >"$FAKE_STATE/pid" ;;
+  *"is-active"*) cat "$FAKE_STATE/active" 2>/dev/null || echo inactive ;;
   *"show"*"MainPID"*) cat "$FAKE_STATE/pid" 2>/dev/null || echo 0 ;;
   stop*) echo stopped >>"$FAKE_STATE/calls"; rm -f "$FAKE_STATE/pid" ;;
   *) : ;;
@@ -344,6 +345,28 @@ esac
     expect(s.atStart()).toBe("KEEPALIVE_LOAD=on\nKEEPALIVE_MINUTES=20\n");
     expect(s.file()).toBe("KEEPALIVE_LOAD=off\nKEEPALIVE_MINUTES=120\n");
     expect(r.out).toContain("saved settings untouched");
+  });
+
+  it("test does nothing and says so when a run is already in progress (activating)", () => {
+    for (const state of ["activating", "active"]) {
+      const s = setup("KEEPALIVE_LOAD=on\nKEEPALIVE_MINUTES=120\n");
+      writeFileSync(join(s.state, "active"), state);
+      const r = s.run("test", "10");
+      expect(r.code, state).not.toBe(0);
+      expect(r.out).toContain("a run is already in progress");
+      expect(r.out).toContain("keepalive.sh stop");
+      // Nothing started and the saved settings are exactly as they were.
+      expect(existsSync(join(s.state, "env-at-start"))).toBe(false);
+      expect(s.file()).toBe("KEEPALIVE_LOAD=on\nKEEPALIVE_MINUTES=120\n");
+    }
+  });
+
+  it("test restores the saved settings: if it was on, it stays on", () => {
+    const s = setup("KEEPALIVE_LOAD=on\nKEEPALIVE_MINUTES=120\n");
+    const r = s.run("test", "20");
+    expect(r.code, r.out).toBe(0);
+    expect(s.atStart()).toBe("KEEPALIVE_LOAD=on\nKEEPALIVE_MINUTES=20\n");
+    expect(s.file()).toBe("KEEPALIVE_LOAD=on\nKEEPALIVE_MINUTES=120\n");
   });
 
   it("test with no saved file leaves no file behind (still off)", () => {
