@@ -6,6 +6,22 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.16.1](https://github.com/sanchezign/smartops-agent/compare/v0.16.0...v0.16.1) (2026-10-06)
+
+
+### Bug Fixes
+
+* **deps:** move shadcn to devDependencies and update @modelcontextprotocol/sdk to 1.32.1 ([8cee481](https://github.com/sanchezign/smartops-agent/commit/8cee481b3fa9dc39d9191cdb820515d0771c5f42))
+* **deps:** update sharp to 0.35.5 and source-map-js to 1.2.2 ([caaf192](https://github.com/sanchezign/smartops-agent/commit/caaf19299e7a28c32beac7ae45b85226bfdca010))
+* **docker:** bump node base image digest, accept seven Perl CVEs for 7 days ([136845b](https://github.com/sanchezign/smartops-agent/commit/136845b97350b6c36d4fd3730be334e0eb89ada8))
+* **docker:** remove npm, npx and corepack from the runtime images ([8da305c](https://github.com/sanchezign/smartops-agent/commit/8da305cc5561f527bcecfc3554ac3b03af83479c))
+
+
+### Documentation
+
+* record the Perl Trivy exceptions and drop the libpcre2 one in CLAUDE.md ([d588bfb](https://github.com/sanchezign/smartops-agent/commit/d588bfb0d2497864adb990869a27ee7453441e8f))
+* slim CLAUDE.md to 31 KB and move closed history to docs/history/ ([ec5823e](https://github.com/sanchezign/smartops-agent/commit/ec5823e3ee4afd3661f3bb01dbbdb8d6e27e7d46))
+
 ## [0.16.0](https://github.com/sanchezign/smartops-agent/compare/v0.15.0...v0.16.0) (2026-10-04)
 
 
