@@ -185,6 +185,8 @@ Active state (2026-10-06):
   PR open, NOT merged until the owner reviews it.
 
 Next task:
+- **Before 2026-10-13:** verify whether `node:24.21.0-bookworm-slim` has perl-base 5.36.0-7+deb12u4;
+  if not, decide a justified extension of the exceptions or an apt patch in the Dockerfile.
 - **Adjust the keep-alive `CPUQuota` for nproc=2** (measured: plateau ~25 % in the Console, daily
   p95 of 2026-10-05 ~24.7 %, only ~5 points of margin over Oracle's 20 % idle threshold).
 
@@ -206,9 +208,11 @@ Phase 12 M8 — close, still to do:
   Observatory B+ (no nonce CSP, decided 2026-10-03).
 
 Dates that will bite:
-- 2026-10-18: Trivy exception for CVE-2026-103111 (`.trivyignore`, mirrored in
-  `security/audit-exceptions.json` → "imageExceptions") expires. Delete it in the same PR where
-  Renovate bumps the node base image to a digest with the fix (libpcre2 deb12u2).
+- 2026-10-13: the seven Perl Trivy exceptions (perl-base 5.36.0-7+deb12u3: CVE-2026-13221, -42496,
+  -8376, -42497, -48962, -57432, -57433; `.trivyignore`, mirrored in `security/audit-exceptions.json`
+  → "imageExceptions") expire. Delete them in the same PR where the node base image digest has
+  perl-base 5.36.0-7+deb12u4. The CVE-2026-103111 (libpcre2) exception was removed on 2026-10-06
+  (digest d6aa754f… brings deb12u2).
 - 2026-10-31: the five audit exceptions in `security/audit-exceptions.json` expire together
   (postcss ×2, deepmerge-ts, mysql2, braces GHSA-vfj7-8cjw-p6xm); `quick` fails from then.
 - 2026-12-31: GHCR read token expires (renew by 2026-12-15; Healthchecks reminder check).
