@@ -93,9 +93,13 @@ milestone, is in `docs/history/phase-log.md`. Status as of 2026-10-06.
     properties, mutation, real-model eval) — DONE.
 11. CI/CD (GitHub Actions, Docker images, releases, supply-chain checks) — DONE (v0.11.0).
 12. deploy ($0): Oracle Always Free E2.1.Micro, light demo profile, Caddy, backups, monitoring,
-    keep-alive — IN PROGRESS: M0–M7 done, v0.16.0 deployed and online; M8 (close) pending.
+    keep-alive — DONE in the repo (closed 2026-10-06; v0.16.2 deployed, keep-alive ON at 50 %). The
+    owner's checks on the VM / Console that remain are listed in "Current phase".
 13. i18n (panel EN + neutral ES) + English docs + screenshots/video + panel guide + case study +
     portfolio kit — DONE (merged 2026-10-02).
+14. frontend clarity (UX) — NEXT. Phase 14 — frontend clarity (UX): after closing phase 12, before
+    the final security audit and making the repo public. Input: the user's list of pain points from
+    the live demo. Plan with Opus + high effort.
 
 
 ## Data model (starting point — refine in phase 2 plan)
@@ -170,43 +174,44 @@ Add one line here for every new ADR.
 - [ADR-028](docs/adr/ADR-028-security-alert-policy.md) — Security alerts: pull requests block what they introduce, a nightly scan owns what exists
 
 ## Current phase
-**Phases 1–11 and 13 COMPLETE and merged. Phase 12 (deploy $0) is in its last step, M8 (close).**
+**Phases 1–13 are COMPLETE (phase 12 closed in the repo 2026-10-06). Next: phase 14 (frontend clarity).**
 Everything already finished (what was built, decisions, measurements, incidents, real results) is
 in `docs/history/phase-log.md` — one entry per phase and milestone, textual. Read it only when you
 need the detail of a closed milestone (see "History" at the end of this file).
 
 Active state (2026-10-06):
 - Public demo ONLINE: https://smartops-demo.duckdns.org — one Oracle Always Free E2.1.Micro,
-  light profile (ADR-023, ADR-025), v0.16.0 deployed. Phase 12 log: `docs/history/phase-log.md`
+  light profile (ADR-023, ADR-025), v0.16.2 deployed. Phase 12 log: `docs/history/phase-log.md`
   item 12.
-- Keep-alive load (ADR-027, `docs/deploy/keepalive.md`): the 20-minute trial passed and the
-  nightly load has been ON since 2026-10-05 (first real run 03:00 UTC).
-- 2026-10-05: project migrated to a new laptop (same paths); Bastion access verified.
-- Branch `docs/slim-claude-md` (this slimming of CLAUDE.md, docs only + the CLAUDE.md guard test):
-  PR open, NOT merged until the owner reviews it.
+- Keep-alive load (ADR-027, `docs/deploy/keepalive.md`): ON since 2026-10-05, `CPUQuota=50%` since
+  0.16.2 (trial of 2026-10-06 passed: Console ~33–35 %, slowest sample 9.9 s, health p95 538 ms).
+- Release PR #45 (0.16.3) is left open on purpose: it ships together with the Perl fix (Renovate
+  opens the digest PR for node/postgres daily, no automerge; the owner merges). Renovate PR #6
+  stays untouched until the owner reviews it.
+- Security alerts policy (ADR-028): PRs block only what they introduce; the nightly scan
+  (security.yml, 03:30 Montevideo) owns what exists and turns RED on a finding (check it still runs:
+  docs/ci-cd.md, "Is the nightly scan still running?").
 
-Next task:
-- **Before 2026-10-13:** verify whether `node:24.21.0-bookworm-slim` has perl-base 5.36.0-7+deb12u4;
-  if not, decide a justified extension of the exceptions or an apt patch in the Dockerfile.
-- **Adjust the keep-alive `CPUQuota` for nproc=2** (measured: plateau ~25 % in the Console, daily
-  p95 of 2026-10-05 ~24.7 %, only ~5 points of margin over Oracle's 20 % idle threshold).
+Next task: **phase 14 — frontend clarity (UX)**, after closing phase 12 and before the final security
+audit and making the repo public. Input: the owner's list of pain points from the live demo. Plan it
+with Opus + high effort (no code before the plan is approved).
 
-Phase 12 M8 — close, still to do:
-- Release (release-please; 1.0.0 only after the SEPARATE full security audit) and ONE `deploy.sh`
-  run by the owner. I have no SSH access to the VM: the owner runs the scripts.
-- Cleanup, each item ONLY with the owner's OK:
-  - local test images `smartops-local/smartops-{api,admin}:m0a|m0b` and harness volumes
-    `smartops-m2light_*` / `smartops-m2full_*`;
-  - GHCR package versions 0.12.0–0.12.2 (wrong label / no images; the owner deletes them in the
-    GitHub UI);
-  - launcher leftovers: delete ONLY the API key `~/.oci/smartops_launcher.pem` and the
-    `[SMARTOPS]` profile of `~/.oci/config` (user `smartops-launcher`), plus, in the OCI Console,
-    the IAM user `smartops-launcher`, its group, policy and the Resource Manager stack — the
-    console items only if we will not retry the A1 VM. NEVER delete the `~/.oci` folder or the
-    `[SMARTOPS_BASTION]` profile: `scripts/oci/bastion-connect.ps1` uses it. `launch-retry.ps1`
-    stays untouched (ON HOLD).
+Owner's checks still open for phase 12 (nothing to code):
+- 2026-10-07: Console `CpuUtilization` plateau (~33 %) and daily p95 (expected ≥ ~30 %).
+- Before 2026-10-28: the Oracle Free Trial checklist, `docs/runbook.md` §12 (every OCI resource,
+  whether it is Always Free, the Object Storage limit that deletes everything above 20 GB, the
+  reserved IP). Repeat it on 2026-10-29.
+- GHCR package versions 0.12.0–0.12.2 (wrong label / no images): the owner deletes them in the
+  GitHub UI.
+- OCI Console, launcher leftovers: delete the IAM user `smartops-launcher` (API key, group,
+  policy). The Resource Manager stack `smartops-demo-vm` and `scripts/oci/launch-retry.ps1` stay
+  (A1 retry ON HOLD). Done locally 2026-10-06: the key `~/.oci/smartops_launcher.pem` and the
+  `[SMARTOPS]` profile of `~/.oci/config` are gone (backup `~/.oci/config.bak-before-launcher-removal`).
+  NEVER delete the `~/.oci` folder or the `[SMARTOPS_BASTION]` profile: `scripts/oci/bastion-connect.ps1`
+  uses it.
 - Docs still pending: `[REPO_URL]` in the portfolio kit (private repo); the demo stays at
   Observatory B+ (no nonce CSP, decided 2026-10-03).
+- No release 1.0.0 until the SEPARATE full security audit.
 
 Dates that will bite:
 - 2026-10-13: the seven Perl Trivy exceptions (perl-base 5.36.0-7+deb12u3: CVE-2026-13221, -42496,
@@ -218,11 +223,8 @@ Dates that will bite:
   (postcss ×2, deepmerge-ts, mysql2; shortened from 10-31 to fit the 30-day HIGH limit, ADR-028;
   the braces one was removed 2026-10-06). `quick` (diff mode) only fails for a CHANGE that
   introduces such a finding; the nightly scan (security.yml) is what goes red.
+- ~2026-10-28: the Oracle Free Trial ends (the Console shows the exact date): `docs/runbook.md` §12.
 - 2026-12-31: GHCR read token expires (renew by 2026-12-15; Healthchecks reminder check).
-- Renovate PR #6 stays untouched until the owner reviews it.
-- Security alerts policy (ADR-028, 2026-10-06): PRs block only what they introduce (diff-mode audit
-  gate); the nightly scan (security.yml, 03:30 Montevideo) owns what exists and turns RED on a finding.
-  Check it still runs (docs/ci-cd.md, "Is the nightly scan still running?").
 
 Required BEFORE a real client (not part of the demo): phase 5 M3b chunked extraction, MFA (TOTP)
 for panel users, the separate full security audit (also before the repo goes public), media
@@ -248,8 +250,6 @@ retention policy, a real WhatsApp instance (out of phase 12).
   deleted) per third-party reports: alert + start it from the Console (runbook §10 plan B);
   backups live off the VM. The earlier text of this entry is in
   `docs/history/resolved-issues.md`.
-- **Phase 12 — at the phase close:** delete the local test images
-  `smartops-local/smartops-{api,admin}:m0a|m0b` (user, 2026-09-28).
 - **Phase 11:** the 4 accepted audit exceptions (postcss ×2 via next 15.5, deepmerge-ts,
   mysql2 — see `security/audit-exceptions.json`) EXPIRE 2026-10-27 (30-day HIGH limit): after that
   a change introducing them fails `quick`, and the nightly scan fails, until the dependency is

@@ -1414,6 +1414,22 @@ a real client.**
       test `image-exceptions.test.ts`; Trivy gets it mounted + `--ignorefile` + `--show-suppressed` in ci.yml and release.yml (verified
       locally: exit 1 without it, exit 0 and "ignored" with it); the loop now scans BOTH images and fails at the end (admin was never
       scanned before). Delete the exception in the same PR where Renovate bumps the node digest to one with deb12u2.
+    - M8 CLOSE (2026-10-06) — phase 12 DONE in the repo. Releases 0.16.1 (security: sharp / source-map-js, node
+      digest d6aa754f…, npm / npx / corepack removed from the runtime images: Trivy node-pkg HIGH/CRITICAL 9 → 2 per image,
+      image size unchanged because the files stay in the base layer; shadcn moved to devDependencies and
+      @modelcontextprotocol/sdk 1.30.1 → 1.32.1) and 0.16.2 (keep-alive CPUQuota 35 → 50 %), both deployed by the owner and
+      verified (demo-check, abuse check, 4 containers healthy, 504 MB available). Prisma prints "failed to detect the
+      libssl/openssl version" in the images (slim image without libssl; present since 0.16.0, the schema engine does not link
+      OpenSSL, 24 real migrations applied): decided to leave it. ADR-028 (2026-10-06): diff-mode audit gate in PRs, Trivy a
+      warning in PRs (blocking in the release), exception maximum life (CRITICAL 7 d, HIGH 30 d; the four pnpm exceptions
+      shortened to 2026-10-27, the stale braces one removed), nightly scan of main + the published images (GITHUB_TOKEN with
+      packages: read can pull the private images; 2 billed minutes a run), Renovate reviews the node / postgres digests daily
+      without automerge. Keep-alive: the quota is per vCPU and the Console averages both (nproc = 2): plateau ≈ rest +
+      CPUQuota / nproc + ~2 points of steal; trial of 2026-10-06 with 50 %: busy 22.7 % + steal 9–13 % (Console ~33–35 %),
+      slowest demo sample 9.9 s, health p95 538 ms; keepalive.sh test refuses while a run is in progress. Cleanup: no
+      smartops-local images or smartops-m2* volumes existed on the new laptop; launcher key and [SMARTOPS] profile removed
+      locally (config backed up). Oracle Free Trial checklist and inventory: docs/runbook.md §12. Phase 14 (frontend
+      clarity, UX) is next.
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
     #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs

@@ -261,3 +261,128 @@ checklist is in [keepalive.md](deploy/keepalive.md), section 4.
 - **Automatic updates run at 02:20 and 02:50** (local time; the timers are validated by a test with
   `systemd-analyze calendar`). Check on the VM: `systemctl list-timers 'apt-daily*'`; an invalid
   timer would show `Failed to parse calendar specification` in `journalctl -u apt-daily.timer`.
+
+## 12. Before the Oracle Free Trial ends (checklist, by 2026-10-28)
+
+The account was created on about 2026-09-28 with the Free Trial: "$300 of cloud credits valid for up to 30 days"
+([Free Tier](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier.htm)), so it ends around **2026-10-28**
+(the Console shows the exact date, step 1). What Oracle says happens then:
+
+> Paid resources provisioned with credits during the free trial "are reclaimed by Oracle unless you upgrade your
+> account"; Always Free resources "continue to be available with no interruption" and the account stays active
+> ([Free Tier](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier.htm)).
+
+So the whole question is: **is every resource of the project Always Free?** Do **not** click _Upgrade_: Pay As You
+Go was discarded (ADR-023: a US$100 hold, no capacity guarantee) and the rule of the project is $0. Each statement
+below has its source; **"not confirmed"** means I found no statement in Oracle's documentation (read 2026-10-06).
+
+### 12.1 Inventory (everything the project has in OCI)
+
+Home region São Paulo (`sa-saopaulo-1`), compartment `smartops`. Limits come from
+[Always Free Resources](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm)
+(called _AF_ below) unless another link is given.
+
+**1. VM `smartops-demo-micro`, shape `VM.Standard.E2.1.Micro`** — Always Free: **yes** (AF). Limit: "up to two Always
+Free VM instances using the VM.Standard.E2.1.Micro shape" (1/8 OCPU, 1 GB); we use 1. After the trial: continues (Free
+Tier page). The only risk is the idle-reclaim rule (§10, ADR-027).
+
+**2. Boot volume of the VM (about 47–50 GB)** — Always Free: **yes** (AF). Limit: "200 GB of Always Free block volume
+storage" for boot and block volumes together; "the minimum boot volume size for each instance is 47 GB". After the
+trial: continues.
+
+**3. Volume backups (boot or block)** — Always Free: yes, up to five (AF: "a maximum of five Always Free volume backups
+at any time"); **the project has none** (its backups are in Object Storage, item 6). Check there are none (step 4).
+
+**4. VCN `smartops-vcn` (10.0.0.0/16), internet gateway `smartops-igw`, route table, security list, subnet
+`smartops-public`** — VCN: **yes** (AF: "Free Tier tenancies … can have up to 2 virtual cloud networks"; we use 1).
+Gateway, route table, security list and subnet: **not confirmed** (no separate price or limit in the pages read).
+Outbound data: "10 TB per month" (AF); the demo moves a few MB. After the trial: the VCN continues; for the rest the
+Cost Analysis of step 1 shows any charge.
+
+**5. Reserved public IP (the one in DuckDNS), attached to the VM's private IP** — Always Free: **not confirmed**. The
+[Public IPs page](https://docs.oracle.com/en-us/iaas/Content/Network/Tasks/managingpublicIPs.htm) says "You can create
+50 per region" and that it exists "until you delete it", and says **nothing** about cost; it is not in the Always Free
+list. A third-party source mentions a monthly price when it is **unattached**: unverified. **This is the main risk**:
+if Oracle treated it as a paid resource it could be reclaimed when the trial ends, and the VM would lose the address
+DuckDNS points to (recovery: 12.3). Keep it attached (step 3).
+
+**6. Object Storage bucket `smartops-backups` (private, Standard, no versioning) + lifecycle rule `expire-backups`
+(delete after 30 days)** — Always Free: **yes, with a different limit before and after** (AF). During the trial: "10 GB
+of Standard tier data" (plus 10 GB Infrequent Access and 10 GB Archive) and "50,000 Object Storage API requests per
+month". After it ("Always Free only accounts"): "20 GB of combined Standard tier, Infrequent Access tier, and Archive
+tier data" and the same 50,000 requests. The lifecycle rule has no separate price in the pages read: not confirmed.
+**Danger:** "If you are using more than the 20-GB limit when your Free Trial ends, all of your objects will be
+deleted." Keep the bucket far under 10 GB (step 5).
+
+**7. Bastion `smartopsbastion` (port-forwarding sessions, TTL up to 3 h)** — Always Free: **yes**: "Bastion is free for
+both free and paid accounts" (AF). After the trial: continues.
+
+**8. IAM in the Default identity domain: users `smartops-bastion` and your own admin, group
+`smartops-bastion-users`, dynamic group `smartops-vm` (`instance.id` = the VM), policies `smartops-bastion-policy` and
+`smartops-backups`, compartment `smartops`** — Always Free: **yes**, every tenancy gets a "Free" identity domain
+([domain types](https://docs.oracle.com/en-us/iaas/Content/Identity/sku/overview.htm)). Limits of the Free type: 2,000
+users, 250 groups, **50 dynamic groups**; it supports "All current Infrastructure as a Service IAM features" and
+"Dynamic groups (for OCI)" (we use 1 dynamic group, 2 users, 1 group). What happens to the domain after the trial:
+**not confirmed** (the page does not say). Check step 8.
+
+**9. Monitoring: the project only reads the VM's `CpuUtilization`** (Metrics Explorer, namespace `oci_computeagent`);
+no alarms and no Notifications topics (the monitors are UptimeRobot and Healthchecks.io) — Always Free: **yes** (AF:
+"500 million Monitoring service ingestion data points, and 1 billion retrieval data points"; Notifications, unused:
+"1 million https notifications per month, and 1000 email notifications per month"). After the trial: continues. Check
+step 9 that no alarm or topic exists by accident.
+
+**10. Budget `smartops-cero-gasto` (US$1, 2 alert rules)** — Cost of the budget: **not confirmed** (the
+[budgets page](https://docs.oracle.com/en-us/iaas/Content/Billing/Concepts/budgetsoverview.htm) gives no price). It
+says "Use budgets to set soft limits": it stops nothing, it only e-mails, and "all budget alerts are evaluated
+periodically every 24 hours". It keeps working after the trial and is the early warning that something started to cost.
+
+**11. Resource Manager stack `smartops-demo-vm`** (a record of the A1 launch attempt; it holds no resources) — Always
+Free: **yes** (AF: "Stacks: 100", "Jobs (concurrent): 2"). It stays on purpose; the A1 retry is on hold
+(`scripts/oci/launch-retry.ps1`). To keep Arm instances an Always Free account may have at most "2 OCPUs and 12 GB of
+memory" in total (Free Tier page).
+
+**12. Oracle Cloud Agent on the VM (Compute Instance Monitoring plugin)** — Always Free: **not confirmed** as a separate
+item (it is part of the VM image; no price found). Continues with the VM.
+
+### 12.2 The Console checklist (do it before 2026-10-28, and again on 2026-10-29)
+
+Menu names can differ a little between Console versions; the goal of each step is what matters.
+
+1. **Billing & Cost Management → Cost Analysis**, last 30 days, group by _Service_: every service must show **$0**
+   (credits are shown separately). Write down the trial's end date and the credits left: the banner at the top of the
+   Console says it (the _Upgrade_ link is in that banner: **do not use it**).
+2. **Compute → Instances**: exactly one instance, shape `VM.Standard.E2.1.Micro`, state Running (item 1). Open its
+   _Boot volume_: size ≤ 200 GB (item 2).
+3. **Networking → IP management → Reserved public IPs**: exactly one, **assigned** (to the VM's private IP) and equal
+   to the address in DuckDNS. Write it down (item 5). If it shows as unassigned, assign it again at once.
+4. **Storage → Block Storage → Boot Volume Backups** and **Block Volume Backups**: none (item 3).
+5. **Storage → Object Storage → Buckets → `smartops-backups`**: _Approximate size_ and object count. It must be
+   **well under 10 GB** (a backup is a few MB; 30 days of nightly backups should be a few hundred MB: if it is bigger,
+   something is wrong). Lifecycle rule `expire-backups` _Enabled_, 30 days. If the size is anywhere near 10 GB, delete
+   the oldest objects by hand **before** the trial ends (item 6: above 20 GB everything is deleted). The bucket's
+   _Metrics_ show the requests; the limit is 50,000 a month.
+6. **Identity & Security → Bastion**: one bastion `smartopsbastion`, Active (item 7). Run `bastion-connect.ps1` once.
+7. **Governance & Administration → Budgets**: `smartops-cero-gasto` with its 2 alert rules (item 10).
+8. **Identity & Security → Domains → Default**: the type is _Free_; Users: your admin and `smartops-bastion` only
+   (`smartops-launcher` was removed); Groups: `smartops-bastion-users`; Dynamic groups: `smartops-vm`; and in
+   **Policies**: `smartops-bastion-policy` and `smartops-backups` (item 8). Anything else is not from this project.
+9. **Observability & Management → Monitoring → Alarm definitions** and **Developer Services → Notifications →
+   Topics**: nothing from this project (item 9).
+10. **Developer Services → Resource Manager → Stacks**: `smartops-demo-vm`, with no resources (item 11).
+11. **On the VM**: `sudo /opt/smartops/current/bin/status.sh` (containers healthy, timers), the backup of last night
+    (§3), `free -m`.
+12. **From your PC**: `node C:\dev\demo-check.mjs https://smartops-demo.duckdns.org`.
+
+**The day after the trial ends (2026-10-29)**: repeat 1, 2, 3, 5 and 12, and read your e-mail for anything from
+Oracle. The bucket must still hold its objects (item 6); the VM must be Running with the same IP; Cost Analysis must
+still be $0.
+
+### 12.3 If something was reclaimed or stopped
+
+- **The reserved IP is gone** (the VM is up, DuckDNS points nowhere): Networking → Reserved public IPs → _Reserve_ (or
+  assign an ephemeral one to the VM's private IP), update the address in DuckDNS, wait for the DNS TTL; Caddy asks
+  Let's Encrypt for a new certificate by itself when the name answers again. Then `status.sh` and `demo-check`.
+- **The VM was stopped**: plan B of §10 (_Start_ from the Console, verify, restore from the backup if needed).
+- **The backups were deleted**: the bucket is empty; the next nightly backup recreates the first one. A copy on your PC
+  exists only if you did the monthly restore test (§4): do one before the trial ends.
+- Anything that shows a charge in Cost Analysis: tell me the service and the amount before touching anything.
