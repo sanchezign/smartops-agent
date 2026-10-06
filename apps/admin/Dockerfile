@@ -28,6 +28,10 @@ RUN pnpm install --offline --frozen-lockfile --filter @smartops/admin \
 FROM ${NODE_IMAGE} AS runtime
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 WORKDIR /app
+# Nothing at runtime needs npm, npx or corepack (CMD is `node ...`): drop them, and with them
+# their bundled dependencies, from the attack surface and the vulnerability scans.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+  /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 COPY --from=build --chown=node:node /repo/apps/admin/.next/standalone ./
 USER node
 EXPOSE 3000

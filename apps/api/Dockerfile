@@ -40,6 +40,10 @@ RUN find /opt/smartops-deploy -type d -exec chmod 755 {} + \
 FROM ${NODE_IMAGE} AS runtime
 ENV NODE_ENV=production PORT=4000
 WORKDIR /app
+# Nothing at runtime needs npm, npx or corepack (every command is `node ...`): drop them, and with
+# them their bundled dependencies, from the attack surface and the vulnerability scans.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+  /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 COPY --from=build --chown=node:node /out ./
 COPY --from=bundle /opt/smartops-deploy /opt/smartops-deploy
 USER node
