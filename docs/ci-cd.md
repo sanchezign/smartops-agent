@@ -15,7 +15,7 @@ audit (user decision, 2026-09-27).
 | -------- | -------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | CI       | `.github/workflows/ci.yml`       | push (any branch), PR to `main`, nightly 03:00 Montevideo, manual | `quick`, `plan`, `integration-coverage`, `e2e`, `images`, `main-guard` |
 | Release  | `.github/workflows/release.yml`  | push to `main`, manual                                            | `release-please`, `build` (4× native), `merge` (2×)                    |
-| Security | `.github/workflows/security.yml` | Mondays 03:00 Montevideo, manual                                  | full-history gitleaks + production audit gate                          |
+| Security | `.github/workflows/security.yml` | Mondays 03:00 + every day 03:30 Montevideo, manual                | `security` (weekly: full-history gitleaks + audit), `nightly-scan`     |
 
 ### CI jobs
 
@@ -172,12 +172,39 @@ dist/worker.js`, `node node_modules/prisma/build/index.js migrate deploy` (relea
   (`NEXT_OUTPUT=standalone`, only in the Dockerfile — Windows cannot build it without symlink
   rights), `NEXT_PUBLIC_API_BASE` is a build argument (default `/api/v1`, same origin).
 
+## Security alerts policy (ADR-028)
+
+Pull requests block only what the change introduces (diff-mode audit gate; Trivy in the `images` job is a warning;
+the release still blocks). What already exists is owned by the **nightly scan** (`security.yml`, job
+`nightly-scan`, daily 03:30 Montevideo, 2 billed minutes): the strict audit gate on main's lockfile and Trivy (OS
+packages and libraries, fixable HIGH/CRITICAL, `.trivyignore`) on the published images of the latest GitHub release.
+A finding, a scan that cannot run or a report that proves nothing was scanned makes the run red; GitHub's e-mail
+about the failed scheduled run is the notification. Run it by hand: `gh workflow run security.yml` (the Actions tab
+shows the same). Accepted findings go in `security/audit-exceptions.json` (+ `.trivyignore`): CRITICAL ≤ 7 days,
+HIGH ≤ 30 days.
+
+### Is the nightly scan still running?
+
+A red run e-mails you; a scan that **never starts** does not. Check now and then (and after a long break) that the
+last scheduled run is from the last 24 hours:
+
+```bash
+gh run list --workflow security.yml --event schedule --limit 3
+gh api repos/sanchezign/smartops-agent/actions/workflows --jq '.workflows[] | select(.state != "active") | [.name, .state] | @tsv'
+```
+
+While the repository is **private** nothing disables the schedule. Once it is **public**, GitHub disables scheduled
+workflows after 60 days without repository activity ([docs](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/disable-and-enable-workflows));
+the second command then prints `Security … disabled_inactivity`. Any
+commit is activity; re-enable with `gh workflow enable security.yml` (and `ci.yml`, which has a nightly run too).
+
 ## Supply chain
 
 - Actions pinned to full commit SHAs (version in a comment); tool images pinned as
   `image:tag@sha256:…`; Renovate updates both (custom regex manager for the image pins).
 - Renovate (Mend app, free): weekly, Mondays before 06:00 Montevideo, minimum release age 3
-  days (1 day for security fixes), non-major updates grouped, majors disabled for Prisma,
+  days (1 day for security fixes), non-major updates grouped; the `node` and `postgres` image **digests daily**, in
+  their own PR and never automerged (ADR-028), majors disabled for Prisma,
   ESLint, Next, React and the Node/Postgres images (planned upgrades only). Dependabot cannot
   update pnpm 12 lockfiles, so it is used for **alerts only**.
 - `pnpm audit --prod` gate (`apps/api/scripts/security/audit-gate.ts --base auto`, ADR-028), **diff mode**:

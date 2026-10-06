@@ -167,6 +167,7 @@ Add one line here for every new ADR.
 - [ADR-025](docs/adr/ADR-025-light-demo-profile.md) — Light demo profile (in-process orchestrator, API + worker in one process)
 - [ADR-026](docs/adr/ADR-026-append-only-backups.md) — Append-only encrypted backups to Object Storage, uploaded by a pinned OCI CLI container
 - [ADR-027](docs/adr/ADR-027-keepalive-load.md) — A nightly keep-alive CPU load so the demo VM does not look idle to Oracle
+- [ADR-028](docs/adr/ADR-028-security-alert-policy.md) — Security alerts: pull requests block what they introduce, a nightly scan owns what exists
 
 ## Current phase
 **Phases 1–11 and 13 COMPLETE and merged. Phase 12 (deploy $0) is in its last step, M8 (close).**
@@ -219,6 +220,9 @@ Dates that will bite:
   introduces such a finding; the nightly scan (security.yml) is what goes red.
 - 2026-12-31: GHCR read token expires (renew by 2026-12-15; Healthchecks reminder check).
 - Renovate PR #6 stays untouched until the owner reviews it.
+- Security alerts policy (ADR-028, 2026-10-06): PRs block only what they introduce (diff-mode audit
+  gate); the nightly scan (security.yml, 03:30 Montevideo) owns what exists and turns RED on a finding.
+  Check it still runs (docs/ci-cd.md, "Is the nightly scan still running?").
 
 Required BEFORE a real client (not part of the demo): phase 5 M3b chunked extraction, MFA (TOTP)
 for panel users, the separate full security audit (also before the repo goes public), media
