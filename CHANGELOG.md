@@ -6,6 +6,24 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.16.2](https://github.com/sanchezign/smartops-agent/compare/v0.16.1...v0.16.2) (2026-10-06)
+
+
+### Bug Fixes
+
+* **deploy:** raise the keep-alive CPUQuota to 50% (the Console averages both vCPUs) ([7a168b6](https://github.com/sanchezign/smartops-agent/commit/7a168b6393f889fea3585c3b6bcd11448807ff8a))
+
+
+### CI/CD
+
+* **security:** diff-mode audit gate, Trivy as a PR warning, exception maximum life ([bbe357d](https://github.com/sanchezign/smartops-agent/commit/bbe357d22d58f6e4c8d5f94ecb30a0c28e3e6dc8))
+* **security:** nightly scan of main and the published images, daily base-image digests ([a2729ef](https://github.com/sanchezign/smartops-agent/commit/a2729efc67e41d394bb42cc0aa4a3d5f26fb7d5d))
+
+
+### Documentation
+
+* **security:** ADR-028 security alerts policy, nightly scan runbook and 60-day note ([0d7f154](https://github.com/sanchezign/smartops-agent/commit/0d7f154458d807c79467bda9413a2213a320f9c5))
+
 ## [0.16.1](https://github.com/sanchezign/smartops-agent/compare/v0.16.0...v0.16.1) (2026-10-06)
 
 
