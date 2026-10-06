@@ -77,8 +77,10 @@ jobs:
           docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/repo:ro"             ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f             git /repo --config /repo/.gitleaks.toml --redact --no-banner --log-opts="$range"
 
       - run: pnpm install --frozen-lockfile
-      - name: Dependency audit gate (high/critical in production, security/audit-exceptions.json)
-        run: node apps/api/scripts/security/audit-gate.ts
+      - name: Dependency audit gate (diff mode, only high/critical findings the change introduces block; ADR-028)
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: node apps/api/scripts/security/audit-gate.ts --base auto
       - name: Documentation links (relative files and anchors, offline)
         run: node apps/api/scripts/ci/doc-links.ts
       - run: pnpm format:check
@@ -275,8 +277,10 @@ jobs:
         run: scripts/ci/api-container-smoke.sh smartops-api:ci
       - name: Panel container smoke test (login page, SIGTERM)
         run: scripts/ci/admin-container-smoke.sh smartops-admin:ci
-      - name: OS-package vulnerabilities (Trivy 0.74.0; fixable HIGH/CRITICAL block, npm deps are the audit gate)
-        # Both images are always scanned and both results are shown; the step fails at the end if any failed.
+      - name: OS-package vulnerabilities (Trivy 0.74.0; fixable HIGH/CRITICAL are a WARNING here, release.yml blocks; ADR-028)
+        # Both images are always scanned and both results are shown. In a pull request the finding is an
+        # annotation, not a failure: a CVE published today must not block a change that did not cause it
+        # (the nightly security run owns it; the release still blocks).
         # .trivyignore (the accepted CVEs, with expiry; mirrored in security/audit-exceptions.json) is
         # mounted into the Trivy container; --show-suppressed prints what it ignored, as proof it was read.
         run: |
@@ -290,7 +294,9 @@ jobs:
               --ignore-unfixed --ignorefile /.trivyignore --show-suppressed --exit-code 1 "$img" || failed=1
             echo "::endgroup::"
           done
-          exit "$failed"
+          if [ "$failed" -ne 0 ]; then
+            echo "::warning title=Trivy::fixable HIGH/CRITICAL OS-package findings in the images (not blocking in a pull request; the release blocks). See the step log."
+          fi
 
   main-guard:
     name: main-guard

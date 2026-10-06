@@ -16,10 +16,11 @@ const adv = (id: string, pkg: string, severity: string): AuditAdvisory => ({
   patched_versions: ">=9",
   findings: [{ version: "1.0.0", paths: ["a>b"] }],
 });
-const exc = (id: string, pkg: string, expires = "2026-10-31"): AuditException => ({
+const exc = (id: string, pkg: string, expires = "2026-10-27"): AuditException => ({
   advisory: id,
   package: pkg,
   reason: "not reachable: only our own build-time input",
+  severity: "high",
   expires,
   addedAt: "2026-09-27",
 });
@@ -44,8 +45,8 @@ describe("audit gate", () => {
 
   it("accepts an excepted finding until its expiry date (inclusive), then blocks again", () => {
     const findings = [adv(A, "postcss", "high")];
-    expect(gatePasses(evaluateAudit(findings, [exc(A, "postcss")], "2026-10-31"))).toBe(true);
-    const later = evaluateAudit(findings, [exc(A, "postcss")], "2026-11-01");
+    expect(gatePasses(evaluateAudit(findings, [exc(A, "postcss")], "2026-10-27"))).toBe(true);
+    const later = evaluateAudit(findings, [exc(A, "postcss")], "2026-10-28");
     expect(later.expired).toHaveLength(1);
     expect(gatePasses(later)).toBe(false);
   });

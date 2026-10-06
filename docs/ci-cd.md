@@ -49,7 +49,8 @@ audit (user decision, 2026-09-27).
 - **images** — builds the API and panel images (amd64, never pushed), checks that no image
   contains `.env` files, keys or secrets (`scripts/ci/image-secrets-check.sh`), runs both
   container smoke tests (`scripts/ci/{api,admin}-container-smoke.sh`: migrations, health,
-  SIGTERM → exit 0, fake values only) and Trivy (fixable HIGH/CRITICAL OS packages block).
+  SIGTERM → exit 0, fake values only) and Trivy (fixable HIGH/CRITICAL OS packages: a warning in the pull
+  request, blocking in the release).
 - **main-guard** — push to `main`: fails if the commit does not belong to a merged pull
   request (soft enforcement while branch protection is unavailable). Together with the local
   pre-push hook (`pnpm hooks:install` once per clone; `ALLOW_PUSH_TO_MAIN=1` overrides it).
@@ -179,12 +180,18 @@ dist/worker.js`, `node node_modules/prisma/build/index.js migrate deploy` (relea
   days (1 day for security fixes), non-major updates grouped, majors disabled for Prisma,
   ESLint, Next, React and the Node/Postgres images (planned upgrades only). Dependabot cannot
   update pnpm 12 lockfiles, so it is used for **alerts only**.
-- `pnpm audit --prod` gate (`apps/api/scripts/security/audit-gate.ts`): HIGH/CRITICAL block
-  unless listed in `security/audit-exceptions.json` with a justification and an expiry date.
-  **The four current exceptions expire on 2026-10-31**: from that day `quick` fails until the
-  dependency is updated or the exception is renewed with a new justification.
-- Docker image OS packages (Trivy, fixable HIGH/CRITICAL block; both images are always scanned, the step
-  fails at the end): accepted CVEs live in `.trivyignore` (mounted into the Trivy container, `--ignorefile`,
+- `pnpm audit --prod` gate (`apps/api/scripts/security/audit-gate.ts --base auto`, ADR-028), **diff mode**:
+  the same audit runs on the base (merge-base with `origin/main`; the previous tip of `main` on a push to
+  `main`) and on the head, and only HIGH/CRITICAL findings the change **introduces** (an advisory, package and
+  version absent from the base) block, unless listed in `security/audit-exceptions.json`. Findings already in the
+  base are a `::warning::` ("pre-existing"). So an advisory published today cannot turn a docs-only pull request
+  red. If the base cannot be resolved the gate falls back to strict. Without `--base` (the weekly and nightly
+  security runs) it is strict: every finding counts.
+  Exceptions need a justification, a `severity` and an expiry that is at most **7 days (critical) / 30 days
+  (high)** after `addedAt` (a test enforces it for the pnpm audit and the image exceptions; a `high` exception
+  never covers a critical advisory). **The four current exceptions expire on 2026-10-27**.
+- Docker image OS packages (Trivy): in a **pull request** a fixable HIGH/CRITICAL finding is a warning
+  annotation (the release still blocks, `release.yml`); both images are always scanned. Accepted CVEs live in `.trivyignore` (mounted into the Trivy container, `--ignorefile`,
   `--show-suppressed` prints what was ignored) and, with the reason and expiry, in the same
   `security/audit-exceptions.json` under `imageExceptions` (a test keeps both identical). Current: seven Perl CVEs
   (perl-base 5.36.0-7+deb12u3, Debian 12 base image) until 2026-10-13. **When the node base digest contains perl-base

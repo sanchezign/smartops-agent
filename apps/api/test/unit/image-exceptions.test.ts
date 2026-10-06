@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { exceptionWindowProblem } from "../../scripts/security/audit-gate.js";
 
 /**
  * Accepted OS-package findings of the Docker images (Trivy): one list with the reasons
@@ -12,6 +13,7 @@ const read = (p: string) => readFileSync(`${ROOT}${p}`, "utf8");
 
 interface ImageException {
   cve: string;
+  severity: string;
   package: string;
   reason: string;
   removeWhen: string;
@@ -36,6 +38,12 @@ describe("image (Trivy) exceptions", () => {
       expect(e.expires).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(e.addedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(e.expires >= e.addedAt).toBe(true);
+    }
+  });
+
+  it("each one respects the maximum life: CRITICAL ≤ 7 days, HIGH ≤ 30 days from addedAt", () => {
+    for (const e of list) {
+      expect(exceptionWindowProblem(e.severity, e.addedAt, e.expires), e.cve).toBeNull();
     }
   });
 
@@ -71,12 +79,20 @@ describe("image (Trivy) exceptions", () => {
     });
   }
 
-  it("CI scans BOTH images and fails at the end, not at the first failure", () => {
+  it("CI scans BOTH images and, in a pull request, only WARNS at the end (ADR-028)", () => {
     const ci = read(".github/workflows/ci.yml");
     const step = ci.slice(ci.indexOf("OS-package vulnerabilities (Trivy"));
     expect(step).toContain("failed=0");
     expect(step).toContain("|| failed=1");
-    expect(step).toContain('exit "$failed"');
+    expect(step).toContain("::warning title=Trivy::");
+    expect(step).not.toContain('exit "$failed"');
     expect(step).toContain("smartops-api:ci smartops-admin:ci");
+  });
+
+  it("the release workflow still BLOCKS on the same findings", () => {
+    const release = read(".github/workflows/release.yml");
+    const step = release.slice(release.indexOf("OS-package vulnerabilities (Trivy"));
+    expect(step).toContain("--exit-code 1");
+    expect(step).toContain("--ignorefile /.trivyignore");
   });
 });

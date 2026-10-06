@@ -213,8 +213,10 @@ Dates that will bite:
   → "imageExceptions") expire. Delete them in the same PR where the node base image digest has
   perl-base 5.36.0-7+deb12u4. The CVE-2026-103111 (libpcre2) exception was removed on 2026-10-06
   (digest d6aa754f… brings deb12u2).
-- 2026-10-31: the five audit exceptions in `security/audit-exceptions.json` expire together
-  (postcss ×2, deepmerge-ts, mysql2, braces GHSA-vfj7-8cjw-p6xm); `quick` fails from then.
+- 2026-10-27: the four audit exceptions in `security/audit-exceptions.json` expire together
+  (postcss ×2, deepmerge-ts, mysql2; shortened from 10-31 to fit the 30-day HIGH limit, ADR-028;
+  the braces one was removed 2026-10-06). `quick` (diff mode) only fails for a CHANGE that
+  introduces such a finding; the nightly scan (security.yml) is what goes red.
 - 2026-12-31: GHCR read token expires (renew by 2026-12-15; Healthchecks reminder check).
 - Renovate PR #6 stays untouched until the owner reviews it.
 
@@ -245,8 +247,9 @@ retention policy, a real WhatsApp instance (out of phase 12).
 - **Phase 12 — at the phase close:** delete the local test images
   `smartops-local/smartops-{api,admin}:m0a|m0b` (user, 2026-09-28).
 - **Phase 11:** the 4 accepted audit exceptions (postcss ×2 via next 15.5, deepmerge-ts,
-  mysql2 — see `security/audit-exceptions.json`) EXPIRE 2026-10-31: from that day `quick` fails
-  until the dependency is updated or the exception renewed with a new justification.
+  mysql2 — see `security/audit-exceptions.json`) EXPIRE 2026-10-27 (30-day HIGH limit): after that
+  a change introducing them fails `quick`, and the nightly scan fails, until the dependency is
+  updated or the exception renewed (max 30 days for HIGH, 7 for CRITICAL) with a new justification.
 - **Phase 11:** the API image is 864 MB (full prod node_modules incl. Prisma CLI for migrations,
   Debian slim). Slimming (separate migrations image, distroless) left for phase 12 if it matters.
 - **Phase 11:** `main` is protected only by convention (main-guard detects, does not prevent)
