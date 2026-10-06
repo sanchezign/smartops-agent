@@ -304,7 +304,11 @@ Cost Analysis of step 1 shows any charge.
 50 per region" and that it exists "until you delete it", and says **nothing** about cost; it is not in the Always Free
 list. A third-party source mentions a monthly price when it is **unattached**: unverified. **This is the main risk**:
 if Oracle treated it as a paid resource it could be reclaimed when the trial ends, and the VM would lose the address
-DuckDNS points to (recovery: 12.3). Keep it attached (step 3).
+DuckDNS points to (recovery: 12.3). The fallback is free, though: the Always Free page of the shape says the
+VM.Standard.E2.1.Micro "Includes one **VNIC** with one public IP address"
+([Details of the Always Free compute instances](https://docs.oracle.com/en-us/iaas/Content/FreeTier/resourceref.htm)),
+so an **ephemeral** public IP on that VNIC costs nothing: the loss is only that the address changes, and DuckDNS must
+be updated. Keep the reserved IP attached (step 3).
 
 **6. Object Storage bucket `smartops-backups` (private, Standard, no versioning) + lifecycle rule `expire-backups`
 (delete after 30 days)** — Always Free: **yes, with a different limit before and after** (AF). During the trial: "10 GB
@@ -357,8 +361,10 @@ Menu names can differ a little between Console versions; the goal of each step i
    to the address in DuckDNS. Write it down (item 5). If it shows as unassigned, assign it again at once.
 4. **Storage → Block Storage → Boot Volume Backups** and **Block Volume Backups**: none (item 3).
 5. **Storage → Object Storage → Buckets → `smartops-backups`**: _Approximate size_ and object count. It must be
-   **well under 10 GB** (a backup is a few MB; 30 days of nightly backups should be a few hundred MB: if it is bigger,
-   something is wrong). Lifecycle rule `expire-backups` _Enabled_, 30 days. If the size is anywhere near 10 GB, delete
+   **well under 10 GB**. Expected today: about **750 KB per backup**, kept 30 days, so **tens of MB** in total (about 30 nightly backups plus the
+   pre-deploy ones: 20–40 MB): if it shows hundreds of MB or more, something is
+   wrong. To see it: open the bucket (the _Details_ tab shows _Approximate size_ and _Object count_; the figures can lag
+   by a few hours) or _Objects_ to read each file's size. Lifecycle rule `expire-backups` _Enabled_, 30 days. If the size is anywhere near 10 GB, delete
    the oldest objects by hand **before** the trial ends (item 6: above 20 GB everything is deleted). The bucket's
    _Metrics_ show the requests; the limit is 50,000 a month.
 6. **Identity & Security → Bastion**: one bastion `smartopsbastion`, Active (item 7). Run `bastion-connect.ps1` once.
@@ -379,9 +385,13 @@ still be $0.
 
 ### 12.3 If something was reclaimed or stopped
 
-- **The reserved IP is gone** (the VM is up, DuckDNS points nowhere): Networking → Reserved public IPs → _Reserve_ (or
-  assign an ephemeral one to the VM's private IP), update the address in DuckDNS, wait for the DNS TTL; Caddy asks
-  Let's Encrypt for a new certificate by itself when the name answers again. Then `status.sh` and `demo-check`.
+- **The reserved IP is gone** (the VM is up, DuckDNS points nowhere). The cheapest fix, and free, is an **ephemeral**
+  public IP: the shape "Includes one VNIC with one public IP address"
+  ([Oracle](https://docs.oracle.com/en-us/iaas/Content/FreeTier/resourceref.htm)). Compute → Instances → the VM →
+  _Attached VNICs_ → the VNIC → _IPv4 addresses_ → the primary private IP → _Edit_ → public IP type _Ephemeral public
+  IP_ (if the old reserved IP is still listed, remove it first). Then update the address in DuckDNS, wait for the DNS
+  TTL (Caddy asks Let's Encrypt for a new certificate by itself when the name answers again), and run `status.sh` and
+  `demo-check`.
 - **The VM was stopped**: plan B of §10 (_Start_ from the Console, verify, restore from the backup if needed).
 - **The backups were deleted**: the bucket is empty; the next nightly backup recreates the first one. A copy on your PC
   exists only if you did the monthly restore test (§4): do one before the trial ends.
