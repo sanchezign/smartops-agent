@@ -26,3 +26,5 @@ apps/api/.stryker-tmp/
 # Written by release-please (phase 11 M5): its format, not Prettier's
 CHANGELOG.md
 .release-please-manifest.json
+# Closed history moved textually from CLAUDE.md: keep the original formatting
+docs/history/
