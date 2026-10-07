@@ -46,7 +46,8 @@
   "shell": {
     "skipToContent": "Saltar al contenido",
     "demoBanner": "<strong>Modo demo</strong>: datos de ejemplo, sin WhatsApp real y sin costo.",
-    "tryLink": "Probar el sistema"
+    "tryLink": "Probar el sistema",
+    "pendingCount": "{count} pendientes"
   },
   "states": {
     "forbiddenTitle": "No tienes permiso para ver esto",
@@ -133,8 +134,10 @@
     "messagesPerDayHint": "Todo lo que llegó por WhatsApp",
     "messagesLabel": "Mensajes",
     "aiCostPerDay": "Costo de IA por día (US$)",
-    "aiCostSummary": "Hoy (UTC) {today} de {dailyBudget} · Total {total} de {totalBudget}",
+    "aiCostSummary": "Hoy (UTC): {today} del límite diario de {dailyBudget} · Total: {total} del límite de {totalBudget}",
     "aiCostLabel": "Costo de IA",
+    "sampleData": "Datos de ejemplo",
+    "sampleDataHint": "Cifras cargadas para la demo: usa una IA simulada y no gasta nada.",
     "perDay": "{label} por día",
     "prefilterTitle": "Qué se resolvió sin llamar a la IA",
     "prefilterHint": "Mensajes que el filtro previo clasificó solo, sin gastar créditos de Claude.",

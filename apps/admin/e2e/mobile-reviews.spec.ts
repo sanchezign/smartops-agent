@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login } from "./helpers";
+import { login, navLink } from "./helpers";
 
 /**
  * User rule (after M2): at least one test PER BROWSER approves and rejects a review with the
@@ -11,9 +11,10 @@ test("approve one review and reject another with the bottom buttons", async ({
   page,
   isMobile,
 }, info) => {
-  const project = info.project.name;
+  // iphone-chromium (local, phase 14) shares the seeded reviews of the iphone project.
+  const project = info.project.name === "iphone-chromium" ? "iphone" : info.project.name;
   await login(page, "operator");
-  await page.getByRole("link", { name: "Reviews", exact: true }).click();
+  await navLink(page, "Reviews").click();
   await page.getByRole("button", { name: /^Products/ }).click();
   const list = page.getByRole("list", { name: "Reviews" });
 

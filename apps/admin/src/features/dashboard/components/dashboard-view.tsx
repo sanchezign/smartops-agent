@@ -14,10 +14,13 @@ import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { ErrorState, LoadingState } from "@/components/states";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useDemoInfo } from "@/features/demo/hooks";
 import { useApiQuery } from "@/hooks/use-api";
 import { useFormat } from "@/lib/use-format";
 import { isPrefilterRule, type DashboardData } from "../types";
+import { aiCostMode } from "../ai-cost";
 import { DailyBars } from "./daily-bars";
 import { StatCard } from "./stat-card";
 
@@ -64,7 +67,8 @@ export function DashboardView() {
 
 function DashboardContent({ data }: { data: DashboardData }) {
   const t = useTranslations("dashboard");
-  const { formatInt, formatNumber, formatRatio, formatUsd } = useFormat();
+  const { formatInt, formatNumber, formatRatio, formatUsd, formatUsdPrecise } = useFormat();
+  const costMode = aiCostMode(useDemoInfo().data);
   const messages = data.messages.reduce((sum, d) => sum + d.count, 0);
   const errors =
     data.errors.failedWebhooks +
@@ -76,69 +80,79 @@ function DashboardContent({ data }: { data: DashboardData }) {
   return (
     <div className="flex flex-col gap-4">
       {/* What needs a person now */}
-      <section aria-label={t("pendingSection")} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard
-          label={t("pendingReviews")}
-          value={formatInt(data.pending.reviews)}
-          icon={ClipboardCheck}
-          href="/reviews"
-          tone={data.pending.reviews > 0 ? "attention" : "default"}
-        />
-        <StatCard
-          label={t("openAlerts")}
-          value={formatInt(data.pending.openAlerts)}
-          icon={AlertTriangle}
-          href="/alerts"
-          tone={data.pending.openAlerts > 0 ? "attention" : "default"}
-        />
-        <StatCard
-          label={t("humanChats")}
-          value={formatInt(data.pending.humanConversations)}
-          icon={UserRound}
-          href="/conversations"
-        />
-        <StatCard
-          label={t("periodErrors")}
-          value={formatInt(errors)}
-          hint={
-            data.errors.openIntegrationAlerts > 0
-              ? t("integrationUnreviewed", { count: formatInt(data.errors.openIntegrationAlerts) })
-              : t("errorSources")
-          }
-          icon={AlertTriangle}
-          tone={errors > 0 ? "danger" : "default"}
-        />
+      <section aria-labelledby="home-pending" className="flex flex-col gap-2">
+        <h2 id="home-pending" className="font-display text-sm">
+          {t("pendingSection")}
+        </h2>
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+          <StatCard
+            label={t("pendingReviews")}
+            value={formatInt(data.pending.reviews)}
+            icon={ClipboardCheck}
+            href="/reviews"
+            tone={data.pending.reviews > 0 ? "attention" : "default"}
+          />
+          <StatCard
+            label={t("openAlerts")}
+            value={formatInt(data.pending.openAlerts)}
+            icon={AlertTriangle}
+            href="/alerts"
+            tone={data.pending.openAlerts > 0 ? "attention" : "default"}
+          />
+          <StatCard
+            label={t("humanChats")}
+            value={formatInt(data.pending.humanConversations)}
+            icon={UserRound}
+            href="/conversations"
+            tone={data.pending.humanConversations > 0 ? "attention" : "default"}
+          />
+          <StatCard
+            label={t("periodErrors")}
+            value={formatInt(errors)}
+            hint={
+              data.errors.openIntegrationAlerts > 0
+                ? t("integrationUnreviewed", {
+                    count: formatInt(data.errors.openIntegrationAlerts),
+                  })
+                : t("errorSources")
+            }
+            icon={AlertTriangle}
+            tone={errors > 0 ? "danger" : "default"}
+          />
+        </div>
       </section>
 
-      <section
-        aria-label={t("automationSection")}
-        className="grid grid-cols-1 gap-3 sm:grid-cols-3"
-      >
-        <StatCard
-          label={t("messagesReceived")}
-          value={formatInt(messages)}
-          hint={t("lastDays", { count: data.days })}
-          icon={MessageSquare}
-        />
-        <StatCard
-          label={t("resolvedAlone")}
-          value={formatRatio(data.runs.automationRate)}
-          hint={
-            finished > 0
-              ? t("resolvedOf", {
-                  automatic: formatInt(data.runs.automatic),
-                  finished: formatInt(finished),
-                })
-              : t("nothingProcessed")
-          }
-          icon={Bot}
-        />
-        <StatCard
-          label={t("filteredNoAi")}
-          value={formatInt(data.prefilter.total)}
-          hint={t("estimatedSaving", { amount: formatUsd(data.prefilter.savedUsd) })}
-          icon={Filter}
-        />
+      <section aria-labelledby="home-automation" className="flex flex-col gap-2">
+        <h2 id="home-automation" className="font-display text-sm">
+          {t("automationSection")}
+        </h2>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+          <StatCard
+            label={t("messagesReceived")}
+            value={formatInt(messages)}
+            hint={t("lastDays", { count: data.days })}
+            icon={MessageSquare}
+          />
+          <StatCard
+            label={t("resolvedAlone")}
+            value={formatRatio(data.runs.automationRate)}
+            hint={
+              finished > 0
+                ? t("resolvedOf", {
+                    automatic: formatInt(data.runs.automatic),
+                    finished: formatInt(finished),
+                  })
+                : t("nothingProcessed")
+            }
+            icon={Bot}
+          />
+          <StatCard
+            label={t("filteredNoAi")}
+            value={formatInt(data.prefilter.total)}
+            hint={t("estimatedSaving", { amount: formatUsd(data.prefilter.savedUsd) })}
+            icon={Filter}
+          />
+        </div>
       </section>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -161,15 +175,20 @@ function DashboardContent({ data }: { data: DashboardData }) {
         <Card>
           <CardHeader>
             <CardTitle>
-              <h2>{t("aiCostPerDay")}</h2>
+              <h2 className="flex flex-wrap items-center gap-2">
+                {t("aiCostPerDay")}
+                {costMode === "sample" ? <Badge variant="outline">{t("sampleData")}</Badge> : null}
+              </h2>
             </CardTitle>
             <CardDescription>
-              {t("aiCostSummary", {
-                today: formatUsd(data.ai.todayUsd),
-                dailyBudget: formatUsd(data.ai.budgetDailyUsd),
-                total: formatUsd(data.ai.totalUsd),
-                totalBudget: formatUsd(data.ai.budgetTotalUsd),
-              })}
+              {costMode === "sample"
+                ? t("sampleDataHint")
+                : t("aiCostSummary", {
+                    today: formatUsd(data.ai.todayUsd),
+                    dailyBudget: formatUsd(data.ai.budgetDailyUsd),
+                    total: formatUsd(data.ai.totalUsd),
+                    totalBudget: formatUsd(data.ai.budgetTotalUsd),
+                  })}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -177,7 +196,7 @@ function DashboardContent({ data }: { data: DashboardData }) {
               label={t("aiCostLabel")}
               color="var(--chart-2)"
               data={data.ai.byDay.map((d) => ({ day: d.day, value: Number(d.usd) }))}
-              format={(v) => formatUsd(v.toFixed(4))}
+              format={(v) => formatUsdPrecise(v.toFixed(4))}
               axisFormat={(v) => formatNumber(v, { maximumFractionDigits: 3 })}
             />
           </CardContent>

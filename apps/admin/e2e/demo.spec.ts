@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { E2E } from "./env";
-import { expectAccessible } from "./helpers";
+import { expectAccessible, navLink } from "./helpers";
 
 /**
  * Public demo (DEMO_MODE, phase 9 M8). The E2E API runs in demo mode with the real worker and
@@ -56,7 +56,7 @@ test.describe("every sample goes through the real pipeline (desktop: shared demo
       await expect(card).toHaveText(outcome, { timeout: 60_000 });
     }
     // The new spreadsheet waits for a person in Revisiones (column picker).
-    await page.getByRole("link", { name: "Reviews", exact: true }).click();
+    await navLink(page, "Reviews").click();
     await expect(
       page.getByRole("list", { name: "Reviews" }).getByText("Precios Mayorista del Este.xlsx"),
     ).toBeVisible();
@@ -81,7 +81,7 @@ test.describe("every sample goes through the real pipeline (desktop: shared demo
     await page.getByRole("button", { name: "Reset demo" }).click();
     await page.getByRole("button", { name: "Reset", exact: true }).click();
     await expect(page.getByText("Demo reset:")).toBeVisible({ timeout: 60_000 });
-    await page.getByRole("link", { name: "Reviews", exact: true }).click();
+    await navLink(page, "Reviews").click();
     const list = page.getByRole("list", { name: "Reviews" });
     await expect(list.getByText("Lista Distribuidora Norte.xlsx")).toBeVisible();
     await expect(list.getByText("Precios Mayorista del Este.xlsx")).toHaveCount(0);

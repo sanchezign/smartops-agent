@@ -1,11 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { expectAccessible, login } from "./helpers";
+import { expectAccessible, login, navLink } from "./helpers";
 
 /** Rules and users (phase 9 M6). Changes run on desktop only (shared demo database). */
 
 async function openFromMore(page: Page, name: "Rules" | "Users", isMobile: boolean) {
   if (isMobile) await page.getByRole("button", { name: "More" }).click();
-  await page.getByRole("link", { name, exact: true }).click();
+  await navLink(page, name).click();
   await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible();
 }
 

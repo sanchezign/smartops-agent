@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { expectAccessible, login } from "./helpers";
+import { expectAccessible, login, navLink } from "./helpers";
 
 /**
  * Review queue (phase 9 M2) on the seeded demo. Projects run one after the other on the SAME
@@ -9,7 +9,7 @@ import { expectAccessible, login } from "./helpers";
 
 async function openReviews(page: Page, isMobile: boolean) {
   void isMobile; // sidebar on desktop, bottom bar on phones: the hidden one is not a link to click
-  await page.getByRole("link", { name: "Reviews", exact: true }).click();
+  await navLink(page, "Reviews").click();
   await expect(page.getByRole("heading", { name: "Reviews", level: 1 })).toBeVisible();
 }
 

@@ -1,9 +1,15 @@
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
+/**
+ * One figure of the Home (phase 14, ADR-029). Tones:
+ * - "attention": something waits for a person → the ONLY yellow tile, framed in ink so it is
+ *   visible on a light page too;
+ * - "danger": errors → red frame and figure (never yellow);
+ * - "default": graphite on a framed card.
+ */
 export function StatCard({
   label,
   value,
@@ -11,6 +17,7 @@ export function StatCard({
   icon: Icon,
   href,
   tone = "default",
+  hintOnPhone = true,
 }: {
   label: string;
   value: ReactNode;
@@ -18,35 +25,58 @@ export function StatCard({
   icon: LucideIcon;
   href?: string;
   tone?: "default" | "attention" | "danger";
+  /** false: the hint waits for tablets and up (the phone's first screen holds the pending four). */
+  hintOnPhone?: boolean;
 }) {
+  const lit = tone === "attention";
   const body = (
-    <Card
+    <div
       className={cn(
-        "h-full transition-colors",
-        href && "hover:border-foreground/30",
-        tone === "attention" && "border-amber-500/40",
-        tone === "danger" && "border-destructive/40",
+        "flex h-full flex-col gap-1 rounded-lg border-[1.5px] p-3 transition-colors sm:p-4",
+        lit
+          ? "border-signal-foreground bg-signal text-signal-foreground dark:border-signal"
+          : tone === "danger"
+            ? "border-destructive bg-card text-card-foreground"
+            : "border-border bg-card text-card-foreground",
+        href && !lit && "hover:border-foreground",
+        href && lit && "hover:brightness-95",
       )}
     >
-      <CardContent className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-1">
-          <span className="text-sm text-muted-foreground">{label}</span>
-          <span className="text-2xl font-semibold tabular-nums tracking-tight">{value}</span>
-          {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
-        </div>
+      <div className="flex items-start justify-between gap-2">
+        <span className={cn("text-sm", lit ? "font-medium" : "text-muted-foreground")}>
+          {label}
+        </span>
         <Icon
-          className={cn(
-            "size-5 shrink-0 text-muted-foreground",
-            tone === "attention" && "text-amber-600 dark:text-amber-400",
-            tone === "danger" && "text-destructive",
-          )}
+          className={cn("size-5 shrink-0", tone === "danger" && "text-destructive")}
           aria-hidden
         />
-      </CardContent>
-    </Card>
+      </div>
+      <span
+        className={cn(
+          "font-display text-3xl tabular-nums",
+          tone === "danger" && "text-destructive",
+        )}
+      >
+        {value}
+      </span>
+      {hint ? (
+        <span
+          className={cn(
+            !hintOnPhone && "hidden sm:block",
+            "text-xs",
+            lit ? "text-signal-foreground" : "text-muted-foreground",
+          )}
+        >
+          {hint}
+        </span>
+      ) : null}
+    </div>
   );
   return href ? (
-    <Link href={href} className="block rounded-xl focus-visible:outline-2">
+    <Link
+      href={href}
+      className="block rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+    >
       {body}
     </Link>
   ) : (

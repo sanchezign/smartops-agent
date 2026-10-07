@@ -1,6 +1,6 @@
 import { expect, request, test } from "@playwright/test";
 import { E2E } from "./env";
-import { login } from "./helpers";
+import { login, navLink } from "./helpers";
 
 /**
  * Real time (phase 9 M4, ADR-020): a change made by ANOTHER session (here: the admin through
@@ -28,7 +28,7 @@ test("a mode change made elsewhere appears live in the open chat", async ({ page
   await login(page, "operator");
   await expect(page.getByRole("status").filter({ hasText: "Live" })).toBeVisible();
 
-  await page.getByRole("link", { name: "Conversations", exact: true }).click();
+  await navLink(page, "Conversations").click();
   await page.getByLabel("Search by name, supplier or phone").fill("Carolina");
   // (by name: clicking "the first link" could hit the list before the search filtered it)
   await page
@@ -64,7 +64,7 @@ test("if the stream never answers: 'Updating every 30 s' and the screen still re
   await expect(page.getByRole("status").filter({ hasText: "Updating every 30 s" })).toBeVisible({
     timeout: 15_000,
   });
-  await page.getByRole("link", { name: "Conversations", exact: true }).click();
+  await navLink(page, "Conversations").click();
   await page.getByLabel("Search by name, supplier or phone").fill("Carolina");
   await page
     .getByRole("list", { name: "Conversations" })
@@ -90,7 +90,7 @@ test("if the stream never answers: 'Updating every 30 s' and the screen still re
 test("a review resolved elsewhere leaves the open queue live", async ({ page, isMobile }) => {
   test.skip(isMobile, "resolves shared demo data: desktop only");
   await login(page);
-  await page.getByRole("link", { name: "Reviews", exact: true }).click();
+  await navLink(page, "Reviews").click();
   const list = page.getByRole("list", { name: "Reviews" });
   await expect(list.getByText("Disyuntor diferencial 40A")).toBeVisible();
 

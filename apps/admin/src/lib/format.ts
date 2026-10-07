@@ -56,8 +56,10 @@ export interface Formatter {
   formatRatio(value: number | null): string;
   /** Money from a Decimal string ("1234.5"), without going through a binary float. */
   formatMoney(value: string, currency: string, maximumFractionDigits?: number): string;
-  /** USD with up to 4 decimals (AI costs are cents). */
+  /** USD for texts: cents ("US$0.16"); only an amount under one cent keeps 4 decimals. */
   formatUsd(value: string): string;
+  /** USD with up to 4 decimals: chart tooltips and tables, where each day's tiny cost matters. */
+  formatUsdPrecise(value: string): string;
   /** "2026-09-27" → "9/27" (en) / "27/9" (es). */
   formatShortDay(day: string): string;
   formatDateTime(iso: string): string;
@@ -169,7 +171,11 @@ export function createFormat(locale: AppLocale): Formatter {
         ? "—"
         : `${integer.format(Math.round(value * 100))}${locale === "en" ? "%" : " %"}`,
     formatMoney,
-    formatUsd: (value) => formatMoney(value, "USD", 4),
+    formatUsd: (value) => {
+      const amount = Math.abs(Number(value));
+      return formatMoney(value, "USD", amount > 0 && amount < 0.01 ? 4 : 2);
+    },
+    formatUsdPrecise: (value) => formatMoney(value, "USD", 4),
     formatShortDay(day) {
       const [, month, dayOfMonth] = day.split("-");
       const [m, d] = [Number(month), Number(dayOfMonth)];

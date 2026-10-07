@@ -117,3 +117,23 @@ for (const scheme of ["light", "dark"] as const) {
     writeFileSync(`${dir}/axe-${scheme}.json`, JSON.stringify(findings, null, 2));
   });
 }
+
+/**
+ * Phone only: the REAL viewport (no fullPage), at the top and after scrolling to the bottom of
+ * the Home. A fullPage capture stitches a position:fixed bar in the middle of the page; this is
+ * what the person actually sees.
+ */
+test("phone viewport, top and bottom of the Home", async ({ page, context, isMobile }, info) => {
+  test.skip(!isMobile, "phones only");
+  const dir = `e2e/screens/phase-14/${LABEL}/${info.project.name}`;
+  mkdirSync(dir, { recursive: true });
+  await context.addCookies([{ name: "smartops_locale", value: "en", url: E2E.panelUrl }]);
+  for (const scheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await signIn(page, "operator");
+    await page.screenshot({ path: `${dir}/viewport-${scheme}-home-top.png` });
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `${dir}/viewport-${scheme}-home-bottom.png` });
+  }
+});

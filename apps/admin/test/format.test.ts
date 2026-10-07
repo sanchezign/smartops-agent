@@ -31,9 +31,14 @@ describe("money", () => {
     expect(en.formatMoney("10", "EUR")).toBe("€10.00");
   });
 
-  it("AI costs: USD up to 4 decimals; big Decimal strings never lose digits", () => {
-    expect(en.formatUsd("0.0554")).toBe("US$0.0554");
-    expect(es.formatUsd("0.0554")).toBe("US$ 0,0554");
+  it("AI costs: cents in texts, 4 decimals only under one cent or when precise; big Decimal strings never lose digits", () => {
+    expect(en.formatUsd("0.1633")).toBe("US$0.16");
+    expect(es.formatUsd("0.5143")).toBe("US$ 0,51");
+    expect(en.formatUsd("0.0043")).toBe("US$0.0043");
+    expect(en.formatUsd("0")).toBe("US$0.00");
+    expect(en.formatUsd("4.00")).toBe("US$4.00");
+    expect(en.formatUsdPrecise("0.0554")).toBe("US$0.0554");
+    expect(es.formatUsdPrecise("0.0554")).toBe("US$ 0,0554");
     expect(en.formatMoney("12345678901234.5678", "UYU", 4)).toBe("$12,345,678,901,234.5678");
   });
 });

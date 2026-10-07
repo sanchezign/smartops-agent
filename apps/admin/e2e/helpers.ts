@@ -38,3 +38,14 @@ export async function expectAccessible(page: Page) {
     ),
   ).toEqual([]);
 }
+
+/**
+ * A navigation link by its section name (phase 14): the pending counter of Reviews / Alerts is
+ * part of the link's accessible name ("Reviews 14 pending" on the sidebar, "14 pending Reviews"
+ * on the phone's bottom bar), so an exact name no longer matches.
+ */
+export function navLink(page: Page, name: string) {
+  return page.getByRole("link", {
+    name: new RegExp(`^([0-9]+ pending )?${name}( [0-9]+ pending)?$`),
+  });
+}

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { expectAccessible, login } from "./helpers";
+import { expectAccessible, login, navLink } from "./helpers";
 
 /**
  * Conversations (phase 9 M3) on the seeded demo. Projects run one after another on the SAME
@@ -8,7 +8,7 @@ import { expectAccessible, login } from "./helpers";
  */
 
 async function openConversations(page: Page) {
-  await page.getByRole("link", { name: "Conversations", exact: true }).click();
+  await navLink(page, "Conversations").click();
   await expect(page.getByRole("heading", { name: "Conversations", level: 1 })).toBeVisible();
 }
 

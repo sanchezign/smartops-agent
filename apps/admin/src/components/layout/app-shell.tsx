@@ -9,6 +9,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { useAuthStore } from "@/features/auth/store";
 import { cn } from "@/lib/utils";
 import { isActive, navFor } from "./nav-items";
+import { usePendingCounts } from "@/features/dashboard/hooks";
+import { PendingBadge } from "./pending-badge";
 import { LiveIndicator } from "@/features/realtime/live-indicator";
 import { StatusChips } from "@/features/realtime/status-chips";
 import { useDemoInfo } from "@/features/demo/hooks";
@@ -31,6 +33,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const more = items.filter((i) => !i.primary);
   const [moreOpen, setMoreOpen] = useState(false);
   const moreActive = more.some((i) => isActive(pathname, i.href));
+  // What waits for a person, in the navigation (ADR-029): the only yellow of the shell.
+  const pending = usePendingCounts();
+  const countFor = (href: string) =>
+    href === "/reviews" ? (pending?.reviews ?? 0) : href === "/alerts" ? (pending?.alerts ?? 0) : 0;
+  const moreCount = more.reduce((sum, i) => sum + countFor(i.href), 0);
 
   return (
     <div className="min-h-dvh bg-background">
@@ -42,7 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </a>
 
       {demo ? (
-        <div className="relative z-40 bg-sidebar px-4 py-1.5 text-center text-xs text-sidebar-foreground md:ml-60">
+        <div className="relative z-40 bg-sidebar px-4 py-1.5 text-center text-[11px] leading-snug text-sidebar-foreground sm:text-xs md:ml-60">
           {tShell.rich("demoBanner", { strong: (chunks) => <strong>{chunks}</strong> })}{" "}
           <Link href="/try" className="font-medium underline underline-offset-2">
             {tShell("tryLink")}
@@ -70,6 +77,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               >
                 <item.icon className="size-5" aria-hidden />
                 {t(item.labelKey)}
+                <PendingBadge count={countFor(item.href)} className="ml-auto" />
               </Link>
             );
           })}
@@ -111,7 +119,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                     active ? "text-foreground" : "text-muted-foreground",
                   )}
                 >
-                  <item.icon className="size-5" aria-hidden />
+                  <span className="relative">
+                    <item.icon className="size-5" aria-hidden />
+                    <PendingBadge
+                      count={countFor(item.href)}
+                      className="absolute -top-2 left-3 min-w-4 px-1 text-[10px] leading-4"
+                    />
+                  </span>
                   {t(item.labelKey)}
                 </Link>
               </li>
@@ -125,7 +139,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                   moreActive ? "text-foreground" : "text-muted-foreground",
                 )}
               >
-                <Ellipsis className="size-5" aria-hidden />
+                <span className="relative">
+                  <Ellipsis className="size-5" aria-hidden />
+                  <PendingBadge
+                    count={moreCount}
+                    className="absolute -top-2 left-3 min-w-4 px-1 text-[10px] leading-4"
+                  />
+                </span>
                 {t("more")}
               </SheetTrigger>
               <SheetContent
@@ -146,6 +166,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                       >
                         <item.icon className="size-5" aria-hidden />
                         {t(item.labelKey)}
+                        <PendingBadge count={countFor(item.href)} className="ml-auto" />
                       </Link>
                     </li>
                   ))}

@@ -1,11 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { expectAccessible, login } from "./helpers";
+import { expectAccessible, login, navLink } from "./helpers";
 
 /** Catalog, price history and alerts (phase 9 M5) on the seeded demo. */
 
 async function goTo(page: Page, name: "Catalog" | "Alerts", isMobile: boolean) {
   if (name === "Alerts" && isMobile) await page.getByRole("button", { name: "More" }).click();
-  await page.getByRole("link", { name, exact: true }).click();
+  await navLink(page, name).click();
   await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible();
 }
 
