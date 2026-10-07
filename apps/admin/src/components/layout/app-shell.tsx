@@ -42,7 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </a>
 
       {demo ? (
-        <div className="relative z-40 bg-amber-100 px-4 py-1.5 text-center text-xs text-amber-950 md:ml-60 dark:bg-amber-950 dark:text-amber-100">
+        <div className="relative z-40 bg-sidebar px-4 py-1.5 text-center text-xs text-sidebar-foreground md:ml-60">
           {tShell.rich("demoBanner", { strong: (chunks) => <strong>{chunks}</strong> })}{" "}
           <Link href="/try" className="font-medium underline underline-offset-2">
             {tShell("tryLink")}
@@ -51,10 +51,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       ) : null}
 
       {/* Sidebar (tablet / desktop) */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r bg-sidebar md:flex">
-        <div className="flex h-16 items-center px-5 text-lg font-semibold tracking-tight">
-          SmartOps
-        </div>
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
+        <div className="font-display flex h-16 items-center px-5 text-lg">SmartOps</div>
         <nav aria-label={t("sections")} className="flex flex-1 flex-col gap-1 px-3">
           {items.map((item) => {
             const active = isActive(pathname, item.href);
@@ -67,7 +65,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
                   active
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                    : "text-sidebar-muted hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
                 )}
               >
                 <item.icon className="size-5" aria-hidden />
@@ -80,7 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Top bar */}
       <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b bg-background/90 px-4 backdrop-blur md:ml-60 md:h-16 md:px-8">
-        <span className="font-semibold tracking-tight md:hidden">SmartOps</span>
+        <span className="font-display text-base md:hidden">SmartOps</span>
         <span className="hidden md:block" />
         <div className="flex items-center gap-3">
           <StatusChips />

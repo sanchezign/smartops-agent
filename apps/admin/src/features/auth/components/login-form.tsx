@@ -71,7 +71,7 @@ export function LoginForm() {
       noValidate
     >
       {demo.data ? (
-        <div className="flex flex-col gap-2 rounded-lg border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
+        <div className="flex flex-col gap-2 rounded-md border-[1.5px] border-foreground bg-card p-3 text-sm text-card-foreground">
           <p>
             <strong>{t("demoTitle")}</strong> {t("demoIntro")}
           </p>
@@ -83,7 +83,7 @@ export function LoginForm() {
           </dl>
           <button
             type="button"
-            className="self-start rounded-md border border-amber-700/40 px-3 py-2 font-medium"
+            className="min-h-11 self-start rounded-md border-[1.5px] border-input px-3 py-2 font-medium hover:bg-muted"
             onClick={() => {
               const form = formRef.current;
               if (!form || !demo.data) return;
@@ -104,7 +104,7 @@ export function LoginForm() {
           type="email"
           autoComplete="username"
           required
-          className="rounded-md border border-neutral-300 px-3 py-2 text-base"
+          className="min-h-11 rounded-md border-[1.5px] border-input bg-card px-3 py-2 text-base text-card-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
         />
       </label>
       <label className="flex flex-col gap-1 text-sm">
@@ -114,18 +114,18 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           required
-          className="rounded-md border border-neutral-300 px-3 py-2 text-base"
+          className="min-h-11 rounded-md border-[1.5px] border-input bg-card px-3 py-2 text-base text-card-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
         />
       </label>
       {error ? (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}
       <button
         type="submit"
         disabled={pending || !hydrated}
-        className="rounded-md bg-neutral-900 px-3 py-2 text-white disabled:opacity-60"
+        className="min-h-11 rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground disabled:opacity-60"
       >
         {pending ? t("signingIn") : t("signIn")}
       </button>

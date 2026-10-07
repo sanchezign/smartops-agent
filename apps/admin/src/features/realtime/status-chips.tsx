@@ -35,7 +35,7 @@ export function StatusChips() {
         </span>
       ) : null}
       {!autoRepliesEnabled ? (
-        <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <span className="flex items-center gap-1 rounded-full border border-warning px-2 py-1 text-warning">
           <BotOff className="size-3" aria-hidden />
           {t("botOff")}
         </span>
