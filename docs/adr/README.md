@@ -31,3 +31,5 @@ one Oracle Cloud E2.1.Micro) supersedes ADR-007.
 - [ADR-026](ADR-026-append-only-backups.md) — Append-only encrypted backups to Object Storage, uploaded by a pinned OCI CLI container
 - [ADR-027](ADR-027-keepalive-load.md) — A nightly keep-alive CPU load so the demo VM does not look idle to Oracle
 - [ADR-028](ADR-028-security-alert-policy.md) — Security alerts: pull requests block what they introduce, a nightly scan owns what exists
+- [ADR-029](ADR-029-panel-visual-identity.md) — Panel visual identity "Señal": graphite, one safety yellow for what needs a person
+- [ADR-030](ADR-030-demo-operator-resolves-column-mapping.md) — In DEMO_MODE the public operator can resolve the column-mapping review

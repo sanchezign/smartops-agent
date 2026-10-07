@@ -172,9 +172,17 @@ Add one line here for every new ADR.
 - [ADR-026](docs/adr/ADR-026-append-only-backups.md) — Append-only encrypted backups to Object Storage, uploaded by a pinned OCI CLI container
 - [ADR-027](docs/adr/ADR-027-keepalive-load.md) — A nightly keep-alive CPU load so the demo VM does not look idle to Oracle
 - [ADR-028](docs/adr/ADR-028-security-alert-policy.md) — Security alerts: pull requests block what they introduce, a nightly scan owns what exists
+- [ADR-029](docs/adr/ADR-029-panel-visual-identity.md) — Panel visual identity "Señal": graphite, one safety yellow for what needs a person
+- [ADR-030](docs/adr/ADR-030-demo-operator-resolves-column-mapping.md) — In DEMO_MODE the public operator can resolve the column-mapping review
 
 ## Current phase
-**Phases 1–13 are COMPLETE (phase 12 closed in the repo 2026-10-06). Next: phase 14 (frontend clarity).**
+**Phases 1–13 are COMPLETE (phase 12 closed in the repo 2026-10-06). Phase 14 (frontend clarity) is IN PROGRESS on `feat/phase-14-frontend-clarity`.**
+Phase 14 (owner decisions 2026-10-07): style "Señal" (ADR-029), demo operator resolves column_mapping in
+DEMO_MODE (ADR-030), credentials demo@smartops.test / "try smartops demo", content language per
+deployment (DEMO_CONTENT_LANGUAGE=en|es, public demo in English). Order: M0–M4, M6, M7, then M5 (content
+language); the README media are regenerated once, at the end of M5. One milestone at a time, the owner
+reviews each. The exploration branch `design/phase-14-exploration` stays LOCAL (never push: ~38 MB of
+screenshots, the repo goes public).
 Everything already finished (what was built, decisions, measurements, incidents, real results) is
 in `docs/history/phase-log.md` — one entry per phase and milestone, textual. Read it only when you
 need the detail of a closed milestone (see "History" at the end of this file).

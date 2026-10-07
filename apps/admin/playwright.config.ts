@@ -57,6 +57,16 @@ export default defineConfig({
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
     { name: "pixel", use: { ...devices["Pixel 7"] } },
     { name: "iphone", use: { ...devices["iPhone 15"] } },
+    // Phase 14: iPhone 15 metrics on Chromium for machines where Playwright's WebKit cannot
+    // start (the owner's Windows PC). Opt-in (E2E_IPHONE_CHROMIUM=1): CI keeps the real WebKit.
+    ...(process.env.E2E_IPHONE_CHROMIUM
+      ? [
+          {
+            name: "iphone-chromium",
+            use: { ...devices["iPhone 15"], browserName: "chromium" as const },
+          },
+        ]
+      : []),
   ],
   webServer: [
     {
