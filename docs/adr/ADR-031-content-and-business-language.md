@@ -53,3 +53,18 @@ Spanish"). With English content they would misread it.
   files.
 - Adding a language means one `content/<lang>.ts`, one table in each heuristic, one `language-<lang>.md` block and its
   fixtures and recorded answers; the Spanish-identity tests stay as they are.
+
+## Outcome (phase 14 M5, 2026-10-08)
+
+- English content: Kestrelwood Supply Co. (Ohio) and three fictitious suppliers (Corvane Fasteners Inc., Tessaly Paint &
+  Coatings, Norvale Electric Supply Ltd. — Canadian, quoting in CAD); fictitious `+1 614 555 01XX` numbers, `.test` /
+  `.example` emails, US customary units. Names were checked so that none is a well-known real company.
+- Recorded answers: nine real Claude outputs for the English fixtures (US$0.0803 in total, no retries), reviewed by the
+  owner before commit; the Spanish ones are untouched (`golden-outputs.test.ts` counts both sets, `golden-outputs-en.test.ts`
+  checks the English ones against `en/expected.json` and against the demo content).
+- The English content carries its September list and its approved sheet format as DATA, so the seed needs no recording;
+  a test proves the recordings say the same as the data.
+- Deploy: `deploy/compose*.yaml` pass `DEMO_CONTENT_LANGUAGE` (default `en`). A VM that was seeded in Spanish switches
+  language at the next demo reset/redeploy (the seed is rebuilt); nothing is changed on the VM by this repository.
+- Known limit: `classifier.md` asks for the `reason` "in Spanish", so an English deployment may store a Spanish reason
+  (internal only, not shown in the panel). Fix later with a new prompt version and re-recording the Spanish goldens.

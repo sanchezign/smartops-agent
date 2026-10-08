@@ -44,12 +44,12 @@ test("main screens in Spanish, es-UY money, and accessible", async ({ page, isMo
   ).toBeVisible();
 
   await open("/catalog", "Catálogo");
-  await page.getByLabel("Buscar producto").fill("tornillo 6");
-  // es-UY money: "$ 1.234,50" (a space after "$", comma decimals).
+  await page.getByLabel("Buscar producto").fill("hex bolt");
+  // es-UY money for the US-dollar content: "US$ 1.234,50" (comma decimals).
   await expect(
     page
       .getByRole("list", { name: "Productos" })
-      .getByText(/\$\s\d{1,3}(\.\d{3})*,\d{2}/)
+      .getByText(/US\$\s\d{1,3}(\.\d{3})*,\d{2}/)
       .first(),
   ).toBeVisible();
 

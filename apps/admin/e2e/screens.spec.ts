@@ -18,7 +18,7 @@ const PAGES = [
 ];
 
 const REVIEWS: [string, string][] = [
-  ["Lista Distribuidora Norte.xlsx", "planilla"],
+  ["Corvane Fasteners price list.xlsx", "planilla"],
   ["Arena gruesa", "linea"],
   ["Across-the-board change", "aumento"],
   ["Suspicious message", "sospechoso"],
@@ -40,10 +40,10 @@ test("screenshots", async ({ page }, info) => {
     const name = path === "/" ? "inicio" : path.slice(1).replaceAll("/", "-");
     await page.screenshot({ path: `e2e/screens/${info.project.name}-${name}.png`, fullPage: true });
   }
-  // Chats: Norte (photo + spreadsheet) and Luis (human mode).
+  // Chats: Corvane (photo + spreadsheet) and Louis (human mode).
   for (const [search, name] of [
-    ["Norte", "chat-norte"],
-    ["Luis", "chat-luis"],
+    ["Corvane", "chat-norte"],
+    ["Louis", "chat-luis"],
   ] as const) {
     await page.goto("/conversations");
     await page.getByLabel("Search by name, supplier or phone").fill(search);
@@ -54,7 +54,7 @@ test("screenshots", async ({ page }, info) => {
   }
   // Product with its price history.
   await page.goto("/catalog");
-  await page.getByLabel("Search product").fill("tornillo 6mm");
+  await page.getByLabel("Search product").fill("hex bolt");
   await page.getByRole("list", { name: "Products" }).getByRole("link").first().click();
   await page.getByRole("heading", { name: "Price history" }).waitFor();
   await page.waitForTimeout(800);

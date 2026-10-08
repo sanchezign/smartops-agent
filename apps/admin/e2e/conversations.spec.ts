@@ -18,23 +18,23 @@ test.describe("conversations (phase 9 M3)", () => {
   test("inbox: who answers each chat, filters and search", async ({ page }) => {
     await login(page, "operator");
     await openConversations(page);
-    const luis = inbox(page).getByRole("link", { name: /Luis Fernández/ });
+    const luis = inbox(page).getByRole("link", { name: /Louis Fernandez/ });
     await expect(luis.getByText("A person is handling it")).toBeVisible();
     await expect(
       inbox(page)
-        .getByRole("link", { name: /Jorge Rodríguez/ })
+        .getByRole("link", { name: /George Rodgers/ })
         .getByText("Opted out"),
     ).toBeVisible();
     await expectAccessible(page);
 
     await page.getByRole("button", { name: "Opted out" }).click();
     // (desktop may have opted out another contact before: check who is in, and who is not)
-    await expect(inbox(page).getByRole("link", { name: /Jorge Rodríguez/ })).toBeVisible();
-    await expect(inbox(page).getByRole("link", { name: /Luis Fernández/ })).toHaveCount(0);
+    await expect(inbox(page).getByRole("link", { name: /George Rodgers/ })).toBeVisible();
+    await expect(inbox(page).getByRole("link", { name: /Louis Fernandez/ })).toHaveCount(0);
     await page.getByRole("button", { name: "All" }).click();
-    await page.getByLabel("Search by name, supplier or phone").fill("pinturas");
+    await page.getByLabel("Search by name, supplier or phone").fill("tessaly");
     await expect(inbox(page).getByRole("link")).toHaveCount(1);
-    await expect(inbox(page).getByText("Pinturas del Sur").first()).toBeVisible();
+    await expect(inbox(page).getByText("Tessaly Paint & Coatings").first()).toBeVisible();
   });
 
   test("chat: who answers and the main action stay in view as it opens (phase 14 #8)", async ({
@@ -43,13 +43,13 @@ test.describe("conversations (phase 9 M3)", () => {
     await login(page, "operator");
     await openConversations(page);
     await inbox(page)
-      .getByRole("link", { name: /Luis Fernández/ })
+      .getByRole("link", { name: /Louis Fernandez/ })
       .click();
     // A chat opens at its newest message: the header must still be on screen, and compact.
     const bar = page
       .locator("header")
-      .filter({ has: page.getByRole("heading", { level: 1, name: /Luis/ }) });
-    await expect(page.getByRole("heading", { level: 1, name: /Luis/ })).toBeInViewport({
+      .filter({ has: page.getByRole("heading", { level: 1, name: /Louis/ }) });
+    await expect(page.getByRole("heading", { level: 1, name: /Louis/ })).toBeInViewport({
       ratio: 1,
     });
     await expect(bar.getByText("A person is handling it")).toBeInViewport({ ratio: 1 });
@@ -63,9 +63,10 @@ test.describe("conversations (phase 9 M3)", () => {
     });
     expect((await bar.boundingBox())!.height).toBeLessThan(150);
     // A long name wraps to at most two lines instead of being cut (phase 14, owner's request).
-    const title = page.getByRole("heading", { level: 1, name: /Luis/ });
+    const title = page.getByRole("heading", { level: 1, name: /Louis/ });
     await title.evaluate((el) => {
-      el.textContent = "Luis Fernández de la Cruz y Ordóñez de Montevideo Abastecimientos del Este";
+      el.textContent =
+        "Louis Fernandez de la Cruz and Ordonez of Columbus Eastern Wholesale Supplies";
     });
     const box = (await title.boundingBox())!;
     const lineHeight = await title.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
@@ -82,13 +83,13 @@ test.describe("conversations (phase 9 M3)", () => {
     });
     await login(page, "operator");
     await openConversations(page);
-    await page.getByLabel("Search by name, supplier or phone").fill("Norte");
+    await page.getByLabel("Search by name, supplier or phone").fill("Corvane");
     await inbox(page)
-      .getByRole("link", { name: /Ventas Distribuidora Norte/ })
+      .getByRole("link", { name: /Corvane Sales Desk/ })
       .click();
-    await expect(page.getByRole("heading", { name: "Ventas Distribuidora Norte" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Corvane Sales Desk" })).toBeVisible();
     // The photo is 5 days back: load older pages until its caption shows up.
-    const caption = page.getByText("Foto de la lista impresa");
+    const caption = page.getByText("Photo of the printed list");
     for (let i = 0; i < 10 && !(await caption.isVisible()); i += 1) {
       await page.getByRole("button", { name: "Show earlier messages" }).click();
       await expect(page.getByRole("button", { name: /Loading/ })).toHaveCount(0);
@@ -108,8 +109,8 @@ test.describe("conversations (phase 9 M3)", () => {
     await openConversations(page);
     await page.getByRole("link", { name: "Opted out", exact: true }).click();
     const list = page.getByRole("list", { name: "Opted-out contacts" });
-    await expect(list.getByText("Jorge Rodríguez")).toBeVisible();
-    await expect(list.getByText(/Wrote "BAJA"/)).toBeVisible();
+    await expect(list.getByText("George Rodgers")).toBeVisible();
+    await expect(list.getByText(/Wrote "STOP"/)).toBeVisible();
     await expectAccessible(page);
   });
 });
@@ -120,22 +121,22 @@ test.describe("acting on conversations (desktop only: it changes the shared demo
   test("spreadsheet from the chat downloads with its name", async ({ page }) => {
     await login(page);
     await openConversations(page);
-    await page.getByLabel("Search by name, supplier or phone").fill("Norte");
+    await page.getByLabel("Search by name, supplier or phone").fill("Corvane");
     await inbox(page)
-      .getByRole("link", { name: /Ventas Distribuidora Norte/ })
+      .getByRole("link", { name: /Corvane Sales Desk/ })
       .click();
-    const row = page.getByText("Lista Distribuidora Norte.xlsx").locator("..");
+    const row = page.getByText("Corvane Fasteners price list.xlsx").locator("..");
     const download = page.waitForEvent("download");
     await row.getByRole("button", { name: "Download" }).click();
-    expect((await download).suggestedFilename()).toBe("Lista Distribuidora Norte.xlsx");
+    expect((await download).suggestedFilename()).toBe("Corvane Fasteners price list.xlsx");
   });
 
   test("pause and resume the bot", async ({ page }) => {
     await login(page, "operator");
     await openConversations(page);
-    await page.getByLabel("Search by name, supplier or phone").fill("Oriental");
+    await page.getByLabel("Search by name, supplier or phone").fill("Norvale");
     await inbox(page)
-      .getByRole("link", { name: /Eléctrica Oriental/ })
+      .getByRole("link", { name: /Norvale Electric Supply/ })
       .click();
     await page.getByRole("button", { name: "Pause the bot" }).click();
     await page.getByRole("radio", { name: "30 minutes" }).click();
@@ -150,13 +151,13 @@ test.describe("acting on conversations (desktop only: it changes the shared demo
     await login(page, "operator");
     await openConversations(page);
     await inbox(page)
-      .getByRole("link", { name: /Luis Fernández/ })
+      .getByRole("link", { name: /Louis Fernandez/ })
       .click();
-    await page.getByLabel("Your reply").fill("Sí, tenemos 4 en stock. ¿Te reservo uno?");
+    await page.getByLabel("Your reply").fill("Yes, we have 4 in stock. Shall I hold one for you?");
     await page.getByRole("button", { name: "Send" }).click();
     await expect(page.getByText("Sent. The bot stays paused")).toBeVisible();
     await expect(
-      page.getByRole("region", { name: "Messages" }).getByText("Sí, tenemos 4 en stock."),
+      page.getByRole("region", { name: "Messages" }).getByText("Yes, we have 4 in stock."),
     ).toBeVisible();
   });
 
@@ -164,11 +165,11 @@ test.describe("acting on conversations (desktop only: it changes the shared demo
     await login(page, "operator");
     await openConversations(page);
     await inbox(page)
-      .getByRole("link", { name: /Marta Silva/ })
+      .getByRole("link", { name: /Martha Silva/ })
       .click();
     await page.getByRole("button", { name: "More actions" }).click();
     await page.getByRole("menuitem", { name: /Record opt-out/ }).click();
-    await page.getByLabel("Reason (required)").fill("Llamó y pidió que no le escribamos");
+    await page.getByLabel("Reason (required)").fill("Called and asked us not to write");
     await page.getByRole("button", { name: "Confirm" }).click();
     await expect(page.getByText("Opt-out recorded")).toBeVisible();
     await expect(page.getByText("Opted out").first()).toBeVisible();

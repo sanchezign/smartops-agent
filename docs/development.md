@@ -217,6 +217,10 @@ transcriber and the demo's own Graph API (the Graph client refuses Meta hosts â€
 refuses any database that is not `*_demo`. Data resets every `DEMO_RESET_INTERVAL_MINUTES`
 (and with "Reset demo", at most once per 10 minutes for everyone); users and sessions are kept.
 
+The demo CONTENT (suppliers, products, customers, sample files) comes in English or Spanish, one per
+deployment: `DEMO_CONTENT_LANGUAGE=en|es` (default `en`; [ADR-031](adr/ADR-031-content-and-business-language.md)).
+The English recordings were made with `pnpm --filter @smartops/api ai:record-golden --lang en`.
+
 ## Coexistence & opt-out (phase 7)
 
 - **Human takeover (ADR-016):** a human reply â€” from the panel or, on a real coexistence

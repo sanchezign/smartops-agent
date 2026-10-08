@@ -54,7 +54,7 @@ for (const scheme of SCHEMES) {
       await expectAccessible(page);
       await page
         .locator('main a[href^="/conversations/"]')
-        .filter({ hasText: "Luis" })
+        .filter({ hasText: "Louis" })
         .first()
         .click();
       await page.locator("section[aria-label]").first().waitFor();
@@ -69,7 +69,7 @@ for (const scheme of SCHEMES) {
 
       await page.goto("/catalog");
       await ready(page);
-      await page.locator("input[type=search]").fill("tornillo 6mm");
+      await page.locator("input[type=search]").fill("hex bolt");
       await page.waitForTimeout(700);
       await page.locator('main a[href^="/catalog/"]').first().click();
       await ready(page);

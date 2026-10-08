@@ -43,7 +43,7 @@ test("screenshots, light and dark", async ({ page, isMobile }, info) => {
     if (isMobile) await shoot(`reviews-${scheme}`);
     await page
       .getByRole("list", { name: "Reviews" })
-      .getByText("Lista Distribuidora Norte.xlsx")
+      .getByText("Corvane Fasteners price list.xlsx")
       .click();
     await settle(page);
     await shoot(`review-columns-${scheme}`);
@@ -52,7 +52,7 @@ test("screenshots, light and dark", async ({ page, isMobile }, info) => {
     await settle(page);
     // Phones: the inbox with its "who is answering" badges (a chat opens at its newest message).
     if (isMobile) await shoot(`inbox-${scheme}`);
-    await page.getByLabel("Search by name, supplier or phone").fill(isMobile ? "Luis" : "Norte");
+    await page.getByLabel("Search by name, supplier or phone").fill(isMobile ? "Louis" : "Corvane");
     await page.getByRole("list", { name: "Conversations" }).getByRole("link").first().click();
     await page.getByRole("region", { name: "Messages" }).waitFor();
     await settle(page);
@@ -61,7 +61,7 @@ test("screenshots, light and dark", async ({ page, isMobile }, info) => {
     if (!isMobile) {
       await page.goto("/catalog");
       await settle(page);
-      await page.getByLabel("Search product").fill("tornillo 6mm");
+      await page.getByLabel("Search product").fill("hex bolt");
       await page.getByRole("list", { name: "Products" }).getByRole("link").first().click();
       await page.getByRole("heading", { name: "Price history" }).waitFor();
       await settle(page);
@@ -141,7 +141,7 @@ test("demo video", async ({ browser, isMobile }) => {
   // 3. The catalog with the new prices and their history.
   await page.goto("/catalog");
   await settle(page);
-  await page.getByLabel("Search product").fill("tornillo 6mm");
+  await page.getByLabel("Search product").fill("hex bolt");
   await page.getByRole("list", { name: "Products" }).getByRole("link").first().click();
   await page.getByRole("heading", { name: "Price history" }).waitFor();
   await say("catalog");
@@ -157,7 +157,7 @@ test("demo video", async ({ browser, isMobile }) => {
   await page.getByRole("link", { name: "Choose the column" }).first().click();
   await page
     .getByRole("list", { name: "Reviews" })
-    .getByText("Precios Mayorista del Este.xlsx")
+    .getByText("Wholesale Sample prices.xlsx")
     .click();
   await page.getByRole("heading", { name: "Choose the price column" }).waitFor();
   await say("column");
@@ -166,7 +166,7 @@ test("demo video", async ({ browser, isMobile }) => {
   // 5. A chat handled by a person.
   await page.goto("/conversations");
   await settle(page);
-  await page.getByLabel("Search by name, supplier or phone").fill("Luis");
+  await page.getByLabel("Search by name, supplier or phone").fill("Louis");
   await page.getByRole("list", { name: "Conversations" }).getByRole("link").first().click();
   await page.getByRole("region", { name: "Messages" }).waitFor();
   await say("chat");
@@ -219,25 +219,29 @@ test("guide screenshots", async ({ page, context, isMobile }) => {
   await page.goto("/reviews");
   await ready();
   await shoot("reviews");
-  await page.getByText("Arena gruesa").first().click();
+  await page.getByText("Coarse sand").first().click();
   await ready();
   await shoot("review-line");
   await page.goto("/reviews");
   await ready();
-  await page.getByText("Lista Distribuidora Norte.xlsx").first().click();
+  await page.getByText("Corvane Fasteners price list.xlsx").first().click();
   await ready();
   await shoot("review-columns");
 
   await page.goto("/conversations");
   await ready();
   await shoot("inbox");
-  await page.locator('main a[href^="/conversations/"]').filter({ hasText: "Luis" }).first().click();
+  await page
+    .locator('main a[href^="/conversations/"]')
+    .filter({ hasText: "Louis" })
+    .first()
+    .click();
   await ready();
   await shoot("chat");
 
   await page.goto("/catalog");
   await ready();
-  await page.locator("input[type=search]").fill("tornillo 6mm");
+  await page.locator("input[type=search]").fill("hex bolt");
   await page.locator('main a[href^="/catalog/"]').first().click();
   await ready();
   await shoot("product");

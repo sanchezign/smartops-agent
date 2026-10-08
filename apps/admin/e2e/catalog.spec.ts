@@ -17,17 +17,17 @@ test.describe("catalog (phase 9 M5)", () => {
     await login(page, "operator");
     await goTo(page, "Catalog", isMobile);
     await page.getByRole("combobox", { name: "Supplier" }).click();
-    await page.getByRole("option", { name: /Distribuidora Norte/ }).click();
-    await page.getByLabel("Search product").fill("tornillo 6");
+    await page.getByRole("option", { name: /Corvane Fasteners Inc./ }).click();
+    await page.getByLabel("Search product").fill("hex bolt");
     const list = page.getByRole("list", { name: "Products" });
     await expect(list.getByRole("link")).toHaveCount(1);
-    // Uruguayan pesos in English show their code, never a bare "$" (phase 14 M6).
-    await expect(list.getByText(/UYU [0-9,]+\.\d\d/)).toBeVisible();
+    // US dollars in the English content (the currency comes from the content, phase 14 M5).
+    await expect(list.getByText(/\$[0-9,]+\.\d\d/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Rename" })).toHaveCount(0); // operator
     await expectAccessible(page);
 
     await list.getByRole("link").click();
-    await expect(page.getByRole("heading", { name: "Tornillo 6mm", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Hex bolt 1/4 in", level: 1 })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Price history" })).toBeVisible();
     const changes = page.getByRole("list", { name: "Price changes" });
     await expect(changes.getByRole("listitem").first()).toBeVisible();
@@ -53,13 +53,15 @@ test.describe("catalog changes (desktop only: shared demo data)", () => {
     await login(page);
     await goTo(page, "Catalog", false);
     await page.getByRole("combobox", { name: "Supplier" }).click();
-    await page.getByRole("option", { name: /Pinturas del Sur/ }).click();
+    await page.getByRole("option", { name: /Tessaly Paint & Coatings/ }).click();
     await page.getByRole("button", { name: "Rename" }).click();
-    await page.getByLabel("Name", { exact: true }).fill("Pinturas del Sur S.R.L.");
+    await page.getByLabel("Name", { exact: true }).fill("Tessaly Paint & Coatings Ltd.");
     await page.getByRole("button", { name: "Save" }).click();
     await expect(page.getByText("Supplier renamed.")).toBeVisible();
     await page.getByRole("combobox", { name: "Supplier" }).click();
-    await expect(page.getByRole("option", { name: /Pinturas del Sur S\.R\.L\./ })).toBeVisible();
+    await expect(
+      page.getByRole("option", { name: /Tessaly Paint & Coatings Ltd\./ }),
+    ).toBeVisible();
   });
 
   test("acknowledge an alert", async ({ page }) => {

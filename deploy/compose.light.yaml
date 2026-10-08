@@ -29,6 +29,8 @@ x-app-env: &app-env
   PANEL_PUBLIC_URL: https://${DEMO_DOMAIN:?}
   # Public demo (ADR-021): forces the fakes and the API's own Graph API.
   DEMO_MODE: "true"
+  # Language of the demo CONTENT (ADR-031): en | es. One per deployment.
+  DEMO_CONTENT_LANGUAGE: ${DEMO_CONTENT_LANGUAGE:-en}
   DEMO_GRAPH_URL: http://api:4000
   DEMO_RESET_INTERVAL_MINUTES: ${DEMO_RESET_INTERVAL_MINUTES:-60}
   DEMO_OPERATOR_EMAIL: ${DEMO_OPERATOR_EMAIL:-demo@smartops.test}

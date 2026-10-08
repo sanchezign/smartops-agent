@@ -107,8 +107,6 @@
       "note": null
     }
   ],
-  "warnings": [
-    "Catalog is empty, so no items could be matched to existing catalog references."
-  ],
+  "warnings": ["Catalog is empty, so no items could be matched to existing catalog references."],
   "suspiciousInstructions": false
 }

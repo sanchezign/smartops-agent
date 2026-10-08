@@ -51,15 +51,15 @@ test.describe("digest deep link (phase 9 M7)", () => {
     await expect(page.getByRole("heading", { name: "WhatsApp summary" })).toBeVisible();
     const list = page.getByRole("list", { name: "Summary items" });
     await expect(list.getByRole("link")).toHaveCount(3);
-    await list.getByRole("link", { name: /Order from Ana Pereira/ }).click();
-    await expect(page.getByRole("heading", { name: "Ana Pereira" })).toBeVisible();
+    await list.getByRole("link", { name: /Order from Anna Pearson/ }).click();
+    await expect(page.getByRole("heading", { name: "Anna Pearson" })).toBeVisible();
   });
 
   test("a digest with one point opens it directly", async ({ page }) => {
     const { single } = await digestTokens();
     await page.goto(`/d/${single}`);
     await loginHere(page);
-    await expect(page.getByRole("heading", { name: "Luis Fernández" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Louis Fernandez" })).toBeVisible();
     await expect(page).toHaveURL(/\/conversations\//);
   });
 

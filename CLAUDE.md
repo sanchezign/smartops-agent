@@ -97,8 +97,8 @@ milestone, is in `docs/history/phase-log.md`. Status as of 2026-10-06.
     owner's checks on the VM / Console that remain are listed in "Current phase".
 13. i18n (panel EN + neutral ES) + English docs + screenshots/video + panel guide + case study +
     portfolio kit — DONE (merged 2026-10-02).
-14. frontend clarity (UX) — IN PROGRESS (branch `feat/phase-14-frontend-clarity`): M0–M4, M6, M7 DONE; M5a, M5b
-    (content as data; language-aware heuristics) and M5c (English content and fixtures) DONE, M5d–M5e next. Detail: `docs/history/phase-log.md` item 14.
+14. frontend clarity (UX) — IN PROGRESS (branch `feat/phase-14-frontend-clarity`): M0–M7 DONE (M5 = demo content
+    language, English by default); PR open, waiting for the owner's merge. Detail: `docs/history/phase-log.md` item 14.
 
 
 ## Data model (starting point — refine in phase 2 plan)
@@ -176,7 +176,7 @@ Add one line here for every new ADR.
 - [ADR-031](docs/adr/ADR-031-content-and-business-language.md) — Demo content language per deployment; ONE business language that also decides how incoming messages are read
 
 ## Current phase
-**Phases 1–13 are COMPLETE (phase 12 closed in the repo 2026-10-06). Phase 14 (frontend clarity) is IN PROGRESS on `feat/phase-14-frontend-clarity`: M0–M4, M6, M7 done; M5a–M5c done, M5d–M5e next (M5d spends credits only after the owner's OK).**
+**Phases 1–13 are COMPLETE (phase 12 closed in the repo 2026-10-06). Phase 14 (frontend clarity) is IN PROGRESS on `feat/phase-14-frontend-clarity`: M0–M7 all done; the PR to `main` is open and waits for the owner to merge it.**
 Phase 14 (owner decisions 2026-10-07): style "Señal" (ADR-029), demo operator resolves column_mapping in
 DEMO_MODE (ADR-030), credentials demo@smartops.test / "try smartops demo", content language per
 deployment (DEMO_CONTENT_LANGUAGE=en|es, public demo in English). Order: M0–M4, M6, M7, then M5 (content
@@ -374,7 +374,7 @@ retention policy, a real WhatsApp instance (out of phase 12).
   `apps/admin/src/i18n/messages/{en,es}.json` (ESLint `i18next/no-literal-string`, catalog parity
   and anti-voseo tests), pure modules return codes; numbers / dates through `useFormat()`.
   WhatsApp texts in `apps/api/src/common/business-texts.ts` (business language; Spanish "usted").
-  Sample / demo data stays Spanish. Panel routes are English (`/reviews`, `/conversations`…);
+  Demo content is English by default (`DEMO_CONTENT_LANGUAGE=en|es`, ADR-031; Spanish kept). Panel routes are English (`/reviews`, `/conversations`…);
   the old Spanish ones only live in `src/legacy-routes.ts` as redirects.
 - Docs: index `docs/README.md`; relative links checked offline in CI (`doc-links.ts`); README
   media only from `media.spec.ts` + `scripts/media/build-media.sh` (budgets tested); the portfolio

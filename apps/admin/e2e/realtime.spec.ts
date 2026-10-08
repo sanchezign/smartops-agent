@@ -29,13 +29,13 @@ test("a mode change made elsewhere appears live in the open chat", async ({ page
   await expect(page.getByRole("status").filter({ hasText: "Live" })).toBeVisible();
 
   await navLink(page, "Conversations").click();
-  await page.getByLabel("Search by name, supplier or phone").fill("Carolina");
+  await page.getByLabel("Search by name, supplier or phone").fill("Caroline");
   // (by name: clicking "the first link" could hit the list before the search filtered it)
   await page
     .getByRole("list", { name: "Conversations" })
-    .getByRole("link", { name: /Carolina/ })
+    .getByRole("link", { name: /Caroline/ })
     .click();
-  await expect(page.getByRole("heading", { name: "Carolina (depósito)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Caroline (warehouse)" })).toBeVisible();
   const conversationId = new URL(page.url()).pathname.split("/").pop()!;
 
   // Every project runs this on the same chat: flip whatever mode it is in now.
@@ -65,12 +65,12 @@ test("if the stream never answers: 'Updating every 30 s' and the screen still re
     timeout: 15_000,
   });
   await navLink(page, "Conversations").click();
-  await page.getByLabel("Search by name, supplier or phone").fill("Carolina");
+  await page.getByLabel("Search by name, supplier or phone").fill("Caroline");
   await page
     .getByRole("list", { name: "Conversations" })
-    .getByRole("link", { name: /Carolina/ })
+    .getByRole("link", { name: /Caroline/ })
     .click();
-  await expect(page.getByRole("heading", { name: "Carolina (depósito)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Caroline (warehouse)" })).toBeVisible();
   const conversationId = new URL(page.url()).pathname.split("/").pop()!;
   const human = await page.getByRole("button", { name: "Reactivate the bot" }).isVisible();
   const { ctx, call } = await adminApi();
@@ -92,16 +92,16 @@ test("a review resolved elsewhere leaves the open queue live", async ({ page, is
   await login(page);
   await navLink(page, "Reviews").click();
   const list = page.getByRole("list", { name: "Reviews" });
-  await expect(list.getByText("Disyuntor diferencial 40A")).toBeVisible();
+  await expect(list.getByText("Differential breaker 40 A")).toBeVisible();
 
   const { ctx, call } = await adminApi();
   const { items } = (await (await call("get", "/reviews?scope=line")).json()) as {
     items: { id: string; proposal: { item: { name: string } } }[];
   };
-  const review = items.find((i) => i.proposal.item.name === "Disyuntor diferencial 40A")!;
+  const review = items.find((i) => i.proposal.item.name === "Differential breaker 40 A")!;
   expect((await call("post", `/reviews/${review.id}/reject`, { note: "e2e realtime" })).ok()).toBe(
     true,
   );
-  await expect(list.getByText("Disyuntor diferencial 40A")).toHaveCount(0, { timeout: 5_000 });
+  await expect(list.getByText("Differential breaker 40 A")).toHaveCount(0, { timeout: 5_000 });
   await ctx.dispose();
 });

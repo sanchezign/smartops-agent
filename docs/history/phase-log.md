@@ -1665,3 +1665,18 @@ a real client.**
       message as declared), `demo-seed.test.ts` (English seed on real Postgres, deterministic), prompts test merges
       both expected files, the real English injection fixture ends in `needs_review`. Free dry run (count_tokens):
       English set expected US$0.1455 / worst case US$0.4300 (Spanish baseline 0.1342 / 0.4186, unchanged).
+    - M5d — DONE. Nine real Claude outputs recorded for the English fixtures (`ai:record-golden --lang en
+      --confirm-spend`, total cap US$0.50): US$0.0803 real, no retries (per call: classify 0.0043 / 0.0035 /
+      0.0038, extract PDF 0.0246, photo 0.0183, voice 0.0038, injection 0.0044, map_columns 0.0131, match 0.0045).
+      The owner reviewed the outputs before they were copied (byte-identical) to `test/fixtures/extraction/golden`
+      and `demo/golden`. The dev database had no migrations (no `ai_usages`): `prisma migrate deploy` was run on it
+      and the process cap was enforced with `AI_TOTAL_BUDGET_USD=0.5`. `en/expected.json` got
+      `photoAgainstSeptember` (the photo says "tax included", so `taxIncluded: true`).
+      `golden-outputs-en.test.ts`: schema, September PDF, photo vs catalog, injection flagged, mapper, matcher, and
+      that the demo content (`catalogSender`, `formatMapper`) says the same as the recordings. Known issue: one
+      classifier `reason` came out in Spanish (internal only).
+    - M5e — DONE. The E2E specs read the English content (Corvane / Tessaly / Norvale, Louis Fernandez, US dollars; the
+      Spanish-panel spec expects "US$ 0,60"); the Playwright API is pinned to `DEMO_CONTENT_LANGUAGE=en`; deploy
+      compose files pass `DEMO_CONTENT_LANGUAGE` (default `en`). README and guide media regenerated ONCE (screenshots,
+      GIF, MP4 + subtitles, guide EN / ES); the iPhone shots come from the `iphone-chromium` project (WebKit cannot
+      start on this PC). Panel strings that still say "VAT" in the English panel are a wording point for later.

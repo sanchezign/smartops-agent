@@ -4,7 +4,7 @@ import { login, navLink } from "./helpers";
 /**
  * User rule (after M2): at least one test PER BROWSER approves and rejects a review with the
  * buttons pinned at the bottom of the screen. The E2E seed (DEMO_E2E_REVIEWS) gives each
- * Playwright project its own two reviews: "Martillo <project>" and "Serrucho <project>".
+ * Playwright project its own two reviews: "Martillo <project>" and "Saw <project>".
  */
 
 test("approve one review and reject another with the bottom buttons", async ({
@@ -18,7 +18,7 @@ test("approve one review and reject another with the bottom buttons", async ({
   await page.getByRole("button", { name: /^Products/ }).click();
   const list = page.getByRole("list", { name: "Reviews" });
 
-  await list.getByText(`Martillo ${project}`).click();
+  await list.getByText(`Hammer ${project}`).click();
   const approve = page.getByRole("button", { name: "Apply price" });
   // Pinned to the bottom on phones: reachable without scrolling (desktop: normal flow).
   if (isMobile) await expect(approve).toBeInViewport();
@@ -26,7 +26,7 @@ test("approve one review and reject another with the bottom buttons", async ({
   await expect(page.getByText("Approved and applied.")).toBeVisible();
 
   await page.getByRole("button", { name: /^Products/ }).click();
-  await list.getByText(`Serrucho ${project}`).click();
+  await list.getByText(`Saw ${project}`).click();
   const reject = page.getByRole("button", { name: "Reject", exact: true });
   if (isMobile) await expect(reject).toBeInViewport();
   await reject.click();
@@ -35,5 +35,5 @@ test("approve one review and reject another with the bottom buttons", async ({
   await expect(page.getByText("Review rejected")).toBeVisible();
 
   await page.getByRole("button", { name: "Rejected" }).click();
-  await expect(list.getByText(`Serrucho ${project}`)).toBeVisible();
+  await expect(list.getByText(`Saw ${project}`)).toBeVisible();
 });

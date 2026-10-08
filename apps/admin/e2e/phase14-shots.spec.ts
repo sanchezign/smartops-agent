@@ -79,7 +79,7 @@ for (const scheme of ["light", "dark"] as const) {
     await shoot("inbox");
     await page
       .locator('main a[href^="/conversations/"]')
-      .filter({ hasText: "Luis" })
+      .filter({ hasText: "Louis" })
       .first()
       .click();
     await page.locator("section[aria-label]").first().waitFor();
@@ -93,7 +93,7 @@ for (const scheme of ["light", "dark"] as const) {
     await page.goto("/catalog");
     await ready(page);
     await shoot("catalog", false);
-    await page.locator("input[type=search]").fill("tornillo 6mm");
+    await page.locator("input[type=search]").fill("hex bolt");
     await page.waitForTimeout(700);
     await page.locator('main a[href^="/catalog/"]').first().click();
     await ready(page);
@@ -154,7 +154,7 @@ test("phone viewport, inbox and chat as it opens", async ({ page, context, isMob
     await page.goto("/conversations");
     await ready(page);
     await page.screenshot({ path: `${dir}/viewport-${scheme}-inbox.png` });
-    for (const who of ["Luis", "Norte"]) {
+    for (const who of ["Louis", "Corvane"]) {
       await page.goto("/conversations");
       await ready(page);
       await page
@@ -172,11 +172,11 @@ test("phone viewport, inbox and chat as it opens", async ({ page, context, isMob
       await page.screenshot({
         path: `${dir}/viewport-${scheme}-chat-${who.toLowerCase()}-top.png`,
       });
-      if (who === "Luis") {
+      if (who === "Louis") {
         // A long name wraps to two lines (phase 14), never cut.
         await page.getByRole("heading", { level: 1 }).evaluate((el) => {
           el.textContent =
-            "Luis Fernández de la Cruz y Ordóñez de Montevideo Abastecimientos del Este";
+            "Louis Fernandez de la Cruz and Ordonez of Columbus Eastern Wholesale Supplies";
         });
         await page.screenshot({ path: `${dir}/viewport-${scheme}-chat-longname.png` });
       }

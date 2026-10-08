@@ -23,8 +23,6 @@
       "note": null
     }
   ],
-  "warnings": [
-    "Validity stated only as 'starting Monday', no exact date given."
-  ],
+  "warnings": ["Validity stated only as 'starting Monday', no exact date given."],
   "suspiciousInstructions": false
 }

@@ -116,25 +116,25 @@ test.describe("rules and users changes (desktop only)", () => {
     await page.keyboard.press("Escape");
 
     await page.getByRole("button", { name: "New user" }).click();
-    await page.getByLabel("Name").fill("Carla Depósito");
-    await page.getByLabel("Email").fill("carla@ferreteria.demo");
+    await page.getByLabel("Name").fill("Carla Warehouse");
+    await page.getByLabel("Email").fill("carla@hardware.example");
     await page.getByLabel("Password").fill("corta");
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.getByText(/At least 15 characters/).first()).toBeVisible();
-    await page.getByLabel("Password").fill("la escalera del galpón tiene cinco peldaños");
+    await page.getByLabel("Password").fill("the tall ladder has five rungs");
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.getByText("User created.")).toBeVisible();
 
-    await list.getByRole("button", { name: /Actions for Carla Depósito/ }).click();
+    await list.getByRole("button", { name: /Actions for Carla Warehouse/ }).click();
     await page.getByRole("menuitem", { name: "Change to administrator" }).click();
     await expect(page.getByText("User updated.")).toBeVisible();
     await expect(
-      list.getByRole("listitem").filter({ hasText: "Carla Depósito" }).getByText("Administrator"),
+      list.getByRole("listitem").filter({ hasText: "Carla Warehouse" }).getByText("Administrator"),
     ).toBeVisible();
-    await list.getByRole("button", { name: /Actions for Carla Depósito/ }).click();
+    await list.getByRole("button", { name: /Actions for Carla Warehouse/ }).click();
     await page.getByRole("menuitem", { name: "Deactivate" }).click();
     await expect(
-      list.getByRole("listitem").filter({ hasText: "Carla Depósito" }).getByText("Deactivated"),
+      list.getByRole("listitem").filter({ hasText: "Carla Warehouse" }).getByText("Deactivated"),
     ).toBeVisible();
     await expectAccessible(page);
   });

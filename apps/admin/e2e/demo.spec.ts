@@ -88,7 +88,7 @@ test.describe("every sample goes through the real pipeline (desktop: shared demo
     // The new spreadsheet waits for a person in Revisiones (column picker).
     await navLink(page, "Reviews").click();
     await expect(
-      page.getByRole("list", { name: "Reviews" }).getByText("Precios Mayorista del Este.xlsx"),
+      page.getByRole("list", { name: "Reviews" }).getByText("Wholesale Sample prices.xlsx"),
     ).toBeVisible();
   });
 
@@ -96,12 +96,12 @@ test.describe("every sample goes through the real pipeline (desktop: shared demo
     await loginWithDemoCard(page);
     // Open screens before the reset: a chat (stable id) and a review (recreated → new id).
     await page.goto("/conversations");
-    await page.getByLabel("Search by name, supplier or phone").fill("Luis");
+    await page.getByLabel("Search by name, supplier or phone").fill("Louis");
     await page
       .getByRole("list", { name: "Conversations" })
-      .getByRole("link", { name: /Luis Fernández/ })
+      .getByRole("link", { name: /Louis Fernandez/ })
       .click();
-    await expect(page.getByRole("heading", { name: "Luis Fernández" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Louis Fernandez" })).toBeVisible();
     const chatUrl = page.url();
     await page.goto("/reviews");
     await page.getByRole("list", { name: "Reviews" }).getByText("Across-the-board change").click();
@@ -113,12 +113,12 @@ test.describe("every sample goes through the real pipeline (desktop: shared demo
     await expect(page.getByText("Demo reset:")).toBeVisible({ timeout: 60_000 });
     await navLink(page, "Reviews").click();
     const list = page.getByRole("list", { name: "Reviews" });
-    await expect(list.getByText("Lista Distribuidora Norte.xlsx")).toBeVisible();
-    await expect(list.getByText("Precios Mayorista del Este.xlsx")).toHaveCount(0);
+    await expect(list.getByText("Corvane Fasteners price list.xlsx")).toBeVisible();
+    await expect(list.getByText("Wholesale Sample prices.xlsx")).toHaveCount(0);
 
     // The chat link survives the reset; the old review says it no longer exists.
     await page.goto(chatUrl);
-    await expect(page.getByRole("heading", { name: "Luis Fernández" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Louis Fernandez" })).toBeVisible();
     await page.goto(reviewUrl);
     await expect(
       page.getByText("This no longer exists (the demo may have been reset)"),

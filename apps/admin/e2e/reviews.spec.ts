@@ -62,22 +62,22 @@ test.describe("resolving reviews (desktop only: it changes the shared demo data)
     await openReviews(page, false);
     await page
       .getByRole("list", { name: "Reviews" })
-      .getByText("Lista Distribuidora Norte.xlsx")
+      .getByText("Corvane Fasteners price list.xlsx")
       .click();
     await expect(page.getByRole("heading", { name: "Choose the price column" })).toBeVisible();
     await expect(page.getByText("Only an administrator can resolve this review.")).toHaveCount(0);
     const group = page.getByRole("radiogroup", { name: /Price column/ });
-    const withTax = group.getByRole("radio", { name: /Precio c\/IVA/ });
+    const withTax = group.getByRole("radio", { name: /Price inc tax/ });
     await expect(withTax).toBeChecked(); // the recommendation is pre-selected…
     await expect(group.getByText("Suggested")).toBeVisible();
-    await expect(group.getByText("320").first()).toBeVisible(); // …next to values from the file
+    await expect(group.getByText("11.8").first()).toBeVisible(); // …next to values from the file
     await expectAccessible(page);
-    await group.getByRole("radio", { name: /Mayorista/ }).click();
+    await group.getByRole("radio", { name: /Wholesale/ }).click();
     await page.getByRole("button", { name: "Use this column" }).click();
     await expect(page.getByText("The list is processed again")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Reviews", level: 1 })).toBeVisible();
     await expect(
-      page.getByRole("list", { name: "Reviews" }).getByText("Lista Distribuidora Norte.xlsx"),
+      page.getByRole("list", { name: "Reviews" }).getByText("Corvane Fasteners price list.xlsx"),
     ).toHaveCount(0);
   });
 
@@ -85,7 +85,7 @@ test.describe("resolving reviews (desktop only: it changes the shared demo data)
     await login(page, "operator");
     await openReviews(page, false);
     await page.getByRole("button", { name: /^Products/ }).click();
-    await page.getByRole("list", { name: "Reviews" }).getByText("Arena gruesa").click();
+    await page.getByRole("list", { name: "Reviews" }).getByText("Coarse sand").click();
     await expect(page.getByRole("heading", { name: /Unusual price change/ })).toBeVisible();
     await page.getByLabel("Price", { exact: true }).fill("1,900"); // ambiguous in English: thousands or decimals?
     await page.getByRole("button", { name: "Apply price" }).click();
@@ -98,14 +98,17 @@ test.describe("resolving reviews (desktop only: it changes the shared demo data)
   test("reject with a note", async ({ page }) => {
     await login(page);
     await openReviews(page, false);
-    await page.getByRole("list", { name: "Reviews" }).getByText("Pintura látex blanca 4L").click();
+    await page
+      .getByRole("list", { name: "Reviews" })
+      .getByText("Interior latex paint, white 1 gal")
+      .click();
     await page.getByRole("button", { name: "Reject" }).click();
     await page.getByLabel("Note").fill("No se entiende el audio: le pido que lo escriba");
     await page.getByRole("button", { name: "Confirm" }).click();
     await expect(page.getByText("Review rejected")).toBeVisible();
     await page.getByRole("button", { name: "Rejected" }).click();
     await expect(
-      page.getByRole("list", { name: "Reviews" }).getByText("Pintura látex blanca 4L"),
+      page.getByRole("list", { name: "Reviews" }).getByText("Interior latex paint, white 1 gal"),
     ).toBeVisible();
   });
 });
