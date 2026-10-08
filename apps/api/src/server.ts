@@ -23,6 +23,7 @@ import { createDigestLinkRepository } from "./modules/admin/digest-link.reposito
 import { createCatalogQueryRepository } from "./modules/admin/catalog-query.repository.js";
 import { createConversationQueryRepository } from "./modules/admin/conversation-query.repository.js";
 import { createDemoGraphRouter, createDemoMediaStore } from "./modules/demo/demo-graph.js";
+import { getDemoContent } from "./modules/demo/content/index.js";
 import { createDemoInjector } from "./modules/demo/demo-injector.js";
 import { createDemoReset } from "./modules/demo/demo-reset.js";
 import { createDemoTraceRepository } from "./modules/demo/demo-trace.repository.js";
@@ -206,9 +207,11 @@ const demo = env.DEMO_MODE
         url: `http://127.0.0.1:${env.PORT}/api/v1/webhooks/whatsapp`,
         appSecret: env.WHATSAPP_APP_SECRET,
       };
+      const demoContent = getDemoContent(env.DEMO_CONTENT_LANGUAGE);
       const reset = createDemoReset({
         prisma,
         catalog,
+        content: demoContent,
         users: {
           operator: {
             email: env.DEMO_OPERATOR_EMAIL,
@@ -246,6 +249,7 @@ const demo = env.DEMO_MODE
           operator: { email: env.DEMO_OPERATOR_EMAIL, password: env.DEMO_OPERATOR_PASSWORD },
           injector: createDemoInjector({
             assetsDir: env.DEMO_ASSETS_DIR,
+            content: demoContent,
             store,
             business,
             webhook,

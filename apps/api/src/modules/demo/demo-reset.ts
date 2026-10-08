@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../../common/db.js";
+import type { DemoContent } from "./content/index.js";
 import type { Logger } from "../../common/logger.js";
 import type { CatalogIngestService } from "../catalog/catalog-ingest.service.js";
 import type { DemoMediaStore } from "./demo-graph.js";
@@ -14,6 +15,8 @@ export function createDemoReset(deps: {
   catalog: CatalogIngestService;
   users: DemoUsers;
   assetsDir: string;
+  /** The demo content to seed (ADR-031). */
+  content: DemoContent;
   store: DemoMediaStore;
   logger: Logger;
   intervalMinutes: number;
@@ -51,6 +54,7 @@ export function createDemoReset(deps: {
           logger: log,
           keepAuth: true,
           assetsDir: deps.assetsDir,
+          content: deps.content,
           e2eReviews: deps.e2eReviews ?? false,
         });
         deps.store.clear();

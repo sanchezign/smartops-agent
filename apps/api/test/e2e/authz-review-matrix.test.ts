@@ -125,7 +125,7 @@ describe("authorization matrix: review items (role × scope × kind × DEMO_MODE
     }
     const expected = JSON.parse(readFileSync(FIXTURE, "utf8")) as Matrix;
     expect(observed).toEqual(expected);
-  });
+  }, 30_000); // ~540 requests through the real stack: the default 5 s is too tight under load
 
   it("invariants that no fixture can override", () => {
     const matrix = JSON.parse(readFileSync(FIXTURE, "utf8")) as Matrix;

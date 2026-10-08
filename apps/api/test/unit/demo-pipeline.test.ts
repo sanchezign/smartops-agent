@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { getDemoContent } from "../../src/modules/demo/content/index.js";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import express from "express";
@@ -133,6 +134,7 @@ describe("demo injector", () => {
     const store = createDemoMediaStore();
     const injector = createDemoInjector({
       assetsDir: "demo",
+      content: getDemoContent("es"),
       store,
       business,
       webhook: { url: "http://127.0.0.1:4321/api/v1/webhooks/whatsapp", appSecret: SECRET },

@@ -11,6 +11,7 @@
  * DATABASE_URL=$DEMO_DATABASE_URL.
  */
 import { execSync } from "node:child_process";
+import { getDemoContent } from "../../src/modules/demo/content/index.js";
 import pg from "pg";
 import { createPrismaClient } from "../../src/common/db.js";
 import { createLogger } from "../../src/common/logger.js";
@@ -77,6 +78,7 @@ try {
     },
     logger,
     assetsDir: env.DEMO_ASSETS_DIR,
+    content: getDemoContent(env.DEMO_CONTENT_LANGUAGE),
     e2eReviews: env.DEMO_E2E_REVIEWS,
   });
   process.stdout.write(`demo seeded: ${JSON.stringify(result)}\n`);

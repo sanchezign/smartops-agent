@@ -9,6 +9,7 @@
  * logged in across deploys); everything else is rebuilt, exactly like the hourly reset.
  */
 import { createPrismaClient } from "./common/db.js";
+import { getDemoContent } from "./modules/demo/content/index.js";
 import { createLogger } from "./common/logger.js";
 import { loadEnv } from "./config/env.js";
 import { createCatalogIngestService } from "./modules/catalog/catalog-ingest.service.js";
@@ -53,6 +54,7 @@ try {
     logger,
     keepAuth: true,
     assetsDir: env.DEMO_ASSETS_DIR,
+    content: getDemoContent(env.DEMO_CONTENT_LANGUAGE),
     e2eReviews: env.DEMO_E2E_REVIEWS,
   });
   logger.info({ result }, "demo seeded");

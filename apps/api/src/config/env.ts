@@ -186,6 +186,12 @@ export const envSchema = z.object({
   DEMO_GLOBAL_INJECT_PER_HOUR: z.coerce.number().int().min(1).max(10_000).default(120),
   /** Demo assets (sample files, recorded LLM outputs, transcripts), relative to the API package. */
   DEMO_ASSETS_DIR: z.string().min(1).default("demo"),
+  /**
+   * Language of the DEMO CONTENT (ADR-031): who the suppliers are, what they sell, what customers
+   * write, the seed texts and the "Try the system" files. One per deployment; the panel language
+   * is per visitor. (English arrives with M5c and becomes the default there.)
+   */
+  DEMO_CONTENT_LANGUAGE: z.enum(["en", "es"]).default("es"),
   /** E2E only: the seed adds one review per Playwright project to approve / reject. */
   DEMO_E2E_REVIEWS: z
     .enum(["true", "false"])
