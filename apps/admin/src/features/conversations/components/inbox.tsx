@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Chip, RowLink, RowList } from "@/components/list-row";
 import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
 import { useInbox } from "../hooks";
@@ -82,16 +83,13 @@ export function Inbox() {
         />
       ) : (
         <>
-          <ul
-            className="flex flex-col divide-y rounded-xl border bg-card"
-            aria-label={t("listLabel")}
-          >
+          <RowList aria-label={t("listLabel")}>
             {items.map((item) => (
               <li key={item.id}>
                 <InboxRow item={item} />
               </li>
             ))}
-          </ul>
+          </RowList>
           {query.hasNextPage ? (
             <Button
               variant="outline"
@@ -113,42 +111,62 @@ function InboxRow({ item }: { item: InboxItem }) {
   const m = item.lastMessage;
   const unanswered = m?.direction === "inbound";
   const t = useTranslations("conversations");
+  const tKinds = useTranslations("contactKinds");
   const { formatRelative } = useFormat();
   const line = m ? preview(m) : null;
+  const name = contactName(item.contact, t("contactFallback"));
+  const company = supplierSuffix(item.contact);
   return (
-    <Link
-      href={`/conversations/${item.id}`}
-      className="flex min-h-16 flex-col gap-1 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
-    >
-      <div className="flex items-center justify-between gap-2">
-        <span className={cn("truncate", unanswered ? "font-semibold" : "font-medium")}>
-          {contactName(item.contact, t("contactFallback"))}
-          {supplierSuffix(item.contact) ? (
-            <span className="font-normal text-muted-foreground">
-              {" "}
-              · {supplierSuffix(item.contact)}
+    <RowLink href={`/conversations/${item.id}`} emphasis={who === "human"}>
+      <span className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="flex items-baseline justify-between gap-3">
+          <span className="flex min-w-0 items-baseline gap-2">
+            {unanswered ? (
+              <span
+                aria-hidden
+                className="size-2 shrink-0 -translate-y-0.5 self-center rounded-full bg-foreground"
+              />
+            ) : null}
+            <span className={cn("truncate", unanswered ? "font-semibold" : "font-medium")}>
+              {name}
+            </span>
+            {company ? (
+              <span className="hidden truncate text-sm text-muted-foreground sm:inline">
+                {company}
+              </span>
+            ) : null}
+          </span>
+          {m ? (
+            <span
+              className={cn(
+                "shrink-0 text-xs tabular-nums",
+                unanswered ? "font-semibold text-foreground" : "text-muted-foreground",
+              )}
+            >
+              {formatRelative(m.at)}
             </span>
           ) : null}
         </span>
-        {m ? (
-          <span className="shrink-0 text-xs text-muted-foreground">{formatRelative(m.at)}</span>
-        ) : null}
-      </div>
-      <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-sm text-muted-foreground">
-          {m ? (
-            <>
-              {m.direction === "outbound"
-                ? m.author === "bot"
-                  ? t("botPrefix")
-                  : t("youPrefix")
-                : null}
-              {line && "snippet" in line ? line.snippet : line ? t(`types.${line.type}`) : null}
-            </>
-          ) : null}
+        <span className="flex items-center justify-between gap-3">
+          <span className="flex min-w-0 items-center gap-2">
+            <Chip>{tKinds(item.contact.kind)}</Chip>
+            <span className="truncate text-sm text-muted-foreground">
+              {m ? (
+                <>
+                  {m.direction === "outbound"
+                    ? m.author === "bot"
+                      ? t("botPrefix")
+                      : t("youPrefix")
+                    : null}
+                  {line && "snippet" in line ? line.snippet : line ? t(`types.${line.type}`) : null}
+                </>
+              ) : null}
+            </span>
+          </span>
+          {who !== "bot" ? <WhoBadge who={who} className="shrink-0" /> : null}
         </span>
-        {who !== "bot" ? <WhoBadge who={who} className="shrink-0" /> : null}
-      </div>
-    </Link>
+      </span>
+      {unanswered ? <span className="sr-only">{t("unanswered")}</span> : null}
+    </RowLink>
   );
 }

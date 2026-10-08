@@ -4,13 +4,17 @@ import { AlertCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
-import { isLabeledStatus, outboundAuthor } from "../labels";
+import { isLabeledStatus, outboundAuthor, statusTone } from "../labels";
 import type { ChatMessage } from "../types";
 import { MediaAttachment } from "./media-attachment";
 
 export function MessageBubble({ message }: { message: ChatMessage }) {
   const outbound = message.direction === "outbound";
-  const failed = message.status === "failed" || message.status === "canceled";
+  // "Canceled (a person was handling it)" is expected, not an error (phase 14 #9): a dashed
+  // neutral frame. Only a send that really failed is red.
+  const tone = statusTone(message.status);
+  const failed = tone === "failed";
+  const canceled = tone === "canceled";
   const t = useTranslations("conversations");
   const { formatTime } = useFormat();
   const author = outbound ? outboundAuthor(message) : null;
@@ -18,12 +22,13 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
     <div className={cn("flex", outbound ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "flex max-w-[85%] flex-col gap-1.5 rounded-2xl px-3 py-2 text-sm sm:max-w-[70%]",
+          "flex max-w-[85%] flex-col gap-1.5 rounded-lg px-3 py-2 text-sm sm:max-w-[70%]",
           outbound
             ? message.author === "bot"
-              ? "rounded-br-sm border bg-secondary"
+              ? "rounded-br-sm border-[1.5px] border-border bg-surface"
               : "rounded-br-sm bg-primary text-primary-foreground"
-            : "rounded-bl-sm border bg-card",
+            : "rounded-bl-sm border-[1.5px] border-border bg-card",
+          canceled && "border-dashed border-muted-foreground",
           // A failed/canceled reply is marked with a border + icon (below), never by lowering
           // opacity: that used to compound with the already-translucent footer text
           // (text-primary-foreground/70,/80) and fail WCAG AA contrast (phase 10 M8 finding).

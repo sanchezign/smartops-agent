@@ -176,3 +176,10 @@ html [data-sonner-toaster][data-sonner-theme="light"] {
   font-weight: 700;
   letter-spacing: -0.005em;
 }
+
+/* The price-tag shape of the "a person is handling it" label (ADR-029): the point is the side
+   where the tag's string goes. */
+@utility tag-shape {
+  clip-path: polygon(0.55rem 0, 100% 0, 100% 100%, 0.55rem 100%, 0 50%);
+  padding-left: 0.9rem;
+}

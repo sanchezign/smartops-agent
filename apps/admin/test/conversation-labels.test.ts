@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { supplierSuffix, whoAnswers } from "../src/features/conversations/labels";
+import { statusTone, supplierSuffix, whoAnswers } from "../src/features/conversations/labels";
 
 /** Conversation labels (phase 9 M3). */
 
@@ -32,5 +32,15 @@ describe("supplierSuffix", () => {
     ).toBe("Distribuidora Norte S.A.");
     expect(supplierSuffix({ name: null, supplier: supplier("Norte") })).toBe("Norte");
     expect(supplierSuffix({ name: "Ana", supplier: null })).toBeNull();
+  });
+});
+
+describe("statusTone (phase 14 #9)", () => {
+  it("only a failed send is an error; a canceled one (a person took over) is neutral", () => {
+    expect(statusTone("failed")).toBe("failed");
+    expect(statusTone("canceled")).toBe("canceled");
+    for (const ok of ["pending", "sent", "delivered", "read", ""]) {
+      expect(statusTone(ok)).toBe("normal");
+    }
   });
 });

@@ -37,6 +37,33 @@ test.describe("conversations (phase 9 M3)", () => {
     await expect(inbox(page).getByText("Pinturas del Sur").first()).toBeVisible();
   });
 
+  test("chat: who answers and the main action stay in view as it opens (phase 14 #8)", async ({
+    page,
+  }) => {
+    await login(page, "operator");
+    await openConversations(page);
+    await inbox(page)
+      .getByRole("link", { name: /Luis Fernández/ })
+      .click();
+    // A chat opens at its newest message: the header must still be on screen, and compact.
+    const bar = page
+      .locator("header")
+      .filter({ has: page.getByRole("heading", { level: 1, name: /Luis/ }) });
+    await expect(page.getByRole("heading", { level: 1, name: /Luis/ })).toBeInViewport({
+      ratio: 1,
+    });
+    await expect(bar.getByText("A person is handling it")).toBeInViewport({ ratio: 1 });
+    await expect(bar.getByRole("button", { name: /Reactivate the bot/ })).toBeInViewport({
+      ratio: 1,
+    });
+    // …and it stays there while the chat scrolls.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(bar.getByRole("button", { name: /Reactivate the bot/ })).toBeInViewport({
+      ratio: 1,
+    });
+    expect((await bar.boundingBox())!.height).toBeLessThan(150);
+  });
+
   test("chat: the photo is loaded with the session (blob: URL, no token in the URL)", async ({
     page,
   }) => {

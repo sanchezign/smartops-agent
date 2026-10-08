@@ -47,6 +47,15 @@ export type OutboundStatus = (typeof STATUSES)[number];
 export const isLabeledStatus = (status: string): status is OutboundStatus =>
   (STATUSES as readonly string[]).includes(status);
 
+/**
+ * How a bubble marks its delivery state (phase 14 #9): only a send that really failed is an
+ * error; "canceled" (a person took over, so the bot reply was withdrawn) is expected and is shown
+ * neutral.
+ */
+export function statusTone(status: string): "failed" | "canceled" | "normal" {
+  return status === "failed" ? "failed" : status === "canceled" ? "canceled" : "normal";
+}
+
 const TYPES = [
   "image",
   "audio",

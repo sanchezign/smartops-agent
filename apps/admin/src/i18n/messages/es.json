@@ -540,6 +540,7 @@
     "loadMore": "Ver más",
     "botPrefix": "Bot: ",
     "youPrefix": "Tú: ",
+    "unanswered": "Sin responder",
     "contactFallback": "Contacto",
     "back": "Conversaciones",
     "backTo": "Volver a Conversaciones",

@@ -52,23 +52,34 @@ export function ChatActions({ conversation }: { conversation: ConversationHeader
 
   const optedOut = conversation.contact.optOutAt !== null;
   return (
-    <div className="flex flex-wrap gap-2">
+    // A fragment: the chat header (a grid) places the main action and the "more" menu in its own
+    // cells (phase 14 #8); dialogs are portals.
+    <>
       {conversation.mode === "human" ? (
         <Button
-          className="min-h-11"
+          className="col-start-3 row-start-2 min-h-10 justify-self-end"
           disabled={resume.isPending}
           onClick={() => resume.mutate(undefined)}
         >
           <Play aria-hidden /> {t("resume")}
         </Button>
       ) : (
-        <Button variant="outline" className="min-h-11" onClick={() => setPauseOpen(true)}>
+        <Button
+          variant="outline"
+          className="col-start-3 row-start-2 min-h-10 justify-self-end"
+          onClick={() => setPauseOpen(true)}
+        >
           <Pause aria-hidden /> {t("pause")}
         </Button>
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="icon" className="size-11" aria-label={t("more")}>
+          <Button
+            variant="outline"
+            size="icon"
+            className="col-start-3 row-start-1 size-10 justify-self-end"
+            aria-label={t("more")}
+          >
             <MoreVertical aria-hidden />
           </Button>
         </DropdownMenuTrigger>
@@ -98,7 +109,7 @@ export function ChatActions({ conversation }: { conversation: ConversationHeader
       {consent ? (
         <ConsentDialog action={consent} contactId={contactId} onClose={() => setConsent(null)} />
       ) : null}
-    </div>
+    </>
   );
 }
 

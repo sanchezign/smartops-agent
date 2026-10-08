@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
-import { Badge } from "@/components/ui/badge";
+import { Chip, RowList, rowClass } from "@/components/list-row";
 import { Button } from "@/components/ui/button";
 import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,7 @@ const STATUS_FILTERS = ["open", "all"] as const;
 
 const SEVERITY = {
   critical: { icon: AlertOctagon, className: "text-destructive" },
-  warning: { icon: AlertTriangle, className: "text-amber-600" },
+  warning: { icon: AlertTriangle, className: "text-warning" },
   info: { icon: Info, className: "text-muted-foreground" },
 } as const;
 
@@ -57,7 +57,7 @@ export function AlertsView() {
       ) : query.data.items.length === 0 ? (
         <EmptyState title={status === "open" ? t("emptyUnseen") : t("empty")} />
       ) : (
-        <ul className="flex flex-col gap-2" aria-label={t("listLabel")}>
+        <RowList aria-label={t("listLabel")}>
           {query.data.items.map((a) => {
             const sev = SEVERITY[a.severity];
             const Icon = sev.icon;
@@ -67,37 +67,38 @@ export function AlertsView() {
             return (
               <li
                 key={a.id}
-                className={cn(
-                  "flex items-start gap-3 rounded-xl border bg-card p-4",
-                  !open && "opacity-75",
-                )}
+                className={cn(rowClass(open, false), "items-start", !open && "opacity-75")}
               >
-                <Icon
-                  className={cn("mt-0.5 size-5 shrink-0", sev.className)}
-                  aria-label={t(`severity.${a.severity}`)}
-                />
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <p className="font-medium break-words">{title}</p>
-                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                    <Badge variant="outline">{t(`types.${a.type}`)}</Badge>
-                    {formatRelative(a.createdAt)}
-                    {a.product ? (
-                      <Link
-                        href={`/catalog/${a.product.id}`}
-                        className="font-medium text-foreground underline-offset-4 hover:underline"
-                      >
-                        {t("viewProduct")}
-                      </Link>
-                    ) : null}
-                    {a.conversationId ? (
-                      <Link
-                        href={`/conversations/${a.conversationId}`}
-                        className="font-medium text-foreground underline-offset-4 hover:underline"
-                      >
-                        {t("viewConversation")}
-                      </Link>
-                    ) : null}
+                  <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                    <span className={cn("flex items-center gap-1 font-medium", sev.className)}>
+                      <Icon className="size-4 shrink-0" aria-hidden />
+                      {t(`severity.${a.severity}`)}
+                    </span>
+                    <Chip>{t(`types.${a.type}`)}</Chip>
+                    <span className="tabular-nums">{formatRelative(a.createdAt)}</span>
                   </p>
+                  {a.product || a.conversationId ? (
+                    <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                      {a.product ? (
+                        <Link
+                          href={`/catalog/${a.product.id}`}
+                          className="font-medium text-foreground underline underline-offset-4 hover:no-underline"
+                        >
+                          {t("viewProduct")}
+                        </Link>
+                      ) : null}
+                      {a.conversationId ? (
+                        <Link
+                          href={`/conversations/${a.conversationId}`}
+                          className="font-medium text-foreground underline underline-offset-4 hover:no-underline"
+                        >
+                          {t("viewConversation")}
+                        </Link>
+                      ) : null}
+                    </p>
+                  ) : null}
                 </div>
                 {open ? (
                   <Button
@@ -116,7 +117,7 @@ export function AlertsView() {
               </li>
             );
           })}
-        </ul>
+        </RowList>
       )}
     </>
   );

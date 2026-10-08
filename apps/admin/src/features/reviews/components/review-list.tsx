@@ -4,15 +4,16 @@ import {
   ChevronRight,
   FileSpreadsheet,
   FileText,
+  Lock,
   Image as ImageIcon,
   Mic,
   MessageSquare,
 } from "lucide-react";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
+import { RowLink, RowList } from "@/components/list-row";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/features/auth/store";
@@ -58,8 +59,10 @@ export function ReviewList() {
                 {n !== null ? (
                   <span
                     className={cn(
-                      "ml-1 rounded-full px-1.5 text-xs tabular-nums",
-                      active ? "bg-primary-foreground/20" : "bg-muted",
+                      "ml-1 rounded-full border-[1.5px] px-1.5 text-xs font-bold tabular-nums",
+                      n > 0
+                        ? "border-signal-foreground bg-signal text-signal-foreground dark:border-signal"
+                        : "border-transparent bg-muted text-muted-foreground",
                     )}
                   >
                     {n}
@@ -99,13 +102,13 @@ export function ReviewList() {
           description={filter.status === "pending" ? t("emptyPendingHint") : undefined}
         />
       ) : (
-        <ul className="flex flex-col gap-2" aria-label={t("listLabel")}>
+        <RowList aria-label={t("listLabel")}>
           {query.data.items.map((item) => (
             <li key={item.id}>
               <ReviewRow item={item} readOnly={!canResolve(user, item)} />
             </li>
           ))}
-        </ul>
+        </RowList>
       )}
     </>
   );
@@ -133,10 +136,7 @@ function ReviewRow({ item, readOnly }: { item: ReviewItem; readOnly: boolean }) 
       t("titles.globalChange", { pct: pct ? formatPct(pct) : t("titles.change"), count }),
   });
   return (
-    <Link
-      href={`/reviews/${item.id}`}
-      className="flex min-h-16 items-center gap-3 rounded-xl border bg-card px-4 py-3 transition-colors hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-    >
+    <RowLink href={`/reviews/${item.id}`} emphasis={item.status === "pending"}>
       <SourceIcon item={item} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -145,12 +145,18 @@ function ReviewRow({ item, readOnly }: { item: ReviewItem; readOnly: boolean }) 
             {t(`kinds.${item.kind}`)}
           </Badge>
         </div>
-        <p className="truncate text-sm text-muted-foreground">
-          {item.supplier?.name ?? t("unknownSupplier")} · {formatRelative(item.message.receivedAt)}
-          {readOnly && item.status === "pending" ? ` · ${t("adminResolves")}` : ""}
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground">
+          <span className="truncate">{item.supplier?.name ?? t("unknownSupplier")}</span>
+          <span className="tabular-nums">{formatRelative(item.message.receivedAt)}</span>
+          {readOnly && item.status === "pending" ? (
+            <span className="flex items-center gap-1">
+              <Lock className="size-3.5" aria-hidden />
+              {t("adminResolves")}
+            </span>
+          ) : null}
         </p>
       </div>
       <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-    </Link>
+    </RowLink>
   );
 }

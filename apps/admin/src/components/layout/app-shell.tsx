@@ -123,7 +123,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <item.icon className="size-5" aria-hidden />
                     <PendingBadge
                       count={countFor(item.href)}
-                      className="absolute -top-2 left-3 min-w-4 px-1 text-[10px] leading-4"
+                      className="absolute -top-2.5 -right-3 min-w-4 px-1 text-[10px] leading-4"
                     />
                   </span>
                   {t(item.labelKey)}
@@ -143,7 +143,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <Ellipsis className="size-5" aria-hidden />
                   <PendingBadge
                     count={moreCount}
-                    className="absolute -top-2 left-3 min-w-4 px-1 text-[10px] leading-4"
+                    className="absolute -top-2.5 -right-3 min-w-4 px-1 text-[10px] leading-4"
                   />
                 </span>
                 {t("more")}

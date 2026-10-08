@@ -7,7 +7,9 @@ import { Fragment, useEffect, useLayoutEffect, useRef } from "react";
 import { ErrorState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { TIME_ZONE } from "@/lib/format";
+import { Chip } from "@/components/list-row";
 import { useFormat } from "@/lib/use-format";
+import { cn } from "@/lib/utils";
 import { useConversation, useMessages } from "../hooks";
 import { contactName, supplierSuffix, whoAnswers } from "../labels";
 import type { ChatMessage, ConversationHeader } from "../types";
@@ -24,19 +26,20 @@ export function ChatView({ id }: { id: string }) {
   const t = useTranslations("conversations");
   return (
     <div className="mx-auto flex max-w-3xl flex-col">
-      <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2 w-fit min-h-9">
-        <Link href="/conversations">
-          <ArrowLeft aria-hidden /> {t("back")}
-        </Link>
-      </Button>
       {header.isPending ? (
-        <LoadingState rows={4} />
+        <>
+          <BackButton />
+          <LoadingState rows={4} />
+        </>
       ) : header.isError ? (
-        <ErrorState
-          error={header.error}
-          onRetry={() => void header.refetch()}
-          back={{ href: "/conversations", label: t("backTo") }}
-        />
+        <>
+          <BackButton />
+          <ErrorState
+            error={header.error}
+            onRetry={() => void header.refetch()}
+            back={{ href: "/conversations", label: t("backTo") }}
+          />
+        </>
       ) : (
         <>
           <ChatHeader conversation={header.data.conversation} />
@@ -50,6 +53,28 @@ export function ChatView({ id }: { id: string }) {
   );
 }
 
+function BackButton({ iconOnly = false }: { iconOnly?: boolean }) {
+  const t = useTranslations("conversations");
+  return (
+    <Button
+      asChild
+      variant="ghost"
+      size={iconOnly ? "icon" : "sm"}
+      className={iconOnly ? "size-11 shrink-0" : "mb-2 -ml-2 min-h-9 w-fit"}
+    >
+      <Link href="/conversations" aria-label={t("back")}>
+        <ArrowLeft aria-hidden /> {iconOnly ? null : t("back")}
+      </Link>
+    </Button>
+  );
+}
+
+/**
+ * The header stays under the top bar while the chat scrolls (phase 14 #8): a chat opens at its
+ * newest message, so a header that scrolls away would hide who is answering and the main action
+ * exactly when someone needs them. Two compact rows: who (name, kind, phone) and the state with
+ * its action. A chat a person is handling gets the ink frame and the yellow tag.
+ */
 function ChatHeader({ conversation }: { conversation: ConversationHeader }) {
   const c = conversation.contact;
   const who = whoAnswers(conversation);
@@ -60,24 +85,34 @@ function ChatHeader({ conversation }: { conversation: ConversationHeader }) {
     ? t("humanUntil", { time: formatTime(conversation.humanUntil) })
     : t("humanUntilResumed");
   return (
-    <header className="mb-4 flex flex-col gap-3 border-b pb-4">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold tracking-tight">
-          {contactName(c, t("contactFallback"))}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {tKinds(c.kind)}
-          {supplierSuffix(c) ? ` · ${supplierSuffix(c)}` : ""}
-          {c.waId ? ` · +${c.waId}` : ""}
-        </p>
+    <header
+      className={cn(
+        "sticky top-14 z-20 -mx-4 mb-3 border-b-[1.5px] bg-background px-4 py-2 md:top-16 md:mx-0 md:px-0",
+        who === "human" ? "border-foreground" : "border-border",
+      )}
+    >
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-1 gap-y-1.5">
+        <div className="col-start-1 row-start-1">
+          <BackButton iconOnly />
+        </div>
+        <div className="col-span-2 col-start-2 row-start-1 flex min-w-0 flex-col pr-12">
+          <h1 className="font-display truncate text-lg leading-tight">
+            {contactName(c, t("contactFallback"))}
+          </h1>
+          <p className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+            <Chip>{tKinds(c.kind)}</Chip>
+            {supplierSuffix(c) ? <span className="truncate">{supplierSuffix(c)}</span> : null}
+            {c.waId ? <span className="shrink-0 tabular-nums">+{c.waId}</span> : null}
+          </p>
+        </div>
+        <div className="col-span-2 col-start-1 row-start-2 flex min-w-0 flex-wrap items-center gap-2">
+          <WhoBadge who={who} detail={who === "human" ? until : undefined} detailOnlyFromTablet />
+          {who === "opted_out" && conversation.mode === "human" ? (
+            <WhoBadge who="human" detail={until} detailOnlyFromTablet />
+          ) : null}
+        </div>
+        <ChatActions conversation={conversation} />
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <WhoBadge who={who} detail={who === "human" ? until : undefined} />
-        {who === "opted_out" && conversation.mode === "human" ? (
-          <WhoBadge who="human" detail={until} />
-        ) : null}
-      </div>
-      <ChatActions conversation={conversation} />
     </header>
   );
 }

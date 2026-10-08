@@ -1,7 +1,6 @@
 "use client";
 
-import { ChevronRight, Pencil, Search } from "lucide-react";
-import Link from "next/link";
+import { ArrowDown, ArrowUp, ChevronRight, Pencil, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useDeferredValue, useState } from "react";
 import { PageHeader } from "@/components/page-header";
@@ -17,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuthStore } from "@/features/auth/store";
+import { Chip, RowLink, RowList } from "@/components/list-row";
 import { useFormat } from "@/lib/use-format";
 import { useCatalogSuppliers, useProducts } from "../hooks";
 import type { Availability, ProductRow } from "../types";
@@ -136,16 +136,13 @@ export function CatalogView() {
         <EmptyState title={q ? t("noMatches") : t("empty")} />
       ) : (
         <>
-          <ul
-            className="flex flex-col divide-y rounded-xl border bg-card"
-            aria-label={t("listLabel")}
-          >
+          <RowList aria-label={t("listLabel")}>
             {items.map((p) => (
               <li key={p.id}>
                 <ProductRowLink product={p} showSupplier={!supplierId} />
               </li>
             ))}
-          </ul>
+          </RowList>
           {products.hasNextPage ? (
             <Button
               variant="outline"
@@ -171,24 +168,19 @@ function ProductRowLink({ product, showSupplier }: { product: ProductRow; showSu
   const t = useTranslations("catalog");
   const { formatInt, formatMoney, formatPct } = useFormat();
   return (
-    <Link
-      href={`/catalog/${product.id}`}
-      className="flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
-    >
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+    <RowLink href={`/catalog/${product.id}`}>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="truncate font-medium">{product.name}</span>
-        <span className="truncate text-sm text-muted-foreground">
-          {[
-            showSupplier ? product.supplier.name : null,
-            product.unit,
-            product.stock !== null ? t("stock", { count: formatInt(product.stock) }) : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+          {showSupplier ? <span className="truncate">{product.supplier.name}</span> : null}
+          {product.unit ? <Chip>{product.unit}</Chip> : null}
+          {product.stock !== null ? (
+            <span>{t("stock", { count: formatInt(product.stock) })}</span>
+          ) : null}
         </span>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-1">
-        <span className="font-medium tabular-nums">
+        <span className="font-display text-lg tabular-nums">
           {formatMoney(product.price, product.currency)}
         </span>
         {!product.available ? (
@@ -196,12 +188,17 @@ function ProductRowLink({ product, showSupplier }: { product: ProductRow; showSu
         ) : change?.currencyChanged ? (
           <Badge variant="secondary">{t("currencyChanged")}</Badge>
         ) : pct !== null && pct !== 0 ? (
-          <Badge variant={pct > 0 ? "secondary" : "outline"} className="tabular-nums">
+          <Badge variant={pct > 0 ? "secondary" : "outline"} className="gap-0.5 tabular-nums">
+            {pct > 0 ? (
+              <ArrowUp className="size-3" aria-hidden />
+            ) : (
+              <ArrowDown className="size-3" aria-hidden />
+            )}
             {formatPct(change!.changePct!)}
           </Badge>
         ) : null}
       </div>
       <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-    </Link>
+    </RowLink>
   );
 }

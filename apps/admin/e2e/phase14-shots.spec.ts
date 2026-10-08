@@ -137,3 +137,41 @@ test("phone viewport, top and bottom of the Home", async ({ page, context, isMob
     await page.screenshot({ path: `${dir}/viewport-${scheme}-home-bottom.png` });
   }
 });
+
+/**
+ * Phone only: a chat in the REAL viewport, as it opens (scrolled to its newest message, the
+ * header must still be visible — phase 14 #8) and scrolled to the very top; plus the inbox.
+ */
+test("phone viewport, inbox and chat as it opens", async ({ page, context, isMobile }, info) => {
+  test.skip(!isMobile, "phones only");
+  test.setTimeout(240_000);
+  const dir = `e2e/screens/phase-14/${LABEL}/${info.project.name}`;
+  mkdirSync(dir, { recursive: true });
+  await context.addCookies([{ name: "smartops_locale", value: "en", url: E2E.panelUrl }]);
+  for (const scheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await signIn(page, "operator");
+    await page.goto("/conversations");
+    await ready(page);
+    await page.screenshot({ path: `${dir}/viewport-${scheme}-inbox.png` });
+    for (const who of ["Luis", "Norte"]) {
+      await page.goto("/conversations");
+      await ready(page);
+      await page
+        .locator('main a[href^="/conversations/"]')
+        .filter({ hasText: who })
+        .first()
+        .click();
+      await page.locator("section[aria-label]").first().waitFor();
+      await page.waitForTimeout(1_500);
+      await page.screenshot({
+        path: `${dir}/viewport-${scheme}-chat-${who.toLowerCase()}-open.png`,
+      });
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.waitForTimeout(500);
+      await page.screenshot({
+        path: `${dir}/viewport-${scheme}-chat-${who.toLowerCase()}-top.png`,
+      });
+    }
+  }
+});
