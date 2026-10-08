@@ -12,6 +12,7 @@ import { useAuthStore } from "@/features/auth/store";
 import { useFormat } from "@/lib/use-format";
 import { useResolveReview, useReview, type ResolveInput } from "../hooks";
 import { isKnownReason, rawReason } from "../labels";
+import { useDemoInfo } from "@/features/demo/hooks";
 import { canResolve } from "../permissions";
 import type { ReviewItem } from "../types";
 import { ColumnMappingResolver } from "./column-mapping-resolver";
@@ -27,6 +28,8 @@ export function ReviewDetail({ id }: { id: string }) {
   const router = useRouter();
   const query = useReview(id);
   const user = useAuthStore((s) => s.user);
+  // ADR-030: in the public demo an operator also resolves the column-mapping review.
+  const demoMode = useDemoInfo().data != null;
   const mutation = useResolveReview(id, () => router.push("/reviews"));
   const t = useTranslations("reviews");
 
@@ -48,7 +51,9 @@ export function ReviewDetail({ id }: { id: string }) {
       ) : (
         <DetailBody
           item={query.data.item}
-          readOnly={!canResolve(user, query.data.item) || query.data.item.status !== "pending"}
+          readOnly={
+            !canResolve(user, query.data.item, { demoMode }) || query.data.item.status !== "pending"
+          }
           pending={mutation.isPending}
           onResolve={(input) => mutation.mutate(input)}
         />

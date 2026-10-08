@@ -53,16 +53,19 @@ test.describe("review queue (phase 9 M2)", () => {
 test.describe("resolving reviews (desktop only: it changes the shared demo data)", () => {
   test.skip(({ isMobile }) => isMobile, "mutations run once, on desktop");
 
-  test("spreadsheet: pick the price column with real values, approve → back to extraction", async ({
+  // ADR-030: in the public demo the OPERATOR (the shared account every visitor uses) resolves this
+  // review — the step the README video shows. The admin path is covered by the API tests.
+  test("spreadsheet: the demo operator picks the price column with real values, approve → back to extraction", async ({
     page,
   }) => {
-    await login(page);
+    await login(page, "operator");
     await openReviews(page, false);
     await page
       .getByRole("list", { name: "Reviews" })
       .getByText("Lista Distribuidora Norte.xlsx")
       .click();
     await expect(page.getByRole("heading", { name: "Choose the price column" })).toBeVisible();
+    await expect(page.getByText("Only an administrator can resolve this review.")).toHaveCount(0);
     const group = page.getByRole("radiogroup", { name: /Price column/ });
     const withTax = group.getByRole("radio", { name: /Precio c\/IVA/ });
     await expect(withTax).toBeChecked(); // the recommendation is pre-selected…

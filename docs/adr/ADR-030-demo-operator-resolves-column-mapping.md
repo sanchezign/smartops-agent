@@ -13,7 +13,7 @@ reaches a dead end exactly at the step the README video shows.
 
 ## Decision
 
-1. `canResolveReview(role, item, { demoMode })` additionally allows **operator + `demoMode` + `kind = column_mapping`**.
+1. `canResolveReview(role, item, { demoMode })` additionally allows **operator + `demoMode` + scope `run` + kind `column_mapping`** (the only scope that kind has; the least-privilege reading).
    Nothing else changes: with `demoMode` false the result is identical to the phase 8 rule for every role × scope ×
    kind; with it true the ONLY difference is that one combination. Suspicious messages, long documents and
    catalog-wide changes stay admin-only in the demo too.

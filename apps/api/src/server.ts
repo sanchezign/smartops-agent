@@ -283,6 +283,7 @@ const app = createApp({
   auth,
   // Panel API (phase 8 M4): the same services the CLIs use, behind roles.
   admin: {
+    demoMode: env.DEMO_MODE,
     dashboard: createDashboardService({
       repository: createDashboardRepository(prisma),
       budget: { totalUsd: env.AI_TOTAL_BUDGET_USD, dailyUsd: env.AI_DAILY_BUDGET_USD },

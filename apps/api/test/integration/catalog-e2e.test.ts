@@ -429,6 +429,62 @@ describe.skipIf(!testDatabaseUrl)("e2e: internal API → catalog (Postgres + gol
     });
   });
 
+  it("an OPERATOR approving the column-mapping review (demo, ADR-030) is audited with their user id", async () => {
+    const { conversation } = await supplierContact();
+    const bytes = readFileSync(
+      new URL("../fixtures/sheets/precios-multiples.xlsx", import.meta.url),
+    );
+    const message = await inbound(conversation.id, {
+      type: "document",
+      media: { mime: XLSX_MIME, bytes, filename: "precios-multiples.xlsx" },
+    });
+    const media = await prisma.message.findUniqueOrThrow({
+      where: { id: message.id },
+      select: { mediaFileId: true },
+    });
+    const converted = await convertDocument(
+      { bytes, mimeType: XLSX_MIME, filename: "precios-multiples.xlsx" },
+      DEFAULT_CONVERSION_LIMITS,
+    );
+    if (!converted.ok) throw new Error(converted.reason);
+    await prisma.documentConversion.create({ data: { mediaFileId: media.mediaFileId! } });
+    await createDocumentConversionRepository(prisma).markDone(media.mediaFileId!, converted, {
+      durationMs: 1,
+      converterVersion: "test",
+    });
+    const run = await pipeline(message.id);
+    const status = await request(app)
+      .get(`/api/v1/internal/runs/${run.runId}`)
+      .set("X-Internal-Api-Key", TEST_INTERNAL_API_KEY)
+      .expect(200);
+    const reviewId = status.body.reviewItems[0].id as string;
+    expect(status.body.reviewItems[0]).toMatchObject({ kind: "column_mapping", scope: "run" });
+
+    const operator = await prisma.user.upsert({
+      where: { email: "operator@demo.test" },
+      update: { role: "operator" },
+      create: {
+        email: "operator@demo.test",
+        name: "Demo operator",
+        passwordHash: "x",
+        role: "operator",
+      },
+    });
+    await reviews.approve(
+      reviewId,
+      { tables: [{ table: "T1", priceColumn: 4 }] },
+      { type: "user", userId: operator.id, requestId: "req-demo-1" },
+      log,
+    );
+    const item = await prisma.reviewItem.findUniqueOrThrow({ where: { id: reviewId } });
+    expect(item).toMatchObject({ status: "approved", resolvedById: operator.id });
+    const audit = await prisma.auditLog.findMany({
+      where: { entity: "review_item", entityId: reviewId },
+    });
+    expect(audit.length).toBeGreaterThanOrEqual(1);
+    expect(audit.every((a) => a.actorType === "user" && a.userId === operator.id)).toBe(true);
+  });
+
   it("the internal API requires the key, validates input and serves the rules", async () => {
     await request(app).post("/api/v1/internal/catalog/ingest").send({}).expect(401);
     const wrong = await request(app)

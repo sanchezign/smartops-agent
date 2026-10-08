@@ -21,6 +21,7 @@ import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
 import { useReviews, useReviewSummary, type ReviewFilter } from "../hooks";
 import { reviewTitle } from "../labels";
+import { useDemoInfo } from "@/features/demo/hooks";
 import { canResolve } from "../permissions";
 import type { ReviewItem, ReviewScope, ReviewStatus } from "../types";
 
@@ -32,6 +33,7 @@ export function ReviewList() {
   const summary = useReviewSummary();
   const query = useReviews(filter);
   const user = useAuthStore((s) => s.user);
+  const demoMode = useDemoInfo().data != null; // ADR-030
   const t = useTranslations("reviews");
   const tPages = useTranslations("pages");
 
@@ -105,7 +107,7 @@ export function ReviewList() {
         <RowList aria-label={t("listLabel")}>
           {query.data.items.map((item) => (
             <li key={item.id}>
-              <ReviewRow item={item} readOnly={!canResolve(user, item)} />
+              <ReviewRow item={item} readOnly={!canResolve(user, item, { demoMode })} />
             </li>
           ))}
         </RowList>

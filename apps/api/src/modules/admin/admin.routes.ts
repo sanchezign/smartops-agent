@@ -37,6 +37,8 @@ import { roleSchema, type UsersService } from "../users/users.service.js";
  */
 
 export interface AdminDeps {
+  /** DEMO_MODE (ADR-030): the public operator may resolve the column-mapping review. */
+  demoMode: boolean;
   dashboard: Pick<DashboardService, "get">;
   /** Read model with context (supplier, product, source message) for the queue. */
   reviewQuery: Pick<ReviewQueryRepository, "list" | "get" | "summary" | "suppliers">;
@@ -178,7 +180,7 @@ function buildRoutes(deps: AdminDeps): AdminRoute[] {
   ) {
     const { id } = getValidated<typeof idParams>(res, "params");
     const item = await reviewOr404(id);
-    if (!canResolveReview(ctx.user.role, item))
+    if (!canResolveReview(ctx.user.role, item, { demoMode: deps.demoMode }))
       throw errors.forbidden("Only an admin can resolve this review");
     const result = await deps.reviews[action](id, req.body ?? {}, reviewActor(ctx), ctx.log);
     const retrigger =
