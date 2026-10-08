@@ -62,6 +62,24 @@ keeps running):
    `/login` through Caddy;
 9. records `current` / `previous` and updates the timers.
 
+### Checking a deployed version (from your computer, after every deploy)
+
+```bash
+node scripts/deploy/demo-check.mjs https://smartops-demo.duckdns.org            # English content (default)
+node scripts/deploy/demo-check.mjs https://… --content=es                        # a deployment seeded in Spanish
+node scripts/deploy/demo-abuse-check.mjs https://… --skip-login-limit           # bounded abuse / load check
+```
+
+`demo-check` signs in as the public operator (`demo@smartops.test`, the one the login screen shows),
+checks the edge (health, TLS, HSTS, internal and webhook routes answer 404), that the seeded
+suppliers are those of `DEMO_CONTENT_LANGUAGE`, that the event stream sends its first frame at once,
+and sends the six "Try the system" samples one by one. Expected final states: `foto`, `pdf`, `audio`
+and `planilla` end as `ingested`; `planilla_nueva` (a new spreadsheet format) and `injection` end as
+`needs_review`. Typical times are 4–8 s each (the light profile runs them one at a time). It exits 0
+only if every line says `ok`. Against `http://127.0.0.1:<port>` (a local DEMO_MODE API) the checks that
+need Caddy are skipped. `demo-abuse-check` has side effects (your IP waits up to a minute; the login
+limit step locks your IP out for up to 15 minutes): see the header of the script.
+
 ## 2. Rollback
 
 ```bash

@@ -28,7 +28,7 @@ Write down the clock time (and your time zone) when you start. For a second run,
 middle** of it, from your PC, and write down the minute:
 
 ```bash
-node C:\dev\demo-check.mjs https://smartops-demo.duckdns.org      # six samples through the pipeline
+node scripts/deploy/demo-check.mjs https://smartops-demo.duckdns.org      # six samples through the pipeline
 ```
 
 (or press _Reset demo_ once in the panel: about 3 CPU-seconds).

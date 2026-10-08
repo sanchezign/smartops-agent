@@ -39,7 +39,7 @@ On a phone (mobile first):
   structured, validated output.
 - **Keeps the catalog right.** It matches products even when names differ, applies price changes,
   records the history, and tells full lists apart from partial updates. It watches for outliers,
-  currency and VAT changes, and products that disappear from a full list.
+  currency and tax changes, and products that disappear from a full list.
 - **Never guesses.** Anything doubtful becomes a review item for a person, with the original
   message next to it: an uncertain match, a suspicious message, a new spreadsheet format, a
   voice note that was not understood.

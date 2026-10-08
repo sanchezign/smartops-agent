@@ -73,7 +73,7 @@ The recorder keeps going for 25 minutes: 2 before, 20 with the load, the rest af
 **2. From your PC, about 10 minutes after the load started**, with the panel tabs closed:
 
 ```bash
-node C:\dev\demo-check.mjs https://smartops-demo.duckdns.org
+node scripts/deploy/demo-check.mjs https://smartops-demo.duckdns.org
 node scripts/deploy/demo-abuse-check.mjs https://smartops-demo.duckdns.org --skip-login-limit
 ```
 
@@ -147,7 +147,7 @@ You will know from Oracle's e-mail (reports say one week's notice) or from Uptim
 3. Verify: `https://smartops-demo.duckdns.org/api/v1/health` answers 200 and the panel loads; the reserved IP is
    still attached (`smartops-demo.duckdns.org` resolves to `163.176.132.161`); through the Bastion:
    `sudo /opt/smartops/current/bin/status.sh` (version, containers healthy, timers listed) and
-   `sudo /opt/smartops/current/bin/keepalive.sh status`; `node C:\dev\demo-check.mjs https://smartops-demo.duckdns.org`.
+   `sudo /opt/smartops/current/bin/keepalive.sh status`; `node scripts/deploy/demo-check.mjs https://smartops-demo.duckdns.org`.
 4. The UptimeRobot monitors and the Healthchecks `smartops-monitor` check turn green on their own.
 5. If the instance was **terminated** instead: runbook section 5 (a new VM, the backups are in Object Storage).
 6. Afterwards read the Console's `CpuUtilization` p95 for the last 7 days. If the load was on and Oracle stopped

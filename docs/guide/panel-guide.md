@@ -62,7 +62,7 @@ by themselves, without AI and at no cost.
 ![Choosing the price column](media-en/review-columns.webp)
 
 Other reviews you may see: "Is it this product?", a product missing from a full list ("Mark as
-unavailable?"), an across-the-board change ("everything +8 %"), a change of VAT basis, and a
+unavailable?"), an across-the-board change ("everything +8 %"), a change of tax basis, and a
 **suspicious message** that tries to give orders to the system (nothing was applied; read it
 before processing it).
 

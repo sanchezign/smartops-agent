@@ -89,7 +89,13 @@ for (const [method, path, want] of [
   ["POST", "/webhooks/whatsapp", 404],
 ]) {
   const r = await call(method, path, method === "POST" ? { body: {} } : {});
-  check(r.status === want, `${method} /api/v1${path} -> ${r.status} (expected ${want})`);
+  // (Caddy hides internal and webhook routes with a 404; a bare local API answers with its own
+  // auth/validation error, so locally "closed" means any 400/401/404)
+  const ok = local && want === 404 ? [400, 401, 404].includes(r.status) : r.status === want;
+  check(
+    ok,
+    `${method} /api/v1${path} -> ${r.status} (expected ${local && want === 404 ? "closed" : want})`,
+  );
 }
 const big = await call("POST", "/auth/login", {
   headers: csrf,

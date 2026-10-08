@@ -94,3 +94,16 @@ describe("English catalog", () => {
     expect(found).toEqual([]);
   });
 });
+
+describe("tax wording (phase 14)", () => {
+  it('the English panel says "tax", never "VAT" (the demo business is American)', () => {
+    for (const text of strings(en)) expect(text, text).not.toMatch(/\bVAT\b/);
+  });
+
+  it('the Spanish panel keeps "IVA" for the same keys', () => {
+    const all = strings(es).join("\n");
+    expect(all).toContain("con IVA");
+    expect(all).toContain("sin IVA");
+    expect(strings(es).some((t) => /\btax\b/i.test(t))).toBe(false);
+  });
+});
