@@ -1,0 +1,5 @@
+{
+  "classification": "price_update_partial",
+  "confidence": 0.9,
+  "reason": "Reports a price change for a single product, not a full list."
+}

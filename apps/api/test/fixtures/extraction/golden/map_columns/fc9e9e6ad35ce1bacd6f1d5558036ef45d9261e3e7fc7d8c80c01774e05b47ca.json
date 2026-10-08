@@ -1,0 +1,52 @@
+{
+  "tables": [
+    {
+      "table": "T1",
+      "isPriceTable": true,
+      "headerRow": 2,
+      "nameColumn": 1,
+      "unitColumn": 2,
+      "skuColumn": 0,
+      "currencyColumn": null,
+      "stockColumn": null,
+      "availableColumn": null,
+      "pctColumn": null,
+      "priceColumns": [
+        {
+          "column": 3,
+          "header": "Price ex tax",
+          "taxIncluded": false,
+          "kind": "list"
+        },
+        {
+          "column": 4,
+          "header": "Price inc tax",
+          "taxIncluded": true,
+          "kind": "list"
+        },
+        {
+          "column": 5,
+          "header": "Wholesale",
+          "taxIncluded": null,
+          "kind": "wholesale"
+        },
+        {
+          "column": 6,
+          "header": "Cash",
+          "taxIncluded": null,
+          "kind": "cash"
+        }
+      ],
+      "recommendedPriceColumn": 4,
+      "priceFormat": "decimal_dot",
+      "currency": "USD",
+      "confidence": "high"
+    }
+  ],
+  "supplierName": "EXAMPLE SUPPLY LLC",
+  "warnings": [
+    "Table includes category subheader rows (SECURITY, HARDWARE, ELECTRICAL) mixed with product rows; these are not products.",
+    "Multiple price columns present; recommended price column selected as tax-inclusive general price."
+  ],
+  "suspiciousInstructions": false
+}

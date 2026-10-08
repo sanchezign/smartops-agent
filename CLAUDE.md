@@ -247,6 +247,7 @@ retention policy, a real WhatsApp instance (out of phase 12).
   current prices. The Meta account has NO payment method (confirmed by the user, 2026-09-28): a
   paid message fails instead of being charged — expect sends (acks, opt-out confirmations,
   digests, panel replies) to fail, not to cost money.
+- **Phase 14 M5d:** `classifier.md` says "The reason is one short sentence in Spanish", which clashes with the English block; in English deployments the classifier's `reason` (internal only, not shown in the panel) can come out in Spanish (one recorded English golden does). Future fix: "in the business language" in a new prompt version, re-recording the Spanish goldens.
 - **Phase 13 M3:** the extraction / column-mapping `warnings` shown in reviews are written by the
   model (Spanish prompts) and a failed-read `detail` is technical English: shown as they are in
   both panel languages (data, not interface text).

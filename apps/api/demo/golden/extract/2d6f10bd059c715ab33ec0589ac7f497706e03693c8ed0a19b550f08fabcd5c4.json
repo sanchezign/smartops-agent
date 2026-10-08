@@ -1,0 +1,100 @@
+{
+  "isPriceList": true,
+  "listKind": "partial_update",
+  "fullListEvidence": null,
+  "supplierName": "Demo Distributing Inc.",
+  "currency": "USD",
+  "validFrom": null,
+  "taxIncluded": true,
+  "globalChangePct": null,
+  "items": [
+    {
+      "name": "Hex bolt 1/4 in",
+      "sku": null,
+      "unit": "each",
+      "price": "0.60",
+      "priceChangePct": null,
+      "currency": null,
+      "available": null,
+      "stock": null,
+      "catalogRef": "P1",
+      "matchConfidence": "high",
+      "uncertain": false,
+      "note": null
+    },
+    {
+      "name": "Hex nut 1/4 in",
+      "sku": null,
+      "unit": "each",
+      "price": "0.24",
+      "priceChangePct": null,
+      "currency": null,
+      "available": null,
+      "stock": null,
+      "catalogRef": "P2",
+      "matchConfidence": "high",
+      "uncertain": false,
+      "note": null
+    },
+    {
+      "name": "Washer",
+      "sku": null,
+      "unit": "each",
+      "price": "0.12",
+      "priceChangePct": null,
+      "currency": null,
+      "available": null,
+      "stock": null,
+      "catalogRef": "P6",
+      "matchConfidence": "medium",
+      "uncertain": false,
+      "note": "Catalog item has a size (1/4 in) not stated in this line; assumed same product."
+    },
+    {
+      "name": "Wire 14 AWG (ft)",
+      "sku": null,
+      "unit": "ft",
+      "price": "0.47",
+      "priceChangePct": null,
+      "currency": null,
+      "available": null,
+      "stock": null,
+      "catalogRef": "P7",
+      "matchConfidence": "high",
+      "uncertain": false,
+      "note": null
+    },
+    {
+      "name": "LED bulb 9 W",
+      "sku": null,
+      "unit": "each",
+      "price": "3.35",
+      "priceChangePct": null,
+      "currency": null,
+      "available": null,
+      "stock": null,
+      "catalogRef": "P4",
+      "matchConfidence": "high",
+      "uncertain": false,
+      "note": null
+    },
+    {
+      "name": "Cement 94 lb",
+      "sku": null,
+      "unit": "bag",
+      "price": "9.80",
+      "priceChangePct": null,
+      "currency": null,
+      "available": null,
+      "stock": null,
+      "catalogRef": "P5",
+      "matchConfidence": "high",
+      "uncertain": false,
+      "note": null
+    }
+  ],
+  "warnings": [
+    "The sheet title mentions 'October 2026 price list' but the note 'Updated prices only. Other items unchanged.' indicates this is a partial update, not a full replacement list."
+  ],
+  "suspiciousInstructions": false
+}

@@ -1,5 +1,5 @@
 {
-  "$comment": "Ground truth of the ENGLISH extraction test data (phase 14 M5c), same role as ../expected.json (read by tests/unit/prompts.test.ts, which merges both). productNames: every product name that appears in each English fixture; prompts must never quote them. fixturePhrases: content of the English text fixtures that prompts must not quote or paraphrase. september: what the September PDF must produce. photoAgainstSeptember is added when the English goldens are recorded and reviewed (M5d).",
+  "$comment": "Ground truth of the ENGLISH extraction test data (phase 14 M5c), same role as ../expected.json (read by tests/unit/prompts.test.ts, which merges both). productNames: every product name that appears in each English fixture; prompts must never quote them. fixturePhrases: content of the English text fixtures that prompts must not quote or paraphrase. september: what the September PDF must produce. photoAgainstSeptember: what the October photo must produce against the catalog created from the September PDF (reviewed with the recorded goldens, M5d).",
   "productNames": {
     "en/price-list-september.pdf": [
       "Hex bolt 1/4 in",
@@ -64,13 +64,94 @@
     "currency": "USD",
     "taxIncluded": true,
     "products": [
-      { "name": "Hex bolt 1/4 in", "unit": "each", "price": "0.54" },
-      { "name": "Hex nut 1/4 in", "unit": "each", "price": "0.22" },
-      { "name": "Washer 1/4 in", "unit": "each", "price": "0.12" },
-      { "name": "Wire 14 AWG", "unit": "ft", "price": "0.45" },
-      { "name": "LED bulb 9 W", "unit": "each", "price": "3.20" },
-      { "name": "Interior latex paint, white 1 gal", "unit": "gal", "price": "24.50" },
-      { "name": "Portland cement 94 lb", "unit": "bag", "price": "9.40" }
+      {
+        "name": "Hex bolt 1/4 in",
+        "unit": "each",
+        "price": "0.54"
+      },
+      {
+        "name": "Hex nut 1/4 in",
+        "unit": "each",
+        "price": "0.22"
+      },
+      {
+        "name": "Washer 1/4 in",
+        "unit": "each",
+        "price": "0.12"
+      },
+      {
+        "name": "Wire 14 AWG",
+        "unit": "ft",
+        "price": "0.45"
+      },
+      {
+        "name": "LED bulb 9 W",
+        "unit": "each",
+        "price": "3.20"
+      },
+      {
+        "name": "Interior latex paint, white 1 gal",
+        "unit": "gal",
+        "price": "24.50"
+      },
+      {
+        "name": "Portland cement 94 lb",
+        "unit": "bag",
+        "price": "9.40"
+      }
     ]
+  },
+  "photoAgainstSeptember": {
+    "currency": "USD",
+    "taxIncluded": true,
+    "listKind": "partial_update",
+    "lines": [
+      {
+        "line": "Hex bolt 1/4 in",
+        "catalog": "Hex bolt 1/4 in",
+        "match": "exact",
+        "newPrice": "0.60",
+        "outcome": "price_change"
+      },
+      {
+        "line": "Hex nut 1/4 in",
+        "catalog": "Hex nut 1/4 in",
+        "match": "exact",
+        "newPrice": "0.24",
+        "outcome": "price_change"
+      },
+      {
+        "line": "Washer",
+        "catalog": "Washer 1/4 in",
+        "match": "model",
+        "maxConfidence": "medium",
+        "newPrice": "0.12",
+        "outcome": "review"
+      },
+      {
+        "line": "Wire 14 AWG (ft)",
+        "catalog": "Wire 14 AWG",
+        "match": "model",
+        "maxConfidence": "high",
+        "newPrice": "0.47",
+        "outcome": "price_change"
+      },
+      {
+        "line": "LED bulb 9 W",
+        "catalog": "LED bulb 9 W",
+        "match": "exact",
+        "newPrice": "3.35",
+        "outcome": "price_change"
+      },
+      {
+        "line": "Cement 94 lb",
+        "catalog": "Portland cement 94 lb",
+        "match": "model",
+        "maxConfidence": "high",
+        "newPrice": "9.80",
+        "outcome": "price_change"
+      }
+    ],
+    "untouched": ["Interior latex paint, white 1 gal"]
   }
 }

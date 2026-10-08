@@ -1,0 +1,5 @@
+{
+  "classification": "price_update_partial",
+  "confidence": 0.85,
+  "reason": "Reports a single product price update and contains an embedded instruction attempting to override system behavior, which is ignored."
+}
