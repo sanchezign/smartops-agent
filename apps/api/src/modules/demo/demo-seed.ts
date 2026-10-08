@@ -9,6 +9,7 @@ import { hashPassword } from "../auth/password.js";
 import type { CatalogIngestService } from "../catalog/catalog-ingest.service.js";
 import { renderDigest, type ItemData } from "../notifications/digest-rules.js";
 import { demoListPng } from "./demo-image.js";
+import { normalizeProductName } from "../catalog/normalize.js";
 import { normalizeSupplierName } from "../catalog/supplier-name.js";
 import { convertDocument } from "../documents/convert.js";
 import { CONVERTER_VERSION } from "../documents/document-conversion.service.js";
@@ -343,11 +344,20 @@ export async function seedDemo(deps: {
     options: { suspicious?: boolean } = {},
   ) {
     const message = await inbound(ids.conversationId, text, when);
-    const products = await prisma.product.findMany({
+    const found = await prisma.product.findMany({
       where: { supplierId: ids.supplierId },
       select: { id: true, normalizedName: true },
       orderBy: { createdAt: "asc" },
     });
+    // P1, P2… follow the order the supplier's catalog is DECLARED in demo-data (so "P4" is always
+    // the same product). The products of one list are created in the same millisecond: sorting by
+    // createdAt alone left their order to the database, and the seed was not deterministic
+    // (found with the seed fingerprint, phase 14 M5a). Products not declared keep their order.
+    const declared = new Map(supplier.products.map((p, i) => [normalizeProductName(p.name), i]));
+    const products = [...found].sort(
+      (x, y) =>
+        (declared.get(x.normalizedName) ?? Infinity) - (declared.get(y.normalizedName) ?? Infinity),
+    );
     const refs: Record<string, string> = {};
     products.forEach((p, i) => (refs[`P${i + 1}`] = p.id));
     const stored: StoredExtraction = {

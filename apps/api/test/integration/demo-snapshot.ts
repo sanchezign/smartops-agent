@@ -24,10 +24,27 @@ const MASKS: [RegExp, string][] = [
   [/\$argon2[^"\\]*/g, "<hash>"],
 ];
 
+/** Arrays are sorted by content: the ORDER the database returns inside a JSON column is not content. */
+function canonical(value: unknown): unknown {
+  // Mask FIRST, then sort: a random uuid must never decide the order of a list.
+  if (typeof value === "string") return mask(value);
+  if (Array.isArray(value)) {
+    return value.map(canonical).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, canonical(v)]));
+  }
+  return value;
+}
+
+function mask(text: string): string {
+  let out = text;
+  for (const [pattern, replacement] of MASKS) out = out.replace(pattern, replacement);
+  return out;
+}
+
 function normalize(row: unknown): string {
-  let text = JSON.stringify(row);
-  for (const [pattern, replacement] of MASKS) text = text.replace(pattern, replacement);
-  return text;
+  return mask(JSON.stringify(canonical(row)));
 }
 
 export async function demoFingerprint(prisma: PrismaClient): Promise<DemoFingerprint> {
