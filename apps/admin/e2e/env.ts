@@ -25,7 +25,7 @@ export const E2E = {
   apiPort: 4100,
   panelPort: 3100,
   panelUrl: "http://localhost:3100",
-  operator: { email: "demo@ferreteria.demo", password: "probá el panel sin miedo" },
+  operator: { email: "demo@smartops.test", password: "try smartops demo" },
   admin: {
     email: "admin@ferreteria.demo",
     password: "clave de administración para las pruebas e2e",

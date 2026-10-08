@@ -73,7 +73,7 @@
     "signingIn": "Signing in…",
     "demoTitle": "Public demo.",
     "demoIntro": "Sign in as an operator with these details (they are public):",
-    "useThese": "Use these details",
+    "signInAsDemo": "Sign in as the demo operator",
     "validation": {
       "invalidEmail": "Enter a valid email address",
       "passwordRequired": "Enter your password",
@@ -817,6 +817,8 @@
     "description": "Send sample messages as if you were a supplier. They go through the real system (no WhatsApp and no cost) and you see every step live.",
     "reset": "Reset demo",
     "autoReset": "The sample data resets itself at {time}.",
+    "startHere": "Start here",
+    "startHereHint": "Send this one first, then follow the link it shows: you will see the whole flow, from a spreadsheet to an updated catalog.",
     "send": "Send",
     "sending": "Sending…",
     "sentLabel": "Sample messages sent",

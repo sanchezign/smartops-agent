@@ -7,10 +7,10 @@ export async function login(page: Page, who: "operator" | "admin" = "admin") {
   await page.goto("/login");
   // The submit button is disabled until the page hydrated; filling before that can lose the
   // value on WebKit (CI iPhone runs: "Enter a valid email address" with an empty field).
-  await expect(page.getByRole("button", { name: "Sign in" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeEnabled();
   await page.getByLabel("Email").fill(creds.email);
   await page.getByLabel("Password").fill(creds.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
 }
 

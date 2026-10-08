@@ -14,10 +14,33 @@ async function loginWithDemoCard(page: Page) {
   const card = page.getByText("Public demo.").locator("..").locator("..");
   await expect(card.getByText(E2E.operator.email)).toBeVisible();
   await expect(card.getByText(E2E.operator.password)).toBeVisible();
-  await page.getByRole("button", { name: "Use these details" }).click();
-  await page.getByRole("button", { name: "Sign in" }).click();
+  // One click (phase 14): no second "Sign in" press.
+  await page.getByRole("button", { name: "Sign in as the demo operator" }).click();
   await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
 }
+
+test.describe("public demo entry (phase 14 M4a)", () => {
+  test("the login card shows English, easy-to-type credentials and one click signs in", async ({
+    page,
+  }) => {
+    await page.goto("/login");
+    await expect(page.getByText("demo@smartops.test")).toBeVisible();
+    await expect(page.getByText("try smartops demo")).toBeVisible();
+    await expectAccessible(page);
+    await page.getByRole("button", { name: "Sign in as the demo operator" }).click();
+    await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
+  });
+
+  test("Try suggests where to start: the new spreadsheet first, marked", async ({ page }) => {
+    await loginWithDemoCard(page);
+    await page.goto("/try");
+    await expect(page.getByRole("heading", { name: "Try the system", level: 1 })).toBeVisible();
+    const first = page.getByRole("heading", { level: 2 }).first();
+    await expect(first).toHaveText("Send a new spreadsheet");
+    await expect(page.getByText("Start here")).toBeVisible();
+    await expectAccessible(page);
+  });
+});
 
 test.describe("public demo (phase 9 M8)", () => {
   test("login shows the public operator credentials; the panel shows the demo banner", async ({

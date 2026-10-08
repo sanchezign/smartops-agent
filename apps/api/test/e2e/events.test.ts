@@ -137,7 +137,7 @@ describe("GET /api/v1/events", () => {
     const demoEnv = {
       DEMO_MODE: "true",
       DATABASE_URL: "postgresql://user:pass@localhost:5432/smartops_demo",
-      DEMO_OPERATOR_EMAIL: "demo@ferreteria.demo",
+      DEMO_OPERATOR_EMAIL: "demo@smartops.test",
       TRUST_PROXY: "1",
     };
     const open = (base: string, ip: string) =>
@@ -147,7 +147,7 @@ describe("GET /api/v1/events", () => {
       const { base } = await start({
         maxPerUser: 1,
         env: demoEnv,
-        user: { ...user, email: "Demo@Ferreteria.demo" },
+        user: { ...user, email: "Demo@Smartops.test" },
       });
       const a = await open(base, "203.0.113.10");
       expect(a.status).toBe(200);

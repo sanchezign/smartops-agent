@@ -172,6 +172,14 @@ test("phone viewport, inbox and chat as it opens", async ({ page, context, isMob
       await page.screenshot({
         path: `${dir}/viewport-${scheme}-chat-${who.toLowerCase()}-top.png`,
       });
+      if (who === "Luis") {
+        // A long name wraps to two lines (phase 14), never cut.
+        await page.getByRole("heading", { level: 1 }).evaluate((el) => {
+          el.textContent =
+            "Luis Fernández de la Cruz y Ordóñez de Montevideo Abastecimientos del Este";
+        });
+        await page.screenshot({ path: `${dir}/viewport-${scheme}-chat-longname.png` });
+      }
     }
   }
 });

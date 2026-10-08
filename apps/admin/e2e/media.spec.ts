@@ -119,9 +119,7 @@ test("demo video", async ({ browser, isMobile }) => {
   await page.getByText("Public demo.").waitFor();
   await say("login");
   await pause(2_500);
-  await page.getByRole("button", { name: "Use these details" }).click();
-  await pause(800);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in as the demo operator" }).click();
   await settle(page);
   await say("dashboard");
   await pause(3_500);

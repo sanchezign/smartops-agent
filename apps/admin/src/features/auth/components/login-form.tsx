@@ -33,10 +33,11 @@ export function LoginForm() {
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const parsed = loginSchema.safeParse({
-      email: String(form.get("email") ?? ""),
-      password: String(form.get("password") ?? ""),
-    });
+    await signIn(String(form.get("email") ?? ""), String(form.get("password") ?? ""));
+  }
+
+  async function signIn(email: string, password: string) {
+    const parsed = loginSchema.safeParse({ email, password });
     if (!parsed.success) {
       const key = parsed.error.issues[0]?.message;
       setError(t(`validation.${isLoginValidationKey(key) ? key : "checkFields"}`));
@@ -83,17 +84,22 @@ export function LoginForm() {
           </dl>
           <button
             type="button"
-            className="min-h-11 self-start rounded-md border-[1.5px] border-input px-3 py-2 font-medium hover:bg-muted"
+            disabled={pending || !hydrated}
+            className="min-h-11 self-start rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground disabled:opacity-60"
             onClick={() => {
+              if (!demo.data) return;
+              // Also fill the form: if the sign-in fails, the person sees what was tried.
               const form = formRef.current;
-              if (!form || !demo.data) return;
-              (form.elements.namedItem("email") as HTMLInputElement).value =
-                demo.data.operator.email;
-              (form.elements.namedItem("password") as HTMLInputElement).value =
-                demo.data.operator.password;
+              if (form) {
+                (form.elements.namedItem("email") as HTMLInputElement).value =
+                  demo.data.operator.email;
+                (form.elements.namedItem("password") as HTMLInputElement).value =
+                  demo.data.operator.password;
+              }
+              void signIn(demo.data.operator.email, demo.data.operator.password);
             }}
           >
-            {t("useThese")}
+            {pending ? t("signingIn") : t("signInAsDemo")}
           </button>
         </div>
       ) : null}

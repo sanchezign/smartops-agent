@@ -38,7 +38,7 @@ async function loginHere(page: Page) {
   await expect(page).toHaveURL(/\/login\?next=%2Fd%2F/);
   await page.getByLabel("Email").fill(E2E.operator.email);
   await page.getByLabel("Password").fill(E2E.operator.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
 }
 
 test.describe("digest deep link (phase 9 M7)", () => {

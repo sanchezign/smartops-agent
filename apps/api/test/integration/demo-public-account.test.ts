@@ -32,8 +32,8 @@ import { createTestPrisma, testDatabaseUrl } from "./db.js";
 
 const log = pino({ level: "silent" });
 const PANEL = "http://localhost:3000"; // CORS_ORIGINS in TEST_ENV_SOURCE
-const PUBLIC = "demo@ferreteria.demo";
-const PUBLIC_PASS = "probá el panel sin miedo";
+const PUBLIC = "demo@smartops.test";
+const PUBLIC_PASS = "try smartops demo";
 const PASS = "una frase larga para entrar al panel";
 
 describe.skipIf(!testDatabaseUrl)("the shared public demo operator (Postgres)", () => {

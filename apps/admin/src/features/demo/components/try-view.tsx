@@ -37,11 +37,13 @@ import { timeline, type DemoSampleKind } from "../trace";
 
 /** The six samples (texts in "demo.samples.<kind>"). */
 const SAMPLES: { kind: DemoSampleKind; icon: typeof Mic }[] = [
+  // The suggested path first (phase 14): a new spreadsheet → a person picks the column → the
+  // catalog updates. It is the whole product in one minute.
+  { kind: "planilla_nueva", icon: Table2 },
   { kind: "foto", icon: ImageIcon },
   { kind: "pdf", icon: FileText },
   { kind: "audio", icon: Mic },
   { kind: "planilla", icon: FileSpreadsheet },
-  { kind: "planilla_nueva", icon: Table2 },
   { kind: "injection", icon: ShieldAlert },
 ];
 
@@ -86,16 +88,31 @@ export function TryView() {
         </p>
       ) : null}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {SAMPLES.map(({ kind, icon: Icon }) => (
-          <Card key={kind} className="flex flex-col">
+        {SAMPLES.map(({ kind, icon: Icon }, index) => (
+          <Card
+            key={kind}
+            className={cn(
+              "flex flex-col",
+              // the suggested sample: ink frame, spans the row on wide screens
+              index === 0 && "border-foreground sm:col-span-2 lg:col-span-3",
+            )}
+          >
             <CardHeader>
-              <CardTitle className="flex items-start gap-2 text-base">
+              <CardTitle className="flex flex-wrap items-start gap-2 text-base">
                 <Icon className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
                 <h2>{t(`samples.${kind}.title`)}</h2>
+                {index === 0 ? (
+                  <span className="rounded bg-primary px-1.5 py-0.5 text-xs font-medium text-primary-foreground">
+                    {t("startHere")}
+                  </span>
+                ) : null}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col justify-between gap-3">
-              <p className="text-sm text-muted-foreground">{t(`samples.${kind}.detail`)}</p>
+              <p className="text-sm text-muted-foreground">
+                {t(`samples.${kind}.detail`)}
+                {index === 0 ? ` ${t("startHereHint")}` : ""}
+              </p>
               <Button
                 className="min-h-11 w-full"
                 disabled={inject.isPending}
@@ -175,7 +192,7 @@ function TraceCard({ sent }: { sent: Sent }) {
               ) : step.state === "active" ? (
                 <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden />
               ) : step.state === "held" ? (
-                <PauseCircle className="size-4 text-amber-600" aria-hidden />
+                <PauseCircle className="size-4 text-warning" aria-hidden />
               ) : step.state === "failed" ? (
                 <OctagonAlert className="size-4 text-destructive" aria-hidden />
               ) : (
@@ -195,8 +212,7 @@ function TraceCard({ sent }: { sent: Sent }) {
               "flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm",
               view.outcome.tone === "success" &&
                 "border-emerald-600/40 bg-emerald-50 dark:bg-emerald-950/30",
-              view.outcome.tone === "review" &&
-                "border-amber-500/40 bg-amber-50 dark:bg-amber-950/30",
+              view.outcome.tone === "review" && "border-foreground bg-card",
               view.outcome.tone === "failed" && "border-destructive/40 bg-destructive/5",
             )}
           >

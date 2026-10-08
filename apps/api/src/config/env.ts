@@ -198,8 +198,8 @@ export const envSchema = z.object({
     z.string().regex(/^postgres(ql)?:\/\/.+/, "must be a postgres:// connection string"),
   ),
   /** Demo operator: PUBLIC credentials by design (shown on the login screen in DEMO_MODE). */
-  DEMO_OPERATOR_EMAIL: z.string().email().default("demo@ferreteria.demo"),
-  DEMO_OPERATOR_PASSWORD: z.string().min(15).default("probá el panel sin miedo"),
+  DEMO_OPERATOR_EMAIL: z.string().email().default("demo@smartops.test"),
+  DEMO_OPERATOR_PASSWORD: z.string().min(15).default("try smartops demo"),
   /** Demo admin: only created when a password is given (no default admin password). */
   DEMO_ADMIN_EMAIL: z.string().email().default("admin@ferreteria.demo"),
   DEMO_ADMIN_PASSWORD: optionalString(z.string().min(15)),

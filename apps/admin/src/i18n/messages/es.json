@@ -73,7 +73,7 @@
     "signingIn": "Ingresando…",
     "demoTitle": "Demo pública.",
     "demoIntro": "Entra como operador con estos datos (son públicos):",
-    "useThese": "Usar estos datos",
+    "signInAsDemo": "Entrar como operador de la demo",
     "validation": {
       "invalidEmail": "Ingresa un email válido",
       "passwordRequired": "Ingresa tu contraseña",
@@ -817,6 +817,8 @@
     "description": "Envía mensajes de ejemplo como si fueras un proveedor. Recorren el sistema real (sin WhatsApp y sin costo) y ves cada paso en vivo.",
     "reset": "Reiniciar demo",
     "autoReset": "Los datos de ejemplo se reinician solos a las {time}.",
+    "startHere": "Empieza aquí",
+    "startHereHint": "Envía esta primero y sigue el enlace que aparece: verás todo el recorrido, de una planilla a un catálogo actualizado.",
     "send": "Enviar",
     "sending": "Enviando…",
     "sentLabel": "Mensajes de prueba enviados",

@@ -96,7 +96,7 @@ function ChatHeader({ conversation }: { conversation: ConversationHeader }) {
           <BackButton iconOnly />
         </div>
         <div className="col-span-2 col-start-2 row-start-1 flex min-w-0 flex-col pr-12">
-          <h1 className="font-display truncate text-lg leading-tight">
+          <h1 className="font-display line-clamp-2 text-lg leading-tight break-words">
             {contactName(c, t("contactFallback"))}
           </h1>
           <p className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">

@@ -191,6 +191,31 @@ export async function seedDemo(deps: {
   };
   const operator = await upsertUser(deps.users.operator, "operator");
   if (deps.users.admin) await upsertUser(deps.users.admin, "admin");
+  if (deps.keepAuth) {
+    // A demo operator that is no longer THE public one (its credentials changed, phase 14: the old
+    // address and password are still published in old READMEs, videos and screenshots) must not
+    // keep working: deactivated and logged out. Only operators: an admin created by hand in the
+    // demo database is never touched.
+    const current = [deps.users.operator.email, deps.users.admin?.email].filter(
+      (e): e is string => !!e,
+    );
+    const stale = await prisma.user.findMany({
+      where: { role: "operator", active: true, email: { notIn: current } },
+      select: { id: true },
+    });
+    if (stale.length > 0) {
+      const ids = stale.map((u) => u.id);
+      await prisma.user.updateMany({ where: { id: { in: ids } }, data: { active: false } });
+      await prisma.authSession.updateMany({
+        where: { userId: { in: ids }, revokedAt: null },
+        data: { revokedAt: now, revokeReason: "user_deactivated" },
+      });
+      logger.info(
+        { retired: stale.length },
+        "retired demo operators that are no longer the public one",
+      );
+    }
+  }
 
   let waSeq = 0;
   const wamid = () => `wamid.DEMO${String(++waSeq).padStart(8, "0")}`;

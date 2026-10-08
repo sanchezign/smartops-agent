@@ -62,6 +62,15 @@ test.describe("conversations (phase 9 M3)", () => {
       ratio: 1,
     });
     expect((await bar.boundingBox())!.height).toBeLessThan(150);
+    // A long name wraps to at most two lines instead of being cut (phase 14, owner's request).
+    const title = page.getByRole("heading", { level: 1, name: /Luis/ });
+    await title.evaluate((el) => {
+      el.textContent = "Luis Fernández de la Cruz y Ordóñez de Montevideo Abastecimientos del Este";
+    });
+    const box = (await title.boundingBox())!;
+    const lineHeight = await title.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
+    expect(box.height).toBeLessThanOrEqual(lineHeight * 2 + 2);
+    expect(box.height).toBeGreaterThan(lineHeight * 1.5); // …and it does use the second line
   });
 
   test("chat: the photo is loaded with the session (blob: URL, no token in the URL)", async ({

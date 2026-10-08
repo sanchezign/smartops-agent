@@ -24,7 +24,7 @@ async function languageInNewBrowser(browser: Browser, who: "operator" | "admin")
   await page.goto("/login");
   await page.getByLabel("Email").fill(E2E[who].email);
   await page.getByLabel("Password").fill(E2E[who].password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("heading", { name: /^(Home|Inicio)$/, level: 1 })).toBeVisible();
   const lang = await page.locator("html").getAttribute("lang");
   await context.close();
@@ -63,9 +63,9 @@ test("the shared demo operator switches with a cookie only (nothing saved)", asy
 
 test("the login screen has its own selector", async ({ page }) => {
   await page.goto("/login");
-  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
   await chooseLanguage(page, "es");
   await expect(page.getByRole("button", { name: "Ingresar" })).toBeVisible();
   await chooseLanguage(page, "en");
-  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
 });

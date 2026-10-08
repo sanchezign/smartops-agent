@@ -147,4 +147,42 @@ describe.skipIf(!testDatabaseUrl)("demo seed (Postgres, <test>_demo)", () => {
     ).toBe(0);
     expect(await prisma.supplier.findUnique({ where: { id: extra.id } })).toBeNull();
   }, 120_000);
+
+  it("a reset retires a demo operator that is no longer THE public one (phase 14): inactive, logged out", async () => {
+    await seed(false);
+    const hash = (await prisma.user.findFirstOrThrow()).passwordHash;
+    const old = await prisma.user.create({
+      data: {
+        email: "demo@ferreteria.demo",
+        name: "Old demo",
+        passwordHash: hash,
+        role: "operator",
+      },
+    });
+    const manualAdmin = await prisma.user.create({
+      data: { email: "owner@x.uy", name: "Owner", passwordHash: hash, role: "admin" },
+    });
+    const oldSession = await prisma.authSession.create({
+      data: {
+        userId: old.id,
+        idleExpiresAt: new Date(NOW.getTime() + 3_600_000),
+        expiresAt: new Date(NOW.getTime() + 86_400_000),
+      },
+    });
+
+    await seed(true);
+
+    const retired = await prisma.user.findUniqueOrThrow({ where: { id: old.id } });
+    expect(retired.active).toBe(false);
+    const session = await prisma.authSession.findUniqueOrThrow({ where: { id: oldSession.id } });
+    expect(session.revokedAt).not.toBeNull();
+    expect(session.revokeReason).toBe("user_deactivated");
+    // the configured public operator keeps working; an admin made by hand is never touched
+    expect(
+      (await prisma.user.findUniqueOrThrow({ where: { email: "operador@demo.smartops" } })).active,
+    ).toBe(true);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: manualAdmin.id } })).active).toBe(
+      true,
+    );
+  }, 120_000);
 });
