@@ -97,8 +97,8 @@ milestone, is in `docs/history/phase-log.md`. Status as of 2026-10-06.
     owner's checks on the VM / Console that remain are listed in "Current phase".
 13. i18n (panel EN + neutral ES) + English docs + screenshots/video + panel guide + case study +
     portfolio kit — DONE (merged 2026-10-02).
-14. frontend clarity (UX) — IN PROGRESS (branch `feat/phase-14-frontend-clarity`): M0–M4, M6, M7 DONE; M5a and M5b
-    (content as data; language-aware heuristics) DONE, M5c–M5e next. Detail: `docs/history/phase-log.md` item 14.
+14. frontend clarity (UX) — IN PROGRESS (branch `feat/phase-14-frontend-clarity`): M0–M4, M6, M7 DONE; M5a, M5b
+    (content as data; language-aware heuristics) and M5c (English content and fixtures) DONE, M5d–M5e next. Detail: `docs/history/phase-log.md` item 14.
 
 
 ## Data model (starting point — refine in phase 2 plan)
@@ -176,7 +176,7 @@ Add one line here for every new ADR.
 - [ADR-031](docs/adr/ADR-031-content-and-business-language.md) — Demo content language per deployment; ONE business language that also decides how incoming messages are read
 
 ## Current phase
-**Phases 1–13 are COMPLETE (phase 12 closed in the repo 2026-10-06). Phase 14 (frontend clarity) is IN PROGRESS on `feat/phase-14-frontend-clarity`: M0–M4, M6, M7 done; M5a–M5b done, M5c–M5e next.**
+**Phases 1–13 are COMPLETE (phase 12 closed in the repo 2026-10-06). Phase 14 (frontend clarity) is IN PROGRESS on `feat/phase-14-frontend-clarity`: M0–M4, M6, M7 done; M5a–M5c done, M5d–M5e next (M5d spends credits only after the owner's OK).**
 Phase 14 (owner decisions 2026-10-07): style "Señal" (ADR-029), demo operator resolves column_mapping in
 DEMO_MODE (ADR-030), credentials demo@smartops.test / "try smartops demo", content language per
 deployment (DEMO_CONTENT_LANGUAGE=en|es, public demo in English). Order: M0–M4, M6, M7, then M5 (content

@@ -1653,3 +1653,15 @@ a real client.**
       (altering one Spanish pattern fails 5 tests). English: `heuristics-en.test.ts`; an English injection message
       ends in `needs_review` like the Spanish one (`catalog-e2e.test.ts`). Known limit: the conversion warnings
       of documents (hidden sheets, truncation) are still written in Spanish by the converters.
+    - M5c — DONE (no credits spent). English content as data (`content/en.ts`): Kestrelwood Supply Co. and its three
+      suppliers (Corvane Fasteners Inc., Tessaly Paint & Coatings in USD; Norvale Electric Supply Ltd. in CAD, so a USD
+      line is the "currency changed" review), customers, story beats, +1 614 555 01XX numbers, US units. English
+      fixtures: PDF (`scripts/fixtures/build-english-pdf.mjs`), photo (rendered SVG), voice note (Echogarden, local) with
+      its Groq transcript, spreadsheets, injection sample, `en/expected.json`. The English content carries its
+      September list and approved sheet format AS DATA (`catalogSender`, `knownSender.formatMapper`), so the seed
+      needs no recording; the Spanish content still reads its goldens. `ai-record-golden --lang en|es` (prompts with
+      `promptForLanguage`). `DEMO_CONTENT_LANGUAGE` defaults to `en`; the Playwright API is pinned to `es` until M5e.
+      Tests: `demo-content.test.ts` (English coherence, no Spanish, 555-01XX numbers, pre-filter reads each customer
+      message as declared), `demo-seed.test.ts` (English seed on real Postgres, deterministic), prompts test merges
+      both expected files, the real English injection fixture ends in `needs_review`. Free dry run (count_tokens):
+      English set expected US$0.1455 / worst case US$0.4300 (Spanish baseline 0.1342 / 0.4186, unchanged).
