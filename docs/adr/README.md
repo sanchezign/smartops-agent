@@ -33,3 +33,4 @@ one Oracle Cloud E2.1.Micro) supersedes ADR-007.
 - [ADR-028](ADR-028-security-alert-policy.md) — Security alerts: pull requests block what they introduce, a nightly scan owns what exists
 - [ADR-029](ADR-029-panel-visual-identity.md) — Panel visual identity "Señal": graphite, one safety yellow for what needs a person
 - [ADR-030](ADR-030-demo-operator-resolves-column-mapping.md) — In DEMO_MODE the public operator can resolve the column-mapping review
+- [ADR-031](ADR-031-content-and-business-language.md) — Demo content language per deployment; ONE business language that also decides how incoming messages are read

@@ -173,6 +173,7 @@ Add one line here for every new ADR.
 - [ADR-028](docs/adr/ADR-028-security-alert-policy.md) — Security alerts: pull requests block what they introduce, a nightly scan owns what exists
 - [ADR-029](docs/adr/ADR-029-panel-visual-identity.md) — Panel visual identity "Señal": graphite, one safety yellow for what needs a person
 - [ADR-030](docs/adr/ADR-030-demo-operator-resolves-column-mapping.md) — In DEMO_MODE the public operator can resolve the column-mapping review
+- [ADR-031](docs/adr/ADR-031-content-and-business-language.md) — Demo content language per deployment; ONE business language that also decides how incoming messages are read
 
 ## Current phase
 **Phases 1–13 are COMPLETE (phase 12 closed in the repo 2026-10-06). Phase 14 (frontend clarity) is IN PROGRESS on `feat/phase-14-frontend-clarity`: M0–M4, M6, M7 done; M5a–M5b done, M5c–M5e next.**

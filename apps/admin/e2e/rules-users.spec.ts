@@ -25,6 +25,18 @@ test.describe("rules (phase 9 M6)", () => {
     await expectAccessible(page);
   });
 
+  test("an operator sees the business language as a value, with what it really does", async ({
+    page,
+    isMobile,
+  }) => {
+    await login(page, "operator");
+    await openFromMore(page, "Rules", isMobile);
+    await expect(page.getByText("Business language", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText(/AND the language in which the messages, price lists and spreadsheets/),
+    ).toBeVisible();
+  });
+
   test("an operator cannot open Users (direct URL → no permission)", async ({ page }) => {
     await login(page, "operator");
     await page.goto("/users");
@@ -34,6 +46,27 @@ test.describe("rules (phase 9 M6)", () => {
 
 test.describe("rules and users changes (desktop only)", () => {
   test.skip(({ isMobile }) => isMobile, "mutations run once, on desktop");
+
+  test("changing the business language asks first, and cancelling changes nothing", async ({
+    page,
+  }) => {
+    await login(page);
+    await openFromMore(page, "Rules", false);
+    const select = page.getByLabel("Business language");
+    const before = await select.inputValue();
+    await select.selectOption(before === "en" ? "es" : "en");
+    await page.getByRole("button", { name: /Save .Automatic replies./ }).click();
+    const dialog = page.getByRole("alertdialog");
+    await expect(dialog.getByText("Change the business language?")).toBeVisible();
+    await expect(
+      dialog.getByText(/messages, price lists and spreadsheets that arrive are read as/),
+    ).toBeVisible();
+    await expectAccessible(page);
+    await dialog.getByRole("button", { name: "Keep it as it is" }).click();
+    await expect(dialog).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByLabel("Business language")).toHaveValue(before);
+  });
 
   test("switch the bot off (chip in the top bar) and back on; a typo is explained", async ({
     page,

@@ -514,9 +514,15 @@
         "suffix": "días"
       },
       "business_language": {
-        "label": "Idioma de los mensajes de WhatsApp",
-        "help": "Lo que envía el sistema: respuestas de baja, confirmaciones a proveedores y resúmenes al equipo. Cada persona elige el idioma del panel por su cuenta."
+        "label": "Idioma del negocio",
+        "help": "El idioma de tu negocio, un solo ajuste para todo. Define el idioma de los mensajes que el sistema ENVÍA (respuestas de baja, confirmaciones a proveedores, resúmenes al equipo) Y el idioma en que se leen los mensajes, listas de precios y planillas que LLEGAN. Cada persona elige el idioma del panel por su cuenta."
       }
+    },
+    "languageConfirm": {
+      "title": "¿Cambiar el idioma del negocio?",
+      "body": "Desde ahora el negocio trabaja en {language}: los mensajes que envía el sistema se escriben en {language}, y los mensajes, listas de precios y planillas que llegan se leen como {language}. Lo que tus proveedores y clientes envíen en otro idioma puede dejar de reconocerse. Esto vale para todo el negocio, no solo para ti.",
+      "cancel": "Dejarlo como está",
+      "confirm": "Cambiar a {language}"
     }
   },
   "contactKinds": {

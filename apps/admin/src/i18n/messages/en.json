@@ -514,9 +514,15 @@
         "suffix": "days"
       },
       "business_language": {
-        "label": "Language of WhatsApp messages",
-        "help": "What the system sends: opt-out replies, supplier confirmations and team summaries. Each person chooses the panel language on their own."
+        "label": "Business language",
+        "help": "The language of your business, one setting for all of it. It sets the language of the messages the system SENDS (opt-out replies, supplier confirmations, team summaries) AND the language in which the messages, price lists and spreadsheets that ARRIVE are read. Each person chooses the panel language on their own."
       }
+    },
+    "languageConfirm": {
+      "title": "Change the business language?",
+      "body": "From now on the business works in {language}: the messages the system sends are written in {language}, and the messages, price lists and spreadsheets that arrive are read as {language}. What your suppliers and customers send in another language may stop being recognized. This applies to the whole business, not only to you.",
+      "cancel": "Keep it as it is",
+      "confirm": "Change to {language}"
     }
   },
   "contactKinds": {

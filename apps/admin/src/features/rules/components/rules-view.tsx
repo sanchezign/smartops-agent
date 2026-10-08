@@ -7,6 +7,16 @@ import { useId, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { ErrorState, LoadingState } from "@/components/states";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,6 +32,7 @@ import { parseNumberInput, toNumberInput, type InputError } from "@/lib/number-i
 import { useFormat } from "@/lib/use-format";
 import { useInputErrorText } from "@/lib/use-input-error";
 import { fromRows, toRows, type BusinessHours, type DayRow } from "../business-hours";
+import { BUSINESS_LANGUAGE_KEY, languageChange } from "../language-change";
 import {
   fieldMessageKey,
   parseKeywords,
@@ -132,6 +143,11 @@ function SectionCard({
   const initial = () =>
     Object.fromEntries(section.fields.map((f) => [f.key, toDraft(f, settings[f.key], locale)]));
   const [draft, setDraft] = useState<Draft>(initial);
+  // A change of the business language is confirmed first (it also changes how messages are READ).
+  const [confirming, setConfirming] = useState<{
+    changes: [string, unknown][];
+    to: string;
+  } | null>(null);
   const [errors, setErrors] = useState<Record<string, InputError>>({});
   const queryClient = useQueryClient();
 
@@ -173,6 +189,8 @@ function SectionCard({
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
     if (changes.length === 0) return void toast.info(t("noChanges"));
+    const language = languageChange(changes, settings[BUSINESS_LANGUAGE_KEY]);
+    if (language) return void setConfirming({ changes, to: language.to });
     save.mutate(changes);
   };
 
@@ -203,6 +221,34 @@ function SectionCard({
           </div>
         )}
       </CardContent>
+      <AlertDialog open={confirming !== null} onOpenChange={(open) => !open && setConfirming(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("languageConfirm.title")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("languageConfirm.body", {
+                language: isAppLocale(confirming?.to) ? LOCALE_NAMES[confirming.to] : "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-11">
+              {t("languageConfirm.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="min-h-11"
+              onClick={() => {
+                if (confirming) save.mutate(confirming.changes);
+                setConfirming(null);
+              }}
+            >
+              {t("languageConfirm.confirm", {
+                language: isAppLocale(confirming?.to) ? LOCALE_NAMES[confirming.to] : "",
+              })}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
