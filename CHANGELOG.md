@@ -6,6 +6,44 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.17.0](https://github.com/sanchezign/smartops-agent/compare/v0.16.2...v0.17.0) (2026-10-08)
+
+
+### Features
+
+* **admin:** phase 14 M1 — Señal tokens, Archivo, shell and login ([3d0e93b](https://github.com/sanchezign/smartops-agent/commit/3d0e93bf2ec09da529720679399152b8ac963379))
+* **admin:** phase 14 M2 — Home with pending groups, sample-data mark and nav counters ([5f1817b](https://github.com/sanchezign/smartops-agent/commit/5f1817b5e7be2679af765d7d10c705d830da4378))
+* **admin:** phase 14 M3 — framed list rows, compact sticky chat header, canceled is not an error ([b69db98](https://github.com/sanchezign/smartops-agent/commit/b69db987d938aae6ed1327ce5636d848e988ab15))
+* **admin:** phase 14 M4a — demo entry: English credentials, one-click sign-in, suggested path ([2699894](https://github.com/sanchezign/smartops-agent/commit/2699894bdbdb54a97417f0ee1271d81df181f19f))
+* **admin:** phase 14 M5e — E2E on the English content, regenerated README and guide media, deploy language ([a9202f1](https://github.com/sanchezign/smartops-agent/commit/a9202f1c224199c933f8a43c5cef41b01f8f8922))
+* **admin:** phase 14 M6 — product, review detail, rules, users, opted out, panel 404/error, UYU in English ([a13805b](https://github.com/sanchezign/smartops-agent/commit/a13805b946712c5a08f802ddc6c6df57203943db))
+* **admin:** the business language says what it does, and asks before it changes (ADR-031) ([0fe19fa](https://github.com/sanchezign/smartops-agent/commit/0fe19fad68a51ab6269b95b79c4cd53b48047153))
+* **api:** phase 14 M4b — in DEMO_MODE the operator can resolve the column-mapping review (ADR-030) ([8d8b9c7](https://github.com/sanchezign/smartops-agent/commit/8d8b9c70b0a0de1f07f60239f24c835558d0e005))
+* **api:** phase 14 M5b — language-aware heuristics (one language table at a time) and an English prompt block ([20b45d1](https://github.com/sanchezign/smartops-agent/commit/20b45d1bd3b6bf222ce7a8d2184c18ef48c8455c))
+* **api:** phase 14 M5c — English demo content and fixtures (no recordings yet) ([70c2590](https://github.com/sanchezign/smartops-agent/commit/70c25903b0fb2cb82d4099d9355a87da40b53b9b))
+* **api:** phase 14 M5d — recorded English goldens and their alignment tests ([688cabc](https://github.com/sanchezign/smartops-agent/commit/688cabcc8f39608c64a5a575784653cf2233be45))
+
+
+### Bug Fixes
+
+* **admin:** tax wording in the English panel; docs: demo-check moves into the repo ([1571501](https://github.com/sanchezign/smartops-agent/commit/157150163e9c7be2a9e0599ea64188f429eeae4e))
+* **api:** deterministic demo seed (catalog refs follow the declared product order); fingerprint of the Spanish seed ([23e6bf9](https://github.com/sanchezign/smartops-agent/commit/23e6bf91ab529b2382788671c1cd2f635e7af5e5))
+* **deploy:** keepalive.sh test refuses to start while a run is in progress; trial evidence ([659821d](https://github.com/sanchezign/smartops-agent/commit/659821dbb46ea918befa9023afcdfb1ce9249be0))
+
+
+### Documentation
+
+* **deploy:** close phase 12, Oracle Free Trial checklist, phase 14 next ([9b1931c](https://github.com/sanchezign/smartops-agent/commit/9b1931ced95fee3e1e2a54c09ce4f4a2cdd1d92e))
+* **deploy:** ephemeral public IP fallback and expected bucket size in the Oracle checklist ([543b15e](https://github.com/sanchezign/smartops-agent/commit/543b15efe3f27fe21ebce1f279d052d14afa7ceb))
+* phase 14 M5c status and phase log ([8ba0926](https://github.com/sanchezign/smartops-agent/commit/8ba09264206bbefacc5e0b8badfce0b0801b1dfa))
+* **phase-14:** M0 — ADR-029 visual identity, ADR-030 demo column-mapping permission, shots spec ([0e7201b](https://github.com/sanchezign/smartops-agent/commit/0e7201be4c44a3543eff48e05532238daad058f6))
+
+
+### Tests
+
+* **admin:** phase 14 M7 — accessibility of every screen, light and dark; docs and coverage ratchet ([cf2bd3e](https://github.com/sanchezign/smartops-agent/commit/cf2bd3ec01adb80d75ab9490ddd685e28beefc41))
+* **api:** phase 14 M5a — fingerprint of the Spanish demo seed, taken BEFORE the content becomes data ([d11b038](https://github.com/sanchezign/smartops-agent/commit/d11b038cb68053e13a028c3c4deb9bc528651f1f))
+
 ## [0.16.2](https://github.com/sanchezign/smartops-agent/compare/v0.16.1...v0.16.2) (2026-10-06)
 
 
