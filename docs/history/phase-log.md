@@ -1626,3 +1626,30 @@ a real client.**
       violations (English; the Spanish pass is `i18n-es.spec.ts`); coverage ratchet raised (lines 83, functions
       78, statements 82). The media / guide specs still run against the new UI; their images are regenerated
       once, after M5.
+    - M5a — DONE. The demo content is DATA (ADR-031): `apps/api/src/modules/demo/content/{types,es,index}.ts`
+      (`DemoContent`: suppliers with their currency, customers, story beats, seed texts, sample files and
+      senders, e2e suppliers); the seed and the "Try the system" injector only walk it; `DEMO_CONTENT_LANGUAGE`
+      (en | es, `es` until the English content exists) picks it per deployment, and a non-Spanish content also
+      stores `business.language`. `test/integration/demo-snapshot.ts` fingerprints a seeded database (one hash
+      per table, random ids / timestamps / binary masked, lists sorted after masking) and
+      `test/fixtures/demo-seed-es.snapshot.json` records it: the refactored Spanish seed is byte-for-byte what it
+      was. Recording it found a latent defect: the seed's `catalogRef: "P4"` depended on the database order of
+      products created in the same millisecond, so some runs added a `price_outlier` reason to the "Arandela"
+      review — the seed now numbers P1… in the order the supplier's catalog is declared. `test/unit/demo-content.test.ts`
+      checks every content (story beats point at real products, sample files and recorded answers exist, phone
+      numbers are unique).
+    - M5b — DONE. Language-aware heuristics, ONE language table active at a time (no union): pre-filter
+      (price / order / request words and its reasons), `list-rules` (tax basis, full-list evidence, currencies
+      incl. CAD and "Canadian dollars" ≠ dollars), sheet cell parsers (availability, currency), product unit
+      words (US customary: in, ft, lb, oz, gal, qt, AWG…), the texts of the extraction rules and of the sheet read
+      warnings, both fake LLM responders, and the prompts (`language-en.md` APPENDED after the base text:
+      `promptForLanguage`; Spanish returns the base prompt untouched, same version). The language reaches the code
+      through `getLanguage` (the `business.language` setting) in the ingestion and sheet-extraction services and
+      through `StructuredRequest.language` (the fake provider). Injection detection is NOT per language.
+      Proof that Spanish did not change: `test/legacy-es/` holds frozen verbatim copies of the old code and
+      `test/unit/heuristics-es-identical.test.ts` compares them with today's code (language "es" and no
+      language) over a 3,409-text corpus built from every test, fixture and the Spanish demo content
+      (`scripts/fixtures/build-heuristics-corpus.mjs`) plus random Spanish word combinations; mutation-checked
+      (altering one Spanish pattern fails 5 tests). English: `heuristics-en.test.ts`; an English injection message
+      ends in `needs_review` like the Spanish one (`catalog-e2e.test.ts`). Known limit: the conversion warnings
+      of documents (hidden sheets, truncation) are still written in Spanish by the converters.

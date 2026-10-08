@@ -1,4 +1,5 @@
 import nodeCrypto from "node:crypto";
+import { toBusinessLanguage } from "./common/business-texts.js";
 import { createAuthService } from "./modules/auth/auth.service.js";
 import { createSessionsRepository } from "./modules/auth/sessions.repository.js";
 import { createAccessTokens } from "./modules/auth/tokens.js";
@@ -110,12 +111,18 @@ const ai = createAiClient({
   },
 });
 const mediaStorage = createPostgresMediaStorage(prisma);
+// The business language (`business.language`, ADR-031): read when a message is processed, so a
+// change in the panel's Rules applies to the next message.
+const businessLanguage = async () =>
+  toBusinessLanguage((await settings.getAll(logger))["business.language"]);
 const ingestion = createIngestionService({
+  getLanguage: businessLanguage,
   repository: createIngestionRepository(prisma),
   storage: mediaStorage,
   ai,
   // Spreadsheets (M3c): remembered formats per supplier, deterministic read, compact matching.
   sheets: createSheetExtraction({
+    getLanguage: businessLanguage,
     ai,
     formats: createSheetFormatRepository(prisma),
     prompts: { mapper: loadPrompt("column-mapper"), matcher: loadPrompt("matcher") },

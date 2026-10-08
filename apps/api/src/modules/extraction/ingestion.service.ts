@@ -1,6 +1,7 @@
 import { BudgetExceededError, type AiClient } from "../../ai/ai.client.js";
 import { LlmError } from "../../ai/llm-provider.js";
-import type { LoadedPrompt } from "../../ai/prompts.js";
+import { promptForLanguage, type LoadedPrompt } from "../../ai/prompts.js";
+import type { BusinessLanguage } from "../../common/business-texts.js";
 import { errors } from "../../common/errors/app-error.js";
 import type { Logger } from "../../common/logger.js";
 import type { IngestionClassification } from "../../generated/prisma/enums.js";
@@ -139,7 +140,13 @@ export function createIngestionService(deps: {
   maxSingleCallRows?: number;
   /** Spreadsheet path (M3c): remembered formats + deterministic read + compact matching. */
   sheets?: SheetExtraction;
+  /**
+   * The business language (`business.language`, phase 14 M5b / ADR-031): the pre-filter words,
+   * the texts of the rules, the prompt block and the fake provider follow it. Spanish when absent.
+   */
+  getLanguage?: () => Promise<BusinessLanguage>;
 }): IngestionService {
+  const getLanguage = deps.getLanguage ?? (async () => "es" as const);
   const maxSingleCallRows = deps.maxSingleCallRows ?? MAX_SINGLE_CALL_ROWS;
   async function messageForAi(ctx: MessageContext, withMedia: boolean): Promise<MessageForAi> {
     const needsBytes = withMedia && ctx.media?.status === "stored";
@@ -200,6 +207,8 @@ export function createIngestionService(deps: {
     async classify(messageId, log) {
       const ctx = await deps.repository.getMessageContext(messageId);
       if (!ctx) throw errors.notFound("Message not found");
+      const language = await getLanguage();
+      const classifier = promptForLanguage(deps.prompts.classifier, language);
       const existing = await deps.repository.findActiveRun(messageId);
       if (existing && existing.status !== "pending") return summary(existing);
       assertNotPending(ctx);
@@ -207,15 +216,18 @@ export function createIngestionService(deps: {
       const run = existing ?? (await deps.repository.createRun(messageId, ctx.contact.supplierId));
 
       // Deterministic pre-filter (phase 6): obvious messages never reach the LLM.
-      const decision = prefilter({
-        messageType: ctx.messageType,
-        contactKind: ctx.contact.kind,
-        text: ctx.text,
-        transcript: ctx.transcript,
-        mediaStatus: ctx.media?.status ?? null,
-        transcriptionStatus: ctx.media?.transcriptionStatus ?? null,
-        transcriptionReason: ctx.media?.transcriptionReason ?? null,
-      });
+      const decision = prefilter(
+        {
+          messageType: ctx.messageType,
+          contactKind: ctx.contact.kind,
+          text: ctx.text,
+          transcript: ctx.transcript,
+          mediaStatus: ctx.media?.status ?? null,
+          transcriptionStatus: ctx.media?.transcriptionStatus ?? null,
+          transcriptionReason: ctx.media?.transcriptionReason ?? null,
+        },
+        language,
+      );
       if (decision) {
         await deps.repository.saveClassification(run.id, {
           status: "classified",
@@ -252,16 +264,17 @@ export function createIngestionService(deps: {
           {
             task: "classify",
             model: deps.models.classifier,
-            system: deps.prompts.classifier.text,
+            system: classifier.text,
             cacheSystem: deps.models.cacheSystemPrompts,
             content: content.content,
             jsonSchema: classificationJsonSchema as unknown as Record<string, unknown>,
             schema: classificationSchema,
             effort: "low",
             maxTokens: 1024,
+            language,
           },
           {
-            promptVersion: deps.prompts.classifier.version,
+            promptVersion: classifier.version,
             ingestionRunId: run.id,
             messageId,
             contactId: ctx.contact.id,
@@ -299,6 +312,8 @@ export function createIngestionService(deps: {
       }
 
       const ctx = await deps.repository.getMessageContext(run.messageId);
+      const language = await getLanguage();
+      const extractor = promptForLanguage(deps.prompts.extractor, language);
       if (!ctx) throw errors.notFound("Message not found");
       if (ctx.contact.kind === "customer") {
         throw errors.conflict("Customer messages never go to price extraction");
@@ -381,8 +396,9 @@ export function createIngestionService(deps: {
             return summary((await deps.repository.getRun(run.id)) ?? run);
           }
           const sheetOutput = applyDocumentRules(
-            applyExtractionRules(sheetResult.output, catalog.refNames),
+            applyExtractionRules(sheetResult.output, catalog.refNames, language),
             conversion,
+            language,
           );
           const stored: StoredExtraction = {
             output: sheetOutput,
@@ -421,16 +437,17 @@ export function createIngestionService(deps: {
           {
             task: "extract",
             model: deps.models.extractor,
-            system: deps.prompts.extractor.text,
+            system: extractor.text,
             cacheSystem: deps.models.cacheSystemPrompts,
             content: content.content,
             jsonSchema: extractionJsonSchema as unknown as Record<string, unknown>,
             schema: extractionSchema,
             effort: "medium",
             maxTokens: 6000,
+            language,
           },
           {
-            promptVersion: deps.prompts.extractor.version,
+            promptVersion: extractor.version,
             ingestionRunId: run.id,
             messageId: run.messageId,
             contactId: ctx.contact.id,
@@ -439,8 +456,9 @@ export function createIngestionService(deps: {
         );
 
         const output = applyDocumentRules(
-          applyExtractionRules(result.data, catalog.refNames),
+          applyExtractionRules(result.data, catalog.refNames, language),
           conversion?.status === "done" ? conversion : null,
+          language,
         );
         const classification: IngestionClassification = !output.isPriceList
           ? "other"
@@ -452,7 +470,7 @@ export function createIngestionService(deps: {
           refs: Object.fromEntries(catalog.refs),
           byNormalizedName: Object.fromEntries(catalog.byNormalizedName),
           catalogTruncated: catalog.truncated,
-          promptVersion: deps.prompts.extractor.version,
+          promptVersion: extractor.version,
           ...(conversion?.needsReview ? { documentIncomplete: true } : {}),
         };
         // Injected instructions → a human reviews the run before it touches the catalog.

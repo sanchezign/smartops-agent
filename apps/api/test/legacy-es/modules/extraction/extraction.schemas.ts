@@ -1,7 +1,8 @@
+/* FROZEN COPY of apps/api/src/modules/extraction/extraction.schemas.ts as of commit c4d2f42 (phase 14 M5b, BEFORE the heuristics got a language).
+ * It is the reference of what the Spanish behavior WAS: test/unit/heuristics-es-identical.test.ts compares
+ * today's code, with the language set to "es", against it. Never edit it. */
 import { z } from "zod";
-import type { BusinessLanguage } from "../../common/business-texts.js";
 import { missingAttributes } from "../catalog/attributes.js";
-import { RULE_TEXTS } from "./rule-texts.js";
 
 /**
  * Output contracts of the classifier and the extractor (ADR-011).
@@ -214,14 +215,14 @@ export type ExtractedItem = z.infer<typeof extractedItemSchema>;
 export function applyExtractionRules(
   output: ExtractionOutput,
   catalog: ReadonlyMap<string, string>,
-  language: BusinessLanguage = "es",
 ): ExtractionOutput {
-  const texts = RULE_TEXTS[language];
   const warnings = [...output.warnings];
   let listKind = output.listKind;
   if (listKind === "full_list" && !output.fullListEvidence) {
     listKind = "partial_update";
-    warnings.push(texts.fullListWithoutEvidence);
+    warnings.push(
+      "Se indicó lista completa sin evidencia explícita en el documento: se trata como actualización parcial.",
+    );
   }
 
   const refCounts = new Map<string, number>();
@@ -233,20 +234,26 @@ export function applyExtractionRules(
     if (catalog.size === 0) return { ...item, catalogRef: null, matchConfidence: "high" as const };
     const catalogName = item.catalogRef ? catalog.get(item.catalogRef) : undefined;
     if (item.catalogRef && catalogName === undefined) {
-      warnings.push(texts.unknownCatalogRef(item.name, item.catalogRef));
+      warnings.push(
+        `"${item.name}": referencia de catálogo desconocida (${item.catalogRef}), se ignora.`,
+      );
       return { ...item, catalogRef: null, matchConfidence: "low" as const };
     }
     if (item.catalogRef && (refCounts.get(item.catalogRef) ?? 0) > 1) {
       return {
         ...item,
         matchConfidence: "medium" as const,
-        note: item.note ?? texts.sameCatalogProduct,
+        note: item.note ?? "Varias líneas apuntan al mismo producto del catálogo.",
       };
     }
     if (catalogName !== undefined && item.matchConfidence === "high") {
-      const missing = missingAttributes(catalogName, [item.name, item.unit].join(" "), language);
+      const missing = missingAttributes(catalogName, [item.name, item.unit].join(" "));
       if (missing.length > 0) {
-        const reason = texts.missingAttributes(item.name, missing, catalogName).slice(0, 300);
+        const reason =
+          `"${item.name}" no indica ${missing.join(", ")} de "${catalogName}": requiere revisión.`.slice(
+            0,
+            300,
+          );
         warnings.push(reason);
         return { ...item, matchConfidence: "medium" as const, note: item.note ?? reason };
       }

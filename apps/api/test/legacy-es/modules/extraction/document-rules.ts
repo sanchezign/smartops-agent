@@ -1,5 +1,6 @@
-import type { BusinessLanguage } from "../../common/business-texts.js";
-import { RULE_TEXTS } from "./rule-texts.js";
+/* FROZEN COPY of apps/api/src/modules/extraction/document-rules.ts as of commit c4d2f42 (phase 14 M5b, BEFORE the heuristics got a language).
+ * It is the reference of what the Spanish behavior WAS: test/unit/heuristics-es-identical.test.ts compares
+ * today's code, with the language set to "es", against it. Never edit it. */
 import type { ExtractionOutput } from "./extraction.schemas.js";
 
 /**
@@ -20,19 +21,16 @@ export interface ConvertedDocumentInfo {
 export function applyDocumentRules(
   output: ExtractionOutput,
   document: ConvertedDocumentInfo | null,
-  language: BusinessLanguage = "es",
 ): ExtractionOutput {
   if (!document) return output;
-  const texts = RULE_TEXTS[language];
-  const warnings = [
-    ...document.warnings.map((w) => texts.documentPrefix(w.message)),
-    ...output.warnings,
-  ];
+  const warnings = [...document.warnings.map((w) => `Documento: ${w.message}`), ...output.warnings];
   let { listKind, fullListEvidence } = output;
   if ((document.truncated || document.needsReview) && listKind === "full_list") {
     listKind = "partial_update";
     fullListEvidence = null;
-    warnings.push(texts.incompleteDocument);
+    warnings.push(
+      "Documento incompleto (truncado o con fórmulas sin valor): se trata como actualización parcial.",
+    );
   }
   return { ...output, listKind, fullListEvidence, warnings: [...new Set(warnings)].slice(0, 30) };
 }

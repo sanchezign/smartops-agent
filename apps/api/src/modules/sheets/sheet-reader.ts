@@ -1,3 +1,4 @@
+import type { BusinessLanguage } from "../../common/business-texts.js";
 import { cellText, type SheetCell, type SheetTable } from "../documents/document-types.js";
 import type { ExtractedItem } from "../extraction/extraction.schemas.js";
 import type { SheetMapping } from "./sheet-mapping.js";
@@ -37,7 +38,12 @@ const text = (cell: SheetCell | undefined, max: number): string | null => {
   return value ? value.slice(0, max) : null;
 };
 
-export function readTable(table: SheetTable, headerRow: number, mapping: SheetMapping): ReadResult {
+export function readTable(
+  table: SheetTable,
+  headerRow: number,
+  mapping: SheetMapping,
+  language: BusinessLanguage = "es",
+): ReadResult {
   const items: ExtractedItem[] = [];
   const failures: RowFailure[] = [];
   let skipped = 0;
@@ -81,7 +87,7 @@ export function readTable(table: SheetTable, headerRow: number, mapping: SheetMa
 
     const rowCurrency =
       mapping.currencyColumn !== null
-        ? parseCurrency(cellText(at(row, mapping.currencyColumn)))
+        ? parseCurrency(cellText(at(row, mapping.currencyColumn)), language)
         : null;
     items.push({
       name,
@@ -91,7 +97,9 @@ export function readTable(table: SheetTable, headerRow: number, mapping: SheetMa
       priceChangePct,
       currency: priceChangePct === null ? rowCurrency : null,
       available:
-        mapping.availableColumn !== null ? parseAvailable(at(row, mapping.availableColumn)) : null,
+        mapping.availableColumn !== null
+          ? parseAvailable(at(row, mapping.availableColumn), language)
+          : null,
       stock: mapping.stockColumn !== null ? parseStock(at(row, mapping.stockColumn)) : null,
       catalogRef: null,
       matchConfidence: "high",

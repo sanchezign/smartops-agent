@@ -1,8 +1,14 @@
-import type { StructuredRequest } from "../../ai/llm-provider.js";
-import type { BusinessLanguage } from "../../common/business-texts.js";
-import type { FakeResponder } from "../../ai/providers/fake.js";
+/* FROZEN COPY of apps/api/src/modules/sheets/fake-responders.ts as of commit c4d2f42 (phase 14 M5b, BEFORE the heuristics got a language).
+ * It is the reference of what the Spanish behavior WAS: test/unit/heuristics-es-identical.test.ts compares
+ * today's code, with the language set to "es", against it. Never edit it. */
+import type { StructuredRequest } from "../../../../src/ai/llm-provider.js";
+import type { FakeResponder } from "../../../../src/ai/providers/fake.js";
 import { containsInjection } from "./list-rules.js";
-import type { MapperOutput, MapperTable, MatcherOutput } from "./sheet-mapping.js";
+import type {
+  MapperOutput,
+  MapperTable,
+  MatcherOutput,
+} from "../../../../src/modules/sheets/sheet-mapping.js";
 
 /**
  * Heuristics for the fake LLM (dev, tests, keyless demo) on the spreadsheet path, used when
@@ -38,86 +44,36 @@ function parseSamples(text: string): { table: string; rows: Row[] }[] {
 const find = (row: Row, re: RegExp) => [...row.entries()].find(([, v]) => re.test(v))?.[0] ?? null;
 const isNumber = (v: string) => /^[\d.,$\s]+$/.test(v);
 
-/** Header words of each language; "es" is exactly what the fake always did (frozen-copy test). */
-interface HeaderWords {
-  price: RegExp;
-  taxTrue: RegExp;
-  taxFalse: RegExp;
-  wholesale: RegExp;
-  cash: RegExp;
-  card: RegExp;
-  cost: RegExp;
-  name: RegExp;
-  unit: RegExp;
-  sku: RegExp;
-  currency: RegExp;
-  stock: RegExp;
-  available: RegExp;
-  pct: RegExp;
-  warning: string;
-}
-
-const HEADER_WORDS: Record<BusinessLanguage, HeaderWords> = {
-  es: {
-    price: /precio|price|valor|importe|mayorista|contado|tarjeta|efectivo|lista|p\.?\s?u/i,
-    taxTrue: /c\/\s?iva|con iva|iva incl|final/i,
-    taxFalse: /s\/\s?iva|sin iva|\+\s?iva|neto/i,
-    wholesale: /mayor/i,
-    cash: /contado|efectivo/i,
-    card: /tarjeta|cr[eé]dito/i,
-    cost: /costo/i,
-    name: /producto|descrip|art[ií]culo|detalle|nombre|item/i,
-    unit: /unidad|u\.?\s?m\.?$|presentaci/i,
-    sku: /c[oó]d|sku|ref/i,
-    currency: /moneda/i,
-    stock: /stock|existencia/i,
-    available: /disponib/i,
-    pct: /%|aumento|variaci/i,
-    warning: "Mapeo heurístico del proveedor fake: revisar.",
-  },
-  en: {
-    price: /price|cost|amount|wholesale|trade|cash|card|retail|list|unit price/i,
-    taxTrue: /inc(?:l|luding)?\.? (?:sales )?tax|with tax|final/i,
-    taxFalse: /ex(?:cl|cluding)?\.? (?:sales )?tax|before tax|\+\s?tax|net|ex tax/i,
-    wholesale: /wholesale|trade/i,
-    cash: /cash/i,
-    card: /card|credit/i,
-    cost: /\bcost\b/i,
-    name: /product|description|item|article|name/i,
-    unit: /unit|uom|pack(?:age)?/i,
-    sku: /sku|code|part|ref/i,
-    currency: /currency/i,
-    stock: /stock|on hand|qty|quantity/i,
-    available: /availab/i,
-    pct: /%|increase|change|variation/i,
-    warning: "Heuristic mapping by the fake provider: review.",
-  },
-};
-
-function mapTable(table: string, rows: Row[], words: HeaderWords): MapperTable {
+function mapTable(table: string, rows: Row[]): MapperTable {
   const headerRow = Math.max(
     0,
     rows.findIndex((r) => r.size >= 2 && [...r.values()].every((v) => !isNumber(v))),
   );
   const header = rows[headerRow] ?? new Map<number, string>();
   const priceColumns = [...header.entries()]
-    .filter(([, v]) => words.price.test(v))
+    .filter(([, v]) =>
+      /precio|price|valor|importe|mayorista|contado|tarjeta|efectivo|lista|p\.?\s?u/i.test(v),
+    )
     .map(([column, v]) => ({
       column,
       header: v,
-      taxIncluded: words.taxTrue.test(v) ? true : words.taxFalse.test(v) ? false : null,
-      kind: words.wholesale.test(v)
+      taxIncluded: /c\/\s?iva|con iva|iva incl|final/i.test(v)
+        ? true
+        : /s\/\s?iva|sin iva|\+\s?iva|neto/i.test(v)
+          ? false
+          : null,
+      kind: /mayor/i.test(v)
         ? ("wholesale" as const)
-        : words.cash.test(v)
+        : /contado|efectivo/i.test(v)
           ? ("cash" as const)
-          : words.card.test(v)
+          : /tarjeta|cr[eé]dito/i.test(v)
             ? ("card" as const)
-            : words.cost.test(v)
+            : /costo/i.test(v)
               ? ("cost" as const)
               : ("list" as const),
     }));
   const nameColumn =
-    find(header, words.name) ??
+    find(header, /producto|descrip|art[ií]culo|detalle|nombre|item/i) ??
     [...header.keys()].find((c) => !priceColumns.some((p) => p.column === c)) ??
     null;
   const priceValues = rows
@@ -128,12 +84,12 @@ function mapTable(table: string, rows: Row[], words: HeaderWords): MapperTable {
     isPriceTable: nameColumn !== null && priceColumns.length > 0,
     headerRow,
     nameColumn,
-    unitColumn: find(header, words.unit),
-    skuColumn: find(header, words.sku),
-    currencyColumn: find(header, words.currency),
-    stockColumn: find(header, words.stock),
-    availableColumn: find(header, words.available),
-    pctColumn: find(header, words.pct),
+    unitColumn: find(header, /unidad|u\.?\s?m\.?$|presentaci/i),
+    skuColumn: find(header, /c[oó]d|sku|ref/i),
+    currencyColumn: find(header, /moneda/i),
+    stockColumn: find(header, /stock|existencia/i),
+    availableColumn: find(header, /disponib/i),
+    pctColumn: find(header, /%|aumento|variaci/i),
     priceColumns,
     recommendedPriceColumn:
       (priceColumns.find((p) => p.taxIncluded) ?? priceColumns[0])?.column ?? null,
@@ -144,12 +100,11 @@ function mapTable(table: string, rows: Row[], words: HeaderWords): MapperTable {
 }
 
 export const fakeMapColumns: FakeResponder = (request) => {
-  const words = HEADER_WORDS[request.language ?? "es"];
   const text = textOf(request);
   const out: MapperOutput = {
-    tables: parseSamples(text).map((s) => mapTable(s.table, s.rows, words)),
+    tables: parseSamples(text).map((s) => mapTable(s.table, s.rows)),
     supplierName: null,
-    warnings: [words.warning],
+    warnings: ["Mapeo heurístico del proveedor fake: revisar."],
     suspiciousInstructions: containsInjection(text),
   };
   return out;

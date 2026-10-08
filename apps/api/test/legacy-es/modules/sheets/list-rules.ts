@@ -1,6 +1,8 @@
-import type { BusinessLanguage } from "../../common/business-texts.js";
-import { normalizeUntrusted } from "../../common/text-normalize.js";
-import { cellText, type SheetTable } from "../documents/document-types.js";
+/* FROZEN COPY of apps/api/src/modules/sheets/list-rules.ts as of commit c4d2f42 (phase 14 M5b, BEFORE the heuristics got a language).
+ * It is the reference of what the Spanish behavior WAS: test/unit/heuristics-es-identical.test.ts compares
+ * today's code, with the language set to "es", against it. Never edit it. */
+import { normalizeUntrusted } from "../../../../src/common/text-normalize.js";
+import { cellText, type SheetTable } from "../../../../src/modules/documents/document-types.js";
 
 /**
  * List-level signals of a spreadsheet WITHOUT an LLM (pure, phase 5 M3c), read from the
@@ -16,50 +18,10 @@ export interface ListSignals {
   suspicious: boolean;
 }
 
-/**
- * The words of each LANGUAGE (phase 14 M5b, ADR-031): `business.language` picks ONE table, the
- * patterns of the other language are not mixed in. With "es" they are exactly the patterns this
- * module always had (test/unit/heuristics-es-identical.test.ts compares them with a frozen copy of
- * the old code). The injection detector below is NOT per language: a defense must not depend on
- * the language of the business.
- */
-interface ListPatterns {
-  taxTrue: RegExp;
-  taxFalse: RegExp;
-  fullList: RegExp;
-  currencies: ReadonlyArray<readonly [string, RegExp]>;
-}
-
-const LIST_PATTERNS: Record<BusinessLanguage, ListPatterns> = {
-  es: {
-    taxTrue: /iva inclu[ií]do|con iva|c\/\s*iva|precios? finales?/i,
-    taxFalse: /\+\s*iva|m[aá]s iva|sin iva|s\/\s*iva|iva no inclu[ií]do|no incluye iva/i,
-    fullList:
-      /lista (de precios )?(completa|vigente)|reemplaza (a )?la (lista )?anterior|cat[aá]logo completo/i,
-    currencies: [
-      ["UYU", /pesos uruguayos|\$u\b|\buyu\b/i],
-      ["USD", /d[oó]lares|u\$s|us\$|\busd\b/i],
-      ["ARS", /pesos argentinos|\bars\b/i],
-    ],
-  },
-  en: {
-    // "tax included" / "incl. sales tax" / "prices include tax"  vs  "plus tax" / "+ tax" /
-    // "before tax" / "excl. tax" / "tax not included".
-    taxTrue:
-      /tax(?:es)? (?:is |are )?included|incl(?:uding|uded|\.)? (?:sales )?tax|prices? include (?:sales )?tax|tax[- ]inclusive|final prices?/i,
-    taxFalse:
-      /\+\s*(?:sales\s*)?tax|plus (?:sales )?tax|(?:before|excl(?:uding|uded|\.)?|ex\.?|without|w\/o) (?:sales )?tax|tax (?:is )?(?:not included|extra|excluded)|ex[- ]tax|pre[- ]tax/i,
-    fullList:
-      /(?:full|complete|entire) (?:price )?(?:list|catalog(?:ue)?)|replaces (?:the )?(?:previous|prior|last|old) (?:price )?list|supersedes (?:the )?(?:previous|prior|last|old)/i,
-    currencies: [
-      // "Canadian dollars" must not also read as plain dollars (a list quoting both is ambiguous).
-      ["USD", /\bus\$|\busd\b|\bu\.s\. dollars?|\bus dollars?|(?<!canadian )\bdollars?\b/i],
-      ["CAD", /\bcad\b|\bc\$|\bca\$|canadian dollars?/i],
-      ["UYU", /\buyu\b|uruguayan pesos/i],
-      ["ARS", /\bars\b|argentine pesos/i],
-    ],
-  },
-};
+const TAX_TRUE = /iva inclu[ií]do|con iva|c\/\s*iva|precios? finales?/i;
+const TAX_FALSE = /\+\s*iva|m[aá]s iva|sin iva|s\/\s*iva|iva no inclu[ií]do|no incluye iva/i;
+const FULL_LIST =
+  /lista (de precios )?(completa|vigente)|reemplaza (a )?la (lista )?anterior|cat[aá]logo completo/i;
 // Verb (Spanish + English synonyms: ignorá/desestimá/descartá/olvidá, disregard/forget) + the
 // object it must act on (instrucciones/instructions) — requiring the object avoids flagging
 // ordinary supplier notes like "ignorar la fila 3" or "descartá ese precio" (see the control
@@ -68,17 +30,22 @@ const LIST_PATTERNS: Record<BusinessLanguage, ListPatterns> = {
 const INJECTION =
   /(?:ignor(?:a|á|e|ar)|desestim(?:a|á|e|ar)|descart(?:a|á|e|ar)|disregard|forget)\s+(?:todas\s+)?(?:las\s+|all\s+|the\s+|previous\s+)?(?:instrucciones|previous instructions|instructions)|olvid(?:a|á)\s+(?:las|todas)\s+(?:las\s+)?instruccion(?:es)?|system prompt|you are now|sos un asistente|actu[aá] como/i;
 
+const CURRENCIES: ReadonlyArray<readonly [string, RegExp]> = [
+  ["UYU", /pesos uruguayos|\$u\b|\buyu\b/i],
+  ["USD", /d[oó]lares|u\$s|us\$|\busd\b/i],
+  ["ARS", /pesos argentinos|\bars\b/i],
+];
+
 export function containsInjection(value: string): boolean {
   return INJECTION.test(normalizeUntrusted(value));
 }
 
-export function listSignals(rawText: string, language: BusinessLanguage = "es"): ListSignals {
-  const patterns = LIST_PATTERNS[language];
+export function listSignals(rawText: string): ListSignals {
   const text = normalizeUntrusted(rawText);
-  const taxTrue = patterns.taxTrue.test(text);
-  const taxFalse = patterns.taxFalse.test(text);
-  const currencies = patterns.currencies.filter(([, re]) => re.test(text)).map(([code]) => code);
-  const evidenceLine = text.split("\n").find((line) => patterns.fullList.test(line));
+  const taxTrue = TAX_TRUE.test(text);
+  const taxFalse = TAX_FALSE.test(text);
+  const currencies = CURRENCIES.filter(([, re]) => re.test(text)).map(([code]) => code);
+  const evidenceLine = text.split("\n").find((line) => FULL_LIST.test(line));
   return {
     taxIncluded: taxTrue === taxFalse ? null : taxTrue,
     currency: currencies.length === 1 ? currencies[0]! : null,

@@ -1,8 +1,10 @@
+/* FROZEN COPY of apps/api/src/modules/sheets/sheet-values.ts as of commit c4d2f42 (phase 14 M5b, BEFORE the heuristics got a language).
+ * It is the reference of what the Spanish behavior WAS: test/unit/heuristics-es-identical.test.ts compares
+ * today's code, with the language set to "es", against it. Never edit it. */
 import { createHash } from "node:crypto";
-import type { BusinessLanguage } from "../../common/business-texts.js";
-import { Prisma } from "../../generated/prisma/client.js";
-import { cellText, type SheetCell } from "../documents/document-types.js";
-import type { PriceFormat } from "./sheet-mapping.js";
+import { Prisma } from "../../../../src/generated/prisma/client.js";
+import { cellText, type SheetCell } from "../../../../src/modules/documents/document-types.js";
+import type { PriceFormat } from "../../../../src/modules/sheets/sheet-mapping.js";
 
 const { Decimal } = Prisma;
 
@@ -79,43 +81,20 @@ export function parseStock(cell: SheetCell | undefined): number | null {
   return Number(text);
 }
 
-/**
- * Availability and currency words, per business language (phase 14 M5b, ADR-031): ONE table is
- * used, they are not mixed. "es" is exactly what these functions always did.
- */
-const UNAVAILABLE: Record<BusinessLanguage, RegExp> = {
-  es: /sin stock|agotad|no hay|discontinu|^no$|^0$/,
-  en: /out of stock|sold out|unavailable|not available|discontinued|backorder|^no$|^0$/,
-};
-const AVAILABLE: Record<BusinessLanguage, RegExp> = {
-  es: /^si$|disponible|en stock|^hay$|^ok$/,
-  en: /^yes$|^y$|^available$|^in stock$|^ok$/,
-};
-
-export function parseAvailable(
-  cell: SheetCell | undefined,
-  language: BusinessLanguage = "es",
-): boolean | null {
+export function parseAvailable(cell: SheetCell | undefined): boolean | null {
   const text = cellText(cell).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
   if (text === "") return null;
-  if (UNAVAILABLE[language].test(text)) return false;
-  if (AVAILABLE[language].test(text)) return true;
+  if (/sin stock|agotad|no hay|discontinu|^no$|^0$/.test(text)) return false;
+  if (/^si$|disponible|en stock|^hay$|^ok$/.test(text)) return true;
   return null;
 }
 
-export function parseCurrency(value: string, language: BusinessLanguage = "es"): string | null {
+export function parseCurrency(value: string): string | null {
   const text = value.trim().toLowerCase();
   if (text === "") return null;
-  if (language === "es") {
-    if (/u\$s|us\$|usd|d[oó]lar/.test(text)) return "USD";
-    if (/\$u|uyu|uruguay/.test(text)) return "UYU";
-    if (/ars|argentin/.test(text)) return "ARS";
-  } else {
-    if (/canad|^cad$|^c\$|^ca\$/.test(text)) return "CAD";
-    if (/us\$|^usd$|^u\.s\.|dollar/.test(text)) return "USD";
-    if (/^uyu$|uruguay/.test(text)) return "UYU";
-    if (/^ars$|argentin/.test(text)) return "ARS";
-  }
+  if (/u\$s|us\$|usd|d[oó]lar/.test(text)) return "USD";
+  if (/\$u|uyu|uruguay/.test(text)) return "UYU";
+  if (/ars|argentin/.test(text)) return "ARS";
   if (/^[a-z]{3}$/.test(text)) return text.toUpperCase();
   return null;
 }

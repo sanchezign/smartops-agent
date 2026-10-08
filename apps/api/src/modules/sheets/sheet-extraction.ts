@@ -1,6 +1,7 @@
 import type { AiCallContext, AiClient } from "../../ai/ai.client.js";
 import type { StructuredRequest } from "../../ai/llm-provider.js";
-import type { LoadedPrompt } from "../../ai/prompts.js";
+import { promptForLanguage, type LoadedPrompt } from "../../ai/prompts.js";
+import type { BusinessLanguage } from "../../common/business-texts.js";
 import type { Logger } from "../../common/logger.js";
 import { normalizeProductName } from "../catalog/normalize.js";
 import { cellText, type SheetTable } from "../documents/document-types.js";
@@ -71,6 +72,8 @@ export type SheetExtractionResult =
     };
 
 export interface SheetExtractionDeps {
+  /** The business language (phase 14 M5b, ADR-031); Spanish when absent. */
+  getLanguage?: () => Promise<BusinessLanguage>;
   ai: AiClient;
   formats: SheetFormatRepository;
   prompts: { mapper: LoadedPrompt; matcher: LoadedPrompt };
@@ -117,27 +120,50 @@ export function sheetPreview(
   }));
 }
 
+/**
+ * What the deterministic sheet read writes into the extraction warnings, per business language
+ * (phase 14 M5b, ADR-031). "es" is exactly what it always said.
+ */
+export const SHEET_WARNINGS: Record<
+  BusinessLanguage,
+  { mixedTaxBasis: string; unreadableRows(count: number, names: string[]): string }
+> = {
+  es: {
+    mixedTaxBasis: "Hojas con distinta base de IVA en la columna de precio elegida.",
+    unreadableRows: (count, names) =>
+      `${count} filas con precio ilegible no se leyeron: ${names.join(", ")}${count > 5 ? "…" : ""}.`,
+  },
+  en: {
+    mixedTaxBasis: "Sheets with a different tax basis in the chosen price column.",
+    unreadableRows: (count, names) =>
+      `${count} rows with an unreadable price were not read: ${names.join(", ")}${count > 5 ? "…" : ""}.`,
+  },
+};
+
 export function createSheetExtraction(deps: SheetExtractionDeps) {
   async function mapTables(
     input: SheetExtractionInput,
     indexes: number[],
     ctx: SheetCallContext,
+    language: BusinessLanguage,
   ): Promise<MapperOutput> {
+    const mapper = promptForLanguage(deps.prompts.mapper, language);
     const request: StructuredRequest<MapperOutput> = {
       task: "map_columns",
       model: deps.models.mapper,
-      system: deps.prompts.mapper.text,
+      system: mapper.text,
       cacheSystem: deps.models.cacheSystemPrompts,
       content: buildMapperContent(indexes.map((index) => ({ index, table: input.tables[index]! }))),
       jsonSchema: mapperJsonSchema as unknown as Record<string, unknown>,
       schema: mapperOutputSchema,
       effort: "low",
       maxTokens: 3000,
+      language,
     };
     return (
       await deps.ai.generateStructured(request, {
         ...ctx,
-        promptVersion: deps.prompts.mapper.version,
+        promptVersion: mapper.version,
       })
     ).data;
   }
@@ -146,6 +172,7 @@ export function createSheetExtraction(deps: SheetExtractionDeps) {
     items: ExtractedItem[],
     catalog: CatalogContext,
     ctx: SheetCallContext,
+    language: BusinessLanguage,
   ): Promise<{ matched: number; calls: number }> {
     if (!catalog.text || catalog.refs.size === 0) return { matched: 0, calls: 0 };
     const pending: MatcherRow[] = [];
@@ -168,6 +195,7 @@ export function createSheetExtraction(deps: SheetExtractionDeps) {
         schema: matcherOutputSchema,
         effort: "low",
         maxTokens: 6000,
+        language,
       });
     }
     // Every batch must fit the budgets before the first one is sent.
@@ -212,6 +240,7 @@ export function createSheetExtraction(deps: SheetExtractionDeps) {
       input: SheetExtractionInput,
       ctx: SheetCallContext,
     ): Promise<SheetExtractionResult> {
+      const language = deps.getLanguage ? await deps.getLanguage() : "es";
       const known = input.supplierId ? await deps.formats.active(input.supplierId) : [];
       const byFingerprint = new Map(known.map((f) => [f.fingerprint, f]));
       const candidates = input.tables.map(headerCandidates);
@@ -235,7 +264,12 @@ export function createSheetExtraction(deps: SheetExtractionDeps) {
       if (unknown.size === 0) {
         for (const [i, loc] of located.entries()) {
           if (!loc || !loc.format.format.isPriceTable) continue;
-          const read = readTable(input.tables[i]!, loc.headerRow, loc.format.format.mapping);
+          const read = readTable(
+            input.tables[i]!,
+            loc.headerRow,
+            loc.format.format.mapping,
+            language,
+          );
           if (failureRate(read) > MAX_FAILURE_RATE) {
             await deps.formats.retire(loc.format.id, "validation_failed");
             retired.push(loc.format.id);
@@ -253,7 +287,7 @@ export function createSheetExtraction(deps: SheetExtractionDeps) {
 
       if (unknown.size > 0) {
         const indexes = [...unknown].sort((a, b) => a - b);
-        const mapped = await mapTables(input, indexes, ctx);
+        const mapped = await mapTables(input, indexes, ctx, language);
         const tables: ColumnMappingProposal["tables"] = input.tables.map((table, i) => {
           const loc = located[i];
           const width = Math.max(0, ...table.rows.map((r) => r.length));
@@ -338,20 +372,19 @@ export function createSheetExtraction(deps: SheetExtractionDeps) {
       }
       await deps.formats.markUsed(formatIds);
 
-      const { matched, calls } = await match(items, input.catalog, ctx);
+      const { matched, calls } = await match(items, input.catalog, ctx, language);
 
       const warnings: string[] = [];
-      const signals = listSignals(textOutsideRows(input.tables, headerRows));
+      const signals = listSignals(textOutsideRows(input.tables, headerRows), language);
       const taxValues = [...new Set(mappings.map((m) => m.taxIncluded).filter((v) => v !== null))];
-      if (taxValues.length > 1)
-        warnings.push("Hojas con distinta base de IVA en la columna de precio elegida.");
+      if (taxValues.length > 1) warnings.push(SHEET_WARNINGS[language].mixedTaxBasis);
       const currencies = [...new Set(mappings.map((m) => m.currency).filter((v) => v !== null))];
       if (failures.length > 0) {
         warnings.push(
-          `${failures.length} filas con precio ilegible no se leyeron: ${failures
-            .slice(0, 5)
-            .map((f) => f.name)
-            .join(", ")}${failures.length > 5 ? "…" : ""}.`,
+          SHEET_WARNINGS[language].unreadableRows(
+            failures.length,
+            failures.slice(0, 5).map((f) => f.name),
+          ),
         );
       }
       const fullList = signals.fullListEvidence !== null && !truncated && failures.length === 0;

@@ -1,4 +1,5 @@
 import type { ZodType } from "zod";
+import type { BusinessLanguage } from "../common/business-texts.js";
 
 /**
  * Provider-agnostic structured generation (ADR-011). Features never import a provider
@@ -46,6 +47,12 @@ export interface StructuredRequest<T> {
   schema: ZodType<T>;
   effort: Effort;
   maxTokens: number;
+  /**
+   * Business language of the request (phase 14 M5b). Real providers ignore it (the language
+   * reaches the model through the system prompt); the FAKE provider's heuristics use it to answer
+   * in the language of the business. Absent = "es".
+   */
+  language?: BusinessLanguage;
 }
 
 export interface TokenUsage {
