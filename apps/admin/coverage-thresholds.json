@@ -1,10 +1,10 @@
 {
   "$comment": "Coverage ratchet (phase 10) of the panel LOGIC (lib + pure features/*.ts): measured - 2, only goes up. Target: 90 %. Components are covered by the browser E2E.",
   "global": {
-    "lines": 82,
+    "lines": 83,
     "branches": 74,
-    "functions": 76,
-    "statements": 81
+    "functions": 78,
+    "statements": 82
   },
   "files": {}
 }

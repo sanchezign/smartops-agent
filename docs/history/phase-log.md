@@ -1582,3 +1582,47 @@ a real client.**
       `workana.md` (ES + EN variant), `linkedin.md` (project, Featured, headline; ES + EN),
       `post-borrador.md` (launch post ES + EN), `video/` (MP4 47 s + .en.srt / .es.srt).
 
+
+14. frontend clarity (UX) — IN PROGRESS (branch `feat/phase-14-frontend-clarity`, from `main`; one milestone at a
+    time, the owner reviews each). Owner decisions (2026-10-07): style "Señal" (ADR-029); in DEMO_MODE the
+    public operator resolves the column-mapping review (ADR-030); credentials `demo@smartops.test` /
+    `try smartops demo` + one-click sign-in + the old operator retired by the seed; demo content language
+    per deployment (`DEMO_CONTENT_LANGUAGE=en|es`, public demo in English, M5); order M0–M4, M6, M7, then M5;
+    the README / guide media are regenerated ONCE, at the end of M5. The exploration of three directions
+    (Planilla, Señal, Mostrador) stays on the local branch `design/phase-14-exploration` (never pushed: ~38 MB
+    of screenshots, the repository goes public). Before/after screenshots of every milestone live in
+    `apps/admin/e2e/screens/phase-14/<label>/` (gitignored), taken by `e2e/phase14-shots.spec.ts` (axe per
+    capture). Local note: Playwright's WebKit does not start on the owner's Windows PC; the opt-in project
+    `iphone-chromium` (`E2E_IPHONE_CHROMIUM=1`, iPhone 15 metrics on Chromium) is used there; CI keeps the
+    real WebKit "iphone".
+    - M0 — DONE. ADR-029 (identity: graphite on concrete, one safety yellow `#FFC400` = "waits for a person",
+      Archivo, framed 1.5 px rows, currency belongs to the content) and ADR-030; baseline screenshots.
+    - M1 — DONE. Tokens in hex (light / dark) in `globals.css`, Archivo via `next/font` (CSP `font-src 'self'`),
+      graphite sidebar and demo banner, framed cards, login on tokens. `test/contrast.test.ts` computes the
+      WCAG contrast of every token pair (text 4.5:1; control borders, chart colors and the yellow tile edge 3:1;
+      destructive on its own tint) — it caught the input border (2.92:1) and the red tint (4.48:1).
+    - M2 — DONE. Home: "Pending" (yellow tiles only for counts above zero, framed in ink; errors red, never
+      yellow) and "Automation" groups with visible titles; the four pending figures fit a phone's first screen;
+      AI cost card marked "Sample data" in DEMO_MODE (`aiCostMode`), plain-language budget line elsewhere;
+      `formatUsd` = cents (4 decimals only under one cent), `formatUsdPrecise` for chart tooltips; yellow
+      counters for Reviews / Alerts in the navigation (`usePendingCounts`, same query key as the Home). The
+      counter is part of the link's accessible name → E2E `navLink()` helper.
+    - M3 — DONE. One framed row (`components/list-row.tsx`) for Conversations, Catalog, Alerts, Reviews; kind
+      of contact as a text chip; yellow price-tag label (`.tag-shape`) for "a person is handling it"; chat
+      header = a two-row grid that stays under the top bar (who answers + main action visible when a chat
+      opens, also on a phone; E2E checks it and its height < 150 px); a canceled bot reply is a dashed neutral
+      bubble (`statusTone`), only a failed send is red.
+    - M4 — DONE. M4b: `canResolveReview(role, item, { demoMode })` — operator + DEMO_MODE + scope `run` + kind
+      `column_mapping` (nothing else changes; mutation-checked; panel mirror; per-item authz matrix
+      `test/e2e/authz-review-matrix.test.ts` + fixture; audited operator approval on Postgres). M4a: new
+      credentials, one-click "Sign in as the demo operator", the seed retires operators that are not the
+      configured one (admins made by hand untouched), Try puts the new spreadsheet first ("Start here"; only
+      its Send is primary), a long contact name wraps to two lines in the chat header.
+    - M6 — DONE. Product, review detail, users, opted-out list in the same style; Rules read-only shows values as
+      text; an unknown address and a broken screen render INSIDE the shell (`app/(main)/[...rest]`,
+      `not-found.tsx`, `error.tsx`); Uruguayan pesos show their code in English ("UYU 15.76", Spanish keeps
+      "$ 15,76"); a wide table container is keyboard-focusable (axe).
+    - M7 — DONE. `e2e/a11y.spec.ts`: every screen × light / dark × every browser project, zero axe
+      violations (English; the Spanish pass is `i18n-es.spec.ts`); coverage ratchet raised (lines 83, functions
+      78, statements 82). The media / guide specs still run against the new UI; their images are regenerated
+      once, after M5.

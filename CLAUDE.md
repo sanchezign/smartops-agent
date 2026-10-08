@@ -97,9 +97,8 @@ milestone, is in `docs/history/phase-log.md`. Status as of 2026-10-06.
     owner's checks on the VM / Console that remain are listed in "Current phase".
 13. i18n (panel EN + neutral ES) + English docs + screenshots/video + panel guide + case study +
     portfolio kit — DONE (merged 2026-10-02).
-14. frontend clarity (UX) — NEXT. Phase 14 — frontend clarity (UX): after closing phase 12, before
-    the final security audit and making the repo public. Input: the user's list of pain points from
-    the live demo. Plan with Opus + high effort.
+14. frontend clarity (UX) — IN PROGRESS (branch `feat/phase-14-frontend-clarity`): M0–M4, M6, M7 DONE; M5
+    (content language per deployment) is next. Detail: `docs/history/phase-log.md` item 14.
 
 
 ## Data model (starting point — refine in phase 2 plan)
@@ -176,7 +175,7 @@ Add one line here for every new ADR.
 - [ADR-030](docs/adr/ADR-030-demo-operator-resolves-column-mapping.md) — In DEMO_MODE the public operator can resolve the column-mapping review
 
 ## Current phase
-**Phases 1–13 are COMPLETE (phase 12 closed in the repo 2026-10-06). Phase 14 (frontend clarity) is IN PROGRESS on `feat/phase-14-frontend-clarity`.**
+**Phases 1–13 are COMPLETE (phase 12 closed in the repo 2026-10-06). Phase 14 (frontend clarity) is IN PROGRESS on `feat/phase-14-frontend-clarity`: M0–M4, M6, M7 done, M5 next.**
 Phase 14 (owner decisions 2026-10-07): style "Señal" (ADR-029), demo operator resolves column_mapping in
 DEMO_MODE (ADR-030), credentials demo@smartops.test / "try smartops demo", content language per
 deployment (DEMO_CONTENT_LANGUAGE=en|es, public demo in English). Order: M0–M4, M6, M7, then M5 (content
