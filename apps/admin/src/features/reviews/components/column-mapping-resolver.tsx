@@ -50,7 +50,7 @@ export function ColumnMappingResolver({
   return (
     <>
       {proposal.suspiciousInstructions ? (
-        <p className="mb-4 flex gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">
+        <p className="mb-4 flex gap-2 rounded-lg border-[1.5px] border-destructive/40 bg-destructive/5 p-3 text-sm">
           <AlertTriangle className="size-4 shrink-0 text-destructive" aria-hidden />
           {t("suspicious")}
         </p>
@@ -122,7 +122,7 @@ function TableChoice({
           return (
             <Label
               key={col.column}
-              className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-muted/50"
+              className="flex cursor-pointer items-start gap-3 rounded-lg border-[1.5px] p-3 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-muted/50"
             >
               <RadioGroupItem value={String(col.column)} className="mt-0.5" />
               <span className="flex min-w-0 flex-1 flex-col gap-1.5">

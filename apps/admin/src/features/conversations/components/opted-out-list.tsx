@@ -3,6 +3,7 @@
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { Chip, RowLink, RowList, rowClass } from "@/components/list-row";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
@@ -51,20 +52,20 @@ export function OptedOutList() {
       ) : query.data.contacts.length === 0 ? (
         <EmptyState title={t("optedOut.empty")} />
       ) : (
-        <ul
-          className="flex flex-col divide-y rounded-xl border bg-card"
-          aria-label={t("optedOut.listLabel")}
-        >
+        <RowList aria-label={t("optedOut.listLabel")}>
           {query.data.contacts.map((c) => {
             const body = (
               <>
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="truncate font-medium">
                     {contactName(c, t("contactFallback"))}
                   </span>
-                  <span className="text-sm text-muted-foreground">
-                    {tKinds(c.kind)} · {howText(c)}
-                    {c.optOutAt ? ` · ${formatDateTime(c.optOutAt)}` : ""}
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                    <Chip>{tKinds(c.kind)}</Chip>
+                    <span>{howText(c)}</span>
+                    {c.optOutAt ? (
+                      <span className="tabular-nums">{formatDateTime(c.optOutAt)}</span>
+                    ) : null}
                   </span>
                 </div>
                 {c.conversationId ? (
@@ -75,19 +76,14 @@ export function OptedOutList() {
             return (
               <li key={c.id}>
                 {c.conversationId ? (
-                  <Link
-                    href={`/conversations/${c.conversationId}`}
-                    className="flex min-h-16 items-center gap-3 px-4 py-3 hover:bg-muted/50"
-                  >
-                    {body}
-                  </Link>
+                  <RowLink href={`/conversations/${c.conversationId}`}>{body}</RowLink>
                 ) : (
-                  <div className="flex min-h-16 items-center gap-3 px-4 py-3">{body}</div>
+                  <div className={rowClass(false, false)}>{body}</div>
                 )}
               </li>
             );
           })}
-        </ul>
+        </RowList>
       )}
     </>
   );

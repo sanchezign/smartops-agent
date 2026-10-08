@@ -29,7 +29,7 @@ export function Composer({ conversation }: { conversation: ConversationHeader })
 
   if (!window.open) {
     return (
-      <p className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
+      <p className="flex items-start gap-2 rounded-lg border-[1.5px] bg-muted/40 p-3 text-sm">
         <Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
         {window.closesAt
           ? t("windowClosed", { when: formatDateTime(window.closesAt) })
@@ -47,7 +47,7 @@ export function Composer({ conversation }: { conversation: ConversationHeader })
   return (
     <div className="flex flex-col gap-2">
       {conversation.contact.optOutAt ? (
-        <p className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-2 text-sm">
+        <p className="flex items-start gap-2 rounded-lg border-[1.5px] border-destructive/40 bg-destructive/5 p-2 text-sm">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden />
           {t("optedOutWarning")}
         </p>

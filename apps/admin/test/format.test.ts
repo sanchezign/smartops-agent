@@ -18,11 +18,13 @@ describe("money", () => {
     expect(es.formatMoney("72", "USD")).toBe("US$ 72,00");
   });
 
-  it("en: '$1,850.00' for the business currency, USD never shares '$'", () => {
-    expect(en.formatMoney("1850", "UYU")).toBe("$1,850.00");
-    expect(en.formatMoney("1850.5", "UYU")).toBe("$1,850.50");
+  it("en: Uruguayan pesos show their code (never read as dollars); es keeps the symbol (phase 14 M6)", () => {
+    expect(en.formatMoney("1850", "UYU")).toBe("UYU 1,850.00");
+    expect(en.formatMoney("1850.5", "UYU")).toBe("UYU 1,850.50");
+    expect(en.formatMoney("15.76", "UYU")).toBe("UYU 15.76");
     expect(en.formatMoney("72", "USD")).toBe("US$72.00");
-    expect(en.formatMoney("-3.5", "UYU")).toBe("-$3.50");
+    expect(en.formatMoney("-3.5", "UYU")).toBe("-UYU 3.50");
+    expect(es.formatMoney("15.76", "UYU")).toBe("$ 15,76");
   });
 
   it("other currencies show their code in both languages", () => {
@@ -39,7 +41,7 @@ describe("money", () => {
     expect(en.formatUsd("4.00")).toBe("US$4.00");
     expect(en.formatUsdPrecise("0.0554")).toBe("US$0.0554");
     expect(es.formatUsdPrecise("0.0554")).toBe("US$ 0,0554");
-    expect(en.formatMoney("12345678901234.5678", "UYU", 4)).toBe("$12,345,678,901,234.5678");
+    expect(en.formatMoney("12345678901234.5678", "UYU", 4)).toBe("UYU 12,345,678,901,234.5678");
   });
 });
 

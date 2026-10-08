@@ -142,7 +142,7 @@ function PauseDialog({
           {PAUSE_OPTIONS.map((o) => (
             <Label
               key={o.value}
-              className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 has-[[data-state=checked]]:border-primary"
+              className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border-[1.5px] px-3 has-[[data-state=checked]]:border-primary"
             >
               <RadioGroupItem value={o.value} /> {t(o.label)}
             </Label>
@@ -199,10 +199,10 @@ function ConsentDialog({
           aria-label={t("howAsked")}
           className="gap-2"
         >
-          <Label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 has-[[data-state=checked]]:border-primary">
+          <Label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border-[1.5px] px-3 has-[[data-state=checked]]:border-primary">
             <RadioGroupItem value="off_whatsapp" /> {t("offWhatsapp")}
           </Label>
-          <Label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 has-[[data-state=checked]]:border-primary">
+          <Label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border-[1.5px] px-3 has-[[data-state=checked]]:border-primary">
             <RadioGroupItem value="manual" /> {t("otherReason")}
           </Label>
         </RadioGroup>

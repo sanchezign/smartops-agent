@@ -114,6 +114,7 @@ export function TryView() {
                 {index === 0 ? ` ${t("startHereHint")}` : ""}
               </p>
               <Button
+                variant={index === 0 ? "default" : "outline"}
                 className="min-h-11 w-full"
                 disabled={inject.isPending}
                 onClick={() => inject.mutate(kind)}
@@ -209,7 +210,7 @@ function TraceCard({ sent }: { sent: Sent }) {
           <div
             role="status"
             className={cn(
-              "flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm",
+              "flex flex-wrap items-center justify-between gap-2 rounded-lg border-[1.5px] p-3 text-sm",
               view.outcome.tone === "success" &&
                 "border-emerald-600/40 bg-emerald-50 dark:bg-emerald-950/30",
               view.outcome.tone === "review" && "border-foreground bg-card",

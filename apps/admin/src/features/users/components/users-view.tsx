@@ -7,6 +7,7 @@ import { useId, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { ErrorState, ForbiddenState, LoadingState } from "@/components/states";
+import { RowList, rowClass } from "@/components/list-row";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -98,16 +99,13 @@ export function UsersView() {
       ) : query.isError ? (
         <ErrorState error={query.error} onRetry={() => void query.refetch()} />
       ) : (
-        <ul
-          className="flex flex-col divide-y rounded-xl border bg-card"
-          aria-label={t("listLabel")}
-        >
+        <RowList aria-label={t("listLabel")}>
           {query.data.users.map((u) => (
             <li key={u.id}>
               <UserRow user={u} isMe={u.id === me.id} onReset={() => setResetting(u)} />
             </li>
           ))}
-        </ul>
+        </RowList>
       )}
       {creating ? <CreateUserDialog onClose={() => setCreating(false)} /> : null}
       {resetting ? (
@@ -137,7 +135,7 @@ function UserRow({ user, isMe, onReset }: { user: PanelUser; isMe: boolean; onRe
   const otherRole = user.role === "admin" ? "operator" : "admin";
 
   return (
-    <div className="flex min-h-16 items-center gap-3 px-4 py-3">
+    <div className={rowClass(false, false)}>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="flex flex-wrap items-center gap-2">
           <span className="truncate font-medium">{user.name}</span>
@@ -148,11 +146,13 @@ function UserRow({ user, isMe, onReset }: { user: PanelUser; isMe: boolean; onRe
           {!user.active ? <Badge variant="outline">{t("deactivated")}</Badge> : null}
           {locked ? <Badge variant="destructive">{t("locked")}</Badge> : null}
         </span>
-        <span className="truncate text-sm text-muted-foreground">
-          {user.email} ·{" "}
-          {user.lastLoginAt
-            ? t("lastLogin", { when: formatRelative(user.lastLoginAt) })
-            : t("neverLoggedIn")}
+        <span className="flex flex-wrap gap-x-3 text-sm text-muted-foreground">
+          <span className="break-all">{user.email}</span>
+          <span>
+            {user.lastLoginAt
+              ? t("lastLogin", { when: formatRelative(user.lastLoginAt) })
+              : t("neverLoggedIn")}
+          </span>
         </span>
       </div>
       <DropdownMenu>

@@ -38,7 +38,7 @@ export function EmptyState({
   icon?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed px-6 py-12 text-center">
+    <div className="flex flex-col items-center gap-3 rounded-xl border-[1.5px] border-dashed px-6 py-12 text-center">
       <div className="text-muted-foreground">{icon}</div>
       <p className="font-medium">{title}</p>
       {description ? <p className="max-w-sm text-sm text-muted-foreground">{description}</p> : null}
@@ -99,7 +99,7 @@ export function ErrorState({
   return (
     <div
       role="alert"
-      className="flex flex-col items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-6 py-10 text-center"
+      className="flex flex-col items-center gap-3 rounded-xl border-[1.5px] border-destructive/30 bg-destructive/5 px-6 py-10 text-center"
     >
       <AlertTriangle className="size-8 text-destructive" aria-hidden />
       <p className="font-medium">{t("errorTitle")}</p>

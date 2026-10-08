@@ -20,7 +20,12 @@ describe("alertText", () => {
     };
     expect(alertText(alert, en)).toEqual({
       key: "priceChange",
-      params: { product: "Tornillo 6mm", oldPrice: "$12.00", newPrice: "$14.00", pct: "+16.7%" },
+      params: {
+        product: "Tornillo 6mm",
+        oldPrice: "UYU 12.00",
+        newPrice: "UYU 14.00",
+        pct: "+16.7%",
+      },
     });
     expect(alertText(alert, es)?.params).toMatchObject({ oldPrice: "$ 12,00", pct: "+16,7 %" });
   });

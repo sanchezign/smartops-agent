@@ -77,7 +77,7 @@ export function ReviewList() {
         <div
           role="group"
           aria-label={t("statusFilter")}
-          className="inline-flex w-fit rounded-lg border p-1"
+          className="inline-flex w-fit rounded-lg border-[1.5px] p-1"
         >
           {STATUSES.map((status) => (
             <Button

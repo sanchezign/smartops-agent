@@ -6,8 +6,8 @@ export default async function NotFound() {
   const tCommon = await getTranslations("common");
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-3 p-8">
-      <h1 className="text-xl font-semibold">{t("notFoundTitle")}</h1>
-      <Link href="/" className="text-sm underline">
+      <h1 className="font-display text-xl">{t("notFoundTitle")}</h1>
+      <Link href="/" className="text-sm underline underline-offset-4">
         {tCommon("backHome")}
       </Link>
     </main>

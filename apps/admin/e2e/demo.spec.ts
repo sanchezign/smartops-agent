@@ -38,6 +38,13 @@ test.describe("public demo entry (phase 14 M4a)", () => {
     const first = page.getByRole("heading", { level: 2 }).first();
     await expect(first).toHaveText("Send a new spreadsheet");
     await expect(page.getByText("Start here")).toBeVisible();
+    // Only the suggested card has the primary "Send"; the other five are outlined.
+    await expect(
+      page.locator('main [data-slot="card"] button[data-variant="default"]'),
+    ).toHaveCount(1);
+    await expect(
+      page.locator('main [data-slot="card"] button[data-variant="outline"]'),
+    ).toHaveCount(5);
     await expectAccessible(page);
   });
 });

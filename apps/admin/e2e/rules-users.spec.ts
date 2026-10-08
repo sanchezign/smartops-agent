@@ -14,7 +14,13 @@ test.describe("rules (phase 9 M6)", () => {
     await login(page, "operator");
     await openFromMore(page, "Rules", isMobile);
     await expect(page.getByText("changing them is for administrators only")).toBeVisible();
-    await expect(page.getByRole("switch", { name: "The bot replies to contacts" })).toBeDisabled();
+    // Values as text, not greyed-out controls (phase 14 M6): nothing on the page looks broken.
+    await expect(page.getByText("The bot replies to contacts")).toBeVisible();
+    await expect(page.getByText("Alert when a price changes")).toBeVisible();
+    await expect(page.getByText("10 % or more")).toBeVisible();
+    await expect(
+      page.locator("main input, main textarea, main select, main [role=switch]"),
+    ).toHaveCount(0);
     await expect(page.getByRole("button", { name: /^Save/ })).toHaveCount(0);
     await expectAccessible(page);
   });

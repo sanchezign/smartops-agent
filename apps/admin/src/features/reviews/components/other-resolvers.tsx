@@ -53,7 +53,7 @@ export function GlobalChangeResolver({ item, readOnly, pending, onResolve }: Res
         {outliers ? (
           <p className="text-sm text-muted-foreground">{t("outliers", { count: outliers })}</p>
         ) : null}
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="overflow-x-auto rounded-lg border-[1.5px]">
           <Table>
             <TableHeader>
               <TableRow>
@@ -217,15 +217,15 @@ export function SupplierResolver({ item, readOnly, pending, onResolve }: Resolve
           {candidates.map((c) => (
             <Label
               key={c.id}
-              className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border px-3 has-[[data-state=checked]]:border-primary"
+              className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border-[1.5px] px-3 has-[[data-state=checked]]:border-primary"
             >
               <RadioGroupItem value={c.id} /> <span className="font-medium">{c.name}</span>
             </Label>
           ))}
-          <Label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border px-3 has-[[data-state=checked]]:border-primary">
+          <Label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border-[1.5px] px-3 has-[[data-state=checked]]:border-primary">
             <RadioGroupItem value="other" /> {t("otherExisting")}
           </Label>
-          <Label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border px-3 has-[[data-state=checked]]:border-primary">
+          <Label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border-[1.5px] px-3 has-[[data-state=checked]]:border-primary">
             <RadioGroupItem value="new" /> {t("isNew")}
           </Label>
         </RadioGroup>

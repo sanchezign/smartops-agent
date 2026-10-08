@@ -83,7 +83,7 @@ export function CatalogView() {
         <div
           role="group"
           aria-label={t("availability")}
-          className="inline-flex rounded-lg border p-1"
+          className="inline-flex rounded-lg border-[1.5px] p-1"
         >
           {AVAILABILITY.map((a) => (
             <Button

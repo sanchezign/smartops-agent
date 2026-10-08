@@ -32,7 +32,11 @@ export function AlertsView() {
   return (
     <>
       <PageHeader title={tPages("alerts")} description={t("description")} />
-      <div role="group" aria-label={t("status")} className="mb-4 inline-flex rounded-lg border p-1">
+      <div
+        role="group"
+        aria-label={t("status")}
+        className="mb-4 inline-flex rounded-lg border-[1.5px] p-1"
+      >
         {STATUS_FILTERS.map((s) => (
           <Button
             key={s}

@@ -38,7 +38,11 @@ export function DashboardView() {
         title={tPages("home")}
         description={t("description")}
         actions={
-          <div role="group" aria-label={t("period")} className="inline-flex rounded-lg border p-1">
+          <div
+            role="group"
+            aria-label={t("period")}
+            className="inline-flex rounded-lg border-[1.5px] p-1"
+          >
             {PERIODS.map((p) => (
               <Button
                 key={p}

@@ -21,7 +21,8 @@ test.describe("catalog (phase 9 M5)", () => {
     await page.getByLabel("Search product").fill("tornillo 6");
     const list = page.getByRole("list", { name: "Products" });
     await expect(list.getByRole("link")).toHaveCount(1);
-    await expect(list.getByText(/\$\s?\d/)).toBeVisible(); // "$ 1.234,50" style money
+    // Uruguayan pesos in English show their code, never a bare "$" (phase 14 M6).
+    await expect(list.getByText(/UYU [0-9,]+\.\d\d/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Rename" })).toHaveCount(0); // operator
     await expectAccessible(page);
 

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectAccessible, login } from "./helpers";
+import { expectAccessible, login, navLink } from "./helpers";
 
 test.describe("panel shell + dashboard (phase 9 M1)", () => {
   test("login lands on the dashboard with the seeded numbers", async ({ page }) => {
@@ -44,6 +44,19 @@ test.describe("panel shell + dashboard (phase 9 M1)", () => {
     await expect(
       page.getByRole("link", { name: /Reviews.*pending|pending.*Reviews/ }).first(),
     ).toBeVisible();
+  });
+
+  test("an unknown address shows 'Page not found' INSIDE the panel (phase 14 M6)", async ({
+    page,
+    isMobile,
+  }) => {
+    await login(page);
+    await page.goto("/this-page-does-not-exist");
+    await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+    // the shell is still there: navigation and the way back
+    await expect(navLink(page, isMobile ? "Catalog" : "Home")).toBeVisible();
+    await page.getByRole("link", { name: "Back to home" }).click();
+    await expect(page.getByRole("heading", { name: "Home", level: 1 })).toBeVisible();
   });
 
   test("the period switch reloads the data", async ({ page }) => {

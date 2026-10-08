@@ -91,7 +91,7 @@ export function RulesView() {
     <>
       <PageHeader title={tPages("rules")} description={t("description")} />
       {!isAdmin ? (
-        <p className="mb-4 flex items-center gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
+        <p className="mb-4 flex items-center gap-2 rounded-lg border-[1.5px] bg-muted/40 p-3 text-sm">
           <Lock className="size-4 shrink-0" aria-hidden />
           {t("readOnly")}
         </p>
@@ -240,6 +240,9 @@ function FieldControl({
     </>
   );
 
+  if (readOnly) {
+    return <ReadOnlyField field={field} value={value} label={label} help={help} />;
+  }
   if (field.kind === "switch") {
     return (
       <div className="flex items-start justify-between gap-4">
@@ -362,7 +365,7 @@ function HoursEditor({
         />
       </div>
       {value.enabled ? (
-        <fieldset className="flex flex-col divide-y rounded-lg border" disabled={readOnly}>
+        <fieldset className="flex flex-col divide-y rounded-lg border-[1.5px]" disabled={readOnly}>
           <legend className="sr-only">{t("daysAndHours")}</legend>
           {value.rows.map((row) => (
             <div key={row.day} className="flex flex-wrap items-center gap-3 px-3 py-2">
@@ -400,6 +403,82 @@ function HoursEditor({
           ))}
         </fieldset>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * What an operator sees (phase 14, M6): the VALUE as text, not a greyed-out input that looks
+ * broken. The help stays, so the rule is still explained.
+ */
+function ReadOnlyField({
+  field,
+  value,
+  label,
+  help,
+}: {
+  field: Field;
+  value: unknown;
+  label: string;
+  help: React.ReactNode;
+}) {
+  const t = useTranslations("rules");
+  const tFields = useTranslations("rules.fields");
+  const { weekdayName } = useFormat();
+  const none = t("valueNone");
+  let shown: React.ReactNode;
+  switch (field.kind) {
+    case "switch":
+      shown = value === true ? t("valueOn") : t("valueOff");
+      break;
+    case "language":
+      shown = isAppLocale(value) ? LOCALE_NAMES[value] : none;
+      break;
+    case "number": {
+      const text = String(value ?? "").trim();
+      shown = text
+        ? field.suffix
+          ? `${text} ${tFields(`${fieldMessageKey(field.key)}.suffix` as Parameters<typeof tFields>[0])}`
+          : text
+        : none;
+      break;
+    }
+    case "keywords": {
+      const text = String(value ?? "").trim();
+      shown = text || none;
+      break;
+    }
+    case "phones": {
+      const lines = String(value ?? "")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
+      shown = lines.length ? lines.join(", ") : none;
+      break;
+    }
+    case "hours": {
+      const h = value as { enabled: boolean; rows: DayRow[] };
+      shown = h.enabled ? (
+        <ul className="flex flex-col gap-0.5">
+          {h.rows.map((r) => (
+            <li key={r.day} className="tabular-nums">
+              {weekdayName(r.day)}: {r.enabled ? `${r.open} ${t("to")} ${r.close}` : t("closed")}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        t("valueOff")
+      );
+      break;
+    }
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-sm text-muted-foreground">
+        {field.kind === "hours" ? t("useHours") : label}
+      </span>
+      <span className="font-medium break-words">{shown}</span>
+      {help}
     </div>
   );
 }

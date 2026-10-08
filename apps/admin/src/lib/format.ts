@@ -141,7 +141,20 @@ export function createFormat(locale: AppLocale): Formatter {
         .format(amount)
         .replace(NBSP, " ");
     }
-    // en: the es-UY symbol ("$" UYU, "US$" USD, else the code) on en-US digits.
+    // en, Uruguayan pesos (phase 14 M6, owner's rule): the CODE, so "UYU 15.76" is never read as
+    // dollars. The currency belongs to the content, not to the language of the panel; once the
+    // demo content is in USD (M5) it shows "$15.76".
+    if (currency === "UYU") {
+      return new Intl.NumberFormat(intl, {
+        style: "currency",
+        currency,
+        currencyDisplay: "code",
+        maximumFractionDigits,
+      })
+        .format(amount)
+        .replace(NBSP, " ");
+    }
+    // en: the es-UY symbol ("US$" USD, else the code) on en-US digits.
     const symbol =
       new Intl.NumberFormat(INTL_LOCALE.es, { style: "currency", currency })
         .formatToParts(0)

@@ -24,7 +24,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (status !== "authenticated") {
     return (
-      <main className="flex min-h-screen items-center justify-center p-8 text-sm text-neutral-500">
+      <main className="flex min-h-screen items-center justify-center p-8 text-sm text-muted-foreground">
         {t("loading")}
       </main>
     );

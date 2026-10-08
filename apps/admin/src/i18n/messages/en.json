@@ -63,7 +63,8 @@
   "errorPage": {
     "title": "Something went wrong",
     "description": "Try again; if it keeps happening, tell the team.",
-    "notFoundTitle": "Page not found"
+    "notFoundTitle": "Page not found",
+    "notFoundHint": "The address may be wrong, or the page no longer exists."
   },
   "auth": {
     "subtitle": "Operations panel",
@@ -404,6 +405,9 @@
     "closes": "{day}: closes",
     "to": "to",
     "closed": "Closed",
+    "valueOn": "On",
+    "valueOff": "Off",
+    "valueNone": "Not set",
     "sections": {
       "bot": {
         "title": "Automatic replies",

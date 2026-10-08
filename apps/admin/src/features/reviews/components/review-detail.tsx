@@ -80,7 +80,7 @@ function DetailBody({
     <>
       <header className="mb-5 flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{t(`kinds.${item.kind}`)}</h1>
+          <h1 className="font-display text-2xl">{t(`kinds.${item.kind}`)}</h1>
           {item.status !== "pending" ? (
             <Badge variant="outline">{t(`statuses.${item.status}`)}</Badge>
           ) : null}
@@ -100,7 +100,7 @@ function DetailBody({
       <SourceCard item={item} />
 
       {item.status !== "pending" && item.resolvedAt ? (
-        <p className="mb-4 rounded-lg border bg-muted/40 p-3 text-sm">
+        <p className="mb-4 rounded-lg border-[1.5px] bg-muted/40 p-3 text-sm">
           {t("resolvedOn", {
             status: t(`statuses.${item.status}`),
             when: formatDateTime(item.resolvedAt),
@@ -127,7 +127,7 @@ function DetailBody({
         <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 mt-6 border-t bg-background/95 px-4 py-3 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:backdrop-blur-none">
           <p
             role="note"
-            className="flex items-start gap-2 rounded-lg border bg-muted/60 p-3 text-sm"
+            className="flex items-start gap-2 rounded-lg border-[1.5px] bg-muted/60 p-3 text-sm"
           >
             <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
             <span>

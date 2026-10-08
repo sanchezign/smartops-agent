@@ -63,7 +63,8 @@
   "errorPage": {
     "title": "Algo salió mal",
     "description": "Prueba de nuevo; si sigue pasando, avisa al equipo.",
-    "notFoundTitle": "Página no encontrada"
+    "notFoundTitle": "Página no encontrada",
+    "notFoundHint": "Puede que la dirección esté mal escrita o que la página ya no exista."
   },
   "auth": {
     "subtitle": "Panel de operaciones",
@@ -404,6 +405,9 @@
     "closes": "{day}: cierra",
     "to": "a",
     "closed": "Cerrado",
+    "valueOn": "Activado",
+    "valueOff": "Desactivado",
+    "valueNone": "Sin definir",
     "sections": {
       "bot": {
         "title": "Respuestas automáticas",

@@ -12,9 +12,12 @@ export default function ErrorPage({
   const tCommon = useTranslations("common");
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-3 p-8">
-      <h1 className="text-xl font-semibold">{t("title")}</h1>
-      <p className="text-sm text-neutral-500">{t("description")}</p>
-      <button onClick={reset} className="rounded-md border border-neutral-300 px-3 py-2 text-sm">
+      <h1 className="font-display text-xl">{t("title")}</h1>
+      <p className="text-sm text-muted-foreground">{t("description")}</p>
+      <button
+        onClick={reset}
+        className="min-h-11 rounded-md border-[1.5px] border-input px-3 py-2 text-sm"
+      >
         {tCommon("retry")}
       </button>
     </main>

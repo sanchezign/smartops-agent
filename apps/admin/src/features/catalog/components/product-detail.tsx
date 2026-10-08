@@ -17,6 +17,7 @@ import {
 import { useFormat } from "@/lib/use-format";
 import { useProduct } from "../hooks";
 import { chartPoints } from "../price-chart";
+import { Chip } from "@/components/list-row";
 import type { PriceHistoryEntry, ProductDetail as Product } from "../types";
 
 export function ProductDetail({ id }: { id: string }) {
@@ -54,18 +55,14 @@ function Body({ product }: { product: Product }) {
   return (
     <>
       <header className="mb-5 flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{product.name}</h1>
-        <p className="text-sm text-muted-foreground">
-          {[
-            product.supplier.name,
-            product.unit,
-            product.sku ? t("sku", { sku: product.sku }) : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
+        <h1 className="font-display text-2xl">{product.name}</h1>
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+          <span>{product.supplier.name}</span>
+          {product.unit ? <Chip>{product.unit}</Chip> : null}
+          {product.sku ? <span>{t("sku", { sku: product.sku })}</span> : null}
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-3xl font-semibold tabular-nums">
+          <span className="font-display text-3xl tabular-nums">
             {formatMoney(product.price, product.currency)}
           </span>
           {product.supplier.taxIncluded !== null ? (
@@ -160,9 +157,9 @@ function HistoryList({ history }: { history: PriceHistoryEntry[] }) {
                 : t("initialPrice")}
               {formatMoney(h.newPrice, h.newCurrency)}
             </span>
-            <span className="text-muted-foreground">
-              {formatDateTime(h.createdAt)} ·{" "}
-              {h.source === "review" ? t("fromReview") : t("automatic")}
+            <span className="flex flex-wrap gap-x-3 text-muted-foreground">
+              <span className="tabular-nums">{formatDateTime(h.createdAt)}</span>
+              <span>{h.source === "review" ? t("fromReview") : t("automatic")}</span>
             </span>
           </div>
           <div className="flex items-center gap-2">

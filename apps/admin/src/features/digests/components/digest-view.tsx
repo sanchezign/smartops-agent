@@ -114,7 +114,10 @@ export function DigestView({ token }: { token: string }) {
           when: formatDateTime(digest.sentAt ?? digest.createdAt),
         })}
       />
-      <ul className="flex flex-col divide-y rounded-xl border bg-card" aria-label={t("itemsLabel")}>
+      <ul
+        className="flex flex-col divide-y rounded-xl border-[1.5px] bg-card"
+        aria-label={t("itemsLabel")}
+      >
         {digest.items.map((item, i) => (
           <li key={`${item.createdAt}-${i}`}>
             {isPanelPath(item.path) ? (

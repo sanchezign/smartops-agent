@@ -103,7 +103,7 @@ export function LineResolver({
           {candidates.map((c) => (
             <Label
               key={c.id}
-              className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-muted/50"
+              className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border-[1.5px] px-3 py-2 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-muted/50"
             >
               <RadioGroupItem value={c.id} />
               <span className="flex flex-1 flex-col">
@@ -116,7 +116,7 @@ export function LineResolver({
               </span>
             </Label>
           ))}
-          <Label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-muted/50">
+          <Label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border-[1.5px] px-3 py-2 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-muted/50">
             <RadioGroupItem value="new" />
             <span className="font-medium">{t("isNew")}</span>
           </Label>
