@@ -19,6 +19,16 @@ const E2E_PANEL_URL = E2E.panelUrl;
 const E2E_ADMIN = E2E.admin;
 mkdirSync(OUT, { recursive: true });
 
+/**
+ * Test rows (the "E2E Supplier …" suppliers the suites create) must never reach a published image:
+ * the media run is seeded with the demo content only, and this fails the run if the text "E2E"
+ * is on a screen about to be captured.
+ */
+async function expectNoTestData(page: Page) {
+  const text = await page.locator("body").innerText();
+  expect(text, "test data (E2E) on a screen of the published media").not.toMatch(/E2E/i);
+}
+
 async function settle(page: Page) {
   // (never "networkidle": the real-time stream stays open, ADR-020)
   await page.getByRole("heading", { level: 1 }).first().waitFor();
@@ -29,6 +39,7 @@ async function settle(page: Page) {
 test("screenshots, light and dark", async ({ page, isMobile }, info) => {
   test.setTimeout(300_000);
   const shoot = async (name: string) => {
+    await expectNoTestData(page);
     await page.screenshot({ path: `${OUT}/${info.project.name}-${name}.png` });
   };
   await login(page, "admin");
@@ -91,6 +102,7 @@ test("demo video", async ({ browser, isMobile }) => {
   });
   const say = async (id: CaptionId) => {
     steps.push({ id, at: Date.now() - start });
+    await expectNoTestData(page);
     if (!captions) return;
     current = CAPTIONS[id].en;
     await draw(current);
@@ -201,7 +213,10 @@ test("guide screenshots", async ({ page, context, isMobile }) => {
   await context.addCookies([{ name: "smartops_locale", value: lang!, url: E2E_PANEL_URL }]);
   // A taller window instead of full-page shots (the fixed sidebar would end at the fold).
   await page.setViewportSize({ width: 1280, height: 960 });
-  const shoot = (name: string) => page.screenshot({ path: `${OUT}/guide-${lang}-${name}.png` });
+  const shoot = async (name: string) => {
+    await expectNoTestData(page);
+    await page.screenshot({ path: `${OUT}/guide-${lang}-${name}.png` });
+  };
   const ready = async () => {
     await page.getByRole("heading", { level: 1 }).first().waitFor();
     await page.waitForTimeout(900);

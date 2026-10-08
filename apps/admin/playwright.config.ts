@@ -120,7 +120,9 @@ function apiEnv(): Record<string, string> {
     RATE_LIMIT_MAX: "100000",
     DEMO_MODE: "true",
     DEMO_CONTENT_LANGUAGE: "en",
-    DEMO_E2E_REVIEWS: "true",
+    // The per-project E2E suppliers exist only for the tests: the README / guide media (MEDIA=1) are
+    // taken from a database seeded with the demo content alone.
+    DEMO_E2E_REVIEWS: process.env.MEDIA ? "false" : "true",
     DEMO_RESET_INTERVAL_MINUTES: "0",
     DEMO_RATE_LIMIT_MAX: "1000",
     N8N_DELIVERY_ENABLED: "true",
