@@ -49,7 +49,16 @@ for (const file of walk(join(api, "test")).filter(
 scanSource(join(api, "src/modules/demo/content/es.ts"));
 
 // text fields of JSON fixtures (WhatsApp payloads, expected outputs…)
-const textKeys = new Set(["body", "text", "caption", "transcript", "name", "title", "note", "filename"]);
+const textKeys = new Set([
+  "body",
+  "text",
+  "caption",
+  "transcript",
+  "name",
+  "title",
+  "note",
+  "filename",
+]);
 const scanJson = (value) => {
   if (Array.isArray(value)) value.forEach(scanJson);
   else if (value && typeof value === "object") {
