@@ -9,6 +9,8 @@ import {
   createSettingsRepository,
   createSettingsService,
 } from "../../src/modules/settings/settings.service.js";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { demoFingerprint } from "./demo-snapshot.js";
 import { testDatabaseUrl } from "./db.js";
 import {
   createScratchDatabase,
@@ -103,6 +105,25 @@ describe.skipIf(!testDatabaseUrl)("demo seed (Postgres, <test>_demo)", () => {
     expect(second).toEqual(first);
     expect(await snapshot()).toEqual(before);
   }, 120_000);
+
+  it("the Spanish seed is byte-for-byte what it was before the content became data (fingerprint)", async () => {
+    await seed();
+    const first = await demoFingerprint(prisma);
+    await seed();
+    expect(await demoFingerprint(prisma), "two seeds give the same fingerprint").toEqual(first);
+    const file = new URL("../fixtures/demo-seed-es.snapshot.json", import.meta.url);
+    if (process.env.DEMO_SNAPSHOT_RECORD === "1") {
+      writeFileSync(
+        file,
+        `${JSON.stringify(first, null, 2)}
+`,
+      );
+    }
+    expect(existsSync(file), "record it with DEMO_SNAPSHOT_RECORD=1 on the ORIGINAL seed").toBe(
+      true,
+    );
+    expect(first).toEqual(JSON.parse(readFileSync(file, "utf8")));
+  }, 180_000);
 
   it("the reset keeps users and their sessions, and everything else is rebuilt", async () => {
     const user = await prisma.user.findFirstOrThrow();

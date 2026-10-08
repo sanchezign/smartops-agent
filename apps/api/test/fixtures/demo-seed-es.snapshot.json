@@ -1,0 +1,82 @@
+{
+  "ai_usages": {
+    "rows": 62,
+    "sha256": "be79b0568c0f49494b756bb488ebb5c17967115a565452aaadda3dc68107c49f"
+  },
+  "alerts": {
+    "rows": 8,
+    "sha256": "e425d5919197dc4339d124db1b853053ecdbb18245cd2913ae0db9d6dd335034"
+  },
+  "contact_consent_events": {
+    "rows": 1,
+    "sha256": "34f14b73ff5eefcbd70cd446e87ed0abf395e0cd7edf7e85a90e6e53c414a4f4"
+  },
+  "contacts": {
+    "rows": 11,
+    "sha256": "507cba2594612f47c9f676715dd19d6e92d0383054f1fc29ee5d2e4f0ab4b946"
+  },
+  "conversation_mode_changes": {
+    "rows": 1,
+    "sha256": "143aa42ec57e4b8353e3940995847164a07559618e933f55e8eb4a3f5dc3745f"
+  },
+  "conversations": {
+    "rows": 11,
+    "sha256": "343967e584690ed166fce5bad14dc3d0dec7a04baa2dae64df75fc0411257ee5"
+  },
+  "document_conversions": {
+    "rows": 1,
+    "sha256": "1098d8f67cf3312ecb156d12c511242aee5bb1c712d61603888f9dbef67cd28a"
+  },
+  "ingestion_runs": {
+    "rows": 118,
+    "sha256": "b3898b151d467e7c4eb5efae1e9d4ceaf232b2c2b844859923b2eb5e9487b6bd"
+  },
+  "media_blobs": {
+    "rows": 2,
+    "sha256": "4c9f5055ad88810b3c81792e0e6b4d22553d7b58934bdf8c790677f651c802bd"
+  },
+  "media_files": {
+    "rows": 2,
+    "sha256": "b842ced2306fb1649e5576a8295a6bbcf3fd1d4df0e357c69ae61aa168876bfd"
+  },
+  "messages": {
+    "rows": 144,
+    "sha256": "abeb4224029d1e112446347efdea698a0d173348698fd1e1d432b43e475ec100"
+  },
+  "notification_digests": {
+    "rows": 2,
+    "sha256": "a2f91fb648a8ec07164dd47547a66dd615300c3765824582f474b51c0d82bd65"
+  },
+  "notification_items": {
+    "rows": 11,
+    "sha256": "d6f6400acbdb29fdc1b39503baa79145fd7fe2f642b1f28adbd61de0a3b3b1d3"
+  },
+  "price_changes": {
+    "rows": 144,
+    "sha256": "3b0d4125a2f8b5e59e22427240ff25b9a30b6551ff71368f579db85f89af5fee"
+  },
+  "products": {
+    "rows": 53,
+    "sha256": "7ea8ada98a0526e748bfd475686331081323b20e0653c5b97863ff5aec7edea8"
+  },
+  "review_items": {
+    "rows": 8,
+    "sha256": "7660129e3dda44451cc957e33c913275fb3f794b86f2c862ace9abebd32fa90d"
+  },
+  "settings": {
+    "rows": 3,
+    "sha256": "dd884301dd9e6e667f3604fe87cd739c042d415c2c3928cf319124c913a582db"
+  },
+  "supplier_sheet_formats": {
+    "rows": 1,
+    "sha256": "c24a046067227c9500c3c283547182149f84aec56adbb0f593131d84b2d22c5f"
+  },
+  "suppliers": {
+    "rows": 6,
+    "sha256": "d757961c14d7df97409f5daafe3f181c107cd4bcb3ef68e4a50293bec2929bcd"
+  },
+  "users": {
+    "rows": 1,
+    "sha256": "f2bc71cebd43b38068894f29c143dc9f8ea43cc58a2619f1a54e9746b5858176"
+  }
+}
