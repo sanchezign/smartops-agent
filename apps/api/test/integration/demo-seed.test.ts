@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPrismaClient, type PrismaClient } from "../../src/common/db.js";
 import { createCatalogIngestService } from "../../src/modules/catalog/catalog-ingest.service.js";
 import { createCatalogRepository } from "../../src/modules/catalog/catalog.repository.js";
+import { getDemoContent } from "../../src/modules/demo/content/index.js";
 import { seedDemo, type SeedResult } from "../../src/modules/demo/demo-seed.js";
 import {
   createSettingsRepository,
@@ -123,6 +124,62 @@ describe.skipIf(!testDatabaseUrl)("demo seed (Postgres, <test>_demo)", () => {
       true,
     );
     expect(first).toEqual(JSON.parse(readFileSync(file, "utf8")));
+  }, 180_000);
+
+  it("the English content seeds the same story, in English, with no recording (phase 14 M5c)", async () => {
+    const settings = createSettingsService({ repository: createSettingsRepository(prisma) });
+    const content = getDemoContent("en");
+    const run = () =>
+      seedDemo({
+        prisma,
+        catalog: createCatalogIngestService({
+          repository: createCatalogRepository(prisma),
+          settings,
+        }),
+        users: {
+          operator: {
+            email: "operador@demo.smartops",
+            password: "una frase pública de la demo",
+            name: "Operador demo",
+          },
+        },
+        logger: log,
+        now: NOW,
+        assetsDir: ASSETS,
+        content,
+      });
+    const first = await run();
+    expect(first.suppliers).toBeGreaterThanOrEqual(3);
+    expect(await prisma.supplier.count()).toBeGreaterThanOrEqual(6);
+    expect(first.priceChanges).toBeGreaterThan(0);
+    expect(first.reviewItems).toBeGreaterThan(0);
+    expect((await prisma.setting.findUnique({ where: { key: "business.language" } }))?.value).toBe(
+      "en",
+    );
+
+    // The Canadian supplier quotes in CAD; the "currency changed" review exists.
+    const norvale = await prisma.supplier.findFirstOrThrow({
+      where: { name: "Norvale Electric Supply Ltd." },
+      include: { products: { select: { currency: true } } },
+    });
+    expect(new Set(norvale.products.map((p) => p.currency))).toContain("CAD");
+    expect(
+      await prisma.reviewItem.count({ where: { kind: "currency_changed", status: "pending" } }),
+    ).toBeGreaterThan(0);
+
+    // Nothing Spanish ended up in the catalog or in the conversation.
+    const names = [
+      ...(await prisma.product.findMany({ select: { name: true } })).map((p) => p.name),
+      ...(await prisma.supplier.findMany({ select: { name: true } })).map((s) => s.name),
+      ...(await prisma.message.findMany({ select: { text: true } })).map((m) => m.text ?? ""),
+    ];
+    for (const text of names) expect(text, text).not.toMatch(/[áéíóúñ¿¡]/i);
+
+    // Deterministic like the Spanish one.
+    const fingerprint = await demoFingerprint(prisma);
+    await run();
+    expect(await demoFingerprint(prisma)).toEqual(fingerprint);
+    await seed(); // leave the Spanish seed (and its one operator) for the next tests
   }, 180_000);
 
   it("the reset keeps users and their sessions, and everything else is rebuilt", async () => {

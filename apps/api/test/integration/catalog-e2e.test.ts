@@ -522,6 +522,16 @@ describe.skipIf(!testDatabaseUrl)("e2e: internal API → catalog (Postgres + gol
       status: "needs_review",
       suspiciousInstructions: true,
     });
+    // and the REAL English fixture (the demo's injection sample) ends the same way
+    businessLanguage = "en";
+    const fixture = await inbound(conversation.id, {
+      type: "text",
+      text: read("en/injection-message.txt").toString("utf8").trim(),
+    });
+    expect((await pipeline(fixture.id)).extracted).toMatchObject({
+      status: "needs_review",
+      suspiciousInstructions: true,
+    });
     expect(await prisma.product.count()).toBe(0);
   });
 

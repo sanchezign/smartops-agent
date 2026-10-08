@@ -191,7 +191,7 @@ export const envSchema = z.object({
    * write, the seed texts and the "Try the system" files. One per deployment; the panel language
    * is per visitor. (English arrives with M5c and becomes the default there.)
    */
-  DEMO_CONTENT_LANGUAGE: z.enum(["en", "es"]).default("es"),
+  DEMO_CONTENT_LANGUAGE: z.enum(["en", "es"]).default("en"),
   /** E2E only: the seed adds one review per Playwright project to approve / reject. */
   DEMO_E2E_REVIEWS: z
     .enum(["true", "false"])

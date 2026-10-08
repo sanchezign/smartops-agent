@@ -705,16 +705,25 @@ export async function seedDemo(deps: {
 
   // Distribuidora Demo S.A.: the September PDF catalog, from its RECORDED extraction, so the
   // photo / voice note buttons (recorded against it) point at the right products.
-  const pdfExtraction = readdirSync(join(assetsDir, "golden", "extract"))
-    .map(
-      (f) =>
-        JSON.parse(
-          readFileSync(join(assetsDir, "golden", "extract", f), "utf8"),
-        ) as ExtractionOutput,
-    )
-    .find(
-      (o) => o.listKind === "full_list" && o.supplierName === sampleSenders.catalog.supplierName,
-    );
+  // A content that carries its own list as data (English) does not depend on a recording.
+  const catalogData = content.catalogSender;
+  const pdfExtraction: ExtractionOutput | undefined = catalogData
+    ? list(
+        asSupplier(sampleSenders.catalog.supplierName, true),
+        catalogData.list.map(([name, unit, p]) => item(name, p, { unit })),
+        { listKind: "full_list", fullListEvidence: catalogData.evidence },
+      )
+    : readdirSync(join(assetsDir, "golden", "extract"))
+        .map(
+          (f) =>
+            JSON.parse(
+              readFileSync(join(assetsDir, "golden", "extract", f), "utf8"),
+            ) as ExtractionOutput,
+        )
+        .find(
+          (o) =>
+            o.listKind === "full_list" && o.supplierName === sampleSenders.catalog.supplierName,
+        );
   if (!pdfExtraction)
     throw new Error(`demo assets: no recorded PDF extraction in ${assetsDir}/golden`);
   const demoIds = await sampleSupplier("catalog", true);
@@ -750,22 +759,27 @@ export async function seedDemo(deps: {
     if (!converted.ok) throw new Error(`demo spreadsheet conversion failed: ${converted.reason}`);
     // The recorded mapper answer of THIS content's sheet: goldens of several languages share
     // the folder (their file names are hashes of the content).
-    const mapperDir = join(assetsDir, "golden", "map_columns");
-    const mapper = readdirSync(mapperDir)
-      .map(
-        (f) =>
-          JSON.parse(readFileSync(join(mapperDir, f), "utf8")) as {
-            supplierName: string | null;
-            tables: Parameters<typeof normalizeMapperTable>[0][];
-          },
-      )
-      .find((m) => m.supplierName === content.mapperGoldenSupplierName);
-    if (!mapper) {
-      throw new Error(
-        `demo assets: no recorded column mapping for "${content.mapperGoldenSupplierName}"`,
-      );
+    let answer: Parameters<typeof normalizeMapperTable>[0];
+    if (known.formatMapper) {
+      answer = known.formatMapper;
+    } else {
+      const mapperDir = join(assetsDir, "golden", "map_columns");
+      const mapper = readdirSync(mapperDir)
+        .map(
+          (f) =>
+            JSON.parse(readFileSync(join(mapperDir, f), "utf8")) as {
+              supplierName: string | null;
+              tables: Parameters<typeof normalizeMapperTable>[0][];
+            },
+        )
+        .find((m) => m.supplierName === content.mapperGoldenSupplierName);
+      if (!mapper) {
+        throw new Error(
+          `demo assets: no recorded column mapping for "${content.mapperGoldenSupplierName}"`,
+        );
+      }
+      answer = mapper.tables[0]!;
     }
-    const answer = mapper.tables[0]!;
     const table = converted.tables[0]!;
     const header = table.rows[answer.headerRow]!;
     const { mapping } = normalizeMapperTable(answer, header.length);

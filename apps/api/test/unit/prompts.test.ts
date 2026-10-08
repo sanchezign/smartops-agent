@@ -12,14 +12,26 @@ import { normalizeProductName } from "../../src/modules/catalog/normalize.js";
  */
 
 const PROMPTS_DIR = new URL("../../src/ai/prompts/", import.meta.url);
-const expected = JSON.parse(
-  readFileSync(new URL("../fixtures/extraction/expected.json", import.meta.url), "utf8"),
-) as {
+type Expected = {
   productNames: Record<string, string[]>;
   fixturePhrases: Record<string, string[] | string>;
 };
+const readExpected = (path: string) =>
+  JSON.parse(readFileSync(new URL(path, import.meta.url), "utf8")) as Expected;
+// The Spanish ground truth and the English one (phase 14 M5c): the prompts must quote neither.
+const spanish = readExpected("../fixtures/extraction/expected.json");
+const english = readExpected("../fixtures/extraction/en/expected.json");
+const expected: Expected = {
+  productNames: { ...spanish.productNames, ...english.productNames },
+  fixturePhrases: { ...spanish.fixturePhrases, ...english.fixturePhrases },
+};
 
-const TEXT_FIXTURES = ["injection-message.txt", "voice-transcript.txt"] as const;
+const TEXT_FIXTURES = [
+  "injection-message.txt",
+  "voice-transcript.txt",
+  "en/injection-message.txt",
+  "en/voice-transcript.txt",
+] as const;
 
 /** Lowercase, no accents, words only: "Ignorá TODAS…" → "ignora todas". */
 const plain = (text: string) =>

@@ -4,6 +4,7 @@
  *
  *   pnpm --filter @smartops/api ai:record-golden --dry-run          # FREE: exact input tokens + cost estimate
  *   pnpm --filter @smartops/api ai:record-golden --confirm-spend    # SPENDS real credits (asks nothing else)
+ *   ... --lang en|es   # which fixtures and which business language (default es; en = phase 14 M5)
  *
  * The real run goes through the same AiClient as production: budget guard + ai_usages
  * ledger (counts against AI_TOTAL_BUDGET_USD). Outputs are written UNMODIFIED to
@@ -15,9 +16,10 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import Anthropic from "@anthropic-ai/sdk";
 import { createAiClient } from "../src/ai/ai.client.js";
+import type { BusinessLanguage } from "../src/common/business-texts.js";
 import type { StructuredRequest } from "../src/ai/llm-provider.js";
 import { costUsd, modelPrice } from "../src/ai/pricing.js";
-import { loadPrompt } from "../src/ai/prompts.js";
+import { loadPrompt, promptForLanguage } from "../src/ai/prompts.js";
 import {
   buildAnthropicMessageParams,
   createAnthropicProvider,
@@ -60,8 +62,15 @@ const { values } = parseArgs({
     "confirm-spend": { type: "boolean", default: false },
     /** Only scenarios whose label starts with this prefix (e.g. "sheets"). */
     only: { type: "string" },
+    /** Business language of the fixtures and of the prompts (ADR-031). */
+    lang: { type: "string", default: "es" },
   },
 });
+if (values.lang !== "es" && values.lang !== "en") {
+  process.stderr.write("--lang must be es or en\n");
+  process.exit(1);
+}
+const lang: BusinessLanguage = values.lang;
 const env = loadEnv();
 const logger = createLogger(env);
 if (values["dry-run"] === values["confirm-spend"]) {
@@ -73,16 +82,77 @@ if (!env.ANTHROPIC_API_KEY) {
   process.exit(1);
 }
 
-const fixtures = new URL("../test/fixtures/extraction/", import.meta.url);
+/** What differs per language: the fixtures, the sender, the currency, the catalogs of the scenarios. */
+const SETUP = {
+  es: {
+    dir: "",
+    pdf: "lista-prueba.pdf",
+    photo: "lista-precios-foto.jpg",
+    sheet: "precios-multiples.xlsx",
+    text: "Lista septiembre: tornillo 6mm 12 UYU, tuerca 6mm 5 UYU", // real WhatsApp fixture text
+    sender: "Distribuidora Demo S.A.",
+    currency: "UYU",
+    september: [
+      ["Tornillo 6mm", "unidad", "12"],
+      ["Tuerca 6mm", "unidad", "5"],
+      ["Arandela 6mm", "unidad", "3"],
+      ["Cable 2mm", "metro", "45"],
+      ["Lampara LED 9W", "unidad", "120"],
+      ["Pintura latex blanca 4L", "lata", "1850"],
+      ["Cemento portland 25kg", "bolsa", "420"],
+    ],
+    november: [
+      ["Candado bronce 40mm", "unidad", "310.5"],
+      ["Cerradura de embutir", "unidad", "245"],
+      ["Bisagra 3 pulgadas", "unidad", "455"],
+      ["Tarugo 8mm x100", "caja", "144"],
+      ["Pegamento de contacto 250ml", "lata", "44"],
+      ["Cinta aisladora 20m", "rollo", "100"],
+      ["Guante de nitrilo talle M", "par", "115"],
+    ],
+    newRow: { id: "R8", name: "Tanza para bordeadora 2mm", unit: "rollo" },
+  },
+  en: {
+    dir: "en/",
+    pdf: "price-list-september.pdf",
+    photo: "price-list-october-photo.jpg",
+    sheet: "prices-multiple.xlsx",
+    text: "September list: 1/4 in hex bolt $0.54, 1/4 in hex nut $0.22",
+    sender: "Demo Distributing Inc.",
+    currency: "USD",
+    september: [
+      ["Hex bolt 1/4 in", "each", "0.54"],
+      ["Hex nut 1/4 in", "each", "0.22"],
+      ["Washer 1/4 in", "each", "0.12"],
+      ["Wire 14 AWG", "ft", "0.45"],
+      ["LED bulb 9 W", "each", "3.20"],
+      ["Interior latex paint, white 1 gal", "gal", "24.50"],
+      ["Portland cement 94 lb", "bag", "9.40"],
+    ],
+    november: [
+      ["Brass padlock 1-1/2 in", "each", "11.8"],
+      ["Mortise lockset", "each", "14.6"],
+      ["Door hinge 3 in", "pair", "5.2"],
+      ["Wall anchor 5/16 in (bag of 100)", "bag", "6.9"],
+      ["Wood glue 8 oz", "can", "4.4"],
+      ["Electrical tape 3/4 in", "roll", "3.1"],
+      ["Nitrile gloves, size M", "pair", "1.8"],
+    ],
+    newRow: { id: "R8", name: "Trimmer line 0.080 in", unit: "spool" },
+  },
+}[lang];
+
+const fixtures = new URL(`../test/fixtures/extraction/${SETUP.dir}`, import.meta.url);
 const read = (name: string) => readFileSync(new URL(name, fixtures));
-const PDF = read("lista-prueba.pdf");
-const PHOTO = read("lista-precios-foto.jpg");
+const PDF = read(SETUP.pdf);
+const PHOTO = read(SETUP.photo);
 const TRANSCRIPT = read("voice-transcript.txt").toString("utf8").trim();
 const INJECTION = read("injection-message.txt").toString("utf8").trim();
-const TEXT = "Lista septiembre: tornillo 6mm 12 UYU, tuerca 6mm 5 UYU"; // real WhatsApp fixture text
+const TEXT = SETUP.text;
 
-const classifier = loadPrompt("classifier");
-const extractor = loadPrompt("extractor");
+// The prompts the business language really uses (Spanish = the base prompt, unchanged).
+const classifier = promptForLanguage(loadPrompt("classifier"), lang);
+const extractor = promptForLanguage(loadPrompt("extractor"), lang);
 
 /** Products as the catalog ingest (M4) creates them from an extraction. */
 function catalogFrom(output: ExtractionOutput): CatalogProduct[] {
@@ -95,7 +165,7 @@ function catalogFrom(output: ExtractionOutput): CatalogProduct[] {
             name: item.name,
             unit: item.unit,
             price: item.price,
-            currency: item.currency ?? output.currency ?? "UYU",
+            currency: item.currency ?? output.currency ?? SETUP.currency,
             available: item.available ?? true,
           },
         ],
@@ -103,27 +173,19 @@ function catalogFrom(output: ExtractionOutput): CatalogProduct[] {
 }
 
 /** Estimate used by --dry-run before the PDF output exists (its 7 lines). */
-const SEPTEMBER_ESTIMATE: CatalogProduct[] = [
-  ["Tornillo 6mm", "unidad", "12"],
-  ["Tuerca 6mm", "unidad", "5"],
-  ["Arandela 6mm", "unidad", "3"],
-  ["Cable 2mm", "metro", "45"],
-  ["Lampara LED 9W", "unidad", "120"],
-  ["Pintura latex blanca 4L", "lata", "1850"],
-  ["Cemento portland 25kg", "bolsa", "420"],
-].map(([name, unit, price], i) => ({
+const SEPTEMBER_ESTIMATE: CatalogProduct[] = SETUP.september.map(([name, unit, price], i) => ({
   id: `e${i}`,
   name: name!,
   unit: unit!,
   price: price!,
-  currency: "UYU",
+  currency: SETUP.currency,
   available: true,
 }));
 
 const unknownSender = { contactKind: "unknown", supplierName: null };
 const supplierSender = (name: string | null) => ({
   contactKind: "supplier",
-  supplierName: name ?? "Distribuidora Demo S.A.",
+  supplierName: name ?? SETUP.sender,
 });
 
 type Scenario = {
@@ -186,7 +248,7 @@ const september = (prev: Map<string, ExtractionOutput>) => {
 };
 
 // ─── Spreadsheet path (phase 5 M3c) ───
-const SHEETS = new URL("../test/fixtures/sheets/", import.meta.url);
+const SHEETS = new URL(`../test/fixtures/sheets/${SETUP.dir}`, import.meta.url);
 const sheetTables = (name: string) => {
   const result = convertSpreadsheet(
     readFileSync(new URL(name, SHEETS)),
@@ -196,22 +258,14 @@ const sheetTables = (name: string) => {
   if (!result.ok) throw new Error(`cannot convert ${name}: ${result.reason}`);
   return result.tables;
 };
-const mapper = loadPrompt("column-mapper");
-const matcher = loadPrompt("matcher");
-const NOVEMBER_CATALOG: CatalogProduct[] = [
-  ["Candado bronce 40mm", "unidad", "310.5"],
-  ["Cerradura de embutir", "unidad", "245"],
-  ["Bisagra 3 pulgadas", "unidad", "455"],
-  ["Tarugo 8mm x100", "caja", "144"],
-  ["Pegamento de contacto 250ml", "lata", "44"],
-  ["Cinta aisladora 20m", "rollo", "100"],
-  ["Guante de nitrilo talle M", "par", "115"],
-].map(([name, unit, price], i) => ({
+const mapper = promptForLanguage(loadPrompt("column-mapper"), lang);
+const matcher = promptForLanguage(loadPrompt("matcher"), lang);
+const NOVEMBER_CATALOG: CatalogProduct[] = SETUP.november.map(([name, unit, price], i) => ({
   id: `nov-${i}`,
   name: name!,
   unit: unit!,
   price: price!,
-  currency: "UYU",
+  currency: SETUP.currency,
   available: true,
 }));
 
@@ -240,7 +294,7 @@ const scenarios: Scenario[] = [
         msg({
           messageType: "document",
           mimeType: "application/pdf",
-          filename: "lista-prueba.pdf",
+          filename: SETUP.pdf,
           media: PDF,
         }),
         [],
@@ -277,10 +331,10 @@ const scenarios: Scenario[] = [
     },
   },
   {
-    label: "sheets: map_columns precios-multiples.xlsx (4 price columns)",
+    label: "sheets: map_columns prices-multiple.xlsx (4 price columns)",
     expectedOutputTokens: 450,
     build: () => {
-      const tables = sheetTables("precios-multiples.xlsx");
+      const tables = sheetTables(SETUP.sheet);
       const indexes = tables
         .map((table, index) => ({ table, index }))
         .filter(({ table }) => headerCandidates(table).length > 0);
@@ -307,10 +361,7 @@ const scenarios: Scenario[] = [
         model: env.AI_EXTRACTOR_MODEL,
         system: matcher.text,
         cacheSystem: env.AI_PROMPT_CACHE,
-        content: buildMatcherContent(
-          [{ id: "R8", name: "Tanza para bordeadora 2mm", unit: "rollo" }],
-          catalog.text ?? "",
-        ),
+        content: buildMatcherContent([SETUP.newRow], catalog.text ?? ""),
         jsonSchema: matcherJsonSchema as unknown as Record<string, unknown>,
         schema: matcherOutputSchema,
         effort: "low",

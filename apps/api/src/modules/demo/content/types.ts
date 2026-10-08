@@ -167,8 +167,19 @@ export interface DemoContent {
     formatFile: string;
     /** Lines of its earlier list (the catalog the sample spreadsheets are compared with). */
     earlierList: [string, string, number][];
+    /**
+     * The approved format, as data. Absent → the seed reads the recorded mapper answer (golden)
+     * of `mapperGoldenSupplierName` (the Spanish content).
+     */
+    formatMapper?: DemoSheetMapper;
   };
   catalogListMessage: string;
+  /**
+   * The sample catalog sender's September list, as data [name, unit, price]. Absent → the seed
+   * reads the recorded PDF extraction (golden) of that sender (the Spanish content). A test
+   * checks that the recorded answer, once it exists, says the same.
+   */
+  catalogSender?: { evidence: string; list: [string, string, number][] };
   story: DemoStory;
   text: DemoTexts;
   /** E2E only: a supplier per Playwright project with two products to approve / reject. */

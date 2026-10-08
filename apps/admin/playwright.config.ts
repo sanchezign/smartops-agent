@@ -119,6 +119,9 @@ function apiEnv(): Record<string, string> {
     // Every browser project hits the API from one IP in a few minutes (not a real-world load).
     RATE_LIMIT_MAX: "100000",
     DEMO_MODE: "true",
+    // Phase 14 M5c: the default content is English now; the E2E specs still read the Spanish
+    // content until M5e moves them (then this line goes away).
+    DEMO_CONTENT_LANGUAGE: "es",
     DEMO_E2E_REVIEWS: "true",
     DEMO_RESET_INTERVAL_MINUTES: "0",
     DEMO_RATE_LIMIT_MAX: "1000",

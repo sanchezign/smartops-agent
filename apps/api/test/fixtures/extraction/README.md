@@ -22,3 +22,19 @@ The matching webhook payloads are `../whatsapp/message-document.json` and
 
 Re-record the goldens only after a prompt/schema change, with a fresh `--dry-run` and the
 user's OK on the estimated cost.
+
+## English set (phase 14 M5c, `en/`)
+
+The twin of everything above for the English demo content (ADR-031): fictitious Demo Distributing
+Inc. lists in US dollars and US units. All of it is generated or synthetic (no real company):
+
+| File                                 | What it is                                                                                               |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `en/price-list-september.pdf`        | 1-page September list, written by `scripts/fixtures/build-english-pdf.mjs` (deterministic bytes)         |
+| `en/price-list-october-photo.jpg`    | the October price list "photographed" on a desk (SVG rendered with sharp)                                |
+| `en/voice-transcript.txt`            | Groq `whisper-large-v3` transcript of a synthetic voice note (Echogarden, local eSpeak voice)            |
+| `en/injection-message.txt`           | English prompt-injection text; it must end in `needs_review`, like the Spanish one                       |
+| `en/expected.json`                   | ground truth for the English fixtures (read by `test/unit/prompts.test.ts`, merged with `expected.json`) |
+| `../sheets/en/prices-multiple*.xlsx` | English spreadsheets, built by `scripts/fixtures/build-sheet-fixtures.ts`                                |
+
+Its recorded outputs are made with `ai:record-golden --lang en` (M5d).
