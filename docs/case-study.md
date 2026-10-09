@@ -51,8 +51,8 @@ live over SSE. Details: [architecture.md](architecture.md).
   an absent product untouched.
 - **Prompt injection:** 8 of 8 cases passed against the real model (6 attacks, 2 controls). The
   attacks were flagged and stopped for review, and no invented price was applied.
-- **Tests:** 1,098 API unit and HTTP tests and 222 against a real Postgres; 121 panel unit tests
-  and 86 browser tests on desktop Chrome, Pixel 7 and iPhone (WebKit), with accessibility checks
+- **Tests:** 1,397 API unit and HTTP tests and 229 against a real Postgres; 193 panel unit tests
+  and 128 browser tests on desktop Chrome, Pixel 7 and iPhone (WebKit), with accessibility checks
   in both languages. Mutation score 80 %.
 - **Resilience:** with n8n stopped and restarted, every message was delivered once, with one run
   each.
