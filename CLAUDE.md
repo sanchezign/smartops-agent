@@ -193,9 +193,11 @@ Active state (2026-10-06):
   item 12.
 - Keep-alive load (ADR-027, `docs/deploy/keepalive.md`): ON since 2026-10-05, `CPUQuota=50%` since
   0.16.2 (trial of 2026-10-06 passed: Console ~33–35 %, slowest sample 9.9 s, health p95 538 ms).
-- Release PR #45 (0.16.3) is left open on purpose: it ships together with the Perl fix (Renovate
-  opens the digest PR for node/postgres daily, no automerge; the owner merges). Renovate PR #6
-  stays untouched until the owner reviews it.
+- Repository (2026-10-09): this public repo (`sanchezign/smartops-agent`, ruleset on `main`, Actions on) was
+  created from a rewritten copy of the history of the private predecessor `sanchezign/smartops-agent-archive`
+  (personal data removed; it keeps the old PRs, e.g. #45, #55, and stays private forever). PR numbers and a
+  few commit hashes in the docs refer to the predecessor (docs/history/README.md). The old-to-new commit
+  map is outside the repo (`C:/dev/smartops-migration-commit-map.txt`).
 - Security alerts policy (ADR-028): PRs block only what they introduce; the nightly scan
   (security.yml, 03:30 Montevideo) owns what exists and turns RED on a finding (check it still runs:
   docs/ci-cd.md, "Is the nightly scan still running?").
@@ -392,7 +394,8 @@ needs a NEW ADR), F-05 (security headers sent by the panel itself, not only by C
   of what you launch and stop only those (never "every cloudflared / node" by name) — in phase
   9 a tunnel of the user was closed by mistake that way.
 - Git / GitHub backup (user rule, 2026-09-24): remote `origin` =
-  https://github.com/sanchezign/smartops-agent (private). At the end of EVERY milestone,
+  https://github.com/sanchezign/smartops-agent (public since 2026-10-09; the private predecessor is
+  `smartops-agent-archive`). At the end of EVERY milestone,
   right after its commit, run `git push` of the CURRENT branch (never `--force`).
   Any other push — other branches, force pushes, tags, deleting remote branches — must
   be asked first. Run the secrets audit (no `.env`/`.sim` tracked, no real tokens)
