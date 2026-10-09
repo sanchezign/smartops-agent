@@ -43,7 +43,7 @@ live over SSE. Details: [architecture.md](architecture.md).
 
 ## Results (measured)
 
-- **AI cost:** $0.24 of Claude credits in total to build and test the whole project, recorded
+- **AI cost:** about $0.32 of Claude credits in total to build and test the whole project, recorded
   call by call. A typical price list costs $0.012–$0.017 to extract. A new spreadsheet format
   costs about $0.011 once, and $0 afterwards.
 - **Accuracy on the test data:** a September PDF followed by an October photo produced exactly
