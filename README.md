@@ -50,7 +50,7 @@ On a phone (mobile first):
   WhatsApp summary per window instead of a message per event.
 - **Costs little to run.** A deterministic pre-filter keeps greetings, stickers and customer
   chat away from the AI. Known spreadsheet formats cost $0. Spend caps are checked before every
-  AI call. Total AI spend while building the whole project: **$0.24**.
+  AI call. Total AI spend while building the whole project: **~$0.32**.
 
 ## How it works
 

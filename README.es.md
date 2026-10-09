@@ -49,7 +49,7 @@ La animación tiene textos en inglés. Las capturas de abajo son del panel en es
 - **Cuesta poco.** Un filtro previo determinístico deja fuera de la IA los saludos, los stickers y
   la charla de clientes. Las planillas con un formato conocido cuestan $0. Los topes de gasto se
   controlan antes de cada llamada a la IA. Gasto total de IA durante todo el desarrollo:
-  **$0,24**.
+  **~$0,32**.
 
 ## Documentación
 

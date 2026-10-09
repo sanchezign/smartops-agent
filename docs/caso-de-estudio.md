@@ -45,7 +45,7 @@ revisiones, conversaciones, el catálogo y las reglas, actualizado en vivo con S
 
 ## Resultados (medidos)
 
-- **Costo de IA:** $0,24 de créditos de Claude en total para construir y probar todo el proyecto,
+- **Costo de IA:** unos $0,32 de créditos de Claude en total para construir y probar todo el proyecto,
   registrado llamada por llamada. Extraer una lista de precios típica cuesta entre $0,012 y
   $0,017. Un formato de planilla nuevo cuesta unos $0,011 una vez, y $0 después.
 - **Precisión con los datos de prueba:** un PDF de septiembre seguido de una foto de octubre dio

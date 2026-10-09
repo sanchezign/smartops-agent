@@ -19,7 +19,7 @@ The demo server runs at https://smartops-demo.duckdns.org; these are the service
 | Monitoring (planned)  | UptimeRobot and Healthchecks.io free plans                                       | $0   |
 
 A budget of USD 1 with alerts is set in the Oracle account, so any unexpected charge is visible
-at once. Total real AI spend while building the project: **$0.24** (Claude, recorded in the
+at once. Total real AI spend while building the project: **~$0.32** (Claude, recorded in the
 `ai_usages` ledger).
 
 ## A real client: monthly estimate
