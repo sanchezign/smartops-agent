@@ -6,6 +6,16 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.17.2](https://github.com/sanchezign/smartops-agent/compare/v0.17.1...v0.17.2) (2026-10-09)
+
+
+### Documentation
+
+* complete Spanish README (how it works, engineering, stack, local run, full documentation list) ([5046f79](https://github.com/sanchezign/smartops-agent/commit/5046f7914297c51830bc94a0d8330ab36fcb86f6))
+* current test counts and coverage in the case study and testing docs ([ba430b5](https://github.com/sanchezign/smartops-agent/commit/ba430b54e53578bd03dde3544bc7723f9aabd30b))
+* current test counts in both READMEs ([91e7398](https://github.com/sanchezign/smartops-agent/commit/91e7398c6fdf97b7495100a0e3acee0e329e26db))
+* the new public repository in CLAUDE.md and F-02 closed in the audit ([6f5d1f6](https://github.com/sanchezign/smartops-agent/commit/6f5d1f6777430baf2f42b2b0d6cd40d29a6327c8))
+
 ## [0.17.1](https://github.com/sanchezign/smartops-agent/compare/v0.17.0...v0.17.1) (2026-10-09)
 
 
