@@ -242,6 +242,9 @@ needs a NEW ADR), F-05 (security headers sent by the panel itself, not only by C
 
 
 ## Known issues (out of scope)
+- **GHCR images up to 0.17.0 contain personal data in `dist/`** (a code comment, removed from the
+  repository history in 2026-10): the `smartops-api` and `smartops-admin` packages must stay PRIVATE. Before
+  ever making them public, delete those versions (only once the VM runs 0.17.1 or later).
 - **WhatsApp pricing change (Meta, effective 2026-10-01):** service messages and utility messages
   inside the 24 h customer service window become PAID per message (no free allowance; rates by
   market, Uruguay = "Rest of Latin America"; Meta's main pricing page still said they were free on

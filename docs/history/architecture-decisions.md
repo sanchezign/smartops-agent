@@ -333,7 +333,7 @@ records are the ADRs in `docs/adr/` (indexed in CLAUDE.md); this is the finer-gr
   migrations, health, SIGTERM exit 0 for API and worker), `admin-container-smoke.sh`, Trivy
   (OS packages, fixable HIGH/CRITICAL).
 - Releases: release-please (`release-please-config.json`, root package only, tags `vX.Y.Z`,
-  bootstrap ad17cef, `extra-files` bump both apps; guard `test/unit/release-config.test.ts`:
+  bootstrap a2bd96b, `extra-files` bump both apps; guard `test/unit/release-config.test.ts`:
   versions in lockstep, NO `release-as` in the config). First release forced to 0.11.0 by a
   `Release-As: 0.11.0` commit body. LESSON (2026-09-28): the first attempt was an EMPTY commit
   and GitHub's rebase-merge DROPS empty commits → release-please proposed 0.1.1; `Release-As`

@@ -67,7 +67,7 @@ a real client.**
      with spend guard, `ai_usages` ledger, IngestionRun cost fields, pricing table,
      versioned prompt loader, AI_* env, ADR-011 — done (2026-09-25). Migration `ai_usage`.
    - M2 classification + extraction — DONE (2026-09-25). First part (WIP
-     commit a755713): classification/extraction JSON schemas + Zod
+     commit a0ed8d9): classification/extraction JSON schemas + Zod
      (`src/modules/extraction/extraction.schemas.ts`) and post-rules (full_list needs
      quoted evidence, unknown refs dropped, duplicate refs → medium); catalog context with
      stable refs P1..Pn (`catalog-context.ts`); message input with neutralized tags
@@ -218,9 +218,9 @@ a real client.**
      body param) with opt-in, else panel_only. Contract test with a fake n8n orchestrator
      (`test/integration/n8n-contract.test.ts`): outbox → secret-checked webhook → classify →
      extract → ingest → runs/:id → notifications → ack over HTTP; duplicates harmless.
-   - M4 workflows — DONE (2026-09-26). Drafts delivered (commit 5137f67); the user imported
+   - M4 workflows — DONE (2026-09-26). Drafts delivered (commit f2cd7af); the user imported
      them into n8n 2.40.6 (the drafted node typeVersions worked as-is), chose credentials and
-     sub-workflows, tested, published and exported them with `n8n:export` (commit 55de4e9).
+     sub-workflows, tested, published and exported them with `n8n:export` (commit 55d1c34).
      `n8n/workflows/{receiver,processor,notifier,errors}.json` = "SmartOps · Receptor /
      Procesador / Notificador / Errores" (webhook v2 Header Auth "SmartOps webhook secret",
      respond immediately; HTTP Request v4.2 with Header Auth "SmartOps API", retry 3×5 s;
@@ -948,17 +948,17 @@ a real client.**
       process group (Playwright web servers, CI steps that may time out).
     - Close (2026-09-28): the user applied the GitHub settings (verified by API: E2E_POLICY,
       read-only token + Actions may create PRs, allowed actions with SHA pinning required, 14-day
-      retention, Dependabot alerts). PR #2 marked ready and rebase-merged (1942ab6, branch kept);
+      retention, Dependabot alerts). PR #2 marked ready and rebase-merged (4850061, branch kept);
       main: main-guard + quick green on the first try. Renovate's onboarding PR #1 had already
       auto-closed (config found on main) — commented, never merged; Renovate opened its
       "Dependency Dashboard" issue #4.
     - Release: the empty `chore: release 0.11.0` commit was DROPPED by GitHub's rebase-merge →
       release PR #3 proposed 0.1.1. Fixed with PR #5 (`fix/release-as-0.11.0`, docs commit with
-      body `Release-As: 0.11.0`, rebase-merged 58ffdc9 after green checks, user-authorized) →
+      body `Release-As: 0.11.0`, rebase-merged 668e7dd after green checks, user-authorized) →
       #3 became 0.11.0 (4 version files + CHANGELOG section), reviewed by the user, rebase-merged
-      (9a302e7). Release run 36371046144: ALL GREEN on the first attempt, tag v0.11.0 + GitHub
+      (cc32870). Release run 36371046144: ALL GREEN on the first attempt, tag v0.11.0 + GitHub
       release, 4 native builds (api/admin × amd64/arm64) each with secrets check, smoke test and
-      Trivy BEFORE the push, then multi-arch tags `0.11.0`, `0.11`, `sha-9a302e7` for
+      Trivy BEFORE the push, then multi-arch tags `0.11.0`, `0.11`, `sha-cc32870` for
       `ghcr.io/sanchezign/smartops-{api,admin}` (index = linux/amd64 + linux/arm64 + 2 attestation
       manifests `unknown/unknown`, labels `org.opencontainers.image.source` = the repo). 3 m 55 s
       wall, 17 billed minutes; arm64 builds were faster than amd64 (api 2m53 vs 3m16, admin 2m26
@@ -1434,7 +1434,7 @@ a real client.**
       locally (config backed up). Oracle Free Trial checklist and inventory: docs/runbook.md §12. Phase 14 (frontend
       clarity, UX) is next.
 13. i18n + docs + portfolio — COMPLETE (merged 2026-10-02); branch `feat/phase-13-i18n-docs` (created from main after PR
-    #8 "phase 12, part 1" was rebase-merged, 3bcc0de). Approved plan (2026-09-28) + user answers:
+    #8 "phase 12, part 1" was rebase-merged, 842138c). Approved plan (2026-09-28) + user answers:
     - Language rule: English for code, comments, commits, the single README, technical docs
       (architecture, security, costs, development, ADRs), CLAUDE.md, runbook and deploy guides.
       Panel: English by default + selector to Spanish, saved per user in the DB, at login the
@@ -1564,7 +1564,7 @@ a real client.**
       (`legacy-routes.spec.ts`); the API digest deep-link paths are English too. Local note: stale
       generated `.next/types` of the old routes broke the E2E build type check — moved (not deleted)
       to the session scratchpad. (3) The "Reiniciar demo pending" entry had already been removed in
-      8eee297. (4) renovate.json: `@eslint/js` majors blocked with eslint; group `vitest` (vitest +
+      d635081. (4) renovate.json: `@eslint/js` majors blocked with eslint; group `vitest` (vitest +
       @vitest/coverage-v8, every update type) after the non-major group; `test/unit/renovate-config.test.ts`;
       validated with renovate 44.107.0 --strict. PR #7 closed with a comment; PR #6 left open (to
       review at the phase close; Renovate will move vitest out of it into its own group PR). (5)
