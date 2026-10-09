@@ -9,6 +9,7 @@
 | [Testing](testing.md)                                                           | Test layers, coverage, mutation testing, what each suite proves                     |
 | [CI/CD](ci-cd.md)                                                               | Workflows, the E2E policy, releases, supply chain, GitHub settings                  |
 | [Security](security.md)                                                         | Entry points, panel sessions, data handling, secrets, the demo server, known limits |
+| [Security audit 2026-10](security/audit-2026-10.md)                             | Pre-publication audit: history scan, findings, what blocks publication, fix plan    |
 | [Costs](costs.md)                                                               | The $0 public demo and a monthly estimate for a real client, with sources           |
 | [n8n setup](n8n-setup.md)                                                       | Importing, configuring, testing and exporting the workflows                         |
 | [Coexistence guide](coexistence-client-guide.md)                                | Using one WhatsApp number from the app and from SmartOps: options for a client      |
