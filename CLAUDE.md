@@ -220,11 +220,9 @@ Owner's checks still open for phase 12 (nothing to code):
 - No release 1.0.0 until the SEPARATE full security audit.
 
 Dates that will bite:
-- 2026-10-13: the seven Perl Trivy exceptions (perl-base 5.36.0-7+deb12u3: CVE-2026-13221, -42496,
-  -8376, -42497, -48962, -57432, -57433; `.trivyignore`, mirrored in `security/audit-exceptions.json`
-  → "imageExceptions") expire. Delete them in the same PR where the node base image digest has
-  perl-base 5.36.0-7+deb12u4. The CVE-2026-103111 (libpcre2) exception was removed on 2026-10-06
-  (digest d6aa754f… brings deb12u2).
+- Perl (perl-base deb12u3, seven CVEs): fixed 2026-10-09 in both Dockerfiles (`apt-get install --only-upgrade perl-base`
+  + `dpkg --compare-versions` guard >= deb12u4); the exceptions are gone. Remove that RUN step when the node base
+  image digest already brings perl-base >= 5.36.0-7+deb12u4. (libpcre2 exception removed 2026-10-06.)
 - 2026-10-27: the four audit exceptions in `security/audit-exceptions.json` expire together
   (postcss ×2, deepmerge-ts, mysql2; shortened from 10-31 to fit the 30-day HIGH limit, ADR-028;
   the braces one was removed 2026-10-06). `quick` (diff mode) only fails for a CHANGE that

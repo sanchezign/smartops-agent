@@ -2,17 +2,7 @@
 # The same exceptions, with their reasons, live in security/audit-exceptions.json ("imageExceptions"):
 # a test keeps both identical. Trivy stops ignoring them on the date after exp, so they block again.
 #
-# perl-base 5.36.0-7+deb12u3 (fixed in 5.36.0-7+deb12u4), seven CVEs (3 CRITICAL, 4 HIGH) in perl, Archive-Tar,
-# IO-Compress and Storable. Perl comes from the Debian 12 base image; neither the API nor the panel runs it
-# and no user input reaches it. Short exception (7 days). Trackers: https://security-tracker.debian.org/tracker/<CVE>
-# REMOVE these lines in the same PR in which the node base image digest contains perl-base 5.36.0-7+deb12u4.
-CVE-2026-13221 exp:2026-10-13
-CVE-2026-42496 exp:2026-10-13
-CVE-2026-8376 exp:2026-10-13
-CVE-2026-42497 exp:2026-10-13
-CVE-2026-48962 exp:2026-10-13
-CVE-2026-57432 exp:2026-10-13
-CVE-2026-57433 exp:2026-10-13
+# No OS-package exceptions today. (The Perl CVEs were fixed in the Dockerfiles, which upgrade perl-base.)
 #
 # Library findings seen by the NIGHTLY scan of the published images (security.yml; CI and the release only scan OS
 # packages). Same accepted risks as the pnpm audit exceptions (GHSA ids there, the id Trivy reports here); same expiry.
