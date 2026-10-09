@@ -37,19 +37,22 @@ tests unless noted.
 
 - **Validation**: every input is validated with Zod (bodies, params, queries, settings, model
   outputs). Money is a decimal string, never a float.
-- **Media**: download URLs are only followed to Meta's hosts, and the access token is only sent
-  there; file type (magic bytes), size and checksum are checked; the panel downloads media with
+- **Media**: a download URL must be an HTTPS URL of Meta's hosts, and the access token is only
+  sent there (fetch drops it on a cross-origin redirect; refusing redirects outside Meta's hosts is
+  planned); file type (magic bytes), size and checksum are checked; the panel downloads media with
   the session and shows it from `blob:` URLs (no token in a URL). Files are served with
   `nosniff`, a sandboxing CSP and `Cross-Origin-Resource-Policy`.
 - **Documents**: spreadsheets and Word files are converted in an isolated worker thread with
   memory and time limits and a ZIP-bomb guard.
 - **AI input**: documents and messages are data, never instructions. They are wrapped in tags,
   and look-alike tags are neutralized after Unicode normalization. Outputs are schema-validated.
-  A suspected injection stops the run for a person. The real-model evaluation passed 8/8 cases
+  A suspected injection stops the run for a person (detected by a deterministic check on
+  spreadsheets and by the model's own flag on every input). The real-model evaluation passed 8/8 cases
   (OWASP LLM Top 10 as a guide).
 - **AI spend**: a worst-case estimate is checked against total, daily, per-contact and per-run
   caps before every call; every call is recorded with its tokens and cost.
-- **Logs**: phone numbers and user ids are masked; message bodies, names, tokens and keys never
+- **Logs**: phone numbers and WhatsApp user ids (BSUIDs) are masked (panel users appear only by
+  their internal id); message bodies, names, tokens and keys never
   reach a log line (tested with the production logger at trace level). Sensitive headers are
   redacted.
 - **Consent**: business-initiated messages need an opt-in; an opt-out keyword blocks every
@@ -125,12 +128,24 @@ tests pass. A decision, not an oversight (2026-10-03):
 
 - Nonce-based CSP for the panel (A+ on Observatory) on the paid deployment, with the E2E CSP-violation guard.
 - MFA (TOTP) for panel users, before a real client.
+- Before a real client (security audit 2026-10): an unknown WhatsApp number is never linked to an
+  existing supplier, nor creates suppliers or spends the AI budget, without a person (new ADR);
+  security headers sent by the panel itself; each user changes their own password.
+- Refuse media redirects outside Meta's hosts; the deterministic injection check on every text
+  input, not only spreadsheets.
 - Retention for stored webhook payloads and media.
 - A separate full security audit before the repository goes public and before v1.0.0.
 
 ## Known limits
 
 - No MFA yet (planned before a real client).
+- A WhatsApp number that is not linked to a supplier yet is linked AUTOMATICALLY to an existing
+  supplier when its list names that supplier, and its price changes are then applied within the
+  catalog thresholds; an unknown number can also create a new supplier and its products. Fine for
+  the demo (no real WhatsApp); to be closed before a real client (see the roadmap).
+- Users cannot change their own password yet: an admin sets it (create / reset).
+- The panel's security headers (CSP, anti-framing, HSTS) come from the reverse proxy (Caddy); a
+  deployment without that Caddyfile must add them.
 - While the repository is private on GitHub Free, `main` is protected by convention: a CI job
   detects direct pushes and a local pre-push hook refuses them. There are no branch rules.
 - Retention policies for stored webhook payloads and media are not defined yet.

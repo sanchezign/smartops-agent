@@ -234,7 +234,11 @@ Dates that will bite:
 
 Required BEFORE a real client (not part of the demo): phase 5 M3b chunked extraction, MFA (TOTP)
 for panel users, the separate full security audit (also before the repo goes public), media
-retention policy, a real WhatsApp instance (out of phase 12).
+retention policy, a real WhatsApp instance (out of phase 12), and from the 2026-10 pre-publication
+audit: F-01 + F-03 (an unknown WhatsApp number must never be linked to an existing supplier by the
+name on its document, nor create suppliers / products or spend the AI budget without a person —
+needs a NEW ADR), F-05 (security headers sent by the panel itself, not only by Caddy), F-06
+(self-service password change + must-change-password after an admin create / reset).
 
 
 ## Known issues (out of scope)

@@ -40,8 +40,8 @@ On a phone (mobile first):
 - **Keeps the catalog right.** It matches products even when names differ, applies price changes,
   records the history, and tells full lists apart from partial updates. It watches for outliers,
   currency and tax changes, and products that disappear from a full list.
-- **Never guesses.** Anything doubtful becomes a review item for a person, with the original
-  message next to it: an uncertain match, a suspicious message, a new spreadsheet format, a
+- **Never guesses.** Anything doubtful in a message becomes a review item for a person, with the
+  original message next to it: an uncertain match, a suspicious message, a new spreadsheet format, a
   voice note that was not understood.
 - **Works with people.** A person's reply pauses only the bot's automatic answers in that chat,
   and the bot comes back later by itself. Opt-out keywords are respected. The team receives one
@@ -71,7 +71,7 @@ workflows. Every step is idempotent, so retries never duplicate anything. Detail
 | Area          | What is in place                                                                                                                                                                |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Reliability   | Webhook stored before the 200 answer, a transactional outbox to n8n, queues with backoff and dead letters, idempotency at every step                                            |
-| AI safety     | Documents are data, never instructions; outputs validated with Zod; injection attempts stop for review. Real-model evaluation: 8/8 cases passed (6 attacks, 2 controls)         |
+| AI safety     | Documents are data, never instructions; outputs validated with Zod; detected injections stop for review. Real-model evaluation: 8/8 cases passed (6 attacks, 2 controls)        |
 | Security      | Signed webhooks, rotating refresh sessions with reuse detection, Argon2id, CSRF checks, roles, masked logs, secret scanning ([more](docs/security.md))                          |
 | Tests         | API: 1,087 unit and HTTP tests + 222 against a real Postgres. Panel: 119 unit tests + 85 browser tests (desktop Chrome, Pixel 7, iPhone / WebKit) with axe. Mutation score 80 % |
 | CI/CD         | GitHub Actions: lint, types, tests, coverage gate, E2E, image scans; release-please; amd64 + arm64 images                                                                       |

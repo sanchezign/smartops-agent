@@ -82,7 +82,7 @@ export function createApp({
   const app = express();
 
   app.disable("x-powered-by");
-  // Number of trusted proxy hops (Render = 1) so req.ip / rate limiting see the client IP.
+  // Number of trusted proxy hops (Caddy = 1) so req.ip / rate limiting see the client IP.
   app.set("trust proxy", env.TRUST_PROXY);
   // Prisma Decimal → string in every JSON response.
   app.set("json replacer", decimalJsonReplacer);

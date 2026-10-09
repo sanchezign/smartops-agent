@@ -31,3 +31,10 @@ reaches a dead end exactly at the step the README video shows.
 - A column choice made by a visitor is shared by every visitor (one demo database); the automatic demo reset
   restores it, like every other demo change.
 - The real system (no DEMO_MODE) keeps requiring an admin for this review.
+
+## Audit note (2026-10-09)
+
+The security audit before publication found one more effect of this rule: the approval of a `column_mapping` review
+accepts a `supplierId`, and with it the sender's contact is linked to that supplier, the decision that is admin-only
+everywhere else (`unknown_supplier`). Demo only, undone by the automatic reset. Planned: refuse `supplierId` /
+`createSupplier` from an operator allowed only by this rule, with a case in the item-level authz matrix.

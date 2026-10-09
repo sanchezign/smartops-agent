@@ -19,7 +19,7 @@ export function createCors(allowedOrigins: readonly string[]): RequestHandler {
   });
 }
 
-/** Global rate limit for /api/v1 (IP-based; needs `trust proxy` behind Render's proxy). */
+/** Global rate limit for /api/v1 (IP-based; needs `trust proxy` behind the reverse proxy). */
 export function createRateLimiter(options: {
   windowMs: number;
   limit: number;
