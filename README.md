@@ -1,3 +1,5 @@
+English · [Español](README.es.md)
+
 # SmartOps Agent
 
 **An AI operations agent for businesses that run on WhatsApp.** Suppliers, customers and staff
@@ -110,8 +112,8 @@ The full guide (environment variables, the WhatsApp simulator, the demo mode, te
 
 All documents are listed in [docs/README.md](docs/README.md). The main ones:
 
-- [Panel guide](docs/guide/panel-guide.md) ([en español](docs/guide/guia-del-panel.md)) — every screen, for the business owner and the team
-- [Case study](docs/case-study.md) ([en español](docs/caso-de-estudio.md)) — the problem, the approach, measured results, lessons
+- [Panel guide](docs/guide/panel-guide.md) — every screen, for the business owner and the team
+- [Case study](docs/case-study.md) — the problem, the approach, measured results, lessons
 - [Architecture](docs/architecture.md) — components, the path of a message, the data model
 - [Security](docs/security.md) — controls, sessions, the demo server, known limits
 - [Costs](docs/costs.md) — the $0 demo and an estimate for a real client
