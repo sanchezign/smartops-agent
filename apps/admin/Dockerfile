@@ -28,6 +28,16 @@ RUN pnpm install --offline --frozen-lockfile --filter @smartops/admin \
 FROM ${NODE_IMAGE} AS runtime
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 WORKDIR /app
+# Perl security fix (CVE-2026-13221 and six more): the pinned base image still ships perl-base
+# 5.36.0-7+deb12u3. Upgrade it from bookworm-security WITHOUT pinning a version (a pinned u4 would
+# break the build once Debian publishes u5) and fail the build with a clear message if the result
+# is older than u4. REMOVE this step when the NODE_IMAGE digest already brings perl-base >= u4.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends --only-upgrade perl-base \
+  && v="$(dpkg-query -W -f='${Version}' perl-base)" \
+  && { dpkg --compare-versions "$v" ge 5.36.0-7+deb12u4 \
+       || { echo "ERROR: perl-base $v is older than 5.36.0-7+deb12u4 (the Perl CVE fix)" >&2; exit 1; }; } \
+  && rm -rf /var/lib/apt/lists/*
 # Nothing at runtime needs npm, npx or corepack (CMD is `node ...`): drop them, and with them
 # their bundled dependencies, from the attack surface and the vulnerability scans.
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \

@@ -51,22 +51,14 @@ describe("image (Trivy) exceptions", () => {
     expect(ignoreLines.sort()).toEqual(list.map((e) => `${e.cve} exp:${e.expires}`).sort());
   });
 
-  it("the OS findings accepted today are the seven Perl CVEs, short-lived, each citing its Debian tracker", () => {
-    const os = list.filter((e) => e.package === "perl-base");
-    expect(os.map((e) => e.cve).sort()).toEqual(
-      [
-        "CVE-2026-13221",
-        "CVE-2026-42496",
-        "CVE-2026-8376",
-        "CVE-2026-42497",
-        "CVE-2026-48962",
-        "CVE-2026-57432",
-        "CVE-2026-57433",
-      ].sort(),
-    );
-    for (const e of os) {
-      expect(e.expires).toBe("2026-10-13");
-      expect(e.reason).toContain(`security-tracker.debian.org/tracker/${e.cve}`);
+  it("no Perl exception is left: both Dockerfiles upgrade perl-base and fail the build below deb12u4", () => {
+    expect(list.filter((e) => e.package === "perl-base")).toEqual([]);
+    for (const file of ["apps/api/Dockerfile", "apps/admin/Dockerfile"]) {
+      const text = read(file);
+      expect(text, file).toContain("--only-upgrade perl-base");
+      expect(text, file).toContain("dpkg --compare-versions");
+      expect(text, file).toContain("5.36.0-7+deb12u4");
+      expect(text, file).toContain("rm -rf /var/lib/apt/lists/*");
     }
   });
 
@@ -76,7 +68,7 @@ describe("image (Trivy) exceptions", () => {
         exceptions: { package: string; expires: string }[];
       }
     ).exceptions;
-    const library = list.filter((e) => e.package !== "perl-base");
+    const library = list;
     expect(library.map((e) => e.package).sort()).toEqual([
       "deepmerge-ts",
       "mysql2",

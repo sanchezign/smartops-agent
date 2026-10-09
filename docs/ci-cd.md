@@ -220,9 +220,9 @@ commit is activity; re-enable with `gh workflow enable security.yml` (and `ci.ym
 - Docker image OS packages (Trivy): in a **pull request** a fixable HIGH/CRITICAL finding is a warning
   annotation (the release still blocks, `release.yml`); both images are always scanned. Accepted CVEs live in `.trivyignore` (mounted into the Trivy container, `--ignorefile`,
   `--show-suppressed` prints what was ignored) and, with the reason and expiry, in the same
-  `security/audit-exceptions.json` under `imageExceptions` (a test keeps both identical). Current: seven Perl CVEs
-  (perl-base 5.36.0-7+deb12u3, Debian 12 base image) until 2026-10-13. **When the node base digest contains perl-base
-  5.36.0-7+deb12u4, delete the exceptions from both files in that same PR.** Base-image digest bumps that fix OS
+  `security/audit-exceptions.json` under `imageExceptions` (a test keeps both identical). Current: no OS exceptions (the seven Perl CVEs
+  of 2026-10 are fixed in both Dockerfiles, which upgrade perl-base from bookworm-security and fail the build below
+  5.36.0-7+deb12u4; **remove that RUN step when the node base digest already contains perl-base >= deb12u4**). Base-image digest bumps that fix OS
   CVEs are security patches: the `minimumReleaseAge` rule does not apply to them (2026-10-06: digest moved to
   `d6aa754f…`, which fixed libpcre2 CVE-2026-103111).
 - gitleaks: new commits on every push, the whole history weekly; `.gitleaks.toml` allowlists
