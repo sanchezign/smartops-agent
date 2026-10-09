@@ -145,7 +145,7 @@ You will know from Oracle's e-mail (reports say one week's notice) or from Uptim
 2. Wait about 3 minutes. The boot check pings Healthchecks (`smartops-boot`), the containers come back by
    themselves (`restart: unless-stopped`).
 3. Verify: `https://smartops-demo.duckdns.org/api/v1/health` answers 200 and the panel loads; the reserved IP is
-   still attached (`smartops-demo.duckdns.org` resolves to `163.176.132.161`); through the Bastion:
+   still attached (`smartops-demo.duckdns.org` resolves to the reserved IP shown in Networking → Reserved public IPs); through the Bastion:
    `sudo /opt/smartops/current/bin/status.sh` (version, containers healthy, timers listed) and
    `sudo /opt/smartops/current/bin/keepalive.sh status`; `node scripts/deploy/demo-check.mjs https://smartops-demo.duckdns.org`.
 4. The UptimeRobot monitors and the Healthchecks `smartops-monitor` check turn green on their own.

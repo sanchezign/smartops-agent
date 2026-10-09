@@ -2,6 +2,8 @@
 
 > **ON HOLD (2026-10-02).** After 420 failed attempts the demo moved to an E2.1.Micro (ADR-023).
 > The script and this guide stay in the repository for when A1 capacity is wanted again.
+> The launcher identity was deleted on 2026-10-07 (user `smartops-launcher`, its API key, group
+> `smartops-launchers`, policy `smartops-launcher-policy`): a new retry starts again at step 2.
 
 São Paulo has no ARM capacity ("500-InternalError, Out of host capacity"). Instead of retrying
 by hand, a script runs **on your computer** and tries to create the VM every 2–5 minutes (with

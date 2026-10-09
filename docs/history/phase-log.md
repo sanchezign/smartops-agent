@@ -1064,7 +1064,7 @@ a real client.**
     - M1 run by the user (2026-09-28): tenancy (name not published), home region São Paulo, budget
       USD 1 with 2 alerts, compartment `smartops`, VCN + subnet as in the guide (ingress only the
       default ICMP + 80/443 from anywhere + 22 from 10.0.0.0/24), reserved public IP
-      **163.176.132.161**, **smartops-demo.duckdns.org** → that IP (verified). The VM could NOT be
+      (address not published), **smartops-demo.duckdns.org** → that IP (verified). The VM could NOT be
       created: 30+ attempts "500-InternalError, Out of host capacity" (A1.Flex 1 OCPU / 3 GB,
       AD-1). The config is saved as Resource Manager stack `smartops-demo-vm` (plan correct: 3 GB,
       no public IP, the user's key). User decision: automatic retry for 3–5 days, NO Pay As You Go.
@@ -1097,7 +1097,7 @@ a real client.**
     - TARGET CHANGE (user, 2026-10-02, ADR-023 + ADR-025): A1 never had capacity (420 attempts, also
       after Oracle's "fully provisioned" notice); Pay As You Go discarded; an E2.1.Micro was created
       without a card: `smartops-demo-micro`, Ubuntu 24.04.5 x86_64, AD-1, subnet smartops-public,
-      private IP 10.0.0.21, reserved IP 163.176.132.161 (smartops-demo.duckdns.org), Bastion
+      private IP in 10.0.0.0/24, the reserved IP (smartops-demo.duckdns.org), Bastion
       `smartopsbastion` (allowlist = the user's /32), SSH works through a port-forwarding session.
       Measured on the VM: 954 MiB total, ~386 MiB used by the base system, ~567 MiB available, no
       swap. `launch-retry.ps1` is ON HOLD (kept, untouched; do not touch it nor ~/.oci).
@@ -1232,12 +1232,15 @@ a real client.**
       user `smartops-launcher` + group + policy + API key + the Resource Manager stack in OCI AND, on
       the user's PC, `~/.oci/smartops_launcher.pem` and the [SMARTOPS] section of `~/.oci/config`
       (the whole file if it ends up empty) — until then NEVER touch ~/.oci nor launch-retry.ps1.
+      DONE: the local key and profile on 2026-10-06; the IAM user, its API key, the group
+      `smartops-launchers` and the policy `smartops-launcher-policy` on 2026-10-07 (the stack and
+      launch-retry.ps1 stay, A1 retry ON HOLD).
     - Audit gate (2026-10-03): new HIGH GHSA-vfj7-8cjw-p6xm (braces 3.0.3, no fix) blocked CI; build-time only via shadcn > ts-morph > fast-glob > micromatch, absent from both images → exception added until 2026-10-31 like the other four (all five expire together).
     - M3b Bastion on demand — WRITTEN (2026-10-03), WAITING for the user's IAM setup + first run:
       `scripts/oci/bastion-connect.ps1` (PowerShell 5.1, ASCII, runs on the user's PC): finds the public
       IPv4 (checkip.amazonaws.com or -PublicIp), sets the allowlist to exactly `<ip>/32` only when it
       differs (`oci bastion bastion update --client-cidr-list file://…`; never 0.0.0.0/0), creates an
-      ephemeral ed25519 key + a port forwarding session to 10.0.0.21:22 (TTL 3 h), opens the tunnel
+      ephemeral ed25519 key + a port forwarding session to the VM's private IP, port 22 (TTL 3 h), opens the tunnel
       and the interactive ssh (ServerAliveInterval=30, HostKeyAlias=smartops-demo-vm), and ALWAYS
       cleans up (tunnel tree, session delete, key dir). The API key has its OWN passphrase: asked
       once (hidden) and handed to the CLI via the process-only `OCI_CLI_PASSPHRASE`, never written;

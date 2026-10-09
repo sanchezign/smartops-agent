@@ -211,12 +211,10 @@ Owner's checks still open for phase 12 (nothing to code):
   reserved IP). Repeat it on 2026-10-29.
 - GHCR package versions 0.12.0–0.12.2 (wrong label / no images): the owner deletes them in the
   GitHub UI.
-- OCI Console, launcher leftovers: delete the IAM user `smartops-launcher` (API key, group,
-  policy). The Resource Manager stack `smartops-demo-vm` and `scripts/oci/launch-retry.ps1` stay
-  (A1 retry ON HOLD). Done locally 2026-10-06: the key `~/.oci/smartops_launcher.pem` and the
-  `[SMARTOPS]` profile of `~/.oci/config` are gone (backup `~/.oci/config.bak-before-launcher-removal`).
-  NEVER delete the `~/.oci` folder or the `[SMARTOPS_BASTION]` profile: `scripts/oci/bastion-connect.ps1`
-  uses it.
+- Standing rule (not a check): NEVER delete the `~/.oci` folder or the `[SMARTOPS_BASTION]` profile:
+  `scripts/oci/bastion-connect.ps1` uses it. The launcher identity is gone (IAM user, API key, group,
+  policy deleted 2026-10-07; phase-log item 12); the stack `smartops-demo-vm` and `launch-retry.ps1`
+  stay (A1 retry ON HOLD).
 - Docs still pending: `[REPO_URL]` in the portfolio kit (private repo); the demo stays at
   Observatory B+ (no nonce CSP, decided 2026-10-03).
 - No release 1.0.0 until the SEPARATE full security audit.
