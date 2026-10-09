@@ -6,6 +6,31 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.17.1](https://github.com/sanchezign/smartops-agent/compare/v0.17.0...v0.17.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* **admin:** README and guide media are taken without the E2E test suppliers ([5dcd72a](https://github.com/sanchezign/smartops-agent/commit/5dcd72a755604efe6315727191b7d39f893ed81a))
+* **deps:** update dependency next to v15.5.27 [security] ([fab70ef](https://github.com/sanchezign/smartops-agent/commit/fab70ef44051875aca887b2a74296d400efe20cc))
+* **docker:** upgrade perl-base to deb12u4 in the images and drop the Perl exceptions ([e91af7a](https://github.com/sanchezign/smartops-agent/commit/e91af7aa2f9ed5da63546afc969ce67ba635036c))
+
+
+### Documentation
+
+* claims the code backs, and the audit's pre-client items ([7839b92](https://github.com/sanchezign/smartops-agent/commit/7839b9204e8c294fa1f65bbb72f0da3d85640cca))
+* point commit references to the rewritten history ([6cde458](https://github.com/sanchezign/smartops-agent/commit/6cde4581f2608786fcfa5760d350bd94dab6ee00))
+* redact cloud account details and close the launcher cleanup ([63a778e](https://github.com/sanchezign/smartops-agent/commit/63a778ec8fe5a2e4bfde9f3a0b686dd1a29e8cc5))
+* **security:** F-02 confirmed and fixed in HEAD, history cleaned via a new repo ([4270985](https://github.com/sanchezign/smartops-agent/commit/42709856e48564a3077e2c08050f943c89552177))
+* **security:** final pre-publication security audit (2026-10) ([3aae872](https://github.com/sanchezign/smartops-agent/commit/3aae872d8a11fa0e4f55e56127e9430ddadcfe2f))
+* Spanish README with a language selector ([c57e751](https://github.com/sanchezign/smartops-agent/commit/c57e7517c6cbaabac71ddc96b8da829b4e9c2f06))
+* total AI spend is about $0.32 (English goldens included) ([9f066d9](https://github.com/sanchezign/smartops-agent/commit/9f066d9c4a17c478c8493e2f2daff19e086bf3eb))
+
+
+### Tests
+
+* **api:** only fake phone numbers in code comments, tests and the corpus ([cd27008](https://github.com/sanchezign/smartops-agent/commit/cd27008da9063dd3d3c43800761732f9a5478672))
+
 ## [0.17.0](https://github.com/sanchezign/smartops-agent/compare/v0.16.2...v0.17.0) (2026-10-08)
 
 
