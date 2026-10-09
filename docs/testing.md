@@ -25,6 +25,18 @@ Root shortcuts: `pnpm test:fast` (API unit + panel), `pnpm test:integration`, `p
 - The panel is measured on its LOGIC only (`src/lib`, the pure `features/*.ts`). Components are
   covered by the browser E2E; React Testing Library is not used (decision of phase 10).
 
+## Current numbers (2026-10-09)
+
+- Tests: API unit + HTTP **1,397** (6 skipped), API against a real Postgres **229**, panel unit **193**, browser E2E
+  **128** (last CI run).
+- API coverage (all suites): **90.4 % lines, 80.9 % branches, 90.9 % functions, 88.1 % statements.** Panel logic:
+  **85.7 % lines, 77.3 % branches.** Measured locally without `test/integration/document-conversion.test.ts` and
+  `test/unit/heuristics-es-identical.test.ts`, which time out under coverage instrumentation on the dev PC (they
+  pass without coverage and in CI), so the real figures are slightly higher. The gate is the ratchet in
+  `apps/api/coverage-thresholds.json`.
+
+The next section is the historical baseline, kept as it was.
+
 ## Baseline (2026-09-27, before phase 10)
 
 API (1,087 tests): **84.1 % lines, 77.8 % branches, 84.2 % functions, 82.1 % statements.**
