@@ -70,15 +70,15 @@ workflows. Every step is idempotent, so retries never duplicate anything. Detail
 
 ## Engineering highlights
 
-| Area          | What is in place                                                                                                                                                                |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Reliability   | Webhook stored before the 200 answer, a transactional outbox to n8n, queues with backoff and dead letters, idempotency at every step                                            |
-| AI safety     | Documents are data, never instructions; outputs validated with Zod; detected injections stop for review. Real-model evaluation: 8/8 cases passed (6 attacks, 2 controls)        |
-| Security      | Signed webhooks, rotating refresh sessions with reuse detection, Argon2id, CSRF checks, roles, masked logs, secret scanning ([more](docs/security.md))                          |
-| Tests         | API: 1,087 unit and HTTP tests + 222 against a real Postgres. Panel: 119 unit tests + 85 browser tests (desktop Chrome, Pixel 7, iPhone / WebKit) with axe. Mutation score 80 % |
-| CI/CD         | GitHub Actions: lint, types, tests, coverage gate, E2E, image scans; release-please; amd64 + arm64 images                                                                       |
-| Languages     | Panel in English and Spanish, chosen per user; WhatsApp texts in the business's language                                                                                        |
-| Accessibility | Mobile first, WCAG 2.1 AA checked with axe in both languages                                                                                                                    |
+| Area          | What is in place                                                                                                                                                                 |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reliability   | Webhook stored before the 200 answer, a transactional outbox to n8n, queues with backoff and dead letters, idempotency at every step                                             |
+| AI safety     | Documents are data, never instructions; outputs validated with Zod; detected injections stop for review. Real-model evaluation: 8/8 cases passed (6 attacks, 2 controls)         |
+| Security      | Signed webhooks, rotating refresh sessions with reuse detection, Argon2id, CSRF checks, roles, masked logs, secret scanning ([more](docs/security.md))                           |
+| Tests         | API: 1,397 unit and HTTP tests + 229 against a real Postgres. Panel: 193 unit tests + 128 browser tests (desktop Chrome, Pixel 7, iPhone / WebKit) with axe. Mutation score 80 % |
+| CI/CD         | GitHub Actions: lint, types, tests, coverage gate, E2E, image scans; release-please; amd64 + arm64 images                                                                        |
+| Languages     | Panel in English and Spanish, chosen per user; WhatsApp texts in the business's language                                                                                         |
+| Accessibility | Mobile first, WCAG 2.1 AA checked with axe in both languages                                                                                                                     |
 
 ## Tech stack
 
