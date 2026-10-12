@@ -41,6 +41,10 @@ person right now_ — and its second is trust: seeing that prices were updated w
    (before M5) pesos show as "UYU 15.76" in English so they are not mistaken for dollars; Spanish keeps "$ 15,76".
    With the English content of M5 (USD) it shows "$15.76".
 
+**Amended by [ADR-032](ADR-032-panel-triage.md) (phase 15):** the navigation has ONE yellow counter, To do (pending
+reviews + alerts that ask for an action, counting what the current user can resolve); it replaces the Reviews / Alerts
+counters. News (Activity) and technical errors (System status) never take the yellow.
+
 ## Consequences
 
 - A test computes the WCAG contrast of every token pair (light and dark) from `globals.css`, so a palette edit cannot

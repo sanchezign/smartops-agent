@@ -1683,3 +1683,25 @@ a real client.**
       compose files pass `DEMO_CONTENT_LANGUAGE` (default `en`). README and guide media regenerated ONCE (screenshots,
       GIF, MP4 + subtitles, guide EN / ES); the iPhone shots come from the `iphone-chromium` project (WebKit cannot
       start on this PC). Panel strings that still say "VAT" in the English panel are a wording point for later.
+    - Closed — merged into `main` before the 2026-10-09 repository migration (CLAUDE.md said "PR open" until
+      2026-10-12, corrected in phase 15 M0).
+
+15. panel triage (To do / Activity / System status) — IN PROGRESS (branch `feat/phase-15-panel-triage`, from `main`
+    with the review-order fix of PR #9). Input: real-use feedback — "pending reviews" and "open alerts" read as the same
+    thing; news and technical errors added to the yellow; the Home did not answer "what do I have to do?". Plan approved
+    2026-10-12 with the owner's changes: `stale_source` is NOT one-click (approving writes a price from an older message
+    over a newer one, `ingest-plan.ts`); one click only for `price_outlier` / `currency_changed` (linked product +
+    proposed price), `mark_unavailable` (admin), `manual_attention` ("Done") and "Not an opt-out"; buttons with a
+    concrete verb and the value, never Yes / No (`currency_changed` shows both currencies); a "Resolved" history view
+    reachable from To do (the old Reviews status filter), covered by an E2E; the dead alert types stay in the enum.
+    Decisions: D1 System status read-only for the demo operator; D2 no nav badge for it, a red line on the admin's Home;
+    D3 the To do counter counts what the current user can resolve (`canResolveReview`); D4 the Home keeps its name
+    ("Home / Inicio": it still shows 7 / 14 / 30-day metrics); D5 CLAUDE.md corrected in M0. The `frontend-design`
+    skill was not available in the session: Señal (ADR-029) applied directly. Screenshots: `e2e/phase15-shots.spec.ts`
+    into `C:/dev/smartops-phase15-shots/<label>/` (outside the repo). No push until the owner asks.
+    - M0 — DONE. ADR-032 (classification table, To do / Activity / System status, one-click rule, routes; amends
+      ADR-029 §2). `apps/api/src/modules/admin/alert-category.ts`: exhaustive `Record<AlertType, AlertCategory>`
+      (action: manual_attention, possible_opt_out; info: price_change, low_stock, missing_data; technical:
+      integration_error, ingestion_error) + `alertTypesIn`; `test/unit/alert-category.test.ts` (every schema type
+      classified, the ADR table, no overlap, and the dead types still not produced by API code). Not wired to any
+      route yet (M1). CLAUDE.md: phase 14 DONE, phase 15 line, ADR-032 index line. "Before" screenshots taken.

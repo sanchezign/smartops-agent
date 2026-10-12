@@ -34,3 +34,4 @@ one Oracle Cloud E2.1.Micro) supersedes ADR-007.
 - [ADR-029](ADR-029-panel-visual-identity.md) — Panel visual identity "Señal": graphite, one safety yellow for what needs a person
 - [ADR-030](ADR-030-demo-operator-resolves-column-mapping.md) — In DEMO_MODE the public operator can resolve the column-mapping review
 - [ADR-031](ADR-031-content-and-business-language.md) — Demo content language per deployment; ONE business language that also decides how incoming messages are read
+- [ADR-032](ADR-032-panel-triage.md) — Panel triage: To do (one yellow counter), Activity, System status
