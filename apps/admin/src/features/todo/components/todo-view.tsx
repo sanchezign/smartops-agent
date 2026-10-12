@@ -4,22 +4,35 @@ import { CheckCircle2, ChevronRight, History, Lock, Mic, UserX } from "lucide-re
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { Chip, RowList } from "@/components/list-row";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/features/auth/store";
 import { alertText } from "@/features/catalog/alert-text";
 import { useAcknowledgeAlert } from "@/features/catalog/hooks";
 import { useDemoInfo } from "@/features/demo/hooks";
-import { reviewTitle } from "@/features/reviews/labels";
+import { resolveErrorKey } from "@/features/reviews/hooks";
 import { canResolve } from "@/features/reviews/permissions";
+import { reviewQuestion } from "@/features/reviews/question";
+import { quickDecision, type Money, type QuickDecision } from "@/features/reviews/quick-decision";
 import { listOrder, sourceKind } from "@/features/reviews/source";
 import { SourceIcon } from "@/features/reviews/source-icon";
 import type { ReviewItem } from "@/features/reviews/types";
 import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
-import { useListReviews, useTodo } from "../hooks";
+import { useListReviews, useOptOutFromTodo, useQuickDecision, useTodo } from "../hooks";
 import type { TodoAlert, TodoGroup, TodoView as TodoData } from "../types";
 
 /**
@@ -204,7 +217,7 @@ function ListCard({
       <ul className="flex flex-col gap-1.5">
         {items.map((item) => (
           <li key={item.id}>
-            <ItemLink item={item} />
+            <ItemRow item={item} />
           </li>
         ))}
       </ul>
@@ -241,44 +254,120 @@ function ListCard({
   );
 }
 
-/** One decision inside a list: what is asked and about what; a lock when it is not mine. */
-function ItemLink({ item }: { item: ReviewItem }) {
+/**
+ * One decision inside a list, as a question (phase 15 M3): the question links to the detail; when
+ * approving needs no choice (quick-decision.ts) two buttons decide it here, each with a concrete
+ * verb and the value — never "Yes / No".
+ */
+function ItemRow({ item }: { item: ReviewItem }) {
   const tReviews = useTranslations("reviews");
-  const { formatPct } = useFormat();
-  const title = reviewTitle(item, {
-    line: tReviews("titles.line"),
-    product: tReviews("titles.product"),
-    message: tReviews("titles.message"),
-    globalChange: (pct, count) =>
-      tReviews("titles.globalChange", {
-        pct: pct ? formatPct(pct) : tReviews("titles.change"),
-        count,
-      }),
-  });
+  const format = useFormat();
+  const user = useAuthStore((s) => s.user);
+  const demoMode = useDemoInfo().data != null; // ADR-030
+  const quick = quickDecision(item, { canResolve: canResolve(user, item, { demoMode }) });
+  const question = reviewQuestion(item, format);
   return (
-    <Link
-      href={`/reviews/${item.id}`}
-      className="flex min-h-11 items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-    >
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="text-sm font-medium">{tReviews(`kinds.${item.kind}`)}</span>
-        <span className="truncate text-sm text-muted-foreground">{title}</span>
-      </span>
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-    </Link>
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+      <Link
+        href={`/reviews/${item.id}`}
+        className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="text-sm font-medium break-words">
+            {tReviews(`questions.${question.key}`, question.params)}
+          </span>
+          <span className="text-sm text-muted-foreground">{tReviews(`kinds.${item.kind}`)}</span>
+        </span>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      </Link>
+      {quick ? <QuickButtons item={item} quick={quick} /> : null}
+    </div>
   );
 }
 
-/** A message to check by hand (ADR-032 action alerts): what, when, the chat, and "done". */
+function QuickButtons({ item, quick }: { item: ReviewItem; quick: QuickDecision }) {
+  const t = useTranslations("todo.quick");
+  const tErrors = useTranslations("reviews.errors");
+  const { formatMoney } = useFormat();
+  const mutation = useQuickDecision(item.id);
+  const [error, setError] = useState<string | null>(null);
+  const money = (m: Money) => formatMoney(m.amount, m.currency);
+  const { product } = quick;
+  const labels =
+    quick.kind === "unavailable"
+      ? {
+          approve: t("markUnavailable"),
+          keep: t("keepAvailable"),
+          approved: t("markedUnavailable", { product }),
+          kept: t("keptAvailable", { product }),
+        }
+      : {
+          approve:
+            quick.kind === "price"
+              ? t("update", { price: money(quick.proposed) })
+              : t("changeCurrency", { price: money(quick.proposed) }),
+          keep: t("keep", { price: money(quick.current) }),
+          approved: t("applied", { product, price: money(quick.proposed) }),
+          kept: t("kept", { product, price: money(quick.current) }),
+        };
+  const decide = (action: "approve" | "reject") => {
+    setError(null);
+    mutation.mutate(action, {
+      onSuccess: () => toast.success(action === "approve" ? labels.approved : labels.kept),
+      onError: (e) => {
+        const { key, params } = resolveErrorKey(e);
+        setError(tErrors(key, params));
+      },
+    });
+  };
+  const approve = () => decide("approve");
+  const keep = () => decide("reject");
+  return (
+    <div
+      role="group"
+      aria-label={t("group", { product })}
+      className="flex flex-col gap-1.5 sm:shrink-0"
+    >
+      <div className="grid grid-cols-2 gap-2 sm:flex">
+        <Button className="min-h-11" disabled={mutation.isPending} onClick={approve}>
+          {labels.approve}
+        </Button>
+        <Button variant="outline" className="min-h-11" disabled={mutation.isPending} onClick={keep}>
+          {labels.keep}
+        </Button>
+      </div>
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}{" "}
+          <Link href={`/reviews/${item.id}`} className="font-medium underline underline-offset-4">
+            {t("openReview")}
+          </Link>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * A message to check by hand (ADR-032 action alerts): what, when, the chat, and the decision —
+ * "Done" for a voice note; "Not an opt-out" or "Opt out" (asked for confirmation: only an admin
+ * can opt the contact back in) for an ambiguous opt-out phrase.
+ */
 function AlertRow({ alert }: { alert: TodoAlert }) {
   const t = useTranslations("todo");
   const tAlerts = useTranslations("alerts");
+  const tCommon = useTranslations("common");
   const format = useFormat();
   const ack = useAcknowledgeAlert();
+  const optOut = useOptOutFromTodo();
+  const [confirming, setConfirming] = useState(false);
   const text = alertText({ ...alert, product: null }, format);
   const title = text ? tAlerts(`titles.${text.key}`, text.params) : alert.title;
+  const canOptOut = alert.type === "possible_opt_out" && alert.contactId !== null;
   const Icon = alert.type === "possible_opt_out" ? UserX : Mic;
   const label = alert.type === "possible_opt_out" ? t("notOptOut") : t("done");
+  const phrase = typeof alert.details?.matched === "string" ? alert.details.matched : "";
+  const busy = (ack.isPending && ack.variables === alert.id) || optOut.isPending;
   return (
     <div className="flex min-h-16 flex-col gap-3 rounded-lg border-[1.5px] border-foreground bg-card px-4 py-3 text-card-foreground sm:flex-row sm:items-center">
       <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -299,15 +388,58 @@ function AlertRow({ alert }: { alert: TodoAlert }) {
           </p>
         </div>
       </div>
-      <Button
-        variant="outline"
-        className="min-h-11 shrink-0"
-        disabled={ack.isPending && ack.variables === alert.id}
-        onClick={() => ack.mutate(alert.id)}
-        aria-label={t("ackLabel", { action: label, title })}
-      >
-        {label}
-      </Button>
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
+        {canOptOut ? (
+          <Button
+            variant="outline"
+            className="min-h-11"
+            disabled={busy}
+            onClick={() => setConfirming(true)}
+          >
+            {t("optOut")}
+          </Button>
+        ) : null}
+        <Button
+          variant="outline"
+          className={cn("min-h-11", !canOptOut && "col-span-2")}
+          disabled={busy}
+          onClick={() => ack.mutate(alert.id)}
+          aria-label={t("ackLabel", { action: label, title })}
+        >
+          {label}
+        </Button>
+      </div>
+      {canOptOut ? (
+        <AlertDialog open={confirming} onOpenChange={setConfirming}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("optOutTitle")}</AlertDialogTitle>
+              <AlertDialogDescription>{t("optOutBody")}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="min-h-11">{tCommon("cancel")}</AlertDialogCancel>
+              <AlertDialogAction
+                className="min-h-11"
+                onClick={() =>
+                  optOut.mutate(
+                    {
+                      contactId: alert.contactId!,
+                      alertId: alert.id,
+                      reason: t("optOutReason", { phrase }),
+                    },
+                    {
+                      onSuccess: () => toast.success(t("optOutDone")),
+                      onError: () => toast.error(t("optOutFailed")),
+                    },
+                  )
+                }
+              >
+                {t("optOutConfirm")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      ) : null}
     </div>
   );
 }

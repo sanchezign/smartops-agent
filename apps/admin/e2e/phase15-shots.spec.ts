@@ -115,6 +115,15 @@ for (const [viewer, who] of VIEWERS) {
           await ready(page);
           await shoot("review");
         }
+        // M3: a decision that can be taken in one click, opened: its question and what approving does.
+        await page.goto("/todo");
+        await ready(page);
+        const quick = page.locator('main [role="group"]').first();
+        if ((await quick.count()) > 0) {
+          await quick.locator("xpath=..").locator('a[href^="/reviews/"]').first().click();
+          await ready(page);
+          await shoot("review-one-click-kind");
+        }
         await page.goto("/todo/resolved");
         await ready(page);
         await shoot("resolved");

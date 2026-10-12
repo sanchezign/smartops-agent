@@ -43,6 +43,16 @@ export async function expectAccessible(page: Page) {
 export async function openTodo(page: Page) {
   await navLink(page, "To do").click();
   await expect(page.getByRole("heading", { name: "To do", level: 1 })).toBeVisible();
+  await todoLoaded(page);
+}
+
+/** The heading renders before the data: wait for its sections, the folded one or the empty state. */
+async function todoLoaded(page: Page) {
+  await page
+    .getByRole("main")
+    .locator("section h2, details summary, .border-dashed")
+    .first()
+    .waitFor();
 }
 
 /**
@@ -50,6 +60,7 @@ export async function openTodo(page: Page) {
  * resolve is folded under "Waiting for an administrator": it is unfolded first when present.
  */
 export async function todoEntry(page: Page, text: string | RegExp) {
+  await todoLoaded(page);
   const waiting = page.locator("main details");
   if ((await waiting.count()) > 0 && (await waiting.getAttribute("open")) === null) {
     await waiting.locator("summary").click();

@@ -378,6 +378,36 @@
         "cost": "Costo",
         "other": "Otro precio"
       }
+    },
+    "questions": {
+      "price_outlier": "¿Actualizar {product} a {price}?",
+      "price_outlierPlain": "¿Es correcto el nuevo precio de “{line}”?",
+      "currency_changed": "¿Cambiar {product} de {current} a {price}?",
+      "currency_changedPlain": "“{line}” llegó en otra moneda: ¿aplicarlo?",
+      "stale_source": "¿Aplicar un precio más antiguo a “{line}”?",
+      "uncertain_value": "¿Se leyó bien “{line}”?",
+      "missing_currency": "¿En qué moneda está “{line}”?",
+      "product_match": "¿“{line}” es tu producto {product}?",
+      "product_matchPlain": "¿Cuál de tus productos es “{line}”?",
+      "new_or_existing": "¿“{line}” es un producto nuevo?",
+      "possible_duplicate": "¿“{line}” es lo mismo que {product}?",
+      "possible_duplicatePlain": "¿“{line}” está repetido?",
+      "match_conflict": "¿Cuál de tus productos es “{line}”?",
+      "pct_without_match": "¿A qué producto se refiere “{line}”?",
+      "mark_unavailable": "¿Marcar {product} como no disponible?",
+      "global_change": "¿Aplicar {pct} a {count, plural, one {# producto} other {# productos}}?",
+      "global_changePlain": "¿Aplicar un cambio a {count, plural, one {# producto} other {# productos}}?",
+      "tax_basis_changed": "Cambió la base de impuestos de la lista: ¿procesarla igual?",
+      "suspicious_instructions": "Este mensaje da órdenes al sistema: ¿procesarlo igual?",
+      "unknown_supplier": "¿Qué proveedor envió esta lista?",
+      "extraction_failed": "No se pudo leer la lista: ¿intentar de nuevo?",
+      "column_mapping": "¿Qué columna tiene el precio en {file}?",
+      "column_mappingPlain": "¿Qué columna tiene el precio?"
+    },
+    "outcome": {
+      "price": "Si apruebas, {product} pasa de {current} a {price}.",
+      "currency": "Si apruebas, {product} pasa de {current} a {price}.",
+      "unavailable": "Si apruebas, {product} queda marcado como no disponible."
     }
   },
   "todo": {
@@ -409,7 +439,27 @@
     "truncated": "Se muestran las {count} listas más recientes. Resuelve algunas para ver el resto.",
     "cardMeta": "{source} · {when} · {pending}",
     "alsoWaiting": "{count, plural, one {+{n} espera a un administrador} other {+{n} esperan a un administrador}}",
-    "waitingListLabel": "Esperan a un administrador"
+    "waitingListLabel": "Esperan a un administrador",
+    "quick": {
+      "update": "Actualizar a {price}",
+      "keep": "Mantener {price}",
+      "changeCurrency": "Cambiar a {price}",
+      "markUnavailable": "Marcar no disponible",
+      "keepAvailable": "Mantener disponible",
+      "applied": "{product}: actualizado a {price}.",
+      "kept": "{product}: sigue en {price}.",
+      "markedUnavailable": "{product}: marcado como no disponible.",
+      "keptAvailable": "{product}: sigue disponible.",
+      "openReview": "Abrir la revisión",
+      "group": "Decisión sobre {product}"
+    },
+    "optOut": "Dar de baja",
+    "optOutTitle": "¿Registrar esta baja?",
+    "optOutBody": "Desde ahora este contacto no recibe respuestas automáticas ni mensajes del negocio. Solo un administrador puede volver a darlo de alta.",
+    "optOutConfirm": "Dar de baja",
+    "optOutReason": "Pidió no recibir más mensajes: “{phrase}” (confirmado en Pendientes)",
+    "optOutDone": "Baja registrada.",
+    "optOutFailed": "No se pudo registrar la baja. Inténtalo de nuevo."
   },
   "rules": {
     "description": "Cómo se comporta el sistema, sin tocar código. Los cambios aplican al instante y quedan registrados.",
