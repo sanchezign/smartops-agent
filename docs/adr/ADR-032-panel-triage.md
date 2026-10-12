@@ -70,6 +70,12 @@ the notifications / WhatsApp digests, the permission rules or the database schem
      `tax_basis_changed` (re-runs the whole list), `suspicious_instructions` (security) and `extraction_failed` (spends AI
      budget). One-click buttons are shown only when `canResolve` allows them; 403 and 409 `STALE_REVIEW` answers are shown
      on the row with a link to the detail.
+     As built (M3, `features/reviews/quick-decision.ts`): the line must carry ONLY its kind's reason (a second reason —
+     `stale_source`, `uncertain_value`, `invalid_result`, `document_incomplete`… — sends it to the detail), the proposed
+     currency of a `price_outlier` must be the product's, and a `currency_changed` must have an absolute price (a
+     percentage is applied in the product's own currency). Every review also reads as a plain question in the list and
+     in its detail ("Update Coarse sand to $41.50?", `question.ts`); the detail adds what approving does when it needs
+     no choice ("If you approve, … goes from … to …").
 
 4. **Activity** (`/activity`) = **info** alerts: a feed, no yellow, nothing to mark as seen.
 

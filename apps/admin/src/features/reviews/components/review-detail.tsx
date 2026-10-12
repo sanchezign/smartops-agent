@@ -14,6 +14,8 @@ import { useResolveReview, useReview, type ResolveInput } from "../hooks";
 import { isKnownReason, rawReason } from "../labels";
 import { useDemoInfo } from "@/features/demo/hooks";
 import { canResolve } from "../permissions";
+import { reviewQuestion } from "../question";
+import { quickDecision, type Money } from "../quick-decision";
 import type { ReviewItem } from "../types";
 import { ColumnMappingResolver } from "./column-mapping-resolver";
 import { LineResolver } from "./line-resolver";
@@ -75,7 +77,12 @@ function DetailBody({
 }) {
   const props = { item, readOnly, pending, onResolve };
   const t = useTranslations("reviews");
-  const { formatDateTime } = useFormat();
+  const format = useFormat();
+  const { formatDateTime } = format;
+  // Phase 15 M3: the plain question, and what approving does when it needs no choice.
+  const question = reviewQuestion(item, format);
+  const quick = quickDecision(item, { canResolve: true });
+  const money = (m: Money) => format.formatMoney(m.amount, m.currency);
   return (
     <>
       <header className="mb-5 flex flex-col gap-2">
@@ -85,6 +92,18 @@ function DetailBody({
             <Badge variant="outline">{t(`statuses.${item.status}`)}</Badge>
           ) : null}
         </div>
+        <p className="font-medium">{t(`questions.${question.key}`, question.params)}</p>
+        {quick && item.status === "pending" ? (
+          <p className="text-sm">
+            {quick.kind === "unavailable"
+              ? t("outcome.unavailable", { product: quick.product })
+              : t(`outcome.${quick.kind}`, {
+                  product: quick.product,
+                  current: money(quick.current),
+                  price: money(quick.proposed),
+                })}
+          </p>
+        ) : null}
         <p className="text-sm text-muted-foreground">{t(`help.${item.kind}`)}</p>
         {item.reasons.length > 1 ? (
           <div className="flex flex-wrap gap-1.5">

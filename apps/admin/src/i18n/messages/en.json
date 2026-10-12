@@ -378,6 +378,36 @@
         "cost": "Cost",
         "other": "Other price"
       }
+    },
+    "questions": {
+      "price_outlier": "Update {product} to {price}?",
+      "price_outlierPlain": "Is the new price of “{line}” right?",
+      "currency_changed": "Change {product} from {current} to {price}?",
+      "currency_changedPlain": "“{line}” came in another currency: apply it?",
+      "stale_source": "Apply an older price to “{line}”?",
+      "uncertain_value": "Was “{line}” read right?",
+      "missing_currency": "Which currency is “{line}” in?",
+      "product_match": "Is “{line}” your product {product}?",
+      "product_matchPlain": "Which of your products is “{line}”?",
+      "new_or_existing": "Is “{line}” a new product?",
+      "possible_duplicate": "Is “{line}” the same as {product}?",
+      "possible_duplicatePlain": "Is “{line}” a duplicate?",
+      "match_conflict": "Which of your products is “{line}”?",
+      "pct_without_match": "Which product does “{line}” refer to?",
+      "mark_unavailable": "Mark {product} as unavailable?",
+      "global_change": "Apply {pct} to {count, plural, one {# product} other {# products}}?",
+      "global_changePlain": "Apply a change to {count, plural, one {# product} other {# products}}?",
+      "tax_basis_changed": "The list's tax basis changed: process it anyway?",
+      "suspicious_instructions": "This message gives orders to the system: process it anyway?",
+      "unknown_supplier": "Which supplier sent this list?",
+      "extraction_failed": "The list could not be read: try again?",
+      "column_mapping": "Which column has the price in {file}?",
+      "column_mappingPlain": "Which column has the price?"
+    },
+    "outcome": {
+      "price": "If you approve, {product} goes from {current} to {price}.",
+      "currency": "If you approve, {product} goes from {current} to {price}.",
+      "unavailable": "If you approve, {product} is marked as unavailable."
     }
   },
   "todo": {
@@ -409,7 +439,27 @@
     "truncated": "Showing the {count} newest lists. Resolve some to see the rest.",
     "cardMeta": "{source} · {when} · {pending}",
     "alsoWaiting": "{count, plural, one {+{n} waits for an administrator} other {+{n} wait for an administrator}}",
-    "waitingListLabel": "Waiting for an administrator"
+    "waitingListLabel": "Waiting for an administrator",
+    "quick": {
+      "update": "Update to {price}",
+      "keep": "Keep {price}",
+      "changeCurrency": "Change to {price}",
+      "markUnavailable": "Mark unavailable",
+      "keepAvailable": "Keep available",
+      "applied": "{product}: updated to {price}.",
+      "kept": "{product}: stays at {price}.",
+      "markedUnavailable": "{product}: marked as unavailable.",
+      "keptAvailable": "{product}: stays available.",
+      "openReview": "Open the review",
+      "group": "Decision on {product}"
+    },
+    "optOut": "Opt out",
+    "optOutTitle": "Record this opt-out?",
+    "optOutBody": "From now on this contact gets no automatic replies and no messages from the business. Only an administrator can opt them back in.",
+    "optOutConfirm": "Opt out",
+    "optOutReason": "Asked to stop: “{phrase}” (confirmed in To do)",
+    "optOutDone": "Opt-out recorded.",
+    "optOutFailed": "Could not record the opt-out. Try again."
   },
   "rules": {
     "description": "How the system behaves, without touching code. Changes apply instantly and are recorded.",

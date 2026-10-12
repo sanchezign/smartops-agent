@@ -1754,3 +1754,19 @@ a real client.**
       runs (SHOTS) seed without the E2E suppliers. Removed `features/dashboard/hooks.ts` and the empty
       `app/(main)/alerts/` (owner's permission). E2E: the operator sees the across-the-board change only in the admin
       section; the cards above + the messages = the nav counter; the section's N = what it shows.
+    - M3 — DONE. Every review reads as a plain question, in the list and in its detail (`features/reviews/question.ts`,
+      `reviews.questions.*`: "Update Coarse sand to US$41.50?", "Which column has the price in <file>?", a "…Plain"
+      variant when data is missing); the detail adds what approving does when it needs no choice ("If you approve, …
+      goes from … to …"). One click from the list (`quick-decision.ts`, ADR-032 §3 "as built"): price_outlier and
+      currency_changed with a linked product, a proposed price and ONLY their own reason (currency_changed also an
+      absolute price, both currencies on the buttons), mark_unavailable; buttons with a verb and the value ("Update to
+      US$0.41" / "Keep US$0.38", "Change to UYU 150.00", "Mark unavailable" / "Keep available"), never Yes / No; only
+      when `canResolve`; 403 / 409 shown on the row with "Open the review". Possible opt-out: "Opt out" asks for
+      confirmation (only an admin opts back in), records it through the chat's opt-out route and marks the alert done;
+      "Not an opt-out" acknowledges. No API change. E2E (`todo.spec.ts`): each browser creates its OWN reviews (a new
+      list per review: a message of the supplier's chat + an ingested run) — update applies the price (checked in the DB),
+      keep leaves it, currency buttons, stale_source never one-click, mark_unavailable admin-only, the opt-out dialog
+      (cancel changes nothing). Helpers: `openTodo` / `todoEntry` wait for the data (the heading renders first —
+      three races found and fixed). In English the dollar reads "US$" (formatMoney), not "$". Tests: API 1412 unit +
+      240 integration; panel 210 unit; E2E 162 passed (desktop, Pixel, iPhone on Chromium). Screenshots (clean demo
+      data) in `C:/dev/smartops-phase15-shots/M3-after/`.
