@@ -53,6 +53,42 @@ test.describe("to do (phase 15)", () => {
     }
   });
 
+  test("each decision in ONE place; what is shown adds up to the counters (operator)", async ({
+    page,
+  }) => {
+    await login(page, "operator");
+    await openTodo(page);
+    const pendingOf = async (cards: ReturnType<typeof page.getByRole>) =>
+      (await cards.getByRole("article").locator("header p").allTextContents()).reduce(
+        (n, meta) => n + Number(/(\d+) pending/.exec(meta)?.[1] ?? Number.NaN),
+        0,
+      );
+    // The cards above hold only what the operator can resolve: no across-the-board change there.
+    const lists = page.getByRole("list", { name: "Price lists" });
+    // (the heading renders before the data: wait for both lists before counting anything)
+    await expect(lists.getByRole("article").first()).toBeVisible();
+    await expect(page.getByRole("list", { name: "Messages to check" })).toBeVisible();
+    await expect(lists.getByText("Across-the-board change")).toHaveCount(0);
+    // What is visible above + the messages to check = the navigation counter.
+    const messages = await page
+      .getByRole("list", { name: "Messages to check" })
+      .getByRole("listitem")
+      .count();
+    // The badge's screen-reader text ("12 pending"); textContent also works where it is hidden.
+    const badgeText = await navLink(page, "To do").first().locator(".sr-only").textContent();
+    const badge = Number(/(\d+) pending/.exec(badgeText ?? "")?.[1]);
+    expect((await pendingOf(lists)) + messages).toBe(badge);
+    // A list with an admin-only item says so and leads to the section, which opens.
+    const tessaly = lists.getByRole("article", { name: "Tessaly Paint & Coatings" });
+    await tessaly.getByRole("link", { name: "+1 waits for an administrator" }).click();
+    const waiting = page.getByRole("list", { name: "Waiting for an administrator" });
+    await expect(waiting.getByText("Across-the-board change")).toBeInViewport();
+    // The section's N is exactly what it shows.
+    const summary = await page.locator("main details summary").innerText();
+    expect(Number(/\((\d+)\)/.exec(summary)?.[1])).toBe(await pendingOf(waiting));
+    await expectAccessible(page);
+  });
+
   test("the long voice note: in Messages to check, with the way to listen to it", async ({
     page,
   }) => {

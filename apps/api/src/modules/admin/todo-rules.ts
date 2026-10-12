@@ -1,4 +1,4 @@
-import type { ReviewKind, ReviewScope, UserRole } from "../../generated/prisma/enums.js";
+import { ReviewKind, ReviewScope, type UserRole } from "../../generated/prisma/enums.js";
 import { canResolveReview } from "../auth/permissions.js";
 
 /**
@@ -30,6 +30,20 @@ export interface ReviewSplit {
   canResolve: number;
   /** Pending items only an admin may resolve (shown folded, without yellow). */
   waitingForAdmin: number;
+}
+
+/**
+ * Every (scope, kind) this viewer may resolve, enumerated through canResolveReview — so SQL can
+ * tell "mine" from "waits for an admin" without restating the rule.
+ */
+export function resolvablePairs(viewer: Viewer): { scope: ReviewScope; kind: ReviewKind }[] {
+  return Object.values(ReviewScope).flatMap((scope) =>
+    Object.values(ReviewKind)
+      .filter((kind) =>
+        canResolveReview(viewer.role, { scope, kind }, { demoMode: viewer.demoMode }),
+      )
+      .map((kind) => ({ scope, kind })),
+  );
 }
 
 export function splitPending(groups: readonly PendingKindCount[], viewer: Viewer): ReviewSplit {

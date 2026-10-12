@@ -48,6 +48,11 @@ the notifications / WhatsApp digests, the permission rules or the database schem
    `canResolveReview(role, item, { demoMode })` (ADR-030). Items the user cannot resolve are shown in a folded section
    "Waiting for an administrator (N)", without yellow. Acknowledging an alert is allowed to every role (unchanged), so
    action alerts always count. Empty state: "All caught up".
+   **Each item is in ONE place** (owner, M2 review): a card above holds only what the user can resolve and its count is
+   that number; a list that also has admin-only items says "+N waits for an administrator", a link to the folded section,
+   which shows every admin-only item grouped by list the same way (its N is what it shows). An admin sees no section.
+   The API ranks each list's first items separately for "mine" and "waits for an admin", with the (scope, kind) pairs
+   `canResolveReview` allows (`resolvablePairs`), never a rule restated in SQL.
    A **Resolved** link opens the history of approved / rejected items (what the old Reviews status filter showed).
 
 3. **One-click decisions from the list** only where approving with an empty body does exactly what the row shows, with
@@ -84,6 +89,10 @@ the notifications / WhatsApp digests, the permission rules or the database schem
 
 **Amends ADR-029 §2:** the yellow counter of the navigation is the To do counter (it replaces the Reviews and Alerts
 counters). The rest of §2 stands.
+
+**Amends ADR-029 §4, for the To do card only** (owner, M2 review): the card heading is the supplier, and ONE meta line
+under it joins the facts with " · " — "Spreadsheet · 3 h ago · 1 pending" — so a count never sits alone on a line of
+its own on a phone. The other lists keep §4.
 
 ## Consequences
 

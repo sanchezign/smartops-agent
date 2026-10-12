@@ -1,11 +1,12 @@
 import type { PrismaClient } from "../../common/db.js";
-import type { Prisma } from "../../generated/prisma/client.js";
+import { Prisma } from "../../generated/prisma/client.js";
 import type { AlertSeverity, AlertType } from "../../generated/prisma/enums.js";
 import { alertTypesIn } from "./alert-category.js";
 import { alertDetails } from "./alert-details.js";
 import { OPEN_ALERT_STATUSES } from "./catalog-query.repository.js";
 import type { ReviewQueryRepository, ReviewView } from "./review-query.repository.js";
 import {
+  resolvablePairs,
   splitPending,
   todoCounts,
   TODO_ALERT_LIMIT,
@@ -42,8 +43,13 @@ export interface TodoGroup {
   /** Pending items of this list, all of them. */
   pending: number;
   reviews: ReviewSplit;
-  /** The first TODO_ITEMS_PER_GROUP items: run gate first, then the list's order. */
+  /**
+   * The first TODO_ITEMS_PER_GROUP items THIS viewer may resolve (run gate first, then the list's
+   * order). Each item is in exactly one of `items` / `waitingItems` (owner, phase 15 M2 review).
+   */
   items: ReviewView[];
+  /** The first TODO_ITEMS_PER_GROUP items only an admin may resolve (always empty for an admin). */
+  waitingItems: ReviewView[];
 }
 
 export interface TodoAlert {
@@ -105,11 +111,19 @@ export function createTodoQueryRepository(
   /**
    * The newest lists with pending items (newest message first, like the review list: a null
    * waTimestamp sorts last), each with its first items (scope run → line → catalog, then the
-   * order they were created in, i.e. the list's own order). One statement; LIMIT + 1 tells
-   * whether more lists exist.
+   * order they were created in, i.e. the list's own order) — the first ones the viewer may
+   * resolve AND the first ones only an admin may resolve, ranked separately. "Mine" is the
+   * (scope, kind) list of `resolvablePairs` (canResolveReview), never a rule restated in SQL.
+   * One statement; LIMIT + 1 tells whether more lists exist.
    */
-  async function topLists() {
-    return prisma.$queryRaw<{ run_id: string; review_id: string }[]>`
+  async function topLists(viewer: Viewer) {
+    const pairs = resolvablePairs(viewer);
+    const mine = pairs.length
+      ? Prisma.sql`(r.scope::text, r.kind::text) IN (${Prisma.join(
+          pairs.map((p) => Prisma.sql`(${p.scope}, ${p.kind})`),
+        )})`
+      : Prisma.sql`FALSE`;
+    return prisma.$queryRaw<{ run_id: string; review_id: string; mine: boolean }[]>`
       WITH runs AS (
         SELECT r.ingestion_run_id AS run_id,
                ROW_NUMBER() OVER (
@@ -124,17 +138,17 @@ export function createTodoQueryRepository(
         LIMIT ${TODO_GROUP_LIMIT + 1}
       ),
       ranked AS (
-        SELECT r.id, r.ingestion_run_id AS run_id,
+        SELECT r.id, r.ingestion_run_id AS run_id, ${mine} AS mine,
                ROW_NUMBER() OVER (
-                 PARTITION BY r.ingestion_run_id ORDER BY r.scope, r.created_at, r.id
+                 PARTITION BY r.ingestion_run_id, ${mine} ORDER BY r.scope, r.created_at, r.id
                ) AS n
         FROM review_items r
         WHERE r.status = 'pending' AND r.ingestion_run_id IN (SELECT run_id FROM runs)
       )
-      SELECT runs.run_id::text AS run_id, ranked.id::text AS review_id
+      SELECT runs.run_id::text AS run_id, ranked.id::text AS review_id, ranked.mine
       FROM runs JOIN ranked ON ranked.run_id = runs.run_id
       WHERE ranked.n <= ${TODO_ITEMS_PER_GROUP}
-      ORDER BY runs.rank, ranked.n`;
+      ORDER BY runs.rank, ranked.mine DESC, ranked.n`;
   }
 
   async function actionAlerts(): Promise<TodoAlert[]> {
@@ -180,14 +194,16 @@ export function createTodoQueryRepository(
     async todo(viewer: Viewer): Promise<TodoView> {
       const [counts, listRows, alerts] = await Promise.all([
         summary(viewer),
-        topLists(),
+        topLists(viewer),
         actionAlerts(),
       ]);
       const runIds = [...new Set(listRows.map((r) => r.run_id))];
       const groupsTruncated = runIds.length > TODO_GROUP_LIMIT;
       const shownRuns = runIds.slice(0, TODO_GROUP_LIMIT);
       const shown = new Set(shownRuns);
-      const reviewIds = listRows.filter((r) => shown.has(r.run_id)).map((r) => r.review_id);
+      const shownRows = listRows.filter((r) => shown.has(r.run_id));
+      const reviewIds = shownRows.map((r) => r.review_id);
+      const isMine = new Map(shownRows.map((r) => [r.review_id, r.mine]));
 
       const [perList, items] = await Promise.all([
         shownRuns.length
@@ -210,6 +226,8 @@ export function createTodoQueryRepository(
       for (const item of items) {
         itemsOf.set(item.run.id, [...(itemsOf.get(item.run.id) ?? []), item]);
       }
+      const byOwner = (list: ReviewView[], mine: boolean) =>
+        list.filter((i) => (isMine.get(i.id) ?? false) === mine);
 
       const groups = shownRuns.flatMap((runId): TodoGroup[] => {
         const listItems = itemsOf.get(runId) ?? [];
@@ -223,7 +241,8 @@ export function createTodoQueryRepository(
             message: first.message,
             pending: kinds.reduce((n, k) => n + k.count, 0),
             reviews: splitPending(kinds, viewer),
-            items: listItems,
+            items: byOwner(listItems, true),
+            waitingItems: byOwner(listItems, false),
           },
         ];
       });

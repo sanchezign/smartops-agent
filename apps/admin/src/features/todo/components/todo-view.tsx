@@ -58,9 +58,18 @@ export function TodoView() {
 function TodoContent({ data }: { data: TodoData }) {
   const t = useTranslations("todo");
   const { formatInt } = useFormat();
+  const [waitingOpen, setWaitingOpen] = useState(false);
+  // Each review lives in ONE place (owner, M2 review): what I can resolve on the cards above,
+  // what only an admin can resolve in the folded section, grouped by list the same way.
   const mine = data.groups.filter((g) => g.reviews.canResolve > 0);
-  const theirs = data.groups.filter((g) => g.reviews.canResolve === 0);
+  const theirs = data.groups.filter((g) => g.reviews.waitingForAdmin > 0);
   const waiting = data.counts.reviews.waitingForAdmin;
+  const openWaiting = () => {
+    setWaitingOpen(true);
+    requestAnimationFrame(() =>
+      document.getElementById(WAITING_ID)?.scrollIntoView({ block: "start" }),
+    );
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -80,7 +89,7 @@ function TodoContent({ data }: { data: TodoData }) {
           <RowList aria-labelledby="todo-lists">
             {mine.map((group) => (
               <li key={group.run.id}>
-                <ListCard group={group} />
+                <ListCard group={group} onShowWaiting={openWaiting} />
               </li>
             ))}
           </RowList>
@@ -109,7 +118,12 @@ function TodoContent({ data }: { data: TodoData }) {
       ) : null}
 
       {waiting > 0 ? (
-        <details className="group rounded-lg border-[1.5px] border-dashed bg-card/50">
+        <details
+          id={WAITING_ID}
+          open={waitingOpen}
+          onToggle={(e) => setWaitingOpen(e.currentTarget.open)}
+          className="group scroll-mt-20 rounded-lg border-[1.5px] border-dashed bg-card/50"
+        >
           <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 py-3 font-medium [&::-webkit-details-marker]:hidden">
             <ChevronRight
               className="size-4 shrink-0 transition-transform group-open:rotate-90"
@@ -120,16 +134,13 @@ function TodoContent({ data }: { data: TodoData }) {
           </summary>
           <div className="flex flex-col gap-3 px-4 pb-4">
             <p className="text-sm text-muted-foreground">{t("waitingWhy")}</p>
-            <RowList>
+            <RowList aria-label={t("waitingListLabel")}>
               {theirs.map((group) => (
                 <li key={group.run.id}>
-                  <ListCard group={group} />
+                  <ListCard group={group} waiting />
                 </li>
               ))}
             </RowList>
-            {mine.some((g) => g.reviews.waitingForAdmin > 0) ? (
-              <p className="text-sm text-muted-foreground">{t("waitingInLists")}</p>
-            ) : null}
           </div>
         </details>
       ) : null}
@@ -137,34 +148,58 @@ function TodoContent({ data }: { data: TodoData }) {
   );
 }
 
-/** One list (one message): where it came from, when, how many decisions, its first items. */
-function ListCard({ group }: { group: TodoGroup }) {
+const WAITING_ID = "todo-waiting";
+
+/**
+ * One list (one message) for one owner: the decisions THIS user can make, or (`waiting`) the
+ * ones only an admin can make. Its count is the count of what it shows.
+ */
+function ListCard({
+  group,
+  waiting = false,
+  onShowWaiting,
+}: {
+  group: TodoGroup;
+  waiting?: boolean;
+  onShowWaiting?: () => void;
+}) {
   const t = useTranslations("todo");
+  const user = useAuthStore((s) => s.user);
+  const demoMode = useDemoInfo().data != null; // ADR-030
   const { formatInt, formatRelative } = useFormat();
   const [all, setAll] = useState(false);
-  const more = group.pending > group.items.length;
+  const count = waiting ? group.reviews.waitingForAdmin : group.reviews.canResolve;
+  const firstItems = waiting ? group.waitingItems : group.items;
+  const more = count > firstItems.length;
   const full = useListReviews(group.run.id, all && more);
-  const items = all && full.data ? listOrder(full.data.items) : group.items;
+  const items =
+    all && full.data
+      ? listOrder(full.data.items).filter((i) => canResolve(user, i, { demoMode }) !== waiting)
+      : firstItems;
   const kind = sourceKind(group.message);
-  const mine = group.reviews.canResolve > 0;
+  const name = group.supplier?.name ?? t("unknownSupplier");
+  const alsoWaiting = waiting ? 0 : group.reviews.waitingForAdmin;
   return (
     <article
-      aria-label={group.supplier?.name ?? t("unknownSupplier")}
+      aria-label={name}
       className={cn(
         "flex flex-col gap-3 rounded-lg border-[1.5px] bg-card p-4 text-card-foreground",
-        mine ? "border-foreground" : "border-border",
+        waiting ? "border-border" : "border-foreground",
       )}
     >
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <SourceIcon kind={kind} className="size-5 shrink-0" />
-        <h3 className="font-medium">{group.supplier?.name ?? t("unknownSupplier")}</h3>
-        <Chip>{t(`source.${kind}`)}</Chip>
-        <span className="text-sm text-muted-foreground tabular-nums">
-          {formatRelative(group.message.receivedAt)}
-        </span>
-        <span className="ml-auto text-sm font-medium tabular-nums">
-          {t("pendingInList", { count: group.pending, n: formatInt(group.pending) })}
-        </span>
+      <header className="flex items-start gap-3">
+        <SourceIcon kind={kind} className="mt-0.5 size-5 shrink-0" />
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h3 className="font-medium break-words">{name}</h3>
+          {/* One meta line (owner, M2 review): kind · when · how many — never a count alone. */}
+          <p className="text-sm text-muted-foreground tabular-nums">
+            {t("cardMeta", {
+              source: t(`source.${kind}`),
+              when: formatRelative(group.message.receivedAt),
+              pending: t("pendingInList", { count, n: formatInt(count) }),
+            })}
+          </p>
+        </div>
       </header>
       <ul className="flex flex-col gap-1.5">
         {items.map((item) => (
@@ -173,17 +208,34 @@ function ListCard({ group }: { group: TodoGroup }) {
           </li>
         ))}
       </ul>
-      {more ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="min-h-11 w-fit"
-          aria-expanded={all}
-          disabled={all && full.isPending}
-          onClick={() => setAll((v) => !v)}
-        >
-          {all ? t("showFewer") : t("viewAll", { count: formatInt(group.pending) })}
-        </Button>
+      {more || alsoWaiting > 0 ? (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {more ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="min-h-11 w-fit"
+              aria-expanded={all}
+              disabled={all && full.isPending}
+              onClick={() => setAll((v) => !v)}
+            >
+              {all ? t("showFewer") : t("viewAll", { count: formatInt(count) })}
+            </Button>
+          ) : null}
+          {alsoWaiting > 0 ? (
+            <a
+              href={`#${WAITING_ID}`}
+              onClick={(e) => {
+                e.preventDefault();
+                onShowWaiting?.();
+              }}
+              className="flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 hover:underline"
+            >
+              <Lock className="size-3.5" aria-hidden />
+              {t("alsoWaiting", { count: alsoWaiting, n: formatInt(alsoWaiting) })}
+            </a>
+          ) : null}
+        </div>
       ) : null}
     </article>
   );
@@ -192,11 +244,7 @@ function ListCard({ group }: { group: TodoGroup }) {
 /** One decision inside a list: what is asked and about what; a lock when it is not mine. */
 function ItemLink({ item }: { item: ReviewItem }) {
   const tReviews = useTranslations("reviews");
-  const t = useTranslations("todo");
-  const user = useAuthStore((s) => s.user);
-  const demoMode = useDemoInfo().data != null; // ADR-030
   const { formatPct } = useFormat();
-  const locked = !canResolve(user, item, { demoMode });
   const title = reviewTitle(item, {
     line: tReviews("titles.line"),
     product: tReviews("titles.product"),
@@ -216,12 +264,6 @@ function ItemLink({ item }: { item: ReviewItem }) {
         <span className="text-sm font-medium">{tReviews(`kinds.${item.kind}`)}</span>
         <span className="truncate text-sm text-muted-foreground">{title}</span>
       </span>
-      {locked ? (
-        <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-          <Lock className="size-3.5" aria-hidden />
-          {t("adminResolves")}
-        </span>
-      ) : null}
       <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
     </Link>
   );
