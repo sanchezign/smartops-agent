@@ -1705,3 +1705,20 @@ a real client.**
       integration_error, ingestion_error) + `alertTypesIn`; `test/unit/alert-category.test.ts` (every schema type
       classified, the ADR table, no overlap, and the dead types still not produced by API code). Not wired to any
       route yet (M1). CLAUDE.md: phase 14 DONE, phase 15 line, ADR-032 index line. "Before" screenshots taken.
+    - M1 — DONE. Read API, no UI. `GET /admin/todo/summary` (counters only, for the nav badge: 2 statements —
+      pending reviews `groupBy (scope, kind)`, each group split by `canResolveReview(role, {scope, kind}, {demoMode})`
+      into canResolve / waitingForAdmin; open action alerts `count`) and `GET /admin/todo` (counters + up to 50 lists,
+      newest message first, each with its pending count, its split and its first 5 items — run gate first, then the
+      list's order — + up to 50 open action alerts with conversationId / contactId from their payload's message). 13
+      statements whatever the data (one raw SQL with window functions for lists + first items; Prisma 7 loads each
+      nested relation with ONE `IN (...)`), measured by a test with a query-logging client (3 lists = 51 lists).
+      Role and DEMO_MODE come from the token and the config, never the request (e2e test). `runId` filter on
+      `GET /admin/reviews`, `byIds` on the review read model; `category` field + filter on `GET /admin/alerts` (its
+      `open` counts the category asked for; unchanged without one). Digest links: run with pending reviews and
+      manual_attention → `/todo`, integration_error → `/system` (computed when read; a test stores a digest the
+      pre-phase-15 way and checks no column / JSON holds a path). Authz matrix: two new rows (401 / allow / allow);
+      the item-level review matrix fixture unchanged. Tests: API 1411 unit + 240 integration. Real payloads on the
+      English demo seed in `C:/dev/smartops-phase15-shots/M1-json/`: total admin 9 (8 + 1 alert), operator 5
+      (4 mine, 4 wait for an admin), demo operator 6 (+ column_mapping). Found: the seeded manual_attention alert
+      has no payload (no messageId), so it reaches To do without its conversation — demo seed data, to fix in M3.
+      The M2 panel routes `/todo` and `/system` do not exist yet: digest links point to them from this commit on.

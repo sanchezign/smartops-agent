@@ -33,6 +33,7 @@ import { createPublicAccount } from "./modules/demo/public-account.js";
 import { createEventHub } from "./modules/events/event-hub.js";
 import { createPgListener } from "./modules/events/pg-listener.js";
 import { createReviewQueryRepository } from "./modules/admin/review-query.repository.js";
+import { createTodoQueryRepository } from "./modules/admin/todo-query.repository.js";
 import { createRunRetrigger } from "./modules/admin/run-retrigger.js";
 import { createDashboardRepository } from "./modules/dashboard/dashboard.repository.js";
 import { createDashboardService } from "./modules/dashboard/dashboard.service.js";
@@ -284,6 +285,7 @@ const eventHub = createEventHub({
   flushMs: 250,
   logger,
 });
+const reviewQuery = createReviewQueryRepository(prisma);
 const app = createApp({
   env,
   logger,
@@ -299,7 +301,8 @@ const app = createApp({
       repository: createDashboardRepository(prisma),
       budget: { totalUsd: env.AI_TOTAL_BUDGET_USD, dailyUsd: env.AI_DAILY_BUDGET_USD },
     }),
-    reviewQuery: createReviewQueryRepository(prisma),
+    reviewQuery,
+    todoQuery: createTodoQueryRepository(prisma, { reviewQuery }),
     conversationQuery: createConversationQueryRepository(prisma),
     catalogQuery: createCatalogQueryRepository(prisma),
     digestLinks: createDigestLinkRepository(prisma),

@@ -136,6 +136,7 @@ export const stubAdminDeps: AdminDeps = {
     alerts: notConfigured,
     acknowledgeAlert: notConfigured,
   },
+  todoQuery: { summary: notConfigured, todo: notConfigured },
   reviewQuery: {
     list: notConfigured,
     get: notConfigured,
