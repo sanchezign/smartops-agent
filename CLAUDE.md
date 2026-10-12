@@ -76,7 +76,7 @@ n8n notifier agent: price changes over threshold, low stock, missing data
 ## Phase order
 Summary, one line per phase with its status. The full original phase brief (requirements, user
 decisions per phase) is in `docs/history/phase-order-detail.md`; what was built, milestone by
-milestone, is in `docs/history/phase-log.md`. Status as of 2026-10-06.
+milestone, is in `docs/history/phase-log.md`. Status as of 2026-10-12.
 
 1. scaffold (pnpm monorepo, docker-compose Postgres + n8n) — DONE.
 2. config/env/logging + Prisma schema — DONE.
@@ -97,8 +97,10 @@ milestone, is in `docs/history/phase-log.md`. Status as of 2026-10-06.
     owner's checks on the VM / Console that remain are listed in "Current phase".
 13. i18n (panel EN + neutral ES) + English docs + screenshots/video + panel guide + case study +
     portfolio kit — DONE (merged 2026-10-02).
-14. frontend clarity (UX) — IN PROGRESS (branch `feat/phase-14-frontend-clarity`): M0–M7 DONE (M5 = demo content
-    language, English by default); PR open, waiting for the owner's merge. Detail: `docs/history/phase-log.md` item 14.
+14. frontend clarity (UX) — DONE (M0–M7, M5 = demo content language, English by default; merged into `main`).
+    Detail: `docs/history/phase-log.md` item 14.
+15. panel triage (To do / Activity / System status, ADR-032) — IN PROGRESS (branch `feat/phase-15-panel-triage`):
+    M0 DONE; M1–M6 pending, one milestone at a time, the owner reviews each.
 
 
 ## Data model (starting point — refine in phase 2 plan)
@@ -174,15 +176,21 @@ Add one line here for every new ADR.
 - [ADR-029](docs/adr/ADR-029-panel-visual-identity.md) — Panel visual identity "Señal": graphite, one safety yellow for what needs a person
 - [ADR-030](docs/adr/ADR-030-demo-operator-resolves-column-mapping.md) — In DEMO_MODE the public operator can resolve the column-mapping review
 - [ADR-031](docs/adr/ADR-031-content-and-business-language.md) — Demo content language per deployment; ONE business language that also decides how incoming messages are read
+- [ADR-032](docs/adr/ADR-032-panel-triage.md) — Panel triage: To do (one yellow counter), Activity, System status
 
 ## Current phase
-**Phases 1–13 are COMPLETE (phase 12 closed in the repo 2026-10-06). Phase 14 (frontend clarity) is IN PROGRESS on `feat/phase-14-frontend-clarity`: M0–M7 all done; the PR to `main` is open and waits for the owner to merge it.**
-Phase 14 (owner decisions 2026-10-07): style "Señal" (ADR-029), demo operator resolves column_mapping in
-DEMO_MODE (ADR-030), credentials demo@smartops.test / "try smartops demo", content language per
-deployment (DEMO_CONTENT_LANGUAGE=en|es, public demo in English). Order: M0–M4, M6, M7, then M5 (content
-language); the README media are regenerated once, at the end of M5. One milestone at a time, the owner
-reviews each. The exploration branch `design/phase-14-exploration` stays LOCAL (never push: ~38 MB of
-screenshots, the repo goes public).
+**Phases 1–14 are COMPLETE (phase 14, frontend clarity, merged into `main`; its log: `docs/history/phase-log.md` item 14). Phase 15 (panel triage, ADR-032) is IN PROGRESS on `feat/phase-15-panel-triage`.**
+Phase 15 (plan approved 2026-10-12): To do = pending reviews + action alerts, ONE yellow counter of what the
+current user can resolve (`canResolveReview`); Activity = news (no yellow, nothing to mark seen); System status
+= technical errors (admins; read-only in DEMO_MODE; no nav badge, a red line on the admin's Home); Home keeps
+its name with the pending block on top; reviews read as questions, one click only for price_outlier /
+currency_changed (linked product + proposed price), mark_unavailable (admin), manual_attention, "Not an
+opt-out" — buttons with concrete verbs and values, never Yes / No; a "Resolved" history view. Presentation
+only: no schema change, no change to decisions, permissions or digests. Order M0 (ADR + classification) → M1
+(read API) → M2 (To do + nav) → M3 (questions + one click) → M4 (Activity + System status) → M5 (Home) → M6
+(docs, media). One milestone at a time, one commit each, the owner reviews screenshots (EN / ES, light / dark,
+desktop + iPhone) in `C:/dev/smartops-phase15-shots/` before the next; NO push until the owner asks.
+The exploration branch `design/phase-14-exploration` stays LOCAL (never push: ~38 MB of screenshots).
 Everything already finished (what was built, decisions, measurements, incidents, real results) is
 in `docs/history/phase-log.md` — one entry per phase and milestone, textual. Read it only when you
 need the detail of a closed milestone (see "History" at the end of this file).
@@ -202,9 +210,8 @@ Active state (2026-10-06):
   (security.yml, 03:30 Montevideo) owns what exists and turns RED on a finding (check it still runs:
   docs/ci-cd.md, "Is the nightly scan still running?").
 
-Next task: **phase 14 — frontend clarity (UX)**, after closing phase 12 and before the final security
-audit and making the repo public. Input: the owner's list of pain points from the live demo. Plan it
-with Opus + high effort (no code before the plan is approved).
+Next task: **phase 15 M1 — read API for the panel triage** (`GET /admin/todo`, `runId` / `category`
+filters, digest link paths), after the owner's OK on M0.
 
 Owner's checks still open for phase 12 (nothing to code):
 - 2026-10-07: Console `CpuUtilization` plateau (~33 %) and daily p95 (expected ≥ ~30 %).
