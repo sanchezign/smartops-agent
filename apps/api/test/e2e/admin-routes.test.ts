@@ -169,6 +169,46 @@ describe("review permissions (user rules)", () => {
   });
 });
 
+describe("to do (phase 15, ADR-032)", () => {
+  it("counts for the CALLER: its role and the configured DEMO_MODE, never the request", async () => {
+    for (const demoMode of [false, true]) {
+      const summary = vi.fn(async () => ({}) as never);
+      const todo = vi.fn(async () => ({}) as never);
+      const app = buildTestApp({
+        auth,
+        admin: { ...stubAdminDeps, demoMode, todoQuery: { summary, todo } },
+      });
+      for (const [token, role] of [
+        ["operator-token", "operator"],
+        ["admin-token", "admin"],
+      ] as const) {
+        const bearer = { authorization: `Bearer ${token}` };
+        await request(app).get("/api/v1/admin/todo/summary").set(bearer).expect(200);
+        await request(app).get("/api/v1/admin/todo").set(bearer).expect(200);
+        expect(summary).toHaveBeenLastCalledWith({ role, demoMode });
+        expect(todo).toHaveBeenLastCalledWith({ role, demoMode });
+      }
+      // A query string cannot switch the demo rule on (the route takes none).
+      const forged = await request(app)
+        .get("/api/v1/admin/todo/summary?demoMode=true")
+        .set("authorization", "Bearer operator-token");
+      expect(forged.status).toBe(200);
+      expect(summary).toHaveBeenLastCalledWith({ role: "operator", demoMode });
+    }
+  });
+
+  it("validates the new filters (runId, alert category) before calling any service", async () => {
+    const app = buildTestApp({ auth });
+    const bearer = { authorization: "Bearer admin-token" };
+    expect((await request(app).get("/api/v1/admin/reviews?runId=nope").set(bearer)).status).toBe(
+      400,
+    );
+    expect(
+      (await request(app).get("/api/v1/admin/alerts?category=urgent").set(bearer)).status,
+    ).toBe(400);
+  });
+});
+
 describe("admin routes: validation and no-store", () => {
   it("validates ids and bodies before calling any service", async () => {
     const app = buildTestApp({ auth });

@@ -170,6 +170,19 @@ describe.skipIf(!testDatabaseUrl)("review query (Postgres)", () => {
     ]);
   });
 
+  it("filters by list (runId) and reads items by id in the given order (phase 15)", async () => {
+    const { run } = await setup();
+    const repo = createReviewQueryRepository(prisma);
+    const all = await repo.list({ runId: run.id, status: "pending" });
+    expect(all.map((i) => i.kind)).toEqual(["column_mapping", "price_outlier"]);
+    expect(await repo.list({ runId: "01a0dc63-e4b1-716c-a982-fbceaa90e2ba" })).toEqual([]);
+    const ids = all.map((i) => i.id).reverse();
+    expect(
+      (await repo.byIds([...ids, "01a0dc63-e4b1-716c-a982-fbceaa90e2ba"])).map((i) => i.id),
+    ).toEqual(ids);
+    expect(await repo.byIds([])).toEqual([]);
+  });
+
   it("filters by status, scope, kind and supplier", async () => {
     const { supplier, other } = await setup();
     const repo = createReviewQueryRepository(prisma);

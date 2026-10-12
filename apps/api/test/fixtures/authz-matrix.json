@@ -99,6 +99,16 @@
     "operator": "allow",
     "admin": "allow"
   },
+  "GET /api/v1/admin/todo": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
+  "GET /api/v1/admin/todo/summary": {
+    "anonymous": 401,
+    "operator": "allow",
+    "admin": "allow"
+  },
   "GET /api/v1/admin/users": {
     "anonymous": 401,
     "operator": 403,

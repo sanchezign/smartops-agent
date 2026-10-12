@@ -5,6 +5,8 @@ import type { ItemData } from "../notifications/digest-rules.js";
  * Panel deep link of a WhatsApp digest (phase 9 M7): /d/<token> → the digest's items, each
  * with the panel screen that resolves it. The token is 256 random bits (not the digest id); the
  * route requires login; the URL carries no content.
+ * The path is computed when the link is READ, never stored: a digest sent before a panel route
+ * changed opens the current screen (phase 15, ADR-032: pending work → /todo, technical → /system).
  */
 
 export const LINK_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
@@ -63,11 +65,13 @@ export function createDigestLinkRepository(prisma: PrismaClient) {
             break;
           }
           case "run_summary":
-            path = data.pendingReviews > 0 ? "/reviews" : "/catalog";
+            path = data.pendingReviews > 0 ? "/todo" : "/catalog";
             break;
           case "manual_attention":
+            path = "/todo";
+            break;
           case "integration_error":
-            path = "/alerts";
+            path = "/system";
             break;
         }
         return {

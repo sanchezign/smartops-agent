@@ -25,6 +25,8 @@ import { isOpen, nextOpening } from "../settings/business-hours.js";
 import type { BusinessHours } from "../settings/settings.schemas.js";
 import { mediaResponseHeaders } from "./media-response.js";
 import type { ReviewQueryRepository } from "./review-query.repository.js";
+import type { TodoQueryRepository } from "./todo-query.repository.js";
+import { ALERT_CATEGORIES } from "./alert-category.js";
 import type { ReviewService } from "../reviews/review.service.js";
 import type { SettingsService } from "../settings/settings.service.js";
 import { roleSchema, type UsersService } from "../users/users.service.js";
@@ -43,6 +45,8 @@ export interface AdminDeps {
   /** Read model with context (supplier, product, source message) for the queue. */
   reviewQuery: Pick<ReviewQueryRepository, "list" | "get" | "summary" | "suppliers">;
   reviews: Pick<ReviewService, "list" | "get" | "approve" | "reject">;
+  /** To do: pending reviews by list + action alerts, counted per viewer (phase 15, ADR-032). */
+  todoQuery: Pick<TodoQueryRepository, "summary" | "todo">;
   /** Re-emits message.ready for a run a review sent back to extraction (closes phase 6 gap). */
   retriggerRun(runId: string, reason: string): Promise<{ retriggered: boolean }>;
   mode: Pick<ConversationModeService, "status" | "pause" | "resume">;
@@ -94,6 +98,7 @@ const reviewQuery = z
     kind: enumOf(ReviewKind).optional(),
     scope: enumOf(ReviewScope).optional(),
     supplierId: z.uuid().optional(),
+    runId: z.uuid().optional(),
     limit: z.coerce.number().int().min(1).max(200).optional(),
   })
   .strict();
@@ -128,6 +133,7 @@ const alertsQuery = z
   .object({
     status: z.enum(["open", "all"]).default("open"),
     type: enumOf(AlertType).optional(),
+    category: z.enum(ALERT_CATEGORIES).optional(),
     limit: z.coerce.number().int().min(1).max(200).default(100),
   })
   .strict();
@@ -200,6 +206,25 @@ function buildRoutes(deps: AdminDeps): AdminRoute[] {
       handler: async (_req, res) => {
         const { days } = getValidated<typeof dashboardQuery>(res, "query");
         res.json(await deps.dashboard.get(days));
+      },
+    },
+    // ── To do (phase 15, ADR-032) ───────────────────────────────────────────
+    // Counted for the CALLER: the role and DEMO_MODE decide, through canResolveReview, which
+    // pending reviews are "mine" and which wait for an admin.
+    {
+      method: "get",
+      path: "/todo",
+      roles: ALL_ROLES,
+      handler: async (_req, res, ctx) => {
+        res.json(await deps.todoQuery.todo({ role: ctx.user.role, demoMode: deps.demoMode }));
+      },
+    },
+    {
+      method: "get",
+      path: "/todo/summary",
+      roles: ALL_ROLES,
+      handler: async (_req, res, ctx) => {
+        res.json(await deps.todoQuery.summary({ role: ctx.user.role, demoMode: deps.demoMode }));
       },
     },
     // ── Reviews ─────────────────────────────────────────────────────────────

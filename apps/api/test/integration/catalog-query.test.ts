@@ -170,4 +170,38 @@ describe.skipIf(!testDatabaseUrl)("catalog query (Postgres)", () => {
     expect(await prisma.auditLog.count({ where: { action: "alert.acknowledged" } })).toBe(1);
     expect((await repo().alerts({ status: "open", limit: 10 })).open).toBe(0);
   });
+
+  it("alerts by category (phase 15, ADR-032): each item says its category; open counts it", async () => {
+    for (const [type, status] of [
+      ["price_change", "open"],
+      ["low_stock", "acknowledged"],
+      ["manual_attention", "open"],
+      ["possible_opt_out", "sent"],
+      ["integration_error", "open"],
+    ] as const) {
+      await prisma.alert.create({ data: { type, status, title: type } });
+    }
+    const types = async (category?: "action" | "info" | "technical", status = "open" as const) => {
+      const r = await repo().alerts({ status, limit: 10, ...(category ? { category } : {}) });
+      return { open: r.open, items: r.items.map((a) => [a.type, a.category]).sort() };
+    };
+    expect(await types("action")).toEqual({
+      open: 2,
+      items: [
+        ["manual_attention", "action"],
+        ["possible_opt_out", "action"],
+      ],
+    });
+    expect(await types("info")).toEqual({ open: 1, items: [["price_change", "info"]] });
+    expect(
+      (await repo().alerts({ status: "all", category: "info", limit: 10 })).items,
+    ).toHaveLength(2);
+    expect(await types("technical")).toEqual({
+      open: 1,
+      items: [["integration_error", "technical"]],
+    });
+    // no category: every type, and `open` counts every open alert, as before phase 15
+    expect((await types()).open).toBe(4);
+    expect((await types()).items).toHaveLength(4);
+  });
 });

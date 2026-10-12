@@ -37,6 +37,8 @@ export interface ReviewQueryFilter {
   kind?: ReviewKind;
   scope?: ReviewScope;
   supplierId?: string;
+  /** One list (ingestion run): the To do card's "show all" (phase 15). */
+  runId?: string;
   limit?: number;
 }
 
@@ -110,6 +112,7 @@ export function createReviewQueryRepository(prisma: PrismaClient) {
           ...(filter.kind ? { kind: filter.kind } : {}),
           ...(filter.scope ? { scope: filter.scope } : {}),
           ...(filter.supplierId ? { supplierId: filter.supplierId } : {}),
+          ...(filter.runId ? { ingestionRunId: filter.runId } : {}),
         },
         select,
         // Run gates first (they block a whole list), then NEWEST first by the date the panel
@@ -126,6 +129,14 @@ export function createReviewQueryRepository(prisma: PrismaClient) {
         take: filter.limit ?? 100,
       });
       return rows.map(toView);
+    },
+
+    /** The given items, in the order of `ids` (unknown ids are skipped). One findMany, never per id. */
+    async byIds(ids: readonly string[]): Promise<ReviewView[]> {
+      if (ids.length === 0) return [];
+      const rows = await prisma.reviewItem.findMany({ where: { id: { in: [...ids] } }, select });
+      const byId = new Map(rows.map((r) => [r.id, toView(r)]));
+      return ids.flatMap((id) => byId.get(id) ?? []);
     },
 
     async get(id: string): Promise<ReviewView | null> {

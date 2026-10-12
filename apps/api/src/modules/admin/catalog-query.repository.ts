@@ -1,3 +1,4 @@
+import { alertCategory, alertTypesIn, type AlertCategory } from "./alert-category.js";
 import { alertDetails } from "./alert-details.js";
 import type { PrismaClient } from "../../common/db.js";
 import { errors } from "../../common/errors/app-error.js";
@@ -19,9 +20,16 @@ export interface ProductFilter {
   limit: number;
 }
 
-export type AlertFilter = { status: "open" | "all"; type?: AlertType; limit: number };
+export type AlertFilter = {
+  status: "open" | "all";
+  type?: AlertType;
+  /** Panel triage (phase 15, ADR-032): action → To do, info → Activity, technical → System status. */
+  category?: AlertCategory;
+  limit: number;
+};
 
-const OPEN_ALERT_STATUSES: AlertStatus[] = ["open", "sent"];
+/** An alert nobody acknowledged yet ("sent" = it also went out in a WhatsApp digest). */
+export const OPEN_ALERT_STATUSES: AlertStatus[] = ["open", "sent"];
 
 export function createCatalogQueryRepository(prisma: PrismaClient) {
   return {
@@ -199,9 +207,15 @@ export function createCatalogQueryRepository(prisma: PrismaClient) {
     },
 
     async alerts(filter: AlertFilter) {
+      const inCategory: Prisma.AlertWhereInput = filter.category
+        ? { type: { in: alertTypesIn(filter.category) } }
+        : {};
       const where: Prisma.AlertWhereInput = {
-        ...(filter.status === "open" ? { status: { in: OPEN_ALERT_STATUSES } } : {}),
-        ...(filter.type ? { type: filter.type } : {}),
+        AND: [
+          filter.status === "open" ? { status: { in: OPEN_ALERT_STATUSES } } : {},
+          filter.type ? { type: filter.type } : {},
+          inCategory,
+        ],
       };
       const [items, open] = await Promise.all([
         prisma.alert.findMany({
@@ -222,12 +236,14 @@ export function createCatalogQueryRepository(prisma: PrismaClient) {
             },
           },
         }),
-        prisma.alert.count({ where: { status: { in: OPEN_ALERT_STATUSES } } }),
+        // Open alerts of the category asked for (all categories when none, as before).
+        prisma.alert.count({ where: { status: { in: OPEN_ALERT_STATUSES }, ...inCategory } }),
       ]);
       return {
         open,
         items: items.map(({ ingestionRun, payload, ...a }) => ({
           ...a,
+          category: alertCategory(a.type),
           // Phase 13: the panel writes the alert in its language from these fields.
           details: alertDetails(a.type, payload),
           conversationId: ingestionRun?.message.conversationId ?? null,

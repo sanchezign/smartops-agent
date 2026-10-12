@@ -107,12 +107,85 @@ describe.skipIf(!testDatabaseUrl)("digest link (Postgres)", () => {
     const found = await repo.byToken(token);
     expect(found!.items.map((i) => [i.title, i.path])).toEqual([
       ["Pedido de Luis", `/conversations/${conversation.id}`],
-      ["Norte: 1 revisión", "/reviews"],
+      ["Norte: 1 revisión", "/todo"],
       ["Sur: 3 aumentos", "/catalog"],
-      ["Audio largo", "/alerts"],
+      ["Audio largo", "/todo"],
     ]);
     expect(await repo.byToken(newLinkToken())).toBeNull(); // unknown
     expect(await repo.byToken(digest.id)).toBeNull(); // the id is not a key
     expect(await repo.byToken("../../etc")).toBeNull(); // malformed
+  });
+
+  /**
+   * Phase 15 (ADR-032): the panel routes changed (/reviews → /todo, /alerts → /todo or /system).
+   * A digest already sent over WhatsApp must open the NEW screen: the path is computed when the
+   * link is read, never stored. The rows below are written exactly as the notifier stored them
+   * before phase 15 (no path anywhere).
+   */
+  it("a digest stored before phase 15 resolves to the new paths (nothing stored has a path)", async () => {
+    const token = newLinkToken();
+    const digest = await prisma.notificationDigest.create({
+      data: {
+        recipient: "59899000999",
+        windowEndsAt: new Date("2026-10-01T12:00:00Z"),
+        linkToken: token,
+      },
+    });
+    const stored = [
+      {
+        category: "run_summary",
+        title: "Norte: 2 revisiones pendientes",
+        data: {
+          category: "run_summary",
+          runId: "r",
+          supplierName: "Norte",
+          increases: 0,
+          increasesOverThreshold: 0,
+          thresholdPct: 10,
+          lowStock: 0,
+          pendingReviews: 2,
+        },
+      },
+      {
+        category: "manual_attention",
+        title: "Audio de 7:12 sin transcribir",
+        data: { category: "manual_attention", title: "Audio de 7:12 sin transcribir" },
+      },
+      {
+        category: "integration_error",
+        title: "n8n no recibió un mensaje",
+        data: { category: "integration_error", source: "n8n", message: "timeout" },
+      },
+    ] as const;
+    for (const [i, item] of stored.entries()) {
+      await prisma.notificationItem.create({
+        data: {
+          recipient: "59899000999",
+          category: item.category,
+          dedupeKey: `old${i}`,
+          title: item.title,
+          data: item.data,
+          digestId: digest.id,
+          createdAt: new Date(Date.UTC(2026, 9, 1, 11, 0, i)),
+        },
+      });
+    }
+
+    // No column of the digest tables can hold a path, and the stored JSON carries none.
+    const columns = await prisma.$queryRaw<{ column_name: string }[]>`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name IN ('notification_items', 'notification_digests')`;
+    expect(columns.length).toBeGreaterThan(5);
+    expect(columns.filter((c) => /path|url|link_path|href/i.test(c.column_name))).toEqual([]);
+    const rows = await prisma.notificationItem.findMany({ where: { digestId: digest.id } });
+    for (const row of rows)
+      expect(JSON.stringify(row)).not.toMatch(/\/(reviews|alerts|todo|system)\b/);
+
+    const found = await createDigestLinkRepository(prisma).byToken(token);
+    expect(found!.items.map((i) => [i.category, i.path])).toEqual([
+      ["run_summary", "/todo"],
+      ["manual_attention", "/todo"],
+      ["integration_error", "/system"],
+    ]);
   });
 });
