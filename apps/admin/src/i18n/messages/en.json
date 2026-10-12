@@ -397,7 +397,6 @@
       "text": "Message"
     },
     "unknownSupplier": "Unidentified supplier",
-    "adminResolves": "an administrator resolves it",
     "openChat": "Open the chat",
     "listenInChat": "Listen in the chat",
     "done": "Done",
@@ -405,10 +404,12 @@
     "ackLabel": "{action}: {title}",
     "waitingTitle": "Waiting for an administrator ({count})",
     "waitingWhy": "Only an administrator can resolve these: each one affects a whole list or the entire catalog.",
-    "waitingInLists": "Some of them are inside the lists above, marked with a lock.",
     "emptyTitle": "All caught up",
     "emptyHint": "Everything that arrived was processed on its own. When something needs your decision, it shows up here.",
-    "truncated": "Showing the {count} newest lists. Resolve some to see the rest."
+    "truncated": "Showing the {count} newest lists. Resolve some to see the rest.",
+    "cardMeta": "{source} · {when} · {pending}",
+    "alsoWaiting": "{count, plural, one {+{n} waits for an administrator} other {+{n} wait for an administrator}}",
+    "waitingListLabel": "Waiting for an administrator"
   },
   "rules": {
     "description": "How the system behaves, without touching code. Changes apply instantly and are recorded.",

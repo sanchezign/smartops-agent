@@ -122,9 +122,10 @@ function apiEnv(): Record<string, string> {
     // screenshots of what a regular operator sees (ADR-030 off). The suite always runs the demo.
     DEMO_MODE: process.env.E2E_DEMO_MODE === "off" ? "false" : "true",
     DEMO_CONTENT_LANGUAGE: "en",
-    // The per-project E2E suppliers exist only for the tests: the README / guide media (MEDIA=1) are
-    // taken from a database seeded with the demo content alone.
-    DEMO_E2E_REVIEWS: process.env.MEDIA ? "false" : "true",
+    // The per-project E2E suppliers exist only for the tests: the README / guide media (MEDIA=1) and
+    // the phase screenshots (SHOTS=<label>, phase 15) are taken from a database seeded with the
+    // demo content alone. Every Playwright run seeds the database again before it starts.
+    DEMO_E2E_REVIEWS: process.env.MEDIA || process.env.SHOTS ? "false" : "true",
     DEMO_RESET_INTERVAL_MINUTES: "0",
     DEMO_RATE_LIMIT_MAX: "1000",
     N8N_DELIVERY_ENABLED: "true",

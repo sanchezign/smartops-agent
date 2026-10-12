@@ -397,7 +397,6 @@
       "text": "Mensaje"
     },
     "unknownSupplier": "Proveedor sin identificar",
-    "adminResolves": "la resuelve un administrador",
     "openChat": "Abrir el chat",
     "listenInChat": "Escuchar en el chat",
     "done": "Listo",
@@ -405,10 +404,12 @@
     "ackLabel": "{action}: {title}",
     "waitingTitle": "Esperan a un administrador ({count})",
     "waitingWhy": "Solo un administrador puede resolverlas: cada una afecta una lista entera o todo el catálogo.",
-    "waitingInLists": "Algunas están dentro de las listas de arriba, marcadas con un candado.",
     "emptyTitle": "Todo al día",
     "emptyHint": "Todo lo que llegó se procesó solo. Cuando algo necesite tu decisión, aparecerá aquí.",
-    "truncated": "Se muestran las {count} listas más recientes. Resuelve algunas para ver el resto."
+    "truncated": "Se muestran las {count} listas más recientes. Resuelve algunas para ver el resto.",
+    "cardMeta": "{source} · {when} · {pending}",
+    "alsoWaiting": "{count, plural, one {+{n} espera a un administrador} other {+{n} esperan a un administrador}}",
+    "waitingListLabel": "Esperan a un administrador"
   },
   "rules": {
     "description": "Cómo se comporta el sistema, sin tocar código. Los cambios aplican al instante y quedan registrados.",

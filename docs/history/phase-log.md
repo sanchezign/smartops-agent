@@ -1745,3 +1745,12 @@ a real client.**
       144 passed (desktop, Pixel, iPhone on Chromium). Screenshots in `C:/dev/smartops-phase15-shots/M2-after/`
       (operator, operator-demo, admin × EN / ES × light / dark × desktop / iPhone; axe clean). The Home still shows the
       old pending tiles (M5); `features/dashboard/hooks.ts` (`usePendingCounts`) is no longer used.
+    - M2 corrections (owner's review, 2026-10-12) — DONE. Each review in ONE place: the cards above hold only what the
+      user can resolve (their "N pending" counts that), a list with admin-only items adds "+N waits for an administrator"
+      (a link that opens and scrolls to the section), and "Waiting for an administrator (N)" shows every admin-only item
+      grouped by list (N = what it shows; the footer note is gone). API: `TodoGroup.waitingItems`; the lists SQL ranks
+      first items per (list, mine) with `resolvablePairs(viewer)` (the (scope, kind) pairs canResolveReview allows).
+      The card's meta line "Spreadsheet · 3 h ago · 1 pending" (ADR-032 amends ADR-029 §4 for this card). Screenshot
+      runs (SHOTS) seed without the E2E suppliers. Removed `features/dashboard/hooks.ts` and the empty
+      `app/(main)/alerts/` (owner's permission). E2E: the operator sees the across-the-board change only in the admin
+      section; the cards above + the messages = the nav counter; the section's N = what it shows.

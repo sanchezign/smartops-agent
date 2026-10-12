@@ -166,12 +166,20 @@ describe.skipIf(!testDatabaseUrl)("to do query (Postgres)", () => {
       pending: 3,
       reviews: { canResolve: 2, waitingForAdmin: 1 },
     });
-    // the list's own order: lines then the catalog-wide item; the approved line is not there
-    expect(s!.items.map((i) => i.kind)).toEqual([
+    // Each item in ONE place: the operator's lines in `items`, the catalog-wide one in
+    // `waitingItems` (list order in both; the approved line is not there).
+    expect(s!.items.map((i) => i.kind)).toEqual(["price_outlier", "product_match"]);
+    expect(s!.waitingItems.map((i) => i.kind)).toEqual(["mark_unavailable"]);
+    expect(u!.items).toEqual([]);
+    expect(u!.waitingItems.map((i) => i.kind)).toEqual(["unknown_supplier"]);
+    // An admin: everything is theirs, nothing waits.
+    const admin = await repo().todo(ADMIN);
+    expect(admin.groups[0]!.items.map((i) => i.kind)).toEqual([
       "price_outlier",
       "product_match",
       "mark_unavailable",
     ]);
+    for (const g of admin.groups) expect(g.waitingItems).toEqual([]);
     expect(u).toMatchObject({
       supplier: null,
       pending: 1,
@@ -181,6 +189,8 @@ describe.skipIf(!testDatabaseUrl)("to do query (Postgres)", () => {
     // the demo operator may resolve Norte's column mapping
     const demo = await repo().todo(DEMO_OPERATOR);
     expect(demo.groups[2]!.reviews).toEqual({ canResolve: 1, waitingForAdmin: 0 });
+    expect(demo.groups[2]!.items.map((i) => i.kind)).toEqual(["column_mapping"]);
+    expect(n!.waitingItems.map((i) => i.kind)).toEqual(["column_mapping"]);
   });
 
   it("action alerts only, newest first, with the chat and the contact they refer to", async () => {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ReviewKind, ReviewScope } from "../../src/generated/prisma/enums.js";
 import { canResolveReview } from "../../src/modules/auth/permissions.js";
 import {
+  resolvablePairs,
   splitPending,
   todoCounts,
   type PendingKindCount,
@@ -52,6 +53,19 @@ describe("splitPending", () => {
 
   it("nothing pending → zeros", () => {
     expect(splitPending([], OPERATOR)).toEqual({ canResolve: 0, waitingForAdmin: 0 });
+  });
+});
+
+describe("resolvablePairs (what SQL treats as 'mine')", () => {
+  it("is exactly the scope × kind pairs canResolveReview allows", () => {
+    const all = Object.values(ReviewScope).length * Object.values(ReviewKind).length;
+    expect(resolvablePairs(ADMIN)).toHaveLength(all);
+    const op = resolvablePairs(OPERATOR);
+    expect(op.every((p) => p.scope === "line")).toBe(true);
+    expect(op).toHaveLength(Object.values(ReviewKind).length);
+    const demo = resolvablePairs(DEMO_OPERATOR);
+    expect(demo).toHaveLength(op.length + 1);
+    expect(demo).toContainEqual({ scope: "run", kind: "column_mapping" });
   });
 });
 

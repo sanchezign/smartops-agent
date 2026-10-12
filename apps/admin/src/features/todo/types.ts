@@ -21,10 +21,13 @@ export interface TodoGroup {
   run: { id: string; status: string };
   supplier: { id: string; name: string } | null;
   message: ReviewItem["message"];
-  /** All pending items of this list (`items` holds the first 5). */
+  /** All pending items of this list. */
   pending: number;
   reviews: ReviewSplit;
+  /** The first 5 items THIS user can resolve (each item is in one of the two lists only). */
   items: ReviewItem[];
+  /** The first 5 items only an admin can resolve (empty for an admin). */
+  waitingItems: ReviewItem[];
 }
 
 export interface TodoAlert extends Pick<
