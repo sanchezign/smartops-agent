@@ -1,10 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible, login, navLink } from "./helpers";
 
-/** Catalog, price history and alerts (phase 9 M5) on the seeded demo. */
+/** Catalog, price history and Activity (phase 9 M5; alerts → Activity in phase 15) on the seeded demo. */
 
-async function goTo(page: Page, name: "Catalog" | "Alerts", isMobile: boolean) {
-  if (name === "Alerts" && isMobile) await page.getByRole("button", { name: "More" }).click();
+async function goTo(page: Page, name: "Catalog" | "Activity", isMobile: boolean) {
+  if (name === "Activity" && isMobile) await page.getByRole("button", { name: "More" }).click();
   await navLink(page, name).click();
   await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible();
 }
@@ -36,10 +36,13 @@ test.describe("catalog (phase 9 M5)", () => {
     await expectAccessible(page);
   });
 
-  test("alerts: open ones with links to the product", async ({ page, isMobile }) => {
+  test("activity: price changes already applied, with links to the product", async ({
+    page,
+    isMobile,
+  }) => {
     await login(page, "operator");
-    await goTo(page, "Alerts", isMobile);
-    const list = page.getByRole("list", { name: "Alerts" });
+    await goTo(page, "Activity", isMobile);
+    const list = page.getByRole("list", { name: "Activity" });
     await expect(list.getByText("Price change").first()).toBeVisible();
     await expect(list.getByRole("link", { name: "View product" }).first()).toBeVisible();
     await expectAccessible(page);
@@ -64,14 +67,14 @@ test.describe("catalog changes (desktop only: shared demo data)", () => {
     ).toBeVisible();
   });
 
-  test("acknowledge an alert", async ({ page }) => {
+  test("acknowledge a news item in Activity", async ({ page }) => {
     await login(page, "operator");
-    await goTo(page, "Alerts", false);
-    const first = page.getByRole("list", { name: "Alerts" }).getByRole("listitem").first();
+    await goTo(page, "Activity", false);
+    const first = page.getByRole("list", { name: "Activity" }).getByRole("listitem").first();
     const title = (await first.locator("p").first().textContent())!;
     await first.getByRole("button", { name: /Mark as seen/ }).click();
     await expect(
-      page.getByRole("list", { name: "Alerts" }).getByText(title, { exact: true }),
+      page.getByRole("list", { name: "Activity" }).getByText(title, { exact: true }),
     ).toHaveCount(0);
   });
 });

@@ -1,6 +1,6 @@
 import { expect, request, test } from "@playwright/test";
 import { E2E } from "./env";
-import { login, navLink } from "./helpers";
+import { login, navLink, openTodo, todoEntry } from "./helpers";
 
 /**
  * Real time (phase 9 M4, ADR-020): a change made by ANOTHER session (here: the admin through
@@ -90,9 +90,9 @@ test("if the stream never answers: 'Updating every 30 s' and the screen still re
 test("a review resolved elsewhere leaves the open queue live", async ({ page, isMobile }) => {
   test.skip(isMobile, "resolves shared demo data: desktop only");
   await login(page);
-  await navLink(page, "Reviews").click();
-  const list = page.getByRole("list", { name: "Reviews" });
-  await expect(list.getByText("Differential breaker 40 A")).toBeVisible();
+  await openTodo(page);
+  const list = page.getByRole("main");
+  await expect(await todoEntry(page, "Differential breaker 40 A")).toBeVisible();
 
   const { ctx, call } = await adminApi();
   const { items } = (await (await call("get", "/reviews?scope=line")).json()) as {

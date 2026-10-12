@@ -65,7 +65,22 @@ describe("keysFor / mergeKeys", () => {
       ...keysFor({ type: "review.changed", reviewId: "r", status: "pending" }),
       ...keysFor({ type: "review.changed", reviewId: "r2", status: "approved" }),
     ];
-    expect(mergeKeys(keys)).toEqual([["conversations"], ["contacts"], ["reviews"], ["dashboard"]]);
+    expect(mergeKeys(keys)).toEqual([
+      ["conversations"],
+      ["contacts"],
+      ["reviews"],
+      ["todo"],
+      ["dashboard"],
+    ]);
+  });
+
+  it("every review or alert change refreshes To do: its counter and its lists (phase 15)", () => {
+    for (const event of [
+      { type: "review.changed", reviewId: "r", status: "approved" },
+      { type: "alert.changed", alertId: "a", severity: "info" },
+    ] as const) {
+      expect(keysFor(event)).toContainEqual(["todo"]);
+    }
   });
 });
 

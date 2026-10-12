@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { useAuthStore } from "@/features/auth/store";
 import { cn } from "@/lib/utils";
 import { isActive, navFor } from "./nav-items";
-import { usePendingCounts } from "@/features/dashboard/hooks";
+import { useTodoCounts } from "@/features/todo/hooks";
 import { PendingBadge } from "./pending-badge";
 import { LiveIndicator } from "@/features/realtime/live-indicator";
 import { StatusChips } from "@/features/realtime/status-chips";
@@ -33,10 +33,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const more = items.filter((i) => !i.primary);
   const [moreOpen, setMoreOpen] = useState(false);
   const moreActive = more.some((i) => isActive(pathname, i.href));
-  // What waits for a person, in the navigation (ADR-029): the only yellow of the shell.
-  const pending = usePendingCounts();
-  const countFor = (href: string) =>
-    href === "/reviews" ? (pending?.reviews ?? 0) : href === "/alerts" ? (pending?.alerts ?? 0) : 0;
+  // What waits for THIS person, in the navigation (ADR-029, ADR-032): the only yellow of the
+  // shell, on To do. Counters only — the lists are fetched by the To do screen itself.
+  const todo = useTodoCounts().data;
+  const countFor = (href: string) => (href === "/todo" ? (todo?.total ?? 0) : 0);
   const moreCount = more.reduce((sum, i) => sum + countFor(i.href), 0);
 
   return (

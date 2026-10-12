@@ -43,12 +43,13 @@ export function keysFor(event: PanelEvent): QueryKeyPrefix[] {
       ];
     case "contact.updated":
       return [["conversations"], ["contacts"]];
+    // To do (phase 15, ADR-032): its counter and lists follow every review / alert change.
     case "review.changed":
-      return [["reviews"], ["dashboard"]];
+      return [["reviews"], ["todo"], ["dashboard"]];
     case "run.changed":
       return [["dashboard"]];
     case "alert.changed":
-      return [["alerts"], ["dashboard"]];
+      return [["alerts"], ["todo"], ["dashboard"]];
     case "catalog.changed":
       return [["catalog"], ["suppliers"]];
     default:

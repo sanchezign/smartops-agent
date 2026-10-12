@@ -30,13 +30,13 @@ export function ReviewDetail({ id }: { id: string }) {
   const user = useAuthStore((s) => s.user);
   // ADR-030: in the public demo an operator also resolves the column-mapping review.
   const demoMode = useDemoInfo().data != null;
-  const mutation = useResolveReview(id, () => router.push("/reviews"));
+  const mutation = useResolveReview(id, () => router.push("/todo"));
   const t = useTranslations("reviews");
 
   return (
     <div className="mx-auto max-w-3xl">
       <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2 min-h-9">
-        <Link href="/reviews">
+        <Link href="/todo">
           <ArrowLeft aria-hidden /> {t("back")}
         </Link>
       </Button>
@@ -46,7 +46,7 @@ export function ReviewDetail({ id }: { id: string }) {
         <ErrorState
           error={query.error}
           onRetry={() => void query.refetch()}
-          back={{ href: "/reviews", label: t("backTo") }}
+          back={{ href: "/todo", label: t("backTo") }}
         />
       ) : (
         <DetailBody

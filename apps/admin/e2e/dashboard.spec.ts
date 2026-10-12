@@ -39,11 +39,15 @@ test.describe("panel shell + dashboard (phase 9 M1)", () => {
     }
   });
 
-  test("the navigation shows how many reviews wait for a person (phase 14)", async ({ page }) => {
+  test("the navigation has ONE counter, on To do (phase 15, ADR-032)", async ({ page }) => {
     await login(page);
     await expect(
-      page.getByRole("link", { name: /Reviews.*pending|pending.*Reviews/ }).first(),
+      page.getByRole("link", { name: /To do.*pending|pending.*To do/ }).first(),
     ).toBeVisible();
+    // No other section carries a counter (Activity, System status: never yellow).
+    await expect(
+      page.getByRole("link", { name: /pending/ }).filter({ hasNotText: "To do" }),
+    ).toHaveCount(0);
   });
 
   test("an unknown address shows 'Page not found' INSIDE the panel (phase 14 M6)", async ({

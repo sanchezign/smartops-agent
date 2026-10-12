@@ -38,10 +38,14 @@ test("main screens in Spanish, es-UY money, and accessible", async ({ page, isMo
     await expect(page.getByRole("heading", { name: heading, level: 1 })).toBeVisible();
     await expectAccessible(page);
   };
-  await open("/reviews", "Revisiones");
+  await open("/todo", "Pendientes");
+  // Folded for the operator (only an admin resolves it), with the reason in Spanish.
+  await page.locator("main details summary").click();
   await expect(
-    page.getByRole("list", { name: "Revisiones" }).getByText("Aumento general"),
+    page.getByText("afecta una lista entera o todo el catálogo", { exact: false }),
   ).toBeVisible();
+  await expect(page.getByRole("main").getByText("Aumento general").first()).toBeVisible();
+  await expectAccessible(page);
 
   await open("/catalog", "Catálogo");
   await page.getByLabel("Buscar producto").fill("hex bolt");
@@ -56,7 +60,7 @@ test("main screens in Spanish, es-UY money, and accessible", async ({ page, isMo
   await open("/conversations", "Conversaciones");
   await expect(page.getByText("Atiende una persona").first()).toBeVisible();
 
-  await open("/alerts", "Alertas");
+  await open("/activity", "Novedades");
   await open("/rules", "Reglas");
   await expect(page.getByText("cambiarlas es solo para administradores")).toBeVisible();
 

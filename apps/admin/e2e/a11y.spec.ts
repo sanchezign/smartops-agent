@@ -37,8 +37,11 @@ for (const scheme of SCHEMES) {
       await ready(page);
       await expectAccessible(page); // Home
 
-      await page.goto("/reviews");
+      await page.goto("/todo");
       await ready(page);
+      await expectAccessible(page);
+      // Unfolded too: "Waiting for an administrator" (phase 15).
+      await page.locator("main details summary").click();
       await expectAccessible(page);
       const hrefs = await page
         .locator('main a[href^="/reviews/"]')
@@ -61,7 +64,15 @@ for (const scheme of SCHEMES) {
       await ready(page);
       await expectAccessible(page);
 
-      for (const path of ["/conversations/opted-out", "/catalog", "/alerts", "/rules", "/try"]) {
+      for (const path of [
+        "/conversations/opted-out",
+        "/catalog",
+        "/todo/resolved",
+        "/activity",
+        "/system",
+        "/rules",
+        "/try",
+      ]) {
         await page.goto(path);
         await ready(page);
         await expectAccessible(page);

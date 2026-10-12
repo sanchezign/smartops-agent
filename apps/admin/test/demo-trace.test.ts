@@ -59,7 +59,7 @@ describe("timeline", () => {
       media: { status: "stored", transcription: "done", conversion: null },
       run: run({ pendingReviews: 1 }),
     });
-    expect(done.outcome).toMatchObject({ tone: "review", href: "/reviews" });
+    expect(done.outcome).toMatchObject({ tone: "review", href: "/todo" });
   });
 
   it("prompt injection and a new spreadsheet format stop with their own explanation", () => {

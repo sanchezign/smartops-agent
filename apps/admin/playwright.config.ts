@@ -118,7 +118,9 @@ function apiEnv(): Record<string, string> {
     LOGIN_RATE_LIMIT_MAX: "1000",
     // Every browser project hits the API from one IP in a few minutes (not a real-world load).
     RATE_LIMIT_MAX: "100000",
-    DEMO_MODE: "true",
+    // Phase 15: E2E_DEMO_MODE=off runs the same seeded data WITHOUT the demo rules, only to take
+    // screenshots of what a regular operator sees (ADR-030 off). The suite always runs the demo.
+    DEMO_MODE: process.env.E2E_DEMO_MODE === "off" ? "false" : "true",
     DEMO_CONTENT_LANGUAGE: "en",
     // The per-project E2E suppliers exist only for the tests: the README / guide media (MEDIA=1) are
     // taken from a database seeded with the demo content alone.

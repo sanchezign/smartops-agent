@@ -93,14 +93,14 @@ function DashboardContent({ data }: { data: DashboardData }) {
             label={t("pendingReviews")}
             value={formatInt(data.pending.reviews)}
             icon={ClipboardCheck}
-            href="/reviews"
+            href="/todo"
             tone={data.pending.reviews > 0 ? "attention" : "default"}
           />
           <StatCard
             label={t("openAlerts")}
             value={formatInt(data.pending.openAlerts)}
             icon={AlertTriangle}
-            href="/alerts"
+            href="/activity"
             tone={data.pending.openAlerts > 0 ? "attention" : "default"}
           />
           <StatCard

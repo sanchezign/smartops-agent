@@ -44,6 +44,9 @@ export interface ProductDetail extends Omit<ProductRow, "lastChange" | "supplier
 
 export type Availability = "all" | "available" | "unavailable";
 
+/** Panel triage of alerts (phase 15, ADR-032; API: admin/alert-category.ts). */
+export type AlertCategory = "action" | "info" | "technical";
+
 export interface AlertItem {
   id: string;
   type:
@@ -63,4 +66,5 @@ export interface AlertItem {
   createdAt: string;
   product: { id: string; name: string } | null;
   conversationId: string | null;
+  category: AlertCategory;
 }

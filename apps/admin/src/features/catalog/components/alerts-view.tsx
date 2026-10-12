@@ -12,6 +12,7 @@ import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
 import { alertText } from "../alert-text";
 import { useAcknowledgeAlert, useAlerts } from "../hooks";
+import type { AlertCategory } from "../types";
 
 const STATUS_FILTERS = ["open", "all"] as const;
 
@@ -21,9 +22,20 @@ const SEVERITY = {
   info: { icon: Info, className: "text-muted-foreground" },
 } as const;
 
-export function AlertsView() {
+/**
+ * A list of alerts of ONE category (phase 15, ADR-032): Activity (info) and System status
+ * (technical). Action alerts live in To do. `readOnly`: no "seen" button (the public demo's
+ * operator on System status).
+ */
+export function AlertsView({
+  category,
+  readOnly = false,
+}: {
+  category: Exclude<AlertCategory, "action">;
+  readOnly?: boolean;
+}) {
   const [status, setStatus] = useState<"open" | "all">("open");
-  const query = useAlerts(status);
+  const query = useAlerts(status, category);
   const ack = useAcknowledgeAlert();
   const t = useTranslations("alerts");
   const tPages = useTranslations("pages");
@@ -31,7 +43,10 @@ export function AlertsView() {
   const { formatRelative } = format;
   return (
     <>
-      <PageHeader title={tPages("alerts")} description={t("description")} />
+      <PageHeader
+        title={tPages(category === "info" ? "activity" : "system")}
+        description={t(category === "info" ? "activityDescription" : "systemDescription")}
+      />
       <div
         role="group"
         aria-label={t("status")}
@@ -61,7 +76,7 @@ export function AlertsView() {
       ) : query.data.items.length === 0 ? (
         <EmptyState title={status === "open" ? t("emptyUnseen") : t("empty")} />
       ) : (
-        <RowList aria-label={t("listLabel")}>
+        <RowList aria-label={tPages(category === "info" ? "activity" : "system")}>
           {query.data.items.map((a) => {
             const sev = SEVERITY[a.severity];
             const Icon = sev.icon;
@@ -104,7 +119,7 @@ export function AlertsView() {
                     </p>
                   ) : null}
                 </div>
-                {open ? (
+                {open && !readOnly ? (
                   <Button
                     variant="outline"
                     size="sm"
@@ -115,7 +130,7 @@ export function AlertsView() {
                   >
                     <Check aria-hidden /> {t("seen")}
                   </Button>
-                ) : (
+                ) : open ? null : (
                   <span className="shrink-0 text-xs text-muted-foreground">{t("seen")}</span>
                 )}
               </li>

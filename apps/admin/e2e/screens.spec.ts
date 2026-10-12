@@ -1,5 +1,5 @@
 import { test } from "@playwright/test";
-import { login } from "./helpers";
+import { login, todoEntry } from "./helpers";
 
 /**
  * Visual review helper (not an assertion suite): full-page screenshots of every screen per
@@ -7,11 +7,13 @@ import { login } from "./helpers";
  */
 const PAGES = [
   "/",
-  "/reviews",
+  "/todo",
+  "/todo/resolved",
   "/conversations",
   "/conversations/opted-out",
   "/catalog",
-  "/alerts",
+  "/activity",
+  "/system",
   "/rules",
   "/users",
   "/try",
@@ -61,8 +63,8 @@ test("screenshots", async ({ page }, info) => {
   await page.screenshot({ path: `e2e/screens/${info.project.name}-producto.png`, fullPage: true });
   // Review detail screens (one per resolver).
   for (const [title, name] of REVIEWS) {
-    await page.goto("/reviews");
-    await page.getByRole("list", { name: "Reviews" }).getByText(title).first().click();
+    await page.goto("/todo");
+    await (await todoEntry(page, title)).click();
     // (never "networkidle": the real-time stream stays open, ADR-020)
     await page.getByRole("heading", { level: 1 }).first().waitFor();
     await page.waitForTimeout(800);

@@ -39,10 +39,28 @@ export async function expectAccessible(page: Page) {
   ).toEqual([]);
 }
 
+/** Opens To do from the navigation (phase 15, ADR-032). */
+export async function openTodo(page: Page) {
+  await navLink(page, "To do").click();
+  await expect(page.getByRole("heading", { name: "To do", level: 1 })).toBeVisible();
+}
+
 /**
- * A navigation link by its section name (phase 14): the pending counter of Reviews / Alerts is
- * part of the link's accessible name ("Reviews 14 pending" on the sidebar, "14 pending Reviews"
- * on the phone's bottom bar), so an exact name no longer matches.
+ * A decision in To do by a text of its row (kind, product, file name). What only an admin can
+ * resolve is folded under "Waiting for an administrator": it is unfolded first when present.
+ */
+export async function todoEntry(page: Page, text: string | RegExp) {
+  const waiting = page.locator("main details");
+  if ((await waiting.count()) > 0 && (await waiting.getAttribute("open")) === null) {
+    await waiting.locator("summary").click();
+  }
+  return page.getByRole("main").getByRole("link").filter({ hasText: text }).first();
+}
+
+/**
+ * A navigation link by its section name (phase 14): the pending counter of To do is part of the
+ * link's accessible name ("To do 5 pending" on the sidebar, "5 pending To do" on the phone's
+ * bottom bar), so an exact name no longer matches.
  */
 export function navLink(page: Page, name: string) {
   return page.getByRole("link", {

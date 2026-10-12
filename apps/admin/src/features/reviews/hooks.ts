@@ -96,6 +96,7 @@ export function useResolveReview(id: string, onDone?: () => void) {
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["reviews"] });
+      void queryClient.invalidateQueries({ queryKey: ["todo"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });

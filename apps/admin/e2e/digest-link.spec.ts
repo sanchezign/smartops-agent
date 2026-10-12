@@ -51,6 +51,12 @@ test.describe("digest deep link (phase 9 M7)", () => {
     await expect(page.getByRole("heading", { name: "WhatsApp summary" })).toBeVisible();
     const list = page.getByRole("list", { name: "Summary items" });
     await expect(list.getByRole("link")).toHaveCount(3);
+    // The voice note to listen to by hand opens To do (phase 15: the path is computed when read).
+    const hrefs = await list
+      .getByRole("link")
+      .evaluateAll((els) => els.map((e) => e.getAttribute("href")));
+    expect(hrefs).toContain("/todo");
+    expect(hrefs).not.toContain("/alerts");
     await list.getByRole("link", { name: /Order from Anna Pearson/ }).click();
     await expect(page.getByRole("heading", { name: "Anna Pearson" })).toBeVisible();
   });
