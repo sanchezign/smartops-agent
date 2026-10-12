@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { E2E } from "./env";
-import { expectAccessible, navLink } from "./helpers";
+import { expectAccessible, openTodo, todoEntry } from "./helpers";
 
 /**
  * Public demo (DEMO_MODE, phase 9 M8). The E2E API runs in demo mode with the real worker and
@@ -68,7 +68,7 @@ test.describe("every sample goes through the real pipeline (desktop: shared demo
   const cases: [string, RegExp][] = [
     ["Send a photo of a price list", /Catalog up to date|lines? to review/],
     ["Send a supplier PDF", /Processed: there were no price changes|Catalog up to date/],
-    ["Send a supplier voice note", /to review|is in Reviews|Catalog up to date/],
+    ["Send a supplier voice note", /to review|is in To do|Catalog up to date/],
     ["Send a known spreadsheet", /Catalog up to date/],
     ["Send a new spreadsheet", /new format/],
     ["Send a prompt-injection message", /orders to the system/],
@@ -85,11 +85,9 @@ test.describe("every sample goes through the real pipeline (desktop: shared demo
         .first();
       await expect(card).toHaveText(outcome, { timeout: 60_000 });
     }
-    // The new spreadsheet waits for a person in Revisiones (column picker).
-    await navLink(page, "Reviews").click();
-    await expect(
-      page.getByRole("list", { name: "Reviews" }).getByText("Wholesale Sample prices.xlsx"),
-    ).toBeVisible();
+    // The new spreadsheet waits for a person in To do (column picker; ADR-030: the demo operator).
+    await openTodo(page);
+    await expect(await todoEntry(page, "Wholesale Sample prices.xlsx")).toBeVisible();
   });
 
   test("Reset demo brings the sample data back and keeps the session", async ({ page }) => {
@@ -103,18 +101,17 @@ test.describe("every sample goes through the real pipeline (desktop: shared demo
       .click();
     await expect(page.getByRole("heading", { name: "Louis Fernandez" })).toBeVisible();
     const chatUrl = page.url();
-    await page.goto("/reviews");
-    await page.getByRole("list", { name: "Reviews" }).getByText("Across-the-board change").click();
+    await page.goto("/todo");
+    await (await todoEntry(page, "Across-the-board change")).click();
     await expect(page.getByRole("heading", { name: "Across-the-board change" })).toBeVisible();
     const reviewUrl = page.url();
     await page.goto("/try");
     await page.getByRole("button", { name: "Reset demo" }).click();
     await page.getByRole("button", { name: "Reset", exact: true }).click();
     await expect(page.getByText("Demo reset:")).toBeVisible({ timeout: 60_000 });
-    await navLink(page, "Reviews").click();
-    const list = page.getByRole("list", { name: "Reviews" });
-    await expect(list.getByText("Corvane Fasteners price list.xlsx")).toBeVisible();
-    await expect(list.getByText("Wholesale Sample prices.xlsx")).toHaveCount(0);
+    await openTodo(page);
+    await expect(await todoEntry(page, "Corvane Fasteners price list.xlsx")).toBeVisible();
+    await expect(page.getByRole("main").getByText("Wholesale Sample prices.xlsx")).toHaveCount(0);
 
     // The chat link survives the reset; the old review says it no longer exists.
     await page.goto(chatUrl);
@@ -123,7 +120,7 @@ test.describe("every sample goes through the real pipeline (desktop: shared demo
     await expect(
       page.getByText("This no longer exists (the demo may have been reset)"),
     ).toBeVisible();
-    await page.getByRole("link", { name: "Back to Reviews" }).click();
-    await expect(page.getByRole("heading", { name: "Reviews", level: 1 })).toBeVisible();
+    await page.getByRole("link", { name: "Back to To do" }).click();
+    await expect(page.getByRole("heading", { name: "To do", level: 1 })).toBeVisible();
   });
 });

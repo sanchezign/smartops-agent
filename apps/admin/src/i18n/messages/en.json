@@ -17,7 +17,6 @@
   "pages": {
     "login": "Sign in",
     "home": "Home",
-    "alerts": "Alerts",
     "catalog": "Catalog",
     "product": "Product",
     "optedOut": "Opted out",
@@ -26,19 +25,23 @@
     "digest": "Summary",
     "try": "Try the system",
     "rules": "Rules",
-    "reviews": "Reviews",
     "review": "Review",
-    "users": "Users"
+    "users": "Users",
+    "todo": "To do",
+    "resolved": "Resolved",
+    "activity": "Activity",
+    "system": "System status"
   },
   "nav": {
     "sections": "Sections",
     "home": "Home",
-    "reviews": "Reviews",
+    "todo": "To do",
     "conversations": "Conversations",
     "catalog": "Catalog",
-    "alerts": "Alerts",
+    "activity": "Activity",
     "rules": "Rules",
     "users": "Users",
+    "system": "System status",
     "try": "Try the system",
     "more": "More",
     "moreSections": "More sections"
@@ -176,23 +179,15 @@
     "hoursEqual": "{day}: opening and closing cannot be the same."
   },
   "reviews": {
-    "description": "What the system does not decide on its own. None of this has been applied to the catalog yet.",
-    "typeFilter": "Review type",
     "statusFilter": "Status",
-    "all": "All",
     "statusFilters": {
-      "pending": "Pending",
       "approved": "Approved",
       "rejected": "Rejected"
     },
-    "emptyPending": "Nothing to review",
-    "emptyPendingHint": "Everything that arrived was processed on its own. When something needs your decision, it shows up here.",
     "emptyOther": "No reviews here",
-    "listLabel": "Reviews",
     "unknownSupplier": "Unidentified supplier",
-    "adminResolves": "an administrator resolves it",
-    "back": "Reviews",
-    "backTo": "Back to Reviews",
+    "back": "To do",
+    "backTo": "Back to To do",
     "resolvedOn": "{status} on {when}.",
     "adminOnlyTitle": "Only an administrator can resolve this review.",
     "adminOnlyBody": "It affects a whole list or the entire catalog.",
@@ -204,11 +199,6 @@
       "message": "Message",
       "globalChange": "{pct} on {count} products",
       "change": "Change"
-    },
-    "scopes": {
-      "run": "Whole lists",
-      "line": "Products",
-      "catalog": "Catalog"
     },
     "statuses": {
       "pending": "Pending",
@@ -389,6 +379,36 @@
         "other": "Other price"
       }
     }
+  },
+  "todo": {
+    "description": "What needs a decision from you: price lists the system did not apply on its own, and messages to check by hand.",
+    "resolvedLink": "Resolved",
+    "resolvedDescription": "Decisions already taken. Open one to see what was applied.",
+    "listsTitle": "Price lists",
+    "messagesTitle": "Messages to check",
+    "pendingInList": "{count, plural, one {{n} pending} other {{n} pending}}",
+    "viewAll": "View all ({count})",
+    "showFewer": "Show fewer",
+    "source": {
+      "audio": "Voice note",
+      "image": "Photo",
+      "spreadsheet": "Spreadsheet",
+      "document": "Document",
+      "text": "Message"
+    },
+    "unknownSupplier": "Unidentified supplier",
+    "adminResolves": "an administrator resolves it",
+    "openChat": "Open the chat",
+    "listenInChat": "Listen in the chat",
+    "done": "Done",
+    "notOptOut": "Not an opt-out",
+    "ackLabel": "{action}: {title}",
+    "waitingTitle": "Waiting for an administrator ({count})",
+    "waitingWhy": "Only an administrator can resolve these: each one affects a whole list or the entire catalog.",
+    "waitingInLists": "Some of them are inside the lists above, marked with a lock.",
+    "emptyTitle": "All caught up",
+    "emptyHint": "Everything that arrived was processed on its own. When something needs your decision, it shows up here.",
+    "truncated": "Showing the {count} newest lists. Resolve some to see the rest."
   },
   "rules": {
     "description": "How the system behaves, without touching code. Changes apply instantly and are recorded.",
@@ -728,14 +748,12 @@
     "renameFailed": "Could not rename."
   },
   "alerts": {
-    "description": "What is worth looking at: large increases, low stock, errors. Mark them as seen when you resolve them.",
     "status": "Status",
     "unseen": "Unseen",
     "unseenCount": "Unseen ({count})",
     "all": "All",
     "emptyUnseen": "No unseen alerts",
     "empty": "No alerts",
-    "listLabel": "Alerts",
     "viewProduct": "View product",
     "viewConversation": "View conversation",
     "markSeen": "Mark as seen: {title}",
@@ -763,7 +781,9 @@
       "n8nDeliveryFailed": "n8n did not receive a message after ~24 h of retries: check n8n and resend it",
       "n8nWorkflowError": "Error in {where}: {message}",
       "possibleOptOut": "Possible opt-out: “{phrase}”. Check it and record it by hand if it applies"
-    }
+    },
+    "activityDescription": "News about what the system already did: price changes applied, low stock. Nothing here waits for you.",
+    "systemDescription": "Technical errors for whoever runs the system: n8n, deliveries, workflows. The business keeps working; the team is told on WhatsApp too."
   },
   "users": {
     "description": "Who signs in to the panel and what they can do. There is always at least one active administrator.",
@@ -889,7 +909,7 @@
     "outcomes": {
       "suspicious": "Stopped for review: the message tries to give orders to the system. The catalog was not touched.",
       "newFormat": "Spreadsheet in a new format: choose which price column to use.",
-      "review": "It is in Reviews for a person to decide.",
+      "review": "It is in To do for a person to decide.",
       "updated": "Catalog up to date: {summary}.",
       "noChanges": "Processed: there were no price changes.",
       "failed": "Could not be processed.",
@@ -898,7 +918,7 @@
       "reviews": "{count, plural, one {# line to review} other {# lines to review}}"
     },
     "links": {
-      "viewReviews": "View in Reviews",
+      "viewReviews": "View in To do",
       "pickColumn": "Choose the column",
       "viewCatalog": "View the catalog",
       "viewConversation": "View the conversation"

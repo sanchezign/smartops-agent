@@ -17,7 +17,6 @@
   "pages": {
     "login": "Iniciar sesión",
     "home": "Inicio",
-    "alerts": "Alertas",
     "catalog": "Catálogo",
     "product": "Producto",
     "optedOut": "Dados de baja",
@@ -26,19 +25,23 @@
     "digest": "Resumen",
     "try": "Probar el sistema",
     "rules": "Reglas",
-    "reviews": "Revisiones",
     "review": "Revisión",
-    "users": "Usuarios"
+    "users": "Usuarios",
+    "todo": "Pendientes",
+    "resolved": "Ya resueltas",
+    "activity": "Novedades",
+    "system": "Estado del sistema"
   },
   "nav": {
     "sections": "Secciones",
     "home": "Inicio",
-    "reviews": "Revisiones",
+    "todo": "Pendientes",
     "conversations": "Conversaciones",
     "catalog": "Catálogo",
-    "alerts": "Alertas",
+    "activity": "Novedades",
     "rules": "Reglas",
     "users": "Usuarios",
+    "system": "Estado del sistema",
     "try": "Probar el sistema",
     "more": "Más",
     "moreSections": "Más secciones"
@@ -176,23 +179,15 @@
     "hoursEqual": "{day}: la apertura y el cierre no pueden ser iguales."
   },
   "reviews": {
-    "description": "Lo que el sistema no decide solo. Nada de esto se aplicó todavía al catálogo.",
-    "typeFilter": "Tipo de revisión",
     "statusFilter": "Estado",
-    "all": "Todas",
     "statusFilters": {
-      "pending": "Pendientes",
       "approved": "Aprobadas",
       "rejected": "Rechazadas"
     },
-    "emptyPending": "No hay nada para revisar",
-    "emptyPendingHint": "Todo lo que llegó se procesó solo. Cuando algo necesite tu decisión, aparecerá aquí.",
     "emptyOther": "No hay revisiones aquí",
-    "listLabel": "Revisiones",
     "unknownSupplier": "Proveedor sin identificar",
-    "adminResolves": "la resuelve un administrador",
-    "back": "Revisiones",
-    "backTo": "Volver a Revisiones",
+    "back": "Pendientes",
+    "backTo": "Volver a Pendientes",
     "resolvedOn": "{status} el {when}.",
     "adminOnlyTitle": "Solo un administrador puede resolver esta revisión.",
     "adminOnlyBody": "Afecta una lista entera o todo el catálogo.",
@@ -204,11 +199,6 @@
       "message": "Mensaje",
       "globalChange": "{pct} a {count} productos",
       "change": "Cambio"
-    },
-    "scopes": {
-      "run": "Listas enteras",
-      "line": "Productos",
-      "catalog": "Catálogo"
     },
     "statuses": {
       "pending": "Pendiente",
@@ -389,6 +379,36 @@
         "other": "Otro precio"
       }
     }
+  },
+  "todo": {
+    "description": "Lo que necesita una decisión tuya: listas de precios que el sistema no aplicó solo y mensajes para revisar a mano.",
+    "resolvedLink": "Ya resueltas",
+    "resolvedDescription": "Decisiones ya tomadas. Abre una para ver qué se aplicó.",
+    "listsTitle": "Listas de precios",
+    "messagesTitle": "Mensajes para revisar",
+    "pendingInList": "{count, plural, one {{n} pendiente} other {{n} pendientes}}",
+    "viewAll": "Ver todas ({count})",
+    "showFewer": "Ver menos",
+    "source": {
+      "audio": "Nota de voz",
+      "image": "Foto",
+      "spreadsheet": "Planilla",
+      "document": "Documento",
+      "text": "Mensaje"
+    },
+    "unknownSupplier": "Proveedor sin identificar",
+    "adminResolves": "la resuelve un administrador",
+    "openChat": "Abrir el chat",
+    "listenInChat": "Escuchar en el chat",
+    "done": "Listo",
+    "notOptOut": "No es una baja",
+    "ackLabel": "{action}: {title}",
+    "waitingTitle": "Esperan a un administrador ({count})",
+    "waitingWhy": "Solo un administrador puede resolverlas: cada una afecta una lista entera o todo el catálogo.",
+    "waitingInLists": "Algunas están dentro de las listas de arriba, marcadas con un candado.",
+    "emptyTitle": "Todo al día",
+    "emptyHint": "Todo lo que llegó se procesó solo. Cuando algo necesite tu decisión, aparecerá aquí.",
+    "truncated": "Se muestran las {count} listas más recientes. Resuelve algunas para ver el resto."
   },
   "rules": {
     "description": "Cómo se comporta el sistema, sin tocar código. Los cambios aplican al instante y quedan registrados.",
@@ -728,14 +748,12 @@
     "renameFailed": "No se pudo renombrar."
   },
   "alerts": {
-    "description": "Lo que conviene mirar: aumentos grandes, poco stock, errores. Márcalas como vistas cuando las resuelvas.",
     "status": "Estado",
     "unseen": "Sin ver",
     "unseenCount": "Sin ver ({count})",
     "all": "Todas",
     "emptyUnseen": "No hay alertas sin ver",
     "empty": "No hay alertas",
-    "listLabel": "Alertas",
     "viewProduct": "Ver producto",
     "viewConversation": "Ver conversación",
     "markSeen": "Marcar como vista: {title}",
@@ -763,7 +781,9 @@
       "n8nDeliveryFailed": "n8n no recibió un mensaje después de ~24 h de reintentos: revisa n8n y reenvíalo",
       "n8nWorkflowError": "Error en {where}: {message}",
       "possibleOptOut": "Posible baja: «{phrase}». Revísalo y regístrala a mano si corresponde"
-    }
+    },
+    "activityDescription": "Novedades de lo que el sistema ya hizo: cambios de precio aplicados, poco stock. Nada de esto espera por ti.",
+    "systemDescription": "Errores técnicos para quien administra el sistema: n8n, entregas, flujos. El negocio sigue funcionando; el equipo también recibe el aviso por WhatsApp."
   },
   "users": {
     "description": "Quién entra al panel y qué puede hacer. Siempre queda al menos un administrador activo.",
@@ -889,7 +909,7 @@
     "outcomes": {
       "suspicious": "Frenado para revisión: el mensaje intenta darle órdenes al sistema. No se tocó el catálogo.",
       "newFormat": "Planilla con un formato nuevo: elige qué columna de precio usar.",
-      "review": "Quedó en Revisiones para que una persona decida.",
+      "review": "Quedó en Pendientes para que una persona decida.",
       "updated": "Catálogo al día: {summary}.",
       "noChanges": "Procesado: no hubo cambios de precio.",
       "failed": "No se pudo procesar.",
@@ -898,7 +918,7 @@
       "reviews": "{count, plural, one {# línea para revisar} other {# líneas para revisar}}"
     },
     "links": {
-      "viewReviews": "Ver en Revisiones",
+      "viewReviews": "Ver en Pendientes",
       "pickColumn": "Elegir la columna",
       "viewCatalog": "Ver el catálogo",
       "viewConversation": "Ver la conversación"

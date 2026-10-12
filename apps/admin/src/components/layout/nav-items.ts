@@ -1,9 +1,10 @@
 import {
-  Bell,
+  Activity,
   FlaskConical,
-  ClipboardCheck,
+  ListTodo,
   LayoutDashboard,
   MessagesSquare,
+  MonitorCog,
   Package,
   SlidersHorizontal,
   Users,
@@ -20,18 +21,25 @@ export interface NavItem {
   /** Shown in the phone's bottom bar (the rest go under "More"). */
   primary: boolean;
   adminOnly?: boolean;
+  /** Admins, plus everyone in the public demo, read-only (System status, ADR-032 D1). */
+  adminOrDemo?: boolean;
   /** Only in the public demo (DEMO_MODE, phase 9 M8). */
   demoOnly?: boolean;
 }
 
+/**
+ * Phase 15 (ADR-032): Home · To do · Conversations · Catalog in the phone's bottom bar; Activity,
+ * Rules, Users, System status and Try under "More". To do carries the ONLY counter.
+ */
 export const NAV_ITEMS: NavItem[] = [
   { href: "/", labelKey: "home", icon: LayoutDashboard, primary: true },
-  { href: "/reviews", labelKey: "reviews", icon: ClipboardCheck, primary: true },
+  { href: "/todo", labelKey: "todo", icon: ListTodo, primary: true },
   { href: "/conversations", labelKey: "conversations", icon: MessagesSquare, primary: true },
   { href: "/catalog", labelKey: "catalog", icon: Package, primary: true },
-  { href: "/alerts", labelKey: "alerts", icon: Bell, primary: false },
+  { href: "/activity", labelKey: "activity", icon: Activity, primary: false },
   { href: "/rules", labelKey: "rules", icon: SlidersHorizontal, primary: false },
   { href: "/users", labelKey: "users", icon: Users, primary: false, adminOnly: true },
+  { href: "/system", labelKey: "system", icon: MonitorCog, primary: false, adminOrDemo: true },
   {
     href: "/try",
     labelKey: "try",
@@ -42,11 +50,22 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 export function navFor(user: SessionUser | null, demo = false): NavItem[] {
+  const admin = user?.role === "admin";
   return NAV_ITEMS.filter(
-    (item) => (!item.adminOnly || user?.role === "admin") && (!item.demoOnly || demo),
+    (item) =>
+      (!item.adminOnly || admin) &&
+      (!item.adminOrDemo || admin || demo) &&
+      (!item.demoOnly || demo),
   );
 }
 
+/** Whether a user sees System status (the page checks it too). */
+export const canSeeSystem = (user: SessionUser | null, demo: boolean) =>
+  user?.role === "admin" || demo;
+
 export function isActive(pathname: string, href: string): boolean {
-  return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+  if (href === "/") return pathname === "/";
+  // A review detail belongs to To do (its list moved there in phase 15).
+  if (href === "/todo" && pathname.startsWith("/reviews/")) return true;
+  return pathname === href || pathname.startsWith(`${href}/`);
 }

@@ -2,7 +2,7 @@ import type { ReviewItem } from "./types";
 
 /**
  * Review queue texts (phase 9 M2). Since phase 13 the words live in the message catalogs
- * ("reviews.scopes", "reviews.kinds", "reviews.help", "reviews.reasons"); this module only knows
+ * ("reviews.kinds", "reviews.help", "reviews.reasons"); this module only knows
  * which codes exist and builds the list title from the item.
  */
 

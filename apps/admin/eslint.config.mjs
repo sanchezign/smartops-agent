@@ -38,6 +38,8 @@ const eslintConfig = [
               "href",
               "src",
               "variant",
+              // A code, not a visible text (phase 15: AlertsView category="info" | "technical").
+              "category",
               "size",
               "align",
               "side",

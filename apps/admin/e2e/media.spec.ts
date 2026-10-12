@@ -1,7 +1,7 @@
 import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { E2E } from "./env";
-import { login } from "./helpers";
+import { login, todoEntry } from "./helpers";
 import { CAPTIONS, toSrt, type CaptionId } from "./media-captions";
 
 /**
@@ -49,13 +49,10 @@ test("screenshots, light and dark", async ({ page, isMobile }, info) => {
     await settle(page);
     await shoot(`dashboard-${scheme}`);
 
-    await page.goto("/reviews");
+    await page.goto("/todo");
     await settle(page);
     if (isMobile) await shoot(`reviews-${scheme}`);
-    await page
-      .getByRole("list", { name: "Reviews" })
-      .getByText("Corvane Fasteners price list.xlsx")
-      .click();
+    await (await todoEntry(page, "Corvane Fasteners price list.xlsx")).click();
     await settle(page);
     await shoot(`review-columns-${scheme}`);
 
@@ -167,10 +164,7 @@ test("demo video", async ({ browser, isMobile }) => {
   await expect(outcome).toHaveText(/new format/, { timeout: 90_000 });
   await pause(1_500);
   await page.getByRole("link", { name: "Choose the column" }).first().click();
-  await page
-    .getByRole("list", { name: "Reviews" })
-    .getByText("Wholesale Sample prices.xlsx")
-    .click();
+  await (await todoEntry(page, "Wholesale Sample prices.xlsx")).click();
   await page.getByRole("heading", { name: "Choose the price column" }).waitFor();
   await say("column");
   await pause(3_500);
@@ -231,13 +225,13 @@ test("guide screenshots", async ({ page, context, isMobile }) => {
   await ready();
   await shoot("dashboard");
 
-  await page.goto("/reviews");
+  await page.goto("/todo");
   await ready();
   await shoot("reviews");
   await page.getByText("Coarse sand").first().click();
   await ready();
   await shoot("review-line");
-  await page.goto("/reviews");
+  await page.goto("/todo");
   await ready();
   await page.getByText("Corvane Fasteners price list.xlsx").first().click();
   await ready();
@@ -262,7 +256,7 @@ test("guide screenshots", async ({ page, context, isMobile }) => {
   await shoot("product");
 
   for (const [path, name] of [
-    ["/alerts", "alerts"],
+    ["/activity", "alerts"],
     ["/rules", "rules"],
     ["/users", "users"],
   ] as const) {

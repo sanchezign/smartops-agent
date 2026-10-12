@@ -1,24 +1,36 @@
 /**
- * Panel routes were Spanish until phase 13 (/revisiones, /conversaciones…). Old links (bookmarks,
- * WhatsApp digests already sent, shared screenshots) keep working through PERMANENT redirects to
- * the English routes, sub-paths included. /d/<token> never changed. Order matters: the more
- * specific /conversaciones/bajas comes first.
+ * Old panel routes keep working (bookmarks, WhatsApp digests already sent, shared screenshots)
+ * through PERMANENT redirects:
+ * - phase 13: the Spanish routes (/revisiones, /conversaciones…) → the English ones;
+ * - phase 15 (ADR-032): the review LIST moved to /todo (a review's own page stays /reviews/<id>)
+ *   and the alerts became Activity (/activity).
+ * Each entry: the route → `to`, and everything under it → `sub` (default `to`; null = sub-paths
+ * are a live route, not redirected). /d/<token> never changed. Order matters: the more specific
+ * /conversaciones/bajas comes first.
  */
-export const LEGACY_ROUTES: readonly (readonly [from: string, to: string])[] = [
-  ["/conversaciones/bajas", "/conversations/opted-out"],
-  ["/revisiones", "/reviews"],
-  ["/conversaciones", "/conversations"],
-  ["/catalogo", "/catalog"],
-  ["/alertas", "/alerts"],
-  ["/reglas", "/rules"],
-  ["/usuarios", "/users"],
-  ["/probar", "/try"],
+export const LEGACY_ROUTES: readonly {
+  from: string;
+  to: string;
+  sub?: string | null;
+}[] = [
+  { from: "/conversaciones/bajas", to: "/conversations/opted-out" },
+  { from: "/revisiones", to: "/todo", sub: "/reviews" },
+  { from: "/conversaciones", to: "/conversations" },
+  { from: "/catalogo", to: "/catalog" },
+  { from: "/alertas", to: "/activity" },
+  { from: "/reglas", to: "/rules" },
+  { from: "/usuarios", to: "/users" },
+  { from: "/probar", to: "/try" },
+  { from: "/reviews", to: "/todo", sub: null },
+  { from: "/alerts", to: "/activity" },
 ];
 
-/** Next.js `redirects()` entries: the route itself and everything under it (308). */
+/** Next.js `redirects()` entries: the route itself and (unless `sub` is null) everything under it (308). */
 export function legacyRedirects() {
-  return LEGACY_ROUTES.flatMap(([from, to]) => [
+  return LEGACY_ROUTES.flatMap(({ from, to, sub }) => [
     { source: from, destination: to, permanent: true },
-    { source: `${from}/:path*`, destination: `${to}/:path*`, permanent: true },
+    ...(sub === null
+      ? []
+      : [{ source: `${from}/:path*`, destination: `${sub ?? to}/:path*`, permanent: true }]),
   ]);
 }

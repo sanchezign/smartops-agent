@@ -1036,6 +1036,61 @@ export async function seedDemo(deps: {
     }
   }
 
+  // ── The long voice note nobody transcribed (phase 15): the alert points to a REAL message ──
+  // As the transcription service records it (transcription.repository.ts): a stored audio, a
+  // skipped transcription ("too_long") and a manual_attention alert whose payload names the
+  // message, so To do links to the chat where it can be played. The bytes are the sample voice
+  // note (a few seconds); the recorded length is the story's 4:12.
+  const longVoice = await (async () => {
+    const ids = await idsOf(sur);
+    const when = at(4);
+    const bytes = new Uint8Array(readFileSync(assetFile(content.samples.audio.file)));
+    const durationSeconds = 252;
+    const maxSeconds = 180;
+    const media = await prisma.mediaFile.create({
+      data: {
+        waMediaId: "demo-media-long-voice-note",
+        mimeType: "audio/ogg; codecs=opus",
+        sizeBytes: bytes.byteLength,
+        contentSha256: createHash("sha256").update(bytes).digest("hex"),
+        status: "stored",
+        storage: "postgres",
+        downloadedAt: when,
+        createdAt: when,
+        blob: { create: { data: bytes } },
+        transcription: {
+          create: { status: "skipped", reason: "too_long", durationSeconds, completedAt: when },
+        },
+      },
+    });
+    messages += 1;
+    const message = await prisma.message.create({
+      data: {
+        conversationId: ids.conversationId,
+        waMessageId: wamid(),
+        direction: "inbound",
+        type: "audio",
+        author: "contact",
+        mediaFileId: media.id,
+        waTimestamp: when,
+        createdAt: when,
+      },
+    });
+    await prisma.$executeRaw`
+      UPDATE conversations
+         SET last_inbound_at = GREATEST(COALESCE(last_inbound_at, ${when}::timestamptz), ${when}::timestamptz),
+             last_message_at = GREATEST(COALESCE(last_message_at, ${when}::timestamptz), ${when}::timestamptz)
+       WHERE id = ${ids.conversationId}::uuid`;
+    return {
+      reason: "audio_too_long",
+      mediaFileId: media.id,
+      messageId: message.id,
+      durationSeconds,
+      sizeBytes: bytes.byteLength,
+      maxSeconds,
+    };
+  })();
+
   // ── A few alerts of other kinds ─────────────────────────────────────────────
   await prisma.alert.createMany({
     data: [
@@ -1043,6 +1098,7 @@ export async function seedDemo(deps: {
         type: "manual_attention",
         severity: "info",
         title: content.text.audioAlertTitle,
+        payload: longVoice,
         createdAt: at(4),
       },
       {

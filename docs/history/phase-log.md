@@ -1722,3 +1722,26 @@ a real client.**
       (4 mine, 4 wait for an admin), demo operator 6 (+ column_mapping). Found: the seeded manual_attention alert
       has no payload (no messageId), so it reaches To do without its conversation — demo seed data, to fix in M3.
       The M2 panel routes `/todo` and `/system` do not exist yet: digest links point to them from this commit on.
+    - M2 — DONE. Panel: `/todo` (one card per list — source icon + written kind, supplier, when it arrived, how many
+      pending, its first 5 decisions with a lock on what is not mine, "View all (N)" loading `?runId=` in the list's
+      order; "Messages to check" with the action alerts, "Listen in the chat" / "Open the chat" and Done / Not an
+      opt-out (acknowledge, every role); "Waiting for an administrator (N)" folded by default in a `<details>`, no
+      yellow, with why; "All caught up" + a reassuring line), `/todo/resolved` (the old status filter: Approved /
+      Rejected, from `review-list.tsx` renamed `resolved-list.tsx`), `/activity` (AlertsView category info) and
+      `/system` (category technical; admins, read-only for the demo operator, "not allowed" for a regular operator).
+      Menu: Home · To do · Conversations · Catalog | More: Activity, Rules, Users (admin), System status (admin / demo),
+      Try (demo). ONE yellow counter on To do from `GET /admin/todo/summary` (the shell no longer fetches the dashboard
+      for it). Redirects: `/reviews` → `/todo` (`/reviews/<id>` stays), `/alerts` and `/alertas` → `/activity`,
+      `/revisiones` → `/todo` with sub-paths → `/reviews/…` (`legacy-routes.ts` gained `sub`). SSE: review / alert
+      events refresh `["todo"]`. Review detail returns to To do. The demo seed's long voice note is now a real audio
+      message of Tessaly's chat (stored bytes, skipped transcription "too_long", 252 s) and its manual_attention alert
+      carries the payload the transcription service writes (Spanish seed fingerprint re-recorded on purpose: alerts,
+      media_blobs/media_files 2 → 3, messages 144 → 145, transcriptions +1, nothing else). ESLint: `category` is a code
+      attribute for `i18next/no-literal-string`. Playwright: `E2E_DEMO_MODE=off` (screenshots only) runs the same
+      seed without the demo rules. E2E rewritten on To do (reviews, mobile-reviews, demo, realtime, i18n-es, a11y,
+      catalog → Activity, dashboard counter, legacy routes, digest link → `/todo`) + `todo.spec.ts` (counter per
+      role from the API, the voice note and its chat, All caught up with the API mocked, System status read-only, Done
+      lowers the counter on an alert the test creates). Tests: API 1411 unit + 240 integration; panel 201 unit; E2E
+      144 passed (desktop, Pixel, iPhone on Chromium). Screenshots in `C:/dev/smartops-phase15-shots/M2-after/`
+      (operator, operator-demo, admin × EN / ES × light / dark × desktop / iPhone; axe clean). The Home still shows the
+      old pending tiles (M5); `features/dashboard/hooks.ts` (`usePendingCounts`) is no longer used.

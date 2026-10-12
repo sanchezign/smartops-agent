@@ -6,7 +6,14 @@ import { toast } from "sonner";
 import { api } from "@/features/auth/api";
 import { useApiQuery } from "@/hooks/use-api";
 import { ApiError } from "@/lib/api-client";
-import type { AlertItem, Availability, CatalogSupplier, ProductDetail, ProductRow } from "./types";
+import type {
+  AlertCategory,
+  AlertItem,
+  Availability,
+  CatalogSupplier,
+  ProductDetail,
+  ProductRow,
+} from "./types";
 
 export const useCatalogSuppliers = () =>
   useApiQuery<{ suppliers: CatalogSupplier[] }>(
@@ -66,10 +73,10 @@ export function useRenameSupplier(onDone: () => void) {
   });
 }
 
-export const useAlerts = (status: "open" | "all") =>
+export const useAlerts = (status: "open" | "all", category?: AlertCategory) =>
   useApiQuery<{ open: number; items: AlertItem[] }>(
-    ["alerts", status],
-    `/admin/alerts?status=${status}`,
+    ["alerts", status, category ?? "all"],
+    `/admin/alerts?status=${status}${category ? `&category=${category}` : ""}`,
   );
 
 export function useAcknowledgeAlert() {
@@ -81,6 +88,7 @@ export function useAcknowledgeAlert() {
     onError: () => toast.error(t("ackFailed")),
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["alerts"] });
+      void queryClient.invalidateQueries({ queryKey: ["todo"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });

@@ -85,7 +85,7 @@ export function timeline(
         outcome: {
           key: "suspicious",
           tone: "review",
-          href: "/reviews",
+          href: "/todo",
           linkKey: "viewReviews",
         },
       };
@@ -97,7 +97,7 @@ export function timeline(
         outcome: {
           key: "newFormat",
           tone: "review",
-          href: "/reviews",
+          href: "/todo",
           linkKey: "pickColumn",
         },
       };
@@ -108,7 +108,7 @@ export function timeline(
       outcome: {
         key: "review",
         tone: "review",
-        href: "/reviews",
+        href: "/todo",
         linkKey: "viewReviews",
       },
     };
@@ -127,7 +127,7 @@ export function timeline(
         key: changed ? "updated" : "noChanges",
         ...(changed ? { counts } : {}),
         tone: run.pendingReviews > 0 ? "review" : "success",
-        href: run.pendingReviews > 0 ? "/reviews" : "/catalog",
+        href: run.pendingReviews > 0 ? "/todo" : "/catalog",
         linkKey: run.pendingReviews > 0 ? "viewReviews" : "viewCatalog",
       },
     };
