@@ -112,8 +112,17 @@ export function createReviewQueryRepository(prisma: PrismaClient) {
           ...(filter.supplierId ? { supplierId: filter.supplierId } : {}),
         },
         select,
-        // Run gates first (they block a whole list), then oldest first (FIFO).
-        orderBy: [{ scope: "asc" }, { createdAt: "asc" }],
+        // Run gates first (they block a whole list), then NEWEST first by the date the panel
+        // shows (message.waTimestamp; `toView` falls back to message.createdAt). Prisma cannot
+        // COALESCE in orderBy, so a null waTimestamp sorts last in its group, ordered among the
+        // nulls by message.createdAt. Ties: item createdAt desc, then id (stable order).
+        orderBy: [
+          { scope: "asc" },
+          { ingestionRun: { message: { waTimestamp: { sort: "desc", nulls: "last" } } } },
+          { ingestionRun: { message: { createdAt: "desc" } } },
+          { createdAt: "desc" },
+          { id: "asc" },
+        ],
         take: filter.limit ?? 100,
       });
       return rows.map(toView);

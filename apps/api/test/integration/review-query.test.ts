@@ -111,6 +111,65 @@ describe.skipIf(!testDatabaseUrl)("review query (Postgres)", () => {
     });
   });
 
+  it("orders each scope newest first by the displayed date; a null waTimestamp goes last", async () => {
+    const supplier = await prisma.supplier.create({
+      data: { name: "Eléctrica Oriental", normalizedName: "electrica oriental" },
+    });
+    const contact = await prisma.contact.create({ data: { waId: "59899000333" } });
+    const conversation = await prisma.conversation.create({ data: { contactId: contact.id } });
+    // Item createdAt runs OPPOSITE to receivedAt, so the old FIFO order would fail this test.
+    async function item(
+      key: string,
+      scope: "run" | "line",
+      wa: string | null,
+      msgCreated: string,
+      itemCreated: string,
+    ) {
+      const message = await prisma.message.create({
+        data: {
+          conversationId: conversation.id,
+          direction: "inbound",
+          type: "text",
+          author: "contact",
+          text: key,
+          waTimestamp: wa ? new Date(wa) : null,
+          createdAt: new Date(msgCreated),
+        },
+      });
+      const run = await prisma.ingestionRun.create({
+        data: { messageId: message.id, supplierId: supplier.id, status: "needs_review" },
+      });
+      await prisma.reviewItem.create({
+        data: {
+          ingestionRunId: run.id,
+          reasons: ["x"],
+          proposal: {},
+          scope,
+          kind: scope === "run" ? "column_mapping" : "price_outlier",
+          dedupeKey: key,
+          supplierId: supplier.id,
+          createdAt: new Date(itemCreated),
+        },
+      });
+    }
+    const d = (s: string) => `2026-${s}Z`;
+    await item("line-old", "line", d("09-20T10:00:00"), d("09-20T10:00:00"), d("09-30T10:00:03"));
+    await item("line-new", "line", d("09-30T10:00:00"), d("09-30T10:00:00"), d("09-30T10:00:01"));
+    await item("line-mid", "line", d("09-25T10:00:00"), d("09-25T10:00:00"), d("09-30T10:00:02"));
+    // No waTimestamp and the newest createdAt of all: still last of its group.
+    await item("line-null", "line", null, d("10-01T10:00:00"), d("09-30T10:00:04"));
+    await item("run-old", "run", d("09-01T10:00:00"), d("09-01T10:00:00"), d("09-30T10:00:05"));
+
+    const items = await createReviewQueryRepository(prisma).list({});
+    expect(items.map((i) => i.message.text)).toEqual([
+      "run-old",
+      "line-new",
+      "line-mid",
+      "line-old",
+      "line-null",
+    ]);
+  });
+
   it("filters by status, scope, kind and supplier", async () => {
     const { supplier, other } = await setup();
     const repo = createReviewQueryRepository(prisma);
