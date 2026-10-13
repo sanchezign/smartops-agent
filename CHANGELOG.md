@@ -6,6 +6,34 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.18.0](https://github.com/sanchezign/smartops-agent/compare/v0.17.1...v0.18.0) (2026-10-13)
+
+
+### Features
+
+* **admin:** phase 15 M2 — To do screen, one counter, Activity and System status ([27b6d7b](https://github.com/sanchezign/smartops-agent/commit/27b6d7bb9b33de93ad6935b490374823d6db8788))
+* **admin:** phase 15 M3 — reviews as questions, one-click decisions, confirmed opt-out ([312d43a](https://github.com/sanchezign/smartops-agent/commit/312d43a45fd93bb0e875b6939fe36e607cfd7421))
+* **admin:** phase 15 M4 — Activity by day, System status, news never counted as pending ([61ed42e](https://github.com/sanchezign/smartops-agent/commit/61ed42e338192ebf5e82799636eb0be4afd00e40))
+* **admin:** phase 15 M5 — the Home starts with what waits for you ([0fc30fd](https://github.com/sanchezign/smartops-agent/commit/0fc30fdc5ee1b089cd1ebdc729dcfe59b5fd5976))
+* **admin:** phase 15 M6 — guides, READMEs, media and demo-check for the panel triage ([5b093dd](https://github.com/sanchezign/smartops-agent/commit/5b093dd46d231fa1ab7686bf8e507253d5fedf8e))
+* **api:** phase 15 M0 — ADR-032 panel triage and the alert category map ([57d1d56](https://github.com/sanchezign/smartops-agent/commit/57d1d56d37205890395ab51c1711e98c185ccde8))
+* **api:** phase 15 M1 — to do read API, alert categories and new digest paths ([ae49673](https://github.com/sanchezign/smartops-agent/commit/ae49673a5c48919095526ff7965f619ee617afa7))
+
+
+### Bug Fixes
+
+* **admin:** dollars read "$" in English, a clearer product question, no repeated outcome ([df31fef](https://github.com/sanchezign/smartops-agent/commit/df31fef7165f9f173166db1934cbfa19c1658ccc))
+* **admin:** each to-do item in one place, a meta line per card, clean screenshot data ([607742b](https://github.com/sanchezign/smartops-agent/commit/607742b8859188a9b2bde87f2b92d5b1b909dbaf))
+* **api:** order the review queue newest first by the displayed date ([5a51bad](https://github.com/sanchezign/smartops-agent/commit/5a51bad4e343c93d94fe3d5336f0c5239b7e1c4d))
+
+
+### Documentation
+
+* complete Spanish README (how it works, engineering, stack, local run, full documentation list) ([5046f79](https://github.com/sanchezign/smartops-agent/commit/5046f7914297c51830bc94a0d8330ab36fcb86f6))
+* current test counts and coverage in the case study and testing docs ([ba430b5](https://github.com/sanchezign/smartops-agent/commit/ba430b54e53578bd03dde3544bc7723f9aabd30b))
+* current test counts in both READMEs ([91e7398](https://github.com/sanchezign/smartops-agent/commit/91e7398c6fdf97b7495100a0e3acee0e329e26db))
+* the new public repository in CLAUDE.md and F-02 closed in the audit ([6f5d1f6](https://github.com/sanchezign/smartops-agent/commit/6f5d1f6777430baf2f42b2b0d6cd40d29a6327c8))
+
 ## [0.17.1](https://github.com/sanchezign/smartops-agent/compare/v0.17.0...v0.17.1) (2026-10-09)
 
 
