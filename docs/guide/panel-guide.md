@@ -8,7 +8,7 @@ shows and what to do in it. No technical knowledge is needed. (Versión en espa�
 
 Your suppliers send price lists over WhatsApp: text, photos of printed lists, PDFs,
 spreadsheets, voice notes. SmartOps reads them and updates your catalog by itself. When it is not
-sure about something, it does not guess: it leaves it in **Reviews** for a person to decide.
+sure about something, it does not guess: it leaves it in **To do** for a person to decide.
 Customers' questions and orders are passed on to the team, and the team gets a short WhatsApp
 summary instead of one message per event.
 
@@ -25,26 +25,49 @@ summary instead of one message per event.
 - **Sign out everywhere** (account menu) closes your sessions on every device, for example after
   losing a phone.
 
+## The navigation
+
+On a computer the sections are on the left; on a phone the bottom bar has **Home**, **To do**,
+**Conversations** and **Catalog**, and the rest is under **More**. The only yellow number in the
+panel is the one on **To do**: how many things wait for **you** (what your role can decide).
+
 ## Home
 
 ![The home screen](media-en/dashboard.webp)
 
-- The top row is what needs a person now: **pending reviews**, **open alerts**, **chats handled
-  by a person** and **errors**. Click a card to go there.
-- **Resolved without a person** is the share of processed messages that needed nobody.
-- **Filtered without AI** counts messages (greetings, stickers, customers' chat) that never cost
-  anything, with the estimated saving.
+- **Waiting for you** comes first: the three newest decisions you can take, each a link, and
+  **See all** to open To do. When nothing waits, it says **All caught up**.
+- Below, only when there is something: the chats **a person is handling**, and — for
+  administrators — a red line when there are **technical errors not reviewed** (it opens System
+  status).
+- **Automation**, with 7, 14 or 30 days: messages received, **resolved without a person** (the
+  share of processed messages that needed nobody) and **filtered without AI** (greetings,
+  stickers, customers' chat that never cost anything, with the estimated saving).
 - The charts show messages per day and the AI cost per day, with the daily and total budgets.
-- Switch between 7, 14 and 30 days at the top right.
 
-## Reviews
+## To do
 
-![The review queue](media-en/reviews.webp)
+![To do](media-en/todo.webp)
 
-A review is a decision the system does not take alone. Nothing in a pending review has been
-applied to the catalog yet. Filter by type (whole lists, products, catalog) and by status.
+Everything that waits for a decision, in one place. Nothing in it has been applied to the catalog
+yet.
 
-**A product line** (for example, an unusual price change):
+- **Price lists:** one card per message a supplier sent (a photo, a spreadsheet, a voice note or a
+  text), with when it arrived and how many decisions it has. Each decision reads as a question,
+  for example "Update Coarse sand to $41.50?". **View all** shows the rest of a long list.
+- **One click:** when the answer needs no choice — a price change or a currency change of a product
+  the system already identified, or marking a product as unavailable (administrators) — two
+  buttons decide it right there, with the value on them: **Update to $41.50** / **Keep $38.00**.
+  Anything else (which product it is, an older message, a doubtful value…) opens with a click.
+- **Messages to check:** a voice note too long to transcribe (**Listen in the chat**, then
+  **Done**) or a phrase that may be an opt-out (**Not an opt-out**, or **Opt out** after a
+  confirmation — only an administrator can opt a contact back in).
+- **Waiting for an administrator:** what an operator cannot decide (it affects a whole list or the
+  entire catalog) is folded at the end, and a list that has one says "+1 waits for an
+  administrator".
+- **Resolved** shows the decisions already taken (approved and rejected).
+
+**A product line, in its detail** (for example, an unusual price change):
 
 ![A product review](media-en/review-line.webp)
 
@@ -102,12 +125,23 @@ administrators.
 - Administrators can **rename a supplier** (for example, when it was created with a WhatsApp
   name).
 
-## Alerts
+## Activity
 
-![Alerts](media-en/alerts.webp)
+![Activity](media-en/activity.webp)
 
-Large price increases, low stock, voice notes too long to transcribe, and integration errors.
-Mark each one as **seen** once it is handled.
+News about what the system already did, grouped by day (**Today**, **Yesterday**, the date): price
+changes it applied and products with low stock, each with a link to the product. Nothing here waits
+for you: there is nothing to mark as seen.
+
+## System status
+
+![System status](media-en/system.webp)
+
+For whoever runs the system (administrators; in the public demo, read-only): the errors of the last
+7 days — WhatsApp messages not received, messages n8n did not get, lists that could not be
+processed, WhatsApp sends that failed — and the technical alerts. Those **not reviewed** are red;
+an administrator marks each one as **reviewed** once it is handled, and it turns grey. The team is
+also told about serious errors on WhatsApp.
 
 ## Rules
 
@@ -129,8 +163,8 @@ administrators can change them.
 
 ![Users](media-en/users.webp)
 
-- Create users as **operator** (reviews of product lines and conversations) or **administrator**
-  (everything, including rules and users).
+- Create users as **operator** (product lines in To do, and conversations) or **administrator**
+  (everything, including whole lists, the catalog, rules, System status and users).
 - Change roles, deactivate, set a new password, unlock, or close a user's sessions. Every change
   of role, deactivation or new password closes that user's sessions.
 - Nobody can change their own role or deactivate themselves, and there is always at least one
@@ -144,7 +178,7 @@ end opens the matching screens in the panel (you are asked to sign in first).
 
 ## What SmartOps never does
 
-- It never invents a price or guesses a doubtful value: it asks in Reviews.
+- It never invents a price or guesses a doubtful value: it asks in To do.
 - It never applies instructions written inside a message or a file.
 - It never writes to contacts who opted out, except the single confirmation.
 - It never sends more than the limits you set in Rules.

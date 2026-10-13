@@ -1802,3 +1802,18 @@ a real client.**
       price_changes +1, products: that price and that stock; nothing else). E2E: the Home's tasks (≤ 3, no buttons, See
       all = the counter, the chats line, no error tile, no red line for an operator), All caught up (API mocked), a
       phone's first screen, the admin's red line appears with an unreviewed error and goes once it is reviewed.
+    - M6 — DONE. Owner's details: the English AI cost chart reads "(USD)"; the demo seed's "Today" news is a USD
+      product of a USD supplier (supplier 0, the self-drilling screw / tornillo autoperforante: not in the pending
+      spreadsheet, so approving that column mapping never meets a newer price) and both recent news times come from
+      `modules/demo/recent-times.ts` — today = max(start of the local Montevideo day, now − 1 h), yesterday = noon of
+      the previous local day — unit-tested at 00:10 local (Spanish fingerprint re-recorded: same row counts, only
+      those rows' data). Docs: panel guides EN / ES (navigation, Home, To do with one click, Activity, System status,
+      roles), README / README.es (screens and alt texts: Home, To do, column choice, price history, chat, Activity;
+      phone: Home, To do, inbox; a "Tells you what to do" point), architecture, case studies (a lesson: a panel that
+      works is not yet a panel that is clear). README media regenerated ONCE with clean data (MEDIA=1, the iPhone shots
+      from `iphone-chromium` saved as `iphone-*`): new desktop-todo / desktop-activity, iphone-reviews → iphone-todo,
+      guide reviews → todo, alerts → activity, new system (README media 5.7 MB ≤ 8, Spanish guide 368 KB ≤ 4 MB); the
+      clean MP4 + subtitles went to a scratch folder, NOT the portfolio kit (the owner copies them if wanted).
+      `demo-check`: GET /admin/todo/summary + /admin/todo for the public operator (counters add up, lists carry the
+      same counters), skipped on 404 until a phase 15 release is deployed — then REQUIRED (runbook, "Checking a
+      deployed version").

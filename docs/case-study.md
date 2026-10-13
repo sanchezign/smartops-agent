@@ -38,8 +38,9 @@ An Express 5 + TypeScript API owns the WhatsApp webhook, the rules and every wri
 A worker (pg-boss queues in the same database) downloads media, transcribes voice notes (Whisper
 on Groq), converts documents in an isolated thread and sends messages. n8n orchestrates the
 receiver, processor and notifier agents by calling the API's internal endpoints. A Next.js panel
-(English and Spanish, mobile first) shows reviews, conversations, the catalog and rules, updated
-live over SSE. Details: [architecture.md](architecture.md).
+(English and Spanish, mobile first) opens on what waits for the person — one To do list with
+plain questions and one-click answers, news and technical errors kept apart — plus conversations,
+the catalog and rules, updated live over SSE. Details: [architecture.md](architecture.md).
 
 ## Results (measured)
 
@@ -51,8 +52,8 @@ live over SSE. Details: [architecture.md](architecture.md).
   an absent product untouched.
 - **Prompt injection:** 8 of 8 cases passed against the real model (6 attacks, 2 controls). The
   attacks were flagged and stopped for review, and no invented price was applied.
-- **Tests:** 1,397 API unit and HTTP tests and 229 against a real Postgres; 193 panel unit tests
-  and 128 browser tests on desktop Chrome, Pixel 7 and iPhone (WebKit), with accessibility checks
+- **Tests:** 1,417 API unit and HTTP tests and 241 against a real Postgres; 216 panel unit tests
+  and 171 browser tests on desktop Chrome, Pixel 7 and iPhone (WebKit), with accessibility checks
   in both languages. Mutation score 80 %.
 - **Resilience:** with n8n stopped and restarted, every message was delivered once, with one run
   each.
@@ -74,6 +75,12 @@ live over SSE. Details: [architecture.md](architecture.md).
   refuses ambiguous numbers typed by hand.
 - **Cloud capacity:** the free ARM region had no capacity for days. A retry script with a
   least-privilege user tries every few minutes and stops on any error that is not capacity.
+- **A panel that works is not yet a panel that is clear.** Real use showed that "pending reviews"
+  and "open alerts" read as the same thing, while news and technical errors competed for the same
+  yellow. The panel now sorts everything into three: To do (what waits for this person, the only
+  yellow counter), Activity (news) and System status (for whoever runs the system), with each
+  decision written as a question. The system decides exactly the same as before: only the
+  presentation changed (ADR-032).
 
 ## What comes next
 

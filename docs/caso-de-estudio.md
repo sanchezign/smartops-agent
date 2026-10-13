@@ -39,8 +39,10 @@ Una API en Express 5 + TypeScript se encarga del webhook de WhatsApp, de las reg
 escritura en PostgreSQL. Un worker (colas de pg-boss en la misma base) descarga archivos,
 transcribe audios (Whisper en Groq), convierte documentos en un hilo aislado y envía mensajes.
 n8n orquesta los agentes receptor, procesador y notificador llamando a los endpoints internos de
-la API. Un panel en Next.js (en inglés y en español, pensado primero para el teléfono) muestra
-revisiones, conversaciones, el catálogo y las reglas, actualizado en vivo con SSE. Detalle:
+la API. Un panel en Next.js (en inglés y en español, pensado primero para el teléfono) abre con
+lo que espera a la persona — una sola lista de Pendientes con preguntas simples y respuestas de un
+clic, y las novedades y los errores técnicos aparte — más las conversaciones, el catálogo y las
+reglas, actualizado en vivo con SSE. Detalle:
 [architecture.md](architecture.md) (en inglés).
 
 ## Resultados (medidos)
@@ -53,8 +55,8 @@ revisiones, conversaciones, el catálogo y las reglas, actualizado en vivo con S
   dudoso a revisión y no tocó un producto ausente.
 - **Prompt injection:** 8 de 8 casos correctos contra el modelo real (6 ataques, 2 controles).
   Los ataques quedaron marcados y frenados para revisión, y no se aplicó ningún precio inventado.
-- **Tests:** 1.397 tests unitarios y HTTP de la API y 229 contra un Postgres real; 193 tests
-  unitarios del panel y 128 tests en navegador (Chrome de escritorio, Pixel 7 e iPhone con
+- **Tests:** 1.417 tests unitarios y HTTP de la API y 241 contra un Postgres real; 216 tests
+  unitarios del panel y 171 tests en navegador (Chrome de escritorio, Pixel 7 e iPhone con
   WebKit), con controles de accesibilidad en los dos idiomas. Puntaje de mutación: 80 %.
 - **Resiliencia:** con n8n detenido y vuelto a levantar, cada mensaje se entregó una sola vez,
   con una sola corrida cada uno.
@@ -79,6 +81,12 @@ revisiones, conversaciones, el catálogo y las reglas, actualizado en vivo con S
 - **Capacidad en la nube:** la región ARM gratuita no tuvo capacidad durante días. Un script de
   reintento, con un usuario de privilegio mínimo, prueba cada pocos minutos y se detiene ante
   cualquier error que no sea de capacidad.
+- **Un panel que funciona todavía no es un panel claro.** El uso real mostró que "revisiones
+  pendientes" y "alertas abiertas" parecían lo mismo, mientras las novedades y los errores técnicos
+  competían por el mismo amarillo. Ahora el panel ordena todo en tres: Pendientes (lo que espera a
+  esta persona, el único contador amarillo), Novedades y Estado del sistema (para quien lo
+  administra), con cada decisión escrita como una pregunta. El sistema decide exactamente lo mismo
+  que antes: solo cambió cómo se presenta (ADR-032).
 
 ## Lo que sigue
 

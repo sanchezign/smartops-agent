@@ -80,6 +80,13 @@ only if every line says `ok`. Against `http://127.0.0.1:<port>` (a local DEMO_MO
 need Caddy are skipped. `demo-abuse-check` has side effects (your IP waits up to a minute; the login
 limit step locks your IP out for up to 15 minutes): see the header of the script.
 
+**To do (phase 15, ADR-032).** `demo-check` also checks `GET /api/v1/admin/todo/summary` and
+`/admin/todo` for the public operator: the counters add up (`total` = what the operator can resolve +
+the messages to check, with the column-mapping review included by ADR-030) and the lists come with the
+same counters. Until a release with phase 15 is deployed the route answers 404 and the check prints
+`skip /admin/todo`. **Once that release is deployed, the check is REQUIRED:** a `skip` line after it
+means the VM runs an older image — treat it as a failed deploy (roll back or redeploy).
+
 ## 2. Rollback
 
 ```bash

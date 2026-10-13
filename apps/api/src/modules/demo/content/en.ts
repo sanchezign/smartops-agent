@@ -294,7 +294,11 @@ export const EN_CONTENT: DemoContent = {
       price: 1,
     },
     recent: {
-      rise: { message: "New price for the 9 W LED bulbs", product: "LED bulb 9 W", factor: 1.12 },
+      rise: {
+        message: "New price for the self-drilling screws",
+        product: "Self-drilling screw #8 x 1 in",
+        factor: 1.12,
+      },
       lowStock: {
         message: "Marine varnish: only 4 cans left",
         product: "Marine varnish 1 qt",

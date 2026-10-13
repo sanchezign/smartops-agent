@@ -116,10 +116,11 @@ export interface DemoStory {
   /** Supplier 0, yesterday: a message that tries to give orders to the bot. */
   injection: { message: string; product: string; price: number };
   /**
-   * Recent news for Activity (phase 15 M5): supplier 2, TODAY, a rise over the alert threshold
-   * and under the outlier limit (applied → a price_change); supplier 1, YESTERDAY, a quote at the
-   * same price with low stock (→ a low_stock). Both go through the real ingest, at the END of
-   * the seed, so nothing seeded before them changes.
+   * Recent news for Activity (phase 15): supplier 0, TODAY, a rise over the alert threshold and
+   * under the outlier limit (applied → a price_change, in the supplier's own currency); supplier
+   * 1, YESTERDAY, a quote at the same price with low stock (→ a low_stock). Both go through the
+   * real ingest, at the END of the seed, so nothing seeded before them changes; their times come
+   * from recent-times.ts (never on the wrong side of midnight).
    */
   recent: {
     rise: { message: string; product: string; factor: number };

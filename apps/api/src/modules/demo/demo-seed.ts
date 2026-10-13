@@ -9,6 +9,7 @@ import { hashPassword } from "../auth/password.js";
 import type { CatalogIngestService } from "../catalog/catalog-ingest.service.js";
 import { renderDigest, type ItemData } from "../notifications/digest-rules.js";
 import { demoListPng } from "./demo-image.js";
+import { recentNewsTimes } from "./recent-times.js";
 import { normalizeProductName } from "../catalog/normalize.js";
 import { normalizeSupplierName } from "../catalog/supplier-name.js";
 import { convertDocument } from "../documents/convert.js";
@@ -1111,15 +1112,17 @@ export async function seedDemo(deps: {
     ],
   });
 
-  // ── Recent news for Activity (phase 15 M5): yesterday and today, through the real ingest ──
+  // ── Recent news for Activity (phase 15): yesterday and today, through the real ingest ──
   // At the END of the seed, so the random times of everything above stay exactly as they were.
+  // Their times never fall on the wrong side of midnight (recent-times.ts).
   {
     const { rise, lowStock } = story.recent;
-    // Supplier 1, yesterday: the same price, low stock → a low_stock alert (threshold 10).
+    const times = recentNewsTimes(now);
+    // Supplier 1, yesterday (local noon): the same price, low stock → a low_stock alert.
     await ingestList(
       sur,
       await idsOf(sur),
-      at(1, 12),
+      times.yesterday,
       lowStock.message,
       list(sur, [
         item(
@@ -1130,20 +1133,16 @@ export async function seedDemo(deps: {
         ),
       ]),
     );
-    // Supplier 2, within the last hour: +12 % (over the 10 % alert, under the outlier limit) →
-    // applied, a price_change alert.
+    // Supplier 0, today (within the last hour, never before midnight): +12 % — over the 10 %
+    // alert, under the outlier limit → applied, a price_change alert. In the supplier's own
+    // currency (US dollars in the English content), the first thing Activity shows.
     await ingestList(
-      oriental,
-      await idsOf(oriental),
-      at(0, 11),
+      norte,
+      await idsOf(norte),
+      times.today,
       rise.message,
-      list(oriental, [
-        item(
-          rise.product,
-          round2(price(oriental, rise.product) * rise.factor),
-          {},
-          oriental.currency,
-        ),
+      list(norte, [
+        item(rise.product, round2(price(norte, rise.product) * rise.factor), {}, norte.currency),
       ]),
     );
   }
