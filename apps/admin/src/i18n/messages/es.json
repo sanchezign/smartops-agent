@@ -387,7 +387,7 @@
       "stale_source": "¿Aplicar un precio más antiguo a “{line}”?",
       "uncertain_value": "¿Se leyó bien “{line}”?",
       "missing_currency": "¿En qué moneda está “{line}”?",
-      "product_match": "¿“{line}” es tu producto {product}?",
+      "product_match": "¿“{line}” es el mismo producto que “{product}”?",
       "product_matchPlain": "¿Cuál de tus productos es “{line}”?",
       "new_or_existing": "¿“{line}” es un producto nuevo?",
       "possible_duplicate": "¿“{line}” es lo mismo que {product}?",
@@ -405,9 +405,7 @@
       "column_mappingPlain": "¿Qué columna tiene el precio?"
     },
     "outcome": {
-      "price": "Si apruebas, {product} pasa de {current} a {price}.",
-      "currency": "Si apruebas, {product} pasa de {current} a {price}.",
-      "unavailable": "Si apruebas, {product} queda marcado como no disponible."
+      "price": "Si apruebas, {product} pasa de {current} a {price}."
     }
   },
   "todo": {

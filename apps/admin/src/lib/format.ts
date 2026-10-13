@@ -154,7 +154,15 @@ export function createFormat(locale: AppLocale): Formatter {
         .format(amount)
         .replace(NBSP, " ");
     }
-    // en: the es-UY symbol ("US$" USD, else the code) on en-US digits.
+    // en, US dollars (phase 14 rule, restored in phase 15): "$15.76" — the English content is a US
+    // business, so its own currency takes the plain dollar sign.
+    if (currency === "USD") {
+      return new Intl.NumberFormat(intl, { style: "currency", currency, maximumFractionDigits })
+        .format(amount)
+        .replace(NBSP, " ");
+    }
+    // en, any other currency: the es-UY symbol ("CA$", "€"…, else the code) on en-US digits, so
+    // a foreign dollar never reads as a US one.
     const symbol =
       new Intl.NumberFormat(INTL_LOCALE.es, { style: "currency", currency })
         .formatToParts(0)
