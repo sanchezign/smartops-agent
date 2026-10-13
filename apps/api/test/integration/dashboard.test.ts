@@ -105,6 +105,30 @@ describe.skipIf(!testDatabaseUrl)("dashboard (Postgres)", () => {
     expect(view.pending.reviews).toBe(1);
   });
 
+  it("news never count as pending: only open action alerts, and unreviewed technical ones (phase 15)", async () => {
+    for (const [type, status] of [
+      ["price_change", "open"], // news stay "open" forever: nobody marks them as seen
+      ["low_stock", "open"],
+      ["missing_data", "open"],
+      ["manual_attention", "open"],
+      ["possible_opt_out", "sent"],
+      ["possible_opt_out", "acknowledged"],
+      ["integration_error", "open"],
+      ["integration_error", "acknowledged"],
+      ["ingestion_error", "open"],
+    ] as const) {
+      await prisma.alert.create({ data: { type, status, title: type } });
+    }
+    const service = createDashboardService({
+      repository: createDashboardRepository(prisma),
+      budget: { totalUsd: 4, dailyUsd: 0.5 },
+      now: () => NOW,
+    });
+    const view = await service.get(7);
+    expect(view.pending.openAlerts).toBe(2); // manual_attention + the sent possible_opt_out
+    expect(view.errors.openIntegrationAlerts).toBe(2); // integration_error + ingestion_error, open
+  });
+
   it("the demo seed refuses the test database (only *_demo) and touches nothing", async () => {
     const before = await prisma.message.count();
     await message(NOW);

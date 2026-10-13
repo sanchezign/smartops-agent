@@ -149,7 +149,7 @@ test.describe("to do (phase 15)", () => {
     await expectAccessible(page);
   });
 
-  test("System status: read-only for the demo operator, with the button for an admin", async ({
+  test("System status: read-only for the demo operator, with the reason why", async ({
     page,
     isMobile,
   }) => {
@@ -157,8 +157,42 @@ test.describe("to do (phase 15)", () => {
     if (isMobile) await page.getByRole("button", { name: "More" }).click();
     await navLink(page, "System status").click();
     await expect(page.getByRole("heading", { name: "System status", level: 1 })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Mark as seen/ })).toHaveCount(0);
+    await expect(
+      page.getByText("only an administrator marks errors as reviewed", { exact: false }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /Mark as reviewed/ })).toHaveCount(0);
+    // The seeded n8n error was reviewed: grey, "Reviewed".
+    await expect(
+      page.getByRole("main").getByText("Reviewed", { exact: true }).first(),
+    ).toBeVisible();
     await expectAccessible(page);
+  });
+
+  test("System status: an admin marks an unreviewed error as reviewed (danger → grey)", async ({
+    page,
+  }, info) => {
+    const title = `e2e n8n error ${info.project.name}`;
+    const db = new pg.Client({ connectionString: E2E.databaseUrl });
+    await db.connect();
+    try {
+      await db.query(
+        `INSERT INTO alerts (id, type, severity, status, title, payload, created_at, updated_at)
+         VALUES (gen_random_uuid(), 'integration_error', 'critical', 'open', $1, '{}', now(), now())`,
+        [title],
+      );
+    } finally {
+      await db.end();
+    }
+    await login(page, "admin");
+    await page.goto("/system");
+    await expect(page.getByRole("heading", { name: "System status", level: 1 })).toBeVisible();
+    await expect(page.getByText("only an administrator", { exact: false })).toHaveCount(0);
+    const row = page.getByRole("main").getByRole("listitem").filter({ hasText: title });
+    await expect(row.getByText("Not reviewed")).toBeVisible();
+    await expectAccessible(page);
+    await row.getByRole("button", { name: `Mark as reviewed: ${title}` }).click();
+    await expect(row.getByText("Reviewed", { exact: true })).toBeVisible();
+    await expect(row.getByRole("button")).toHaveCount(0);
   });
 });
 

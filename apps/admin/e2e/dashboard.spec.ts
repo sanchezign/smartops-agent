@@ -31,7 +31,7 @@ test.describe("panel shell + dashboard (phase 9 M1)", () => {
     await login(page);
     for (const label of [
       "Pending reviews",
-      "Open alerts",
+      "Messages to check",
       "Chats handled by a person",
       "Errors in the period",
     ]) {

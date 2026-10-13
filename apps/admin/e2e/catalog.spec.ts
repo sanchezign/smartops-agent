@@ -42,9 +42,9 @@ test.describe("catalog (phase 9 M5)", () => {
   }) => {
     await login(page, "operator");
     await goTo(page, "Activity", isMobile);
-    const list = page.getByRole("list", { name: "Activity" });
-    await expect(list.getByText("Price change").first()).toBeVisible();
-    await expect(list.getByRole("link", { name: "View product" }).first()).toBeVisible();
+    const main = page.getByRole("main");
+    await expect(main.getByText("Price change").first()).toBeVisible();
+    await expect(main.getByRole("link", { name: "View product" }).first()).toBeVisible();
     await expectAccessible(page);
   });
 });
@@ -67,14 +67,20 @@ test.describe("catalog changes (desktop only: shared demo data)", () => {
     ).toBeVisible();
   });
 
-  test("acknowledge a news item in Activity", async ({ page }) => {
+  test("Activity: grouped by day, news only, nothing to mark as seen (phase 15 M4)", async ({
+    page,
+  }) => {
     await login(page, "operator");
     await goTo(page, "Activity", false);
-    const first = page.getByRole("list", { name: "Activity" }).getByRole("listitem").first();
-    const title = (await first.locator("p").first().textContent())!;
-    await first.getByRole("button", { name: /Mark as seen/ }).click();
-    await expect(
-      page.getByRole("list", { name: "Activity" }).getByText(title, { exact: true }),
-    ).toHaveCount(0);
+    // One list per day, named by its day heading; the newest day first.
+    const days = page.getByRole("main").getByRole("heading", { level: 2 });
+    await expect(days.first()).toBeVisible();
+    expect(await days.count()).toBeGreaterThan(1);
+    const firstDay = (await days.first().textContent())!;
+    await expect(page.getByRole("list", { name: firstDay })).toBeVisible();
+    // News never ask for anything: no buttons, no counter for Activity.
+    await expect(page.getByRole("main").getByRole("button")).toHaveCount(0);
+    await expect(page.getByRole("main").getByText("Integration")).toHaveCount(0); // technical: System status
+    await expect(page.getByRole("main").getByText("Check by hand")).toHaveCount(0); // action: To do
   });
 });

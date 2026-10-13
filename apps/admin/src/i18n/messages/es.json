@@ -122,7 +122,7 @@
     "pendingSection": "Pendientes",
     "automationSection": "Automatización",
     "pendingReviews": "Revisiones pendientes",
-    "openAlerts": "Alertas abiertas",
+    "openAlerts": "Mensajes para revisar",
     "humanChats": "Chats atendidos por una persona",
     "periodErrors": "Errores del período",
     "integrationUnreviewed": "{count} de integración sin revisar",
@@ -797,16 +797,6 @@
     "renameFailed": "No se pudo renombrar."
   },
   "alerts": {
-    "status": "Estado",
-    "unseen": "Sin ver",
-    "unseenCount": "Sin ver ({count})",
-    "all": "Todas",
-    "emptyUnseen": "No hay alertas sin ver",
-    "empty": "No hay alertas",
-    "viewProduct": "Ver producto",
-    "viewConversation": "Ver conversación",
-    "markSeen": "Marcar como vista: {title}",
-    "seen": "Vista",
     "ackFailed": "No se pudo marcar como vista.",
     "types": {
       "price_change": "Cambio de precio",
@@ -817,11 +807,6 @@
       "integration_error": "Integración",
       "possible_opt_out": "¿Pidió la baja?"
     },
-    "severity": {
-      "critical": "Crítica",
-      "warning": "Importante",
-      "info": "Informativa"
-    },
     "titles": {
       "priceChange": "{product}: {oldPrice} → {newPrice} ({pct})",
       "lowStock": "{product}: stock {stock}",
@@ -830,9 +815,34 @@
       "n8nDeliveryFailed": "n8n no recibió un mensaje después de ~24 h de reintentos: revisa n8n y reenvíalo",
       "n8nWorkflowError": "Error en {where}: {message}",
       "possibleOptOut": "Posible baja: «{phrase}». Revísalo y regístrala a mano si corresponde"
+    }
+  },
+  "activity": {
+    "description": "Novedades de lo que el sistema ya hizo: cambios de precio aplicados, poco stock. Nada de esto espera por ti.",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "empty": "Todavía no hay novedades",
+    "emptyHint": "Los cambios de precio y el poco stock aparecen aquí apenas ocurren.",
+    "viewProduct": "Ver producto",
+    "viewConversation": "Ver conversación"
+  },
+  "system": {
+    "description": "Errores técnicos para quien administra el sistema: n8n, entregas, flujos. El negocio sigue funcionando; el equipo también recibe el aviso por WhatsApp.",
+    "readOnly": "Solo lectura: solo un administrador marca los errores como revisados.",
+    "periodTitle": "Errores de los últimos {count} días",
+    "period": {
+      "failedWebhooks": "Mensajes de WhatsApp no recibidos",
+      "failedDeliveries": "Mensajes que n8n no recibió",
+      "failedRuns": "Listas que no se pudieron procesar",
+      "failedOutbound": "Envíos de WhatsApp que fallaron"
     },
-    "activityDescription": "Novedades de lo que el sistema ya hizo: cambios de precio aplicados, poco stock. Nada de esto espera por ti.",
-    "systemDescription": "Errores técnicos para quien administra el sistema: n8n, entregas, flujos. El negocio sigue funcionando; el equipo también recibe el aviso por WhatsApp."
+    "alertsTitle": "Alertas técnicas",
+    "notReviewed": "Sin revisar",
+    "reviewed": "Revisada",
+    "markReviewed": "Marcar como revisada",
+    "markReviewedLabel": "Marcar como revisada: {title}",
+    "empty": "No hay errores técnicos",
+    "emptyHint": "Cuando n8n o una entrega falla, aparece aquí."
   },
   "users": {
     "description": "Quién entra al panel y qué puede hacer. Siempre queda al menos un administrador activo.",

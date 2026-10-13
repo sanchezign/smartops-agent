@@ -1776,3 +1776,16 @@ a real client.**
       product_match: "Is “Washer” the same product as “Washer 1/4 in”?" / "¿“Washer” es el mismo producto que
       “Washer 1/4 in”?". The detail's "If you approve…" only for a price change (its question does not say today's
       price); currency_changed and mark_unavailable questions already say it all.
+    - M4 — DONE. Activity (`activity-view.tsx`, the old alerts list moved with git mv): info alerts grouped by the
+      business's local day (`lib/day-groups.ts`: Today / Yesterday / the date, Montevideo time, newest first), each with
+      its product or conversation link, an icon by kind (price up / down, low stock), no buttons, no yellow. System
+      status (`system-view.tsx`): the errors of the last 7 days (danger border and figure when above zero) and the
+      technical alerts — not reviewed in the danger colour with "Mark as reviewed" (admins), reviewed in grey; the demo
+      operator reads "only an administrator marks errors as reviewed", a regular operator gets "not allowed". Checked
+      that old open news are never counted as pending: the Home's "Open alerts" tile counted EVERY open alert (news
+      included) — `dashboard.repository.ts` now counts open action alerts (the tile reads "Messages to check" and
+      links to To do until M5) and `openIntegrationAlerts` counts open technical alerts; To do already counted action
+      alerts only; the WhatsApp digests / team summaries are event-driven (run facts at ingest time, one item per
+      manual_attention alert, critical errors) and never read alert statuses; n8n never reads alerts; nothing sets an
+      alert to "sent". Tests: API dashboard integration (news never pending); panel day groups; E2E Activity by day
+      without buttons, System status read-only with the reason, an admin marks an error reviewed (danger → grey).
