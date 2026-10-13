@@ -77,12 +77,18 @@ the notifications / WhatsApp digests, the permission rules or the database schem
      in its detail ("Update Coarse sand to $41.50?", `question.ts`); the detail adds what approving does when it needs
      no choice ("If you approve, … goes from … to …").
 
-4. **Activity** (`/activity`) = **info** alerts: a feed, no yellow, nothing to mark as seen.
+4. **Activity** (`/activity`) = **info** alerts: a feed grouped by local day ("Today", "Yesterday", the date), each
+   item with its link (product or conversation), no yellow, no buttons, nothing to mark as seen. News therefore stay
+   `open` in the database forever, so NOTHING may count open alerts as pending: the Home counts open **action**
+   alerts and the unreviewed **technical** ones (`dashboard.repository.ts`), To do counts action alerts, the WhatsApp
+   digests are event-driven (they never read alert statuses) and n8n never reads alerts.
 
 5. **System status** (`/system`) = **technical** alerts and the errors of the period. In the navigation for admins; in
    the public demo (DEMO_MODE) also for the operator, read-only. No navigation counter: the admin's Home shows one red
    line ("danger" token, never yellow) when there are unreviewed errors. The API routes and roles do not change (an
    operator can still acknowledge through the API, as before); this only decides what the panel offers.
+   Not reviewed = the danger colour; reviewed = grey. The demo operator reads "only an administrator marks errors as
+   reviewed".
 
 6. **Home** keeps its name and its 7 / 14 / 30-day metrics; the pending block (first tasks or "All caught up") goes on top.
 

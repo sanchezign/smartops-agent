@@ -100,7 +100,7 @@ function DashboardContent({ data }: { data: DashboardData }) {
             label={t("openAlerts")}
             value={formatInt(data.pending.openAlerts)}
             icon={AlertTriangle}
-            href="/activity"
+            href="/todo"
             tone={data.pending.openAlerts > 0 ? "attention" : "default"}
           />
           <StatCard

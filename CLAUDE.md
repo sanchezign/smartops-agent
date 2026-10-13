@@ -100,7 +100,7 @@ milestone, is in `docs/history/phase-log.md`. Status as of 2026-10-12.
 14. frontend clarity (UX) — DONE (M0–M7, M5 = demo content language, English by default; merged into `main`).
     Detail: `docs/history/phase-log.md` item 14.
 15. panel triage (To do / Activity / System status, ADR-032) — IN PROGRESS (branch `feat/phase-15-panel-triage`):
-    M0–M3 DONE; M4–M6 pending, one milestone at a time, the owner reviews each.
+    M0–M4 DONE; M5–M6 pending, one milestone at a time, the owner reviews each.
 
 
 ## Data model (starting point — refine in phase 2 plan)
@@ -210,8 +210,9 @@ Active state (2026-10-06):
   (security.yml, 03:30 Montevideo) owns what exists and turns RED on a finding (check it still runs:
   docs/ci-cd.md, "Is the nightly scan still running?").
 
-Next task: **phase 15 M4 — Activity (news, no yellow, nothing to mark as seen) + System status (technical
-errors and the errors of the period; admins, read-only in the demo)**, after the owner's OK on M3.
+Next task: **phase 15 M5 — the Home** (the pending block on top with the first tasks or "All caught up", the
+3 value metrics, charts and pre-filter below; the admin's red line for unreviewed errors), after the owner's OK
+on M4.
 
 Owner's checks still open for phase 12 (nothing to code):
 - 2026-10-07: Console `CpuUtilization` plateau (~33 %) and daily p95 (expected ≥ ~30 %).

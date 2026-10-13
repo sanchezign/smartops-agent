@@ -1,6 +1,10 @@
 import type { PrismaClient } from "../../common/db.js";
 import { Prisma } from "../../generated/prisma/client.js";
+import { alertTypesIn } from "../admin/alert-category.js";
+import { OPEN_ALERT_STATUSES } from "../admin/catalog-query.repository.js";
 import { DASHBOARD_TIME_ZONE, type RunCounts } from "./dashboard-rules.js";
+
+const OPEN = { status: { in: OPEN_ALERT_STATUSES } };
 
 /**
  * Dashboard aggregates (phase 9 M1): a handful of indexed GROUP BY queries over the period.
@@ -20,8 +24,10 @@ export interface DashboardRaw {
     failedDeliveries: number;
     failedRuns: number;
     failedOutbound: number;
+    /** Technical alerts nobody reviewed yet (System status). */
     openIntegrationAlerts: number;
   };
+  /** openAlerts = open ACTION alerts (To do's messages to check), never news. */
   pending: { reviews: number; openAlerts: number; humanConversations: number };
 }
 
@@ -90,9 +96,11 @@ export function createDashboardRepository(prisma: PrismaClient): DashboardReposi
         prisma.message.count({
           where: { direction: "outbound", status: "failed", createdAt: { gte: since } },
         }),
-        prisma.alert.count({ where: { type: "integration_error", status: "open" } }),
+        // Phase 15 (ADR-032): only what waits for someone. News (info alerts) stay "open" in the
+        // database forever — nobody has to mark them as seen — so they are never counted here.
+        prisma.alert.count({ where: { ...OPEN, type: { in: alertTypesIn("technical") } } }),
         prisma.reviewItem.count({ where: { status: "pending" } }),
-        prisma.alert.count({ where: { status: "open" } }),
+        prisma.alert.count({ where: { ...OPEN, type: { in: alertTypesIn("action") } } }),
         prisma.conversation.count({ where: { mode: "human" } }),
       ]);
 

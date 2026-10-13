@@ -1,9 +1,9 @@
 import { pageMetadata } from "@/i18n/metadata";
-import { AlertsView } from "@/features/catalog/components/alerts-view";
+import { ActivityView } from "@/features/catalog/components/activity-view";
 
 export const generateMetadata = pageMetadata("activity");
 
-/** News (ADR-032): alerts about something already done. Reworked in phase 15 M4. */
+/** News (phase 15, ADR-032): what the system already did, grouped by day. */
 export default function Page() {
-  return <AlertsView category="info" />;
+  return <ActivityView />;
 }

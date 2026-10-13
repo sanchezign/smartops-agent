@@ -122,7 +122,7 @@
     "pendingSection": "Pending",
     "automationSection": "Automation",
     "pendingReviews": "Pending reviews",
-    "openAlerts": "Open alerts",
+    "openAlerts": "Messages to check",
     "humanChats": "Chats handled by a person",
     "periodErrors": "Errors in the period",
     "integrationUnreviewed": "{count} integration errors not reviewed",
@@ -797,16 +797,6 @@
     "renameFailed": "Could not rename."
   },
   "alerts": {
-    "status": "Status",
-    "unseen": "Unseen",
-    "unseenCount": "Unseen ({count})",
-    "all": "All",
-    "emptyUnseen": "No unseen alerts",
-    "empty": "No alerts",
-    "viewProduct": "View product",
-    "viewConversation": "View conversation",
-    "markSeen": "Mark as seen: {title}",
-    "seen": "Seen",
     "ackFailed": "Could not mark it as seen.",
     "types": {
       "price_change": "Price change",
@@ -817,11 +807,6 @@
       "integration_error": "Integration",
       "possible_opt_out": "Did they opt out?"
     },
-    "severity": {
-      "critical": "Critical",
-      "warning": "Important",
-      "info": "Informational"
-    },
     "titles": {
       "priceChange": "{product}: {oldPrice} → {newPrice} ({pct})",
       "lowStock": "{product}: stock {stock}",
@@ -830,9 +815,34 @@
       "n8nDeliveryFailed": "n8n did not receive a message after ~24 h of retries: check n8n and resend it",
       "n8nWorkflowError": "Error in {where}: {message}",
       "possibleOptOut": "Possible opt-out: “{phrase}”. Check it and record it by hand if it applies"
+    }
+  },
+  "activity": {
+    "description": "News about what the system already did: price changes applied, low stock. Nothing here waits for you.",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "empty": "No news yet",
+    "emptyHint": "Price changes and low stock show up here as soon as they happen.",
+    "viewProduct": "View product",
+    "viewConversation": "View conversation"
+  },
+  "system": {
+    "description": "Technical errors for whoever runs the system: n8n, deliveries, workflows. The business keeps working; the team is also told on WhatsApp.",
+    "readOnly": "Read-only: only an administrator marks errors as reviewed.",
+    "periodTitle": "Errors in the last {count} days",
+    "period": {
+      "failedWebhooks": "WhatsApp messages not received",
+      "failedDeliveries": "Messages n8n did not get",
+      "failedRuns": "Lists that could not be processed",
+      "failedOutbound": "WhatsApp sends that failed"
     },
-    "activityDescription": "News about what the system already did: price changes applied, low stock. Nothing here waits for you.",
-    "systemDescription": "Technical errors for whoever runs the system: n8n, deliveries, workflows. The business keeps working; the team is told on WhatsApp too."
+    "alertsTitle": "Technical alerts",
+    "notReviewed": "Not reviewed",
+    "reviewed": "Reviewed",
+    "markReviewed": "Mark as reviewed",
+    "markReviewedLabel": "Mark as reviewed: {title}",
+    "empty": "No technical errors",
+    "emptyHint": "When n8n or a delivery fails, it shows up here."
   },
   "users": {
     "description": "Who signs in to the panel and what they can do. There is always at least one active administrator.",
