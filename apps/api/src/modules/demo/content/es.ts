@@ -284,6 +284,18 @@ export const ES_CONTENT: DemoContent = {
       product: "Candado bronce 40mm",
       price: 1,
     },
+    recent: {
+      rise: {
+        message: "Nuevo precio de la lámpara LED 9W",
+        product: "Lámpara LED 9W",
+        factor: 1.12,
+      },
+      lowStock: {
+        message: "Barniz marino: quedan solo 4 latas",
+        product: "Barniz marino 1L",
+        stock: 4,
+      },
+    },
   },
   text: {
     fullListMessage: (supplierName) => `Lista completa ${supplierName}`,

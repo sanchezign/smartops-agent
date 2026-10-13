@@ -1,5 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { resolve } from "node:path";
 import { test, type Page } from "@playwright/test";
 import { E2E } from "./env";
 
@@ -30,6 +32,32 @@ const VIEWERS = DEMO
       ["admin", "admin"],
     ] as const)
   : ([["operator", "operator"]] as const);
+
+// `pg` lives in the API package: borrow it to create the admin's unreviewed error (M5).
+const pg = createRequire(resolve(process.cwd(), "../api/package.json"))("pg") as {
+  Client: new (options: { connectionString: string }) => {
+    connect(): Promise<void>;
+    query(sql: string, values?: unknown[]): Promise<unknown>;
+    end(): Promise<void>;
+  };
+};
+
+/** One unreviewed technical error, for the admin's red line on the Home (created once). */
+async function ensureUnreviewedError() {
+  const db = new pg.Client({ connectionString: E2E.databaseUrl });
+  await db.connect();
+  try {
+    await db.query(
+      `INSERT INTO alerts (id, type, severity, status, title, payload, created_at, updated_at)
+       SELECT gen_random_uuid(), 'integration_error', 'critical', 'open', $1,
+              '{"reason":"n8n_delivery_failed"}', now(), now()
+        WHERE NOT EXISTS (SELECT 1 FROM alerts WHERE title = $1)`,
+      ["phase 15 screenshots: n8n delivery failed"],
+    );
+  } finally {
+    await db.end();
+  }
+}
 
 const ready = async (page: Page) => {
   // (never "networkidle": the real-time stream stays open, ADR-020)
@@ -101,6 +129,7 @@ for (const [viewer, who] of VIEWERS) {
         await context.addCookies([{ name: "smartops_locale", value: locale, url: E2E.panelUrl }]);
         await page.emulateMedia({ colorScheme: scheme });
 
+        if (who === "admin") await ensureUnreviewedError();
         await signIn(page, who);
         await shoot("home");
         await page.goto(LIST);
@@ -154,6 +183,9 @@ for (const [viewer, who] of VIEWERS) {
         await page.goto("/todo");
         await ready(page);
         await shoot("todo-all-caught-up");
+        await page.goto("/");
+        await ready(page);
+        await shoot("home-all-caught-up");
         save();
       });
     }
