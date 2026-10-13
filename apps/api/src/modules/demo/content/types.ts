@@ -115,6 +115,16 @@ export interface DemoStory {
   };
   /** Supplier 0, yesterday: a message that tries to give orders to the bot. */
   injection: { message: string; product: string; price: number };
+  /**
+   * Recent news for Activity (phase 15 M5): supplier 2, TODAY, a rise over the alert threshold
+   * and under the outlier limit (applied → a price_change); supplier 1, YESTERDAY, a quote at the
+   * same price with low stock (→ a low_stock). Both go through the real ingest, at the END of
+   * the seed, so nothing seeded before them changes.
+   */
+  recent: {
+    rise: { message: string; product: string; factor: number };
+    lowStock: { message: string; product: string; stock: number };
+  };
 }
 
 /** Texts of the seed (what the people and the system "wrote"). */

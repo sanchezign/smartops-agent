@@ -26,7 +26,7 @@ test("a Spanish browser sees the login and the panel in Spanish (axe in Spanish)
   await expectAccessible(page);
 
   await loginEs(page, "operator");
-  await expect(page.getByText("Revisiones pendientes")).toBeVisible();
+  await expect(page.getByText("Esperan por ti")).toBeVisible();
   await expect(page.getByText("Saludos y charla")).toBeVisible();
   await expectAccessible(page);
 });

@@ -1111,6 +1111,43 @@ export async function seedDemo(deps: {
     ],
   });
 
+  // ── Recent news for Activity (phase 15 M5): yesterday and today, through the real ingest ──
+  // At the END of the seed, so the random times of everything above stay exactly as they were.
+  {
+    const { rise, lowStock } = story.recent;
+    // Supplier 1, yesterday: the same price, low stock → a low_stock alert (threshold 10).
+    await ingestList(
+      sur,
+      await idsOf(sur),
+      at(1, 12),
+      lowStock.message,
+      list(sur, [
+        item(
+          lowStock.product,
+          price(sur, lowStock.product),
+          { stock: lowStock.stock },
+          sur.currency,
+        ),
+      ]),
+    );
+    // Supplier 2, within the last hour: +12 % (over the 10 % alert, under the outlier limit) →
+    // applied, a price_change alert.
+    await ingestList(
+      oriental,
+      await idsOf(oriental),
+      at(0, 11),
+      rise.message,
+      list(oriental, [
+        item(
+          rise.product,
+          round2(price(oriental, rise.product) * rise.factor),
+          {},
+          oriental.currency,
+        ),
+      ]),
+    );
+  }
+
   const result: SeedResult = {
     suppliers: DEMO_SUPPLIERS.length,
     products: await prisma.product.count(),

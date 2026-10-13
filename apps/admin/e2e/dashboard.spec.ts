@@ -4,7 +4,7 @@ import { expectAccessible, login, navLink } from "./helpers";
 test.describe("panel shell + dashboard (phase 9 M1)", () => {
   test("login lands on the dashboard with the seeded numbers", async ({ page }) => {
     await login(page);
-    await expect(page.getByText("Pending reviews")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Waiting for you" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Messages per day" })).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "What was resolved without calling the AI" }),
@@ -23,20 +23,55 @@ test.describe("panel shell + dashboard (phase 9 M1)", () => {
     await expect(page.getByText(/daily limit/)).toHaveCount(0);
   });
 
-  test("on a phone the four pending figures fit in the first screen (phase 14)", async ({
+  test("on a phone what waits for you is in the first screen (phase 15 M5)", async ({
     page,
     isMobile,
   }) => {
     test.skip(!isMobile, "phones only");
-    await login(page);
-    for (const label of [
-      "Pending reviews",
-      "Messages to check",
-      "Chats handled by a person",
-      "Errors in the period",
-    ]) {
-      await expect(page.getByText(label, { exact: true })).toBeInViewport({ ratio: 1 });
-    }
+    await login(page, "operator");
+    const block = page.getByRole("list", { name: "Waiting for you" });
+    await expect(page.getByRole("heading", { name: "Waiting for you" })).toBeInViewport();
+    await expect(block.getByRole("link").first()).toBeInViewport();
+  });
+
+  test("the Home: at most 3 decisions, See all (N) = the To do counter, no error tile (phase 15 M5)", async ({
+    page,
+  }) => {
+    await login(page, "operator");
+    const block = page.getByRole("list", { name: "Waiting for you" });
+    await expect(block.getByRole("link").first()).toBeVisible();
+    expect(await block.getByRole("link").count()).toBeLessThanOrEqual(3);
+    // No one-click buttons on the Home: it stays light.
+    await expect(block.getByRole("button")).toHaveCount(0);
+    const seeAll = page.getByRole("link", { name: /^See all \(\d+\)$/ });
+    const n = Number(/\((\d+)\)/.exec((await seeAll.textContent()) ?? "")?.[1]);
+    const badge = await navLink(page, "To do").first().locator(".sr-only").textContent();
+    expect(n).toBe(Number(/(\d+) pending/.exec(badge ?? "")?.[1]));
+    await expect(page.getByText("Errors in the period")).toHaveCount(0);
+    // The chats a person is handling: one line, because the seed has one (other specs may add more).
+    await expect(
+      page.getByRole("link", { name: /^A person is handling \d+ chats?$/ }),
+    ).toBeVisible();
+    // The red line is for admins only.
+    await expect(page.getByRole("link", { name: /technical errors? not reviewed/ })).toHaveCount(0);
+    await seeAll.click();
+    await expect(page.getByRole("heading", { name: "To do", level: 1 })).toBeVisible();
+    await expectAccessible(page);
+  });
+
+  test("All caught up, short, when nothing waits (phase 15 M5)", async ({ page }) => {
+    const empty = {
+      counts: { total: 0, reviews: { canResolve: 0, waitingForAdmin: 0 }, alerts: 0 },
+      groups: [],
+      groupsTruncated: false,
+      alerts: [],
+    };
+    await page.route("**/api/v1/admin/todo", (r) => r.fulfill({ json: empty }));
+    await page.route("**/api/v1/admin/todo/summary", (r) => r.fulfill({ json: empty.counts }));
+    await login(page, "operator");
+    await expect(page.getByText("All caught up.")).toBeVisible();
+    await expect(page.getByRole("link", { name: /^See all/ })).toHaveCount(0);
+    await expectAccessible(page);
   });
 
   test("the navigation has ONE counter, on To do (phase 15, ADR-032)", async ({ page }) => {

@@ -91,6 +91,12 @@ the notifications / WhatsApp digests, the permission rules or the database schem
    reviewed".
 
 6. **Home** keeps its name and its 7 / 14 / 30-day metrics; the pending block (first tasks or "All caught up") goes on top.
+   As built (M5): "Waiting for you" lists the 3 newest decisions THIS user can take (reviews of To do's cards + the
+   messages to check) as plain links — no one-click buttons, so the Home stays light — with "See all (N)" (N = the To do
+   counter), or one short "All caught up" line. Under it, only when there is something: "A person is handling N chats"
+   and, for admins, one red line "N technical errors not reviewed" to System status. Then the three value metrics with
+   the period switch, then the charts and the pre-filter. The four pending tiles are gone, and with them the Home's
+   yellow (ADR-029 §2 listed them): the only yellow left is the To do counter of the navigation.
 
 7. **Routes:** `/reviews` (the list) → `/todo` and `/alerts` → `/activity` are redirects (`legacy-routes.ts`, like the old
    Spanish routes); `/reviews/[id]` stays. Panel links computed by the API for digests point to `/todo` or `/system`.

@@ -293,6 +293,14 @@ export const EN_CONTENT: DemoContent = {
       product: "Brass padlock 1-1/2 in",
       price: 1,
     },
+    recent: {
+      rise: { message: "New price for the 9 W LED bulbs", product: "LED bulb 9 W", factor: 1.12 },
+      lowStock: {
+        message: "Marine varnish: only 4 cans left",
+        product: "Marine varnish 1 qt",
+        stock: 4,
+      },
+    },
   },
   text: {
     fullListMessage: (supplierName) => `Full price list ${supplierName}`,

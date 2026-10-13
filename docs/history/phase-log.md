@@ -1789,3 +1789,16 @@ a real client.**
       manual_attention alert, critical errors) and never read alert statuses; n8n never reads alerts; nothing sets an
       alert to "sent". Tests: API dashboard integration (news never pending); panel day groups; E2E Activity by day
       without buttons, System status read-only with the reason, an admin marks an error reviewed (danger → grey).
+    - M5 — DONE. Home (`dashboard-view.tsx`): "Waiting for you" = the 3 newest decisions this user can take
+      (`features/dashboard/first-tasks.ts`: To do's own reviews + messages to check, newest first; never admin-only ones)
+      as plain links, "See all (N)" = the To do counter, or one short "All caught up" line; "A person is handling N chats"
+      only when there are; admins: one red line "N technical errors not reviewed" → System status only while some are
+      unreviewed; the three value metrics with the period switch in their section; charts and pre-filter unchanged. The
+      four pending tiles (and the Home's yellow) are gone; "Errors in the period" lives in System status. System status
+      on phones: the 4 figures in a 2×2 grid. Demo seed (EN + ES, the same story): two recent lists at the END of the
+      seed through the real ingest — supplier 1 yesterday quoting a product at the same price with stock 4 (low_stock),
+      supplier 2 within the last hour +12 % on one product (applied, price_change) — so Activity shows "Today" and
+      "Yesterday"; Spanish fingerprint re-recorded (ai_usages +4, alerts +2, ingestion_runs +2, messages +2,
+      price_changes +1, products: that price and that stock; nothing else). E2E: the Home's tasks (≤ 3, no buttons, See
+      all = the counter, the chats line, no error tile, no red line for an operator), All caught up (API mocked), a
+      phone's first screen, the admin's red line appears with an unreviewed error and goes once it is reviewed.
