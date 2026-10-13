@@ -46,12 +46,12 @@ if $guide_only; then
 fi
 
 echo "== screenshots → WebP"
-for name in dashboard review-columns product chat; do
+for name in dashboard todo review-columns product chat activity; do
   for scheme in light dark; do
     ff -i "/in/desktop-$name-$scheme.png" -c:v libwebp -quality 82 "/out/desktop-$name-$scheme.webp"
   done
 done
-for name in dashboard reviews inbox; do
+for name in dashboard todo inbox; do
   for scheme in light dark; do
     ff -i "/in/iphone-$name-$scheme.png" -vf "scale=590:-2:flags=lanczos" -c:v libwebp -quality 80 \
       "/out/iphone-$name-$scheme.webp"

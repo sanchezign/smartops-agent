@@ -100,7 +100,7 @@ milestone, is in `docs/history/phase-log.md`. Status as of 2026-10-12.
 14. frontend clarity (UX) — DONE (M0–M7, M5 = demo content language, English by default; merged into `main`).
     Detail: `docs/history/phase-log.md` item 14.
 15. panel triage (To do / Activity / System status, ADR-032) — IN PROGRESS (branch `feat/phase-15-panel-triage`):
-    M0–M5 DONE; M6 pending (docs, guides, README media), the owner reviews it.
+    M0–M6 DONE; PR open to `main`, waiting for the owner's merge (no deploy: it goes in the next release).
 
 
 ## Data model (starting point — refine in phase 2 plan)
@@ -210,8 +210,8 @@ Active state (2026-10-06):
   (security.yml, 03:30 Montevideo) owns what exists and turns RED on a finding (check it still runs:
   docs/ci-cd.md, "Is the nightly scan still running?").
 
-Next task: **phase 15 M6 — docs, panel guides (EN / ES), README media regenerated once, demo-check, a11y pass,
-phase log and the PR** (no push / PR until the owner asks), after the owner's OK on M5.
+Next task: **the owner reviews and merges the phase 15 PR** (rebase-merge only when the owner says so). After the
+next release is deployed, `demo-check` must show the /admin/todo lines as `ok` (a `skip` means an old image).
 
 Owner's checks still open for phase 12 (nothing to code):
 - 2026-10-07: Console `CpuUtilization` plateau (~33 %) and daily p95 (expected ≥ ~30 %).
@@ -386,7 +386,7 @@ needs a NEW ADR), F-05 (security headers sent by the panel itself, not only by C
   `apps/admin/src/i18n/messages/{en,es}.json` (ESLint `i18next/no-literal-string`, catalog parity
   and anti-voseo tests), pure modules return codes; numbers / dates through `useFormat()`.
   WhatsApp texts in `apps/api/src/common/business-texts.ts` (business language; Spanish "usted").
-  Demo content is English by default (`DEMO_CONTENT_LANGUAGE=en|es`, ADR-031; Spanish kept). Panel routes are English (`/reviews`, `/conversations`…);
+  Demo content is English by default (`DEMO_CONTENT_LANGUAGE=en|es`, ADR-031; Spanish kept). Panel routes are English (`/todo`, `/conversations`…; `/reviews` and `/alerts` redirect since phase 15);
   the old Spanish ones only live in `src/legacy-routes.ts` as redirects.
 - Docs: index `docs/README.md`; relative links checked offline in CI (`doc-links.ts`); README
   media only from `media.spec.ts` + `scripts/media/build-media.sh` (budgets tested); the portfolio

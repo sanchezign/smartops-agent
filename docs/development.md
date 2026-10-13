@@ -280,6 +280,8 @@ E2E database, never edited by hand:
 ```bash
 cd apps/admin
 MEDIA=1 pnpm e2e media.spec.ts --project desktop --project iphone -g "screenshots"
+# (where WebKit cannot start, e.g. Windows: E2E_IPHONE_CHROMIUM=1 … --project iphone-chromium,
+#  saved under the same iphone-* names)
 MEDIA=1 MEDIA_CAPTIONS=1 pnpm e2e media.spec.ts --project desktop -g "demo video"   # GIF source
 MEDIA=1 MEDIA_CAPTIONS=0 pnpm e2e media.spec.ts --project desktop -g "demo video"   # clean video + .srt
 cd ../..

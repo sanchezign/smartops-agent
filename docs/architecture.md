@@ -1,8 +1,8 @@
 # Architecture
 
 SmartOps Agent turns the messages that suppliers, customers and staff send over WhatsApp
-(text, photos, PDFs, spreadsheets, voice notes) into an up-to-date product catalog, alerts and
-a review queue. The decisions behind each part are recorded as ADRs in [docs/adr](adr/).
+(text, photos, PDFs, spreadsheets, voice notes) into an up-to-date product catalog, news and
+one To do list of what waits for a person. The decisions behind each part are recorded as ADRs in [docs/adr](adr/).
 
 ## Components
 
@@ -44,8 +44,9 @@ flowchart LR
 - **PostgreSQL**: application data, the pg-boss queues (schema `pgboss`) and media bytes (ADR-008).
 - **n8n** (self-hosted): orchestrates the three agents (receiver → processor → notifier) as
   visual workflows. It never touches the database; it only calls the backend (ADR-002, ADR-015).
-- **Admin panel** (`apps/admin`, Next.js 15): reviews, conversations, catalog, alerts, rules and
-  users. It runs in English or Spanish (ADR-024).
+- **Admin panel** (`apps/admin`, Next.js 15): Home, To do (every pending review and message to
+  check, counted for the user's role), conversations, catalog, Activity (news), System status
+  (technical errors), rules and users (ADR-032). It runs in English or Spanish (ADR-024).
 - **Claude** classifies messages, extracts price lists and maps new spreadsheet formats, always
   through structured outputs that are validated again with Zod (ADR-011).
 - **Groq** transcribes voice notes (Whisper), behind a `Transcriber` interface (ADR-010).

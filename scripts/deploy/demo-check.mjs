@@ -92,6 +92,33 @@ for (const expected of EXPECTED_SUPPLIERS[content]) {
   );
 }
 
+// 3b) To do (phase 15, ADR-032): the counters of the public operator add up, and the lists come
+// with them. A 404 means the deployment is older than phase 15: skipped until the new release is
+// deployed — after that it is REQUIRED (docs/runbook.md, "Checking a deployed version").
+{
+  const summary = await fetch(`${api}/admin/todo/summary`, { headers: auth });
+  if (summary.status === 404) {
+    console.log("skip /admin/todo (this deployment is older than phase 15)");
+  } else {
+    const counts = await summary.json();
+    check(
+      summary.status === 200 &&
+        counts.total === counts.reviews.canResolve + counts.alerts &&
+        counts.reviews.canResolve >= 1,
+      `GET /admin/todo/summary: ${counts.total} for the public operator (column mapping included, ADR-030)`,
+    );
+    const todo = await fetch(`${api}/admin/todo`, { headers: auth });
+    const view = await todo.json();
+    check(
+      todo.status === 200 &&
+        Array.isArray(view.groups) &&
+        view.counts.total === counts.total &&
+        view.groups.every((g) => g.items.length + g.waitingItems.length > 0),
+      `GET /admin/todo: ${view.groups?.length ?? 0} lists, the same counters`,
+    );
+  }
+}
+
 // 4) SSE through Caddy: the first frame must arrive at once, not at the end
 for (const method of ["GET", "POST"]) {
   const t0 = performance.now();

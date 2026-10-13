@@ -137,7 +137,7 @@
     "messagesPerDay": "Messages per day",
     "messagesPerDayHint": "Everything that arrived over WhatsApp",
     "messagesLabel": "Messages",
-    "aiCostPerDay": "AI cost per day (US$)",
+    "aiCostPerDay": "AI cost per day (USD)",
     "aiCostSummary": "Today (UTC): {today} of the {dailyBudget} daily limit · Total: {total} of the {totalBudget} limit",
     "aiCostLabel": "AI cost",
     "sampleData": "Sample data",

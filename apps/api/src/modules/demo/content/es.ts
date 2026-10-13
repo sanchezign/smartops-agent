@@ -286,8 +286,8 @@ export const ES_CONTENT: DemoContent = {
     },
     recent: {
       rise: {
-        message: "Nuevo precio de la lámpara LED 9W",
-        product: "Lámpara LED 9W",
+        message: "Nuevo precio del tornillo autoperforante",
+        product: "Tornillo autoperforante 8x1",
         factor: 1.12,
       },
       lowStock: {

@@ -40,7 +40,9 @@ test("screenshots, light and dark", async ({ page, isMobile }, info) => {
   test.setTimeout(300_000);
   const shoot = async (name: string) => {
     await expectNoTestData(page);
-    await page.screenshot({ path: `${OUT}/${info.project.name}-${name}.png` });
+    // iPhone 15 metrics on Chromium (local Windows, phase 14) publish as the iPhone shots.
+    const device = info.project.name === "iphone-chromium" ? "iphone" : info.project.name;
+    await page.screenshot({ path: `${OUT}/${device}-${name}.png` });
   };
   await login(page, "admin");
   for (const scheme of ["light", "dark"] as const) {
@@ -49,9 +51,11 @@ test("screenshots, light and dark", async ({ page, isMobile }, info) => {
     await settle(page);
     await shoot(`dashboard-${scheme}`);
 
+    // To do (phase 15): the cards per list, the one-click decisions, the messages to check.
     await page.goto("/todo");
     await settle(page);
-    if (isMobile) await shoot(`reviews-${scheme}`);
+    await page.getByRole("main").locator("section h2").first().waitFor();
+    await shoot(`todo-${scheme}`);
     await (await todoEntry(page, "Corvane Fasteners price list.xlsx")).click();
     await settle(page);
     await shoot(`review-columns-${scheme}`);
@@ -74,6 +78,11 @@ test("screenshots, light and dark", async ({ page, isMobile }, info) => {
       await page.getByRole("heading", { name: "Price history" }).waitFor();
       await settle(page);
       await shoot(`product-${scheme}`);
+
+      // Activity (phase 15): the news of the last days, grouped by day.
+      await page.goto("/activity");
+      await settle(page);
+      await shoot(`activity-${scheme}`);
     }
   }
 });
@@ -227,7 +236,8 @@ test("guide screenshots", async ({ page, context, isMobile }) => {
 
   await page.goto("/todo");
   await ready();
-  await shoot("reviews");
+  await page.getByRole("main").locator("section h2").first().waitFor();
+  await shoot("todo");
   await page.getByText("Coarse sand").first().click();
   await ready();
   await shoot("review-line");
@@ -256,7 +266,8 @@ test("guide screenshots", async ({ page, context, isMobile }) => {
   await shoot("product");
 
   for (const [path, name] of [
-    ["/activity", "alerts"],
+    ["/activity", "activity"],
+    ["/system", "system"],
     ["/rules", "rules"],
     ["/users", "users"],
   ] as const) {
