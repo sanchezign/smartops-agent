@@ -93,15 +93,16 @@ function DetailBody({
           ) : null}
         </div>
         <p className="font-medium">{t(`questions.${question.key}`, question.params)}</p>
-        {quick && item.status === "pending" ? (
+        {/* Only where it adds what the question does not say (owner, M3 review): the question of a
+            price change names the new price, not today's; a currency change already says "from
+            … to …" and "Mark … as unavailable?" says it all. */}
+        {quick?.kind === "price" && item.status === "pending" ? (
           <p className="text-sm">
-            {quick.kind === "unavailable"
-              ? t("outcome.unavailable", { product: quick.product })
-              : t(`outcome.${quick.kind}`, {
-                  product: quick.product,
-                  current: money(quick.current),
-                  price: money(quick.proposed),
-                })}
+            {t("outcome.price", {
+              product: quick.product,
+              current: money(quick.current),
+              price: money(quick.proposed),
+            })}
           </p>
         ) : null}
         <p className="text-sm text-muted-foreground">{t(`help.${item.kind}`)}</p>

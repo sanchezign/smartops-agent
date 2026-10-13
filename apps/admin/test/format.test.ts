@@ -22,7 +22,11 @@ describe("money", () => {
     expect(en.formatMoney("1850", "UYU")).toBe("UYU 1,850.00");
     expect(en.formatMoney("1850.5", "UYU")).toBe("UYU 1,850.50");
     expect(en.formatMoney("15.76", "UYU")).toBe("UYU 15.76");
-    expect(en.formatMoney("72", "USD")).toBe("US$72.00");
+    // USD in English is the plain dollar sign (phase 14 rule); other dollars keep their prefix.
+    expect(en.formatMoney("72", "USD")).toBe("$72.00");
+    expect(en.formatMoney("15.76", "USD")).toBe("$15.76");
+    expect(en.formatMoney("-3.5", "USD")).toBe("-$3.50");
+    expect(en.formatMoney("78.32", "CAD")).toBe("CA$78.32");
     expect(en.formatMoney("-3.5", "UYU")).toBe("-UYU 3.50");
     expect(es.formatMoney("15.76", "UYU")).toBe("$ 15,76");
   });
@@ -34,12 +38,12 @@ describe("money", () => {
   });
 
   it("AI costs: cents in texts, 4 decimals only under one cent or when precise; big Decimal strings never lose digits", () => {
-    expect(en.formatUsd("0.1633")).toBe("US$0.16");
+    expect(en.formatUsd("0.1633")).toBe("$0.16");
     expect(es.formatUsd("0.5143")).toBe("US$ 0,51");
-    expect(en.formatUsd("0.0043")).toBe("US$0.0043");
-    expect(en.formatUsd("0")).toBe("US$0.00");
-    expect(en.formatUsd("4.00")).toBe("US$4.00");
-    expect(en.formatUsdPrecise("0.0554")).toBe("US$0.0554");
+    expect(en.formatUsd("0.0043")).toBe("$0.0043");
+    expect(en.formatUsd("0")).toBe("$0.00");
+    expect(en.formatUsd("4.00")).toBe("$4.00");
+    expect(en.formatUsdPrecise("0.0554")).toBe("$0.0554");
     expect(es.formatUsdPrecise("0.0554")).toBe("US$ 0,0554");
     expect(en.formatMoney("12345678901234.5678", "UYU", 4)).toBe("UYU 12,345,678,901,234.5678");
   });

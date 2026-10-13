@@ -1770,3 +1770,9 @@ a real client.**
       three races found and fixed). In English the dollar reads "US$" (formatMoney), not "$". Tests: API 1412 unit +
       240 integration; panel 210 unit; E2E 162 passed (desktop, Pixel, iPhone on Chromium). Screenshots (clean demo
       data) in `C:/dev/smartops-phase15-shots/M3-after/`.
+    - M3 text corrections (owner's review, 2026-10-12) — DONE. English money: USD reads "$15.76" again (the phase 14
+      rule; the code had kept the es-UY "US$"), other dollars keep their prefix ("CA$78.32"), UYU stays "UYU 15.76";
+      Spanish unchanged; format tests updated (AI costs in English too: "$0.16"), the To do E2E now requires "$".
+      product_match: "Is “Washer” the same product as “Washer 1/4 in”?" / "¿“Washer” es el mismo producto que
+      “Washer 1/4 in”?". The detail's "If you approve…" only for a price change (its question does not say today's
+      price); currency_changed and mark_unavailable questions already say it all.

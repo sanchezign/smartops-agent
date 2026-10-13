@@ -334,17 +334,17 @@ test.describe("to do: one-click decisions (phase 15 M3)", () => {
 
     const nut = page.getByRole("group", { name: "Decision on Hex nut 1/4 in" });
     // Concrete verbs with the value — never "Yes / No".
-    await expect(nut.getByRole("button", { name: /^Update to (US)?\$0\.41$/ })).toBeVisible();
-    await expect(nut.getByRole("button", { name: /^Keep (US)?\$/ })).toBeVisible();
+    await expect(nut.getByRole("button", { name: /^Update to \$0\.41$/ })).toBeVisible();
+    await expect(nut.getByRole("button", { name: /^Keep \$/ })).toBeVisible();
     await expect(page.getByRole("main").getByRole("button", { name: /^(Yes|No)$/ })).toHaveCount(0);
     await expectAccessible(page);
-    await nut.getByRole("button", { name: /^Update to (US)?\$0\.41$/ }).click();
-    await expect(page.getByText(/^Hex nut 1\/4 in: updated to (US)?\$0\.41\.$/)).toBeVisible();
+    await nut.getByRole("button", { name: /^Update to \$0\.41$/ }).click();
+    await expect(page.getByText(/^Hex nut 1\/4 in: updated to \$0\.41\.$/)).toBeVisible();
     await expect(nut).toHaveCount(0);
     await expect.poll(async () => Number((await productState(updated.productId)).price)).toBe(0.41);
 
     const nail = page.getByRole("group", { name: "Decision on Common nail 2 in" });
-    await nail.getByRole("button", { name: /^Keep (US)?\$/ }).click();
+    await nail.getByRole("button", { name: /^Keep \$/ }).click();
     await expect(page.getByText(/^Common nail 2 in: stays at /)).toBeVisible();
     await expect(nail).toHaveCount(0);
     expect(Number((await productState(kept.productId)).price)).toBe(Number(kept.price));
@@ -363,8 +363,8 @@ test.describe("to do: one-click decisions (phase 15 M3)", () => {
     await openTodo(page);
     const wire = page.getByRole("group", { name: "Decision on Galvanized wire 14 ga" });
     await expect(wire.getByRole("button", { name: /^Change to UYU/ })).toBeVisible();
-    await expect(wire.getByRole("button", { name: /^Keep (US)?\$/ })).toBeVisible();
-    await wire.getByRole("button", { name: /^Keep (US)?\$/ }).click();
+    await expect(wire.getByRole("button", { name: /^Keep \$/ })).toBeVisible();
+    await wire.getByRole("button", { name: /^Keep \$/ }).click();
     await expect(wire).toHaveCount(0);
   });
 
