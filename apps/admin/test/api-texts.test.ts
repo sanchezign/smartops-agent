@@ -16,18 +16,22 @@ describe("alertText", () => {
     const alert = {
       type: "price_change" as const,
       product,
-      details: { oldPrice: "12", newPrice: "14", currency: "UYU", changePct: "16.6667" },
+      details: { oldPrice: "12", newPrice: "14", currency: "USD", changePct: "16.6667" },
     };
     expect(alertText(alert, en)).toEqual({
       key: "priceChange",
       params: {
         product: "Tornillo 6mm",
-        oldPrice: "UYU 12.00",
-        newPrice: "UYU 14.00",
+        oldPrice: "$12.00",
+        newPrice: "$14.00",
         pct: "+16.7%",
       },
     });
-    expect(alertText(alert, es)?.params).toMatchObject({ oldPrice: "$ 12,00", pct: "+16,7 %" });
+    expect(alertText(alert, es)?.params).toMatchObject({ oldPrice: "US$ 12,00", pct: "+16,7 %" });
+    // any other currency shows its code, never a bare "$" (ADR-035)
+    expect(
+      alertText({ ...alert, details: { ...alert.details, currency: "UYU" } }, es)?.params,
+    ).toMatchObject({ oldPrice: "UYU 12,00" });
   });
 
   it("low stock, long voice notes (duration or size), n8n errors, possible opt-out", () => {

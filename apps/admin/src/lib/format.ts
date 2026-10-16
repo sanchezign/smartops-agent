@@ -4,8 +4,8 @@
  * Time zone is always the business's (America/Montevideo). Money and percentages come from the
  * API as Decimal STRINGS — they are only formatted here, never used for arithmetic.
  *
- * Currency symbols (both languages): "$" always means the business currency (UYU, as es-UY
- * shows it), USD is "US$", anything else its ISO code — so two currencies never share "$".
+ * Currency (ADR-035): US dollars are "$1,850.00" (en) / "US$ 1.850,00" (es); any other currency
+ * shows its ISO code in both languages ("CAD 79.90", "UYU 2.390,00") — two currencies never share "$".
  *
  * Components use `useFormat()` (lib/use-format.ts); pure code receives a `Formatter`.
  */
@@ -134,53 +134,18 @@ export function createFormat(locale: AppLocale): Formatter {
       useGrouping: grouping,
     }).format(value as number);
 
+  // ADR-035: US dollars are "$58.00" (en) / "US$ 58,00" (es); EVERY other currency shows its ISO code
+  // in both languages ("CAD 79.90", "UYU 2.390,00"), so a peso or a Canadian dollar is never read as a US one.
   const formatMoney: Formatter["formatMoney"] = (value, currency, maximumFractionDigits = 2) => {
     const amount = value as unknown as number;
-    if (locale === "es") {
-      return new Intl.NumberFormat(intl, { style: "currency", currency, maximumFractionDigits })
-        .format(amount)
-        .replace(NBSP, " ");
-    }
-    // en, Uruguayan pesos (phase 14 M6, owner's rule): the CODE, so "UYU 15.76" is never read as
-    // dollars. The currency belongs to the content, not to the language of the panel; once the
-    // demo content is in USD (M5) it shows "$15.76".
-    if (currency === "UYU") {
-      return new Intl.NumberFormat(intl, {
-        style: "currency",
-        currency,
-        currencyDisplay: "code",
-        maximumFractionDigits,
-      })
-        .format(amount)
-        .replace(NBSP, " ");
-    }
-    // en, US dollars (phase 14 rule, restored in phase 15): "$15.76" — the English content is a US
-    // business, so its own currency takes the plain dollar sign.
-    if (currency === "USD") {
-      return new Intl.NumberFormat(intl, { style: "currency", currency, maximumFractionDigits })
-        .format(amount)
-        .replace(NBSP, " ");
-    }
-    // en, any other currency: the es-UY symbol ("CA$", "€"…, else the code) on en-US digits, so
-    // a foreign dollar never reads as a US one.
-    const symbol =
-      new Intl.NumberFormat(INTL_LOCALE.es, { style: "currency", currency })
-        .formatToParts(0)
-        .find((p) => p.type === "currency")?.value ?? currency;
-    if (/^[A-Z]{3}$/.test(symbol)) {
-      return new Intl.NumberFormat(intl, { style: "currency", currency, maximumFractionDigits })
-        .format(amount)
-        .replace(NBSP, " ");
-    }
     return new Intl.NumberFormat(intl, {
       style: "currency",
       currency,
-      currencyDisplay: "narrowSymbol",
+      currencyDisplay: currency === "USD" ? "symbol" : "code",
       maximumFractionDigits,
     })
-      .formatToParts(amount)
-      .map((p) => (p.type === "currency" ? symbol : p.value))
-      .join("");
+      .format(amount)
+      .replace(NBSP, " ");
   };
 
   return {

@@ -62,6 +62,7 @@ test("main screens in Spanish, es-UY money, and accessible", async ({ page, isMo
   await open("/activity", "Novedades");
   await open("/rules", "Reglas");
   await expect(page.getByText("cambiarlas es solo para administradores")).toBeVisible();
+  await expect(page.getByText("Moneda del catálogo", { exact: true })).toBeVisible();
 
   if (!isMobile) {
     await expect(page.getByLabel("Idioma", { exact: true })).toHaveValue("es");

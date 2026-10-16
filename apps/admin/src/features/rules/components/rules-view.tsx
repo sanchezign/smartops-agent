@@ -52,6 +52,8 @@ function toDraft(field: Field, value: unknown, locale: AppLocale): unknown {
       return value === true;
     case "language":
       return isAppLocale(value) ? value : "es";
+    case "currency":
+      return typeof value === "string" ? value : "USD";
     case "number":
       return toNumberInput(value as number | null, locale);
     case "keywords":
@@ -77,6 +79,14 @@ function fromDraft(
       return { ok: true, value: draft === true };
     case "language":
       return { ok: true, value: isAppLocale(draft) ? draft : "es" };
+    case "currency": {
+      const code = String(draft ?? "")
+        .trim()
+        .toUpperCase();
+      return /^[A-Z]{3}$/.test(code)
+        ? { ok: true, value: code }
+        : { ok: false, error: { code: "currencyFormat" } };
+    }
     case "number": {
       const raw = String(draft ?? "");
       if (field.nullable && raw.trim() === "") return { ok: true, value: null };
@@ -328,6 +338,26 @@ function FieldControl({
       </div>
     );
   }
+  if (field.kind === "currency") {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={id}>{label}</Label>
+        <Input
+          id={id}
+          className="min-h-11 w-32 font-mono uppercase"
+          maxLength={3}
+          autoCapitalize="characters"
+          autoComplete="off"
+          spellCheck={false}
+          value={String(value ?? "")}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+          onChange={(e) => onChange(e.target.value.toUpperCase())}
+        />
+        {help}
+      </div>
+    );
+  }
   if (field.kind === "hours") {
     return (
       <HoursEditor
@@ -479,6 +509,9 @@ function ReadOnlyField({
       break;
     case "language":
       shown = isAppLocale(value) ? LOCALE_NAMES[value] : none;
+      break;
+    case "currency":
+      shown = String(value ?? "").trim() || none;
       break;
     case "number": {
       const text = String(value ?? "").trim();

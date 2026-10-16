@@ -1872,4 +1872,18 @@ a real client.**
       folded section for the operator now check the note (they run in DEMO_MODE). `demo-check`: nothing waits for an
       admin in the demo, "skip" on an older deployment (required after the phase 16 release). Docs: guides EN / ES,
       security.md, ADR-030 note. Full suites green (API 1679, panel 222, E2E desktop + iPhone 127 passed).
-
+    - M3 — DONE (ADR-035 accepted). Order that resolves a line's currency (one test per step in `catalog-plan.test.ts`):
+      the line's, the list's, the existing product's own, and the catalog currency (new Rules setting `catalog.currency`,
+      default USD, admin edits / operator reads) ONLY for a NEW product, always with `currency_assumed`; `missing_currency`
+      is no longer produced; a different currency is still `currency_changed` and a price is never converted. Panel money:
+      USD = "$" (en) / "US$" (es), any other currency = its ISO code in both languages. Demo content: EN everything in USD
+      with ONE line in CAD (Norvale: "Change to CAD 79.90" / "Keep $78.32"); ES every old peso price ÷ 40 to the cent, one
+      line in UYU ("Cambiar a UYU 2.990,00" / "Mantener US$ 67,65"); the ES September list and the approved sheet format are
+      now data in the content (no dependency on a recording shared with the pesos set). New ES-USD assets in
+      `demo/assets/es/` with fixtures in `test/fixtures/{extraction,sheets}/es-usd/` (PDF and photo built by scripts, voice
+      note synthesized with Echogarden, its transcript is the real Groq answer: this time without the ASR error). The pesos
+      assets and goldens stay on purpose (the system still accepts lists in pesos; they test that path). Goldens: free
+      dry-run first (9 calls, expected US$ 0.1377, worst case 0.4221), the owner's OK, then `ai:record-golden --lang es-usd`:
+      REAL cost US$ 0.0762, reviewed output by output (all USD; the photo sends "Arandela" to review like the pesos set).
+      Also: the "real installation" note uses the Info icon instead of the lock (the lock stays where something really
+      cannot be done). Known issue kept: a bare "$" is read as pesos by the extractor prompt in Spanish.

@@ -108,8 +108,19 @@ describe.skipIf(!testDatabaseUrl)("demo seed (Postgres, <test>_demo)", () => {
     expect(await snapshot()).toEqual(before);
   }, 120_000);
 
-  it("the Spanish seed is byte-for-byte what it was before the content became data (fingerprint)", async () => {
+  it("the Spanish seed is deterministic and in US dollars, but for one line in pesos (ADR-035, fingerprint)", async () => {
     await seed();
+    // every product is in USD; the "currency changed" review proposes the deliberate peso line
+    expect(
+      (await prisma.product.groupBy({ by: ["currency"], _count: true })).map((g) => g.currency),
+    ).toEqual(["USD"]);
+    expect(
+      (
+        await prisma.reviewItem.findFirstOrThrow({
+          where: { kind: "currency_changed", status: "pending" },
+        })
+      ).proposal,
+    ).toMatchObject({ currency: "UYU" });
     const first = await demoFingerprint(prisma);
     await seed();
     expect(await demoFingerprint(prisma), "two seeds give the same fingerprint").toEqual(first);
@@ -158,12 +169,19 @@ describe.skipIf(!testDatabaseUrl)("demo seed (Postgres, <test>_demo)", () => {
       "en",
     );
 
-    // The Canadian supplier quotes in CAD; the "currency changed" review exists.
+    // Every product is in USD (ADR-035); the "currency changed" review is a line quoted in CAD.
     const norvale = await prisma.supplier.findFirstOrThrow({
       where: { name: "Norvale Electric Supply Ltd." },
       include: { products: { select: { currency: true } } },
     });
-    expect(new Set(norvale.products.map((p) => p.currency))).toContain("CAD");
+    expect([...new Set(norvale.products.map((p) => p.currency))]).toEqual(["USD"]);
+    expect(
+      (
+        await prisma.reviewItem.findFirstOrThrow({
+          where: { kind: "currency_changed", status: "pending" },
+        })
+      ).proposal,
+    ).toMatchObject({ currency: "CAD" });
     expect(
       await prisma.reviewItem.count({ where: { kind: "currency_changed", status: "pending" } }),
     ).toBeGreaterThan(0);

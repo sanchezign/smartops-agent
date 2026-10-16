@@ -50,6 +50,11 @@ export const SETTING_DEFINITIONS = {
     schema: z.number().int().min(0).nullable(),
     default: null as number | null,
   },
+  /**
+   * Currency of the catalog (ISO 4217, ADR-035). A NEW product whose line and list state no currency is
+   * created in it (warning currency_assumed); a known product keeps its own. Never converts a price.
+   */
+  "catalog.currency": { schema: z.string().regex(/^[A-Z]{3}$/), default: "USD" },
   /** Create products the model is confident are new (otherwise they go to review). */
   "catalog.autoCreateProducts": { schema: z.boolean(), default: true },
   /** A product marked unavailable that appears quoted again is reactivated (with a warning). */
@@ -141,6 +146,7 @@ export interface CatalogSettings {
   maxDecreasePct: number;
   priceAlertPct: number;
   lowStockThreshold: number | null;
+  currency: string;
   autoCreateProducts: boolean;
   reactivateOnQuote: boolean;
 }
@@ -177,6 +183,7 @@ export function catalogSettings(values: Record<SettingKey, unknown>): CatalogSet
     maxDecreasePct: values["catalog.maxDecreasePct"] as number,
     priceAlertPct: values["catalog.priceAlertPct"] as number,
     lowStockThreshold: values["catalog.lowStockThreshold"] as number | null,
+    currency: values["catalog.currency"] as string,
     autoCreateProducts: values["catalog.autoCreateProducts"] as boolean,
     reactivateOnQuote: values["catalog.reactivateOnQuote"] as boolean,
   };

@@ -11,30 +11,24 @@ const es = createFormat("es");
 /** ICU versions differ in the space before "PM" (U+202F in browsers, U+0020 in some Node builds). */
 const spaces = (text: string) => text.replace(/[\u202f\u00a0]/g, " ");
 
-describe("money", () => {
-  it("es: '$ 1.850,00' from a Decimal string; USD is 'US$'", () => {
-    expect(es.formatMoney("1850", "UYU")).toBe("$ 1.850,00");
-    expect(es.formatMoney("1850.5", "UYU")).toBe("$ 1.850,50");
-    expect(es.formatMoney("72", "USD")).toBe("US$ 72,00");
-  });
-
-  it("en: Uruguayan pesos show their code (never read as dollars); es keeps the symbol (phase 14 M6)", () => {
-    expect(en.formatMoney("1850", "UYU")).toBe("UYU 1,850.00");
-    expect(en.formatMoney("1850.5", "UYU")).toBe("UYU 1,850.50");
-    expect(en.formatMoney("15.76", "UYU")).toBe("UYU 15.76");
-    // USD in English is the plain dollar sign (phase 14 rule); other dollars keep their prefix.
-    expect(en.formatMoney("72", "USD")).toBe("$72.00");
+describe("money (ADR-035)", () => {
+  it("US dollars: '$58.00' in English, 'US$ 58,00' in Spanish", () => {
+    expect(en.formatMoney("58", "USD")).toBe("$58.00");
     expect(en.formatMoney("15.76", "USD")).toBe("$15.76");
     expect(en.formatMoney("-3.5", "USD")).toBe("-$3.50");
-    expect(en.formatMoney("78.32", "CAD")).toBe("CA$78.32");
-    expect(en.formatMoney("-3.5", "UYU")).toBe("-UYU 3.50");
-    expect(es.formatMoney("15.76", "UYU")).toBe("$ 15,76");
+    expect(es.formatMoney("58", "USD")).toBe("US$ 58,00");
+    expect(es.formatMoney("1850.5", "USD")).toBe("US$ 1.850,50");
   });
 
-  it("other currencies show their code in both languages", () => {
+  it("every other currency shows its ISO code in both languages (never read as dollars)", () => {
+    expect(en.formatMoney("79.9", "CAD")).toBe("CAD 79.90");
+    expect(es.formatMoney("79.9", "CAD")).toBe("CAD 79,90");
+    expect(en.formatMoney("1850", "UYU")).toBe("UYU 1,850.00");
+    expect(es.formatMoney("2390", "UYU")).toBe("UYU 2.390,00");
+    expect(en.formatMoney("-3.5", "UYU")).toBe("-UYU 3.50");
     expect(en.formatMoney("1850", "ARS")).toBe("ARS 1,850.00");
     expect(es.formatMoney("1850", "ARS")).toBe("ARS 1.850,00");
-    expect(en.formatMoney("10", "EUR")).toBe("€10.00");
+    expect(en.formatMoney("10", "EUR")).toBe("EUR 10.00");
   });
 
   it("AI costs: cents in texts, 4 decimals only under one cent or when precise; big Decimal strings never lose digits", () => {

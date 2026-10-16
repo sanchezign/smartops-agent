@@ -135,4 +135,70 @@ const EN_HEADER = [
   saveEn("prices-multiple-december.xlsx", wb);
 }
 
+// ─── Spanish twins in US dollars (phase 16, ADR-035): the same lists, "US$" explicit ───
+const usdDir = new URL("../../test/fixtures/sheets/es-usd/", import.meta.url);
+mkdirSync(usdDir, { recursive: true });
+function saveUsd(name: string, wb: XLSX.WorkBook) {
+  wb.Props = { CreatedDate: FIXED_DATE, ModifiedDate: FIXED_DATE, Author: "SmartOps fixtures" };
+  writeFileSync(new URL(name, usdDir), XLSX.write(wb, { type: "buffer", bookType: "xlsx" }));
+}
+const ES_HEADER = [
+  "Código",
+  "Descripción",
+  "Unidad",
+  "Precio s/IVA",
+  "Precio c/IVA",
+  "Mayorista",
+  "Contado",
+];
+{
+  const ws = XLSX.utils.aoa_to_sheet([
+    ["DISTRIBUIDORA EJEMPLO S.R.L. - LISTA DE PRECIOS NOVIEMBRE 2026"],
+    ["Precios en dólares estadounidenses (US$)"],
+    [],
+    ES_HEADER,
+    ["SEGURIDAD"],
+    ["CAN-040", "Candado bronce 40mm", "unidad", 6.35, 7.75, 5.75, 7.35],
+    ["CER-001", "Cerradura de embutir", "unidad", 5.04, 6.15, 4.6, 5.85],
+    ["HERRAJES"],
+    ["BIS-003", "Bisagra 3 pulgadas", "unidad", 9.34, 11.4, 8.5, 10.8],
+    ["TAR-008", "Tarugo 8mm x100", "caja", 2.95, 3.6, 2.7, 3.4],
+    ["PEG-250", "Pegamento de contacto 250ml", "lata", 0.9, 1.1, 0.85, 1.05],
+    ["ELECTRICIDAD"],
+    ["CIN-020", "Cinta aisladora 20m", "rollo", 2.05, 2.5, 1.9, 2.4],
+    ["GUA-00M", "Guante de nitrilo talle M", "par", 2.38, 2.9, 2.15, 2.75],
+  ]);
+  const notes = XLSX.utils.aoa_to_sheet([
+    ["Condiciones"],
+    ["Precios sujetos a cambio sin previo aviso."],
+    ["Mayorista: a partir de 10 unidades por artículo. Contado: pago en efectivo."],
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Lista");
+  XLSX.utils.book_append_sheet(wb, notes, "Condiciones");
+  saveUsd("precios-multiples.xlsx", wb);
+}
+{
+  const ws = XLSX.utils.aoa_to_sheet([
+    ["DISTRIBUIDORA EJEMPLO S.R.L. - LISTA DE PRECIOS DICIEMBRE 2026"],
+    ["Precios en dólares estadounidenses (US$)"],
+    [],
+    ES_HEADER,
+    ["SEGURIDAD"],
+    ["CAN-040", "Candado bronce 40mm", "unidad", 6.67, 8.15, 6.05, 7.75],
+    ["CER-001", "Cerradura de embutir", "unidad", 5.04, 6.15, 4.6, 5.85],
+    ["HERRAJES"],
+    ["BIS-003", "Bisagra 3 pulgadas", "unidad", 9.34, 11.4, 8.5, 10.8],
+    ["TAR-008", "Tarugo 8mm x100", "caja", 3.07, 3.75, 2.8, 3.55],
+    ["PEG-250", "Pegamento de contacto 250ml", "lata", 0.9, 1.1, 0.85, 1.05],
+    ["ELECTRICIDAD"],
+    ["CIN-020", "Cinta aisladora 20m", "rollo", 2.05, 2.5, 1.9, 2.4],
+    ["GUA-00M", "Guante de nitrilo talle M", "par", 2.38, 2.9, 2.15, 2.75],
+    ["TAN-002", "Tanza para bordeadora 2mm", "rollo", 4.3, 5.25, 3.95, 5],
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Lista");
+  saveUsd("precios-multiples-diciembre.xlsx", wb);
+}
+
 process.stdout.write(`fixtures written to ${dir.pathname}\n`);

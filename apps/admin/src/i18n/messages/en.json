@@ -519,6 +519,10 @@
         "label": "Days and hours",
         "help": "Uruguay time. If closing is earlier than opening, the hours continue into the next day."
       },
+      "catalog_currency": {
+        "label": "Catalog currency",
+        "help": "Three-letter code (USD, CAD…). A NEW product whose list does not say the currency is created in this one. A known product keeps its own, and a price is never converted."
+      },
       "catalog_priceAlertPct": {
         "label": "Alert when a price changes",
         "help": "It still applies, but an alert is created and it goes into the team summary.",

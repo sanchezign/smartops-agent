@@ -21,7 +21,9 @@ const pick = <T extends string>(all: readonly T[], env: string | undefined) =>
   env ? all.filter((x) => env.split(",").includes(x)) : all;
 const LOCALES = pick(["en", "es"] as const, process.env.SHOTS_LOCALES);
 const SCHEMES = pick(["light", "dark"] as const, process.env.SHOTS_SCHEMES);
-// SHOTS_SET=todo: only the M2 set (To do for the demo operator and the admin); default: the panel.
+// SHOTS_SET=todo: only the M2 set (To do for the demo operator and the admin); SHOTS_SET=money: the M3 set
+// (Catalog, a product, To do and Rules; run it with E2E_CONTENT_LANGUAGE=es for the Spanish content);
+// default: the panel.
 const SET = process.env.SHOTS_SET ?? "panel";
 
 const ready = async (page: Page) => {
@@ -182,3 +184,47 @@ for (const who of ["operator", "admin"] as const)
         await shoot("todo-empty");
         writeFileSync(`${dir}/axe-${prefix}.json`, JSON.stringify(findings, null, 2));
       });
+
+/**
+ * M3 (ADR-035): the catalog currency everywhere. Catalog, one product with its price history, To do (with
+ * the "currency changed" question) and Rules, for the demo operator, in both panel languages.
+ */
+for (const locale of LOCALES)
+  for (const scheme of SCHEMES)
+    test(`money ${locale} ${scheme}`, async ({ page, context, isMobile }, info) => {
+      test.skip(SET !== "money", "SHOTS_SET");
+      test.setTimeout(240_000);
+      const dir = `${ROOT}/${LABEL}/${info.project.name}`;
+      mkdirSync(dir, { recursive: true });
+      const prefix = `operator-${locale}-${scheme}`;
+      const findings: Record<string, string[]> = {};
+      let n = 0;
+      const shoot = async (name: string) => {
+        const file = `${prefix}-${String(++n).padStart(2, "0")}-${name}.png`;
+        await page.screenshot({ path: `${dir}/${file}`, fullPage: true });
+        const axe = await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+          .analyze();
+        findings[file] = axe.violations.map((v) => `${v.id}: ${v.help} (${v.nodes.length})`);
+      };
+      if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
+      await context.addCookies([{ name: "smartops_locale", value: locale, url: E2E.panelUrl }]);
+      await page.emulateMedia({ colorScheme: scheme });
+      await signIn(page);
+      await page.goto("/catalog");
+      await ready(page);
+      await shoot("catalog");
+      const product = page.locator('main a[href^="/catalog/"]').first();
+      if ((await product.count()) > 0) {
+        await product.click();
+        await ready(page);
+        await shoot("product");
+      }
+      await page.goto("/todo");
+      await ready(page);
+      await shoot("todo");
+      await page.goto("/rules");
+      await ready(page);
+      await shoot("rules");
+      writeFileSync(`${dir}/axe-${prefix}.json`, JSON.stringify(findings, null, 2));
+    });

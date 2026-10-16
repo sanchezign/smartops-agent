@@ -174,9 +174,10 @@ describe("demo content: english", () => {
     }
   });
 
-  it("the Canadian supplier quotes in CAD and the others in USD", () => {
-    expect(content.suppliers.map((s) => s.currency)).toEqual(["USD", "USD", "CAD"]);
+  it("every supplier quotes in USD; the one deliberate exception is a CAD line (ADR-035)", () => {
+    expect(content.suppliers.map((s) => s.currency)).toEqual(["USD", "USD", "USD"]);
     expect(content.currency).toBe("USD");
+    expect(content.story.currencyChange.changed.currency).toBe("CAD");
   });
 
   it("the September list as data matches the PDF fixture lines", () => {

@@ -5,8 +5,8 @@ import type { DemoContent, DemoSheetMapper } from "./types.js";
  * ENGLISH demo content (phase 14 M5c, ADR-031): a fictitious US hardware wholesaler, Kestrelwood
  * Supply Co. (Ohio), and its suppliers. Every company, person and address is invented — no real
  * company is meant (the names were searched for before they were chosen). Phone numbers are the
- * fictional +1 614 555 01XX range; domains end in ".example". Prices in US dollars (the Canadian
- * supplier quotes in CAD, so a USD line from it is the "currency changed" review); US customary
+ * fictional +1 614 555 01XX range; domains end in ".example". Prices in US dollars everywhere (ADR-035;
+ * the one deliberate exception is a line from Norvale in Canadian dollars: the "currency changed" review); US customary
  * units. It tells the SAME story as the Spanish content (see types.ts).
  */
 
@@ -63,8 +63,8 @@ const SUPPLIERS: DemoContent["suppliers"] = [
     waId: "16145550103",
     contactName: "Norvale Electric Supply",
     taxIncluded: false,
-    // A Canadian supplier: its lists are in Canadian dollars.
-    currency: "CAD",
+    // A Canadian supplier that quotes in US dollars like the rest (ADR-035).
+    currency: "USD",
     products: [
       { name: "Wire 14 AWG", unit: "ft", price: 0.62, stock: 800 },
       { name: "Wire 10 AWG", unit: "ft", price: 1.05, stock: 500 },
@@ -303,8 +303,8 @@ export const EN_CONTENT: DemoContent = {
       evidence: "FULL LIST",
     },
     currencyChange: {
-      message: "List with prices in US dollars",
-      changed: { name: "Differential breaker 40 A", price: 58, currency: "USD" },
+      message: "List with prices in Canadian dollars",
+      changed: { name: "Differential breaker 40 A", price: 79.9, currency: "CAD" },
       created: { name: "Trimmer line 0.095 in", price: 6.9 },
     },
     injection: {

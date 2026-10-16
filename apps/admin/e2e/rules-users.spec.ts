@@ -18,6 +18,9 @@ test.describe("rules (phase 9 M6)", () => {
     await expect(page.getByText("The bot replies to contacts")).toBeVisible();
     await expect(page.getByText("Alert when a price changes")).toBeVisible();
     await expect(page.getByText("10 % or more")).toBeVisible();
+    // ADR-035: the catalog currency is a value, in plain text
+    await expect(page.getByText("Catalog currency", { exact: true })).toBeVisible();
+    await expect(page.getByText("USD", { exact: true })).toBeVisible();
     await expect(
       page.locator("main input, main textarea, main select, main [role=switch]"),
     ).toHaveCount(0);
@@ -88,6 +91,31 @@ test.describe("rules and users changes (desktop only)", () => {
       page.getByRole("alert").filter({ hasText: "without a thousands separator" }),
     ).toBeVisible();
     await expectAccessible(page);
+  });
+
+  test("the catalog currency is three letters, upper-cased, and saved (ADR-035)", async ({
+    page,
+  }) => {
+    await login(page);
+    await openFromMore(page, "Rules", false);
+    const field = page.getByLabel("Catalog currency");
+    await expect(field).toHaveValue("USD");
+    await field.fill("us");
+    await page.getByRole("button", { name: 'Save "Prices"' }).click();
+    await expect(
+      page.getByRole("alert").filter({ hasText: "The currency is 3 letters" }),
+    ).toBeVisible();
+    await field.fill("cad"); // typed in lower case: shown and stored in capitals
+    await expect(field).toHaveValue("CAD");
+    await page.getByRole("button", { name: 'Save "Prices"' }).click();
+    await expect(page.getByText("Saved.")).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("Catalog currency")).toHaveValue("CAD");
+    await page.getByLabel("Catalog currency").fill("USD"); // leave the shared demo as it was
+    await page.getByRole("button", { name: 'Save "Prices"' }).click();
+    await expect(page.getByText("Saved.")).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("Catalog currency")).toHaveValue("USD");
   });
 
   test("business hours: configure Monday to Friday", async ({ page }) => {

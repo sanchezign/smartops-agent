@@ -1,0 +1,5 @@
+{
+  "classification": "price_update_partial",
+  "confidence": 0.55,
+  "reason": "Menciona una 'lista' con solo dos productos, no hay señal explícita de que sea el catálogo completo."
+}

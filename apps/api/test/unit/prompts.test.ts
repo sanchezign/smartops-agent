@@ -21,9 +21,14 @@ const readExpected = (path: string) =>
 // The Spanish ground truth and the English one (phase 14 M5c): the prompts must quote neither.
 const spanish = readExpected("../fixtures/extraction/expected.json");
 const english = readExpected("../fixtures/extraction/en/expected.json");
+const spanishUsd = readExpected("../fixtures/extraction/es-usd/expected.json");
 const expected: Expected = {
-  productNames: { ...spanish.productNames, ...english.productNames },
-  fixturePhrases: { ...spanish.fixturePhrases, ...english.fixturePhrases },
+  productNames: { ...spanish.productNames, ...english.productNames, ...spanishUsd.productNames },
+  fixturePhrases: {
+    ...spanish.fixturePhrases,
+    ...english.fixturePhrases,
+    ...spanishUsd.fixturePhrases,
+  },
 };
 
 const TEXT_FIXTURES = [
@@ -31,6 +36,8 @@ const TEXT_FIXTURES = [
   "voice-transcript.txt",
   "en/injection-message.txt",
   "en/voice-transcript.txt",
+  "es-usd/injection-message.txt",
+  "es-usd/voice-transcript.txt",
 ] as const;
 
 /** Lowercase, no accents, words only: "Ignorá TODAS…" → "ignora todas". */

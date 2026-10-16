@@ -50,6 +50,53 @@ describe("demo assets", () => {
   });
 });
 
+describe("Spanish demo assets in US dollars (phase 16 M3, ADR-035)", () => {
+  const same = (a: string, b: string) =>
+    expect(readFileSync(a).equals(readFileSync(b)), `${a} = ${b}`).toBe(true);
+
+  it("every sample of the Spanish content exists in assets/es and is a copy of its fixture", () => {
+    const content = getDemoContent("es");
+    expect(content.assetsSubdir).toBe("es");
+    for (const sample of Object.values(content.samples))
+      expect(() => readFileSync(join("demo/assets/es", sample.file)), sample.file).not.toThrow();
+    same(
+      "demo/assets/es/lista-septiembre.pdf",
+      "test/fixtures/extraction/es-usd/lista-septiembre.pdf",
+    );
+    same(
+      "demo/assets/es/lista-octubre-foto.jpg",
+      "test/fixtures/extraction/es-usd/lista-octubre-foto.jpg",
+    );
+    same(
+      "demo/assets/es/injection-message.txt",
+      "test/fixtures/extraction/es-usd/injection-message.txt",
+    );
+    same(
+      "demo/assets/es/voice-transcript.txt",
+      "test/fixtures/extraction/es-usd/voice-transcript.txt",
+    );
+    same(
+      "demo/assets/es/precios-multiples.xlsx",
+      "test/fixtures/sheets/es-usd/precios-multiples.xlsx",
+    );
+    same(
+      "demo/assets/es/precios-multiples-diciembre.xlsx",
+      "test/fixtures/sheets/es-usd/precios-multiples-diciembre.xlsx",
+    );
+  });
+
+  it("the dollar voice note is a small Ogg/Opus whose sha keys its transcript", () => {
+    const ogg = new Uint8Array(readFileSync("demo/assets/es/nota-de-voz.ogg"));
+    expect(ogg.byteLength).toBeLessThan(20_000);
+    expect(contentMatchesMime("audio/ogg", ogg)).toBe(true);
+    expect(audioDurationSeconds(ogg, "audio/ogg")).toBeCloseTo(6.6, 1);
+    const sha = createHash("sha256").update(ogg).digest("hex");
+    expect(readFileSync(join("demo/transcripts", `${sha}.txt`), "utf8")).toBe(
+      readFileSync("test/fixtures/extraction/es-usd/voice-transcript.txt", "utf8"),
+    );
+  });
+});
+
 describe("demo Graph API", () => {
   function app(outbox: DemoOutbox = { sent: [] }) {
     const store = createDemoMediaStore();

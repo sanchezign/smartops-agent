@@ -152,9 +152,20 @@ describe("settings (defaults + validated overrides)", () => {
       maxDecreasePct: 30,
       priceAlertPct: 10,
       lowStockThreshold: null,
+      currency: "USD",
       autoCreateProducts: true,
       reactivateOnQuote: true,
     });
+  });
+
+  it("catalog.currency: an ISO 4217 code, USD by default; anything else falls back", () => {
+    const ok = resolveSettings(new Map<string, unknown>([["catalog.currency", "UYU"]]));
+    expect(catalogSettings(ok.values).currency).toBe("UYU");
+    for (const bad of ["usd", "US", "DOLLAR", 1, null]) {
+      const r = resolveSettings(new Map<string, unknown>([["catalog.currency", bad]]));
+      expect(catalogSettings(r.values).currency).toBe("USD");
+      expect(r.invalidKeys).toEqual(["catalog.currency"]);
+    }
   });
 
   it("stored values override; invalid ones fall back to the default and are reported", () => {
@@ -311,23 +322,67 @@ describe("planner: price rules", () => {
     expect(orphan).toMatchObject({ action: "review", kind: "pct_without_match" });
   });
 
-  it("currency: missing → assumed only for single-currency suppliers; changed → review", () => {
-    const uyu = product("Silicona 280ml", "280");
-    const noCurrency = output({ currency: null });
-    const assumed = ungated(plan({ catalog: [uyu], output: noCurrency }));
-    expect(assumed.lines[0]).toMatchObject({ action: "update", currency: "UYU" });
-    expect(assumed.warnings.map((w) => w.code)).toContain("currency_assumed");
+  // ADR-035: the order that resolves a line's currency — one test per step.
+  describe("currency order (ADR-035)", () => {
+    const codes = (p: ReturnType<typeof ungated>) => p.warnings.map((w) => w.code);
 
-    const mixed = ungated(
-      plan({ catalog: [uyu, product("Otro", "10", { currency: "USD" })], output: noCurrency }),
-    );
-    expect(mixed.lines[0]).toMatchObject({ action: "review", kind: "missing_currency" });
+    it("1. the line's own currency wins over the list's", () => {
+      const p = ungated(
+        plan({ output: output({ currency: "CAD", items: [item({ currency: "EUR" })] }) }),
+      );
+      expect(p.lines[0]).toMatchObject({ action: "create", currency: "EUR" });
+      expect(codes(p)).not.toContain("currency_assumed");
+    });
 
-    const changed = ungated(plan({ catalog: [uyu], output: output({ currency: "USD" }) }));
-    expect(changed.lines[0]).toMatchObject({ action: "review", kind: "currency_changed" });
+    it("2. the list's currency when the line states none", () => {
+      const p = ungated(plan({ output: output({ currency: "CAD" }) }));
+      expect(p.lines[0]).toMatchObject({ action: "create", currency: "CAD" });
+      expect(codes(p)).not.toContain("currency_assumed");
+    });
 
-    const newNoCurrency = ungated(plan({ output: noCurrency }));
-    expect(newNoCurrency.lines[0]).toMatchObject({ action: "review", kind: "missing_currency" });
+    it("3. an existing product keeps ITS currency, not the catalog's (currency_assumed)", () => {
+      const pesos = product("Silicona 280ml", "280"); // UYU, catalog currency is USD
+      const mixed = [pesos, product("Otro", "10", { currency: "USD" })];
+      const p = ungated(plan({ catalog: mixed, output: output({ currency: null }) }));
+      expect(p.lines[0]).toMatchObject({ action: "update", currency: "UYU" });
+      expect(codes(p)).toContain("currency_assumed");
+      // no longer "missing_currency" when the supplier has products in several currencies
+      expect(p.lines[0]!.kind).toBeNull();
+    });
+
+    it("4. only a NEW product gets the catalog currency, always with currency_assumed", () => {
+      const usd = ungated(plan({ output: output({ currency: null }) }));
+      expect(usd.lines[0]).toMatchObject({ action: "create", currency: "USD", kind: null });
+      expect(codes(usd)).toContain("currency_assumed");
+      const setting = { ...DEFAULT_CATALOG_SETTINGS, currency: "UYU" };
+      const pesos = ungated(plan({ settings: setting, output: output({ currency: null }) }));
+      expect(pesos.lines[0]).toMatchObject({ action: "create", currency: "UYU" });
+      expect(codes(pesos)).toContain("currency_assumed");
+    });
+
+    it("5. a currency different from the product's still goes to review (never converted)", () => {
+      const p = ungated(
+        plan({ catalog: [product("Silicona 280ml", "280")], output: output({ currency: "USD" }) }),
+      );
+      expect(p.lines[0]).toMatchObject({
+        action: "review",
+        kind: "currency_changed",
+        currency: "USD",
+        oldCurrency: "UYU",
+      });
+      expect(p.lines[0]!.newPrice?.toFixed()).toBe("300");
+    });
+
+    it("a percentage line keeps the product's currency and assumes nothing", () => {
+      const p = ungated(
+        plan({
+          catalog: [product("Silicona 280ml", "100")],
+          output: output({ currency: null, items: [item({ price: null, priceChangePct: "10" })] }),
+        }),
+      );
+      expect(p.lines[0]).toMatchObject({ action: "update", currency: "UYU" });
+      expect(codes(p)).not.toContain("currency_assumed");
+    });
   });
 
   it.each([

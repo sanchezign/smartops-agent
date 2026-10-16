@@ -38,3 +38,19 @@ Inc. lists in US dollars and US units. All of it is generated or synthetic (no r
 | `../sheets/en/prices-multiple*.xlsx` | English spreadsheets, built by `scripts/fixtures/build-sheet-fixtures.ts`                                |
 
 Its recorded outputs are made with `ai:record-golden --lang en` (M5d).
+
+## Spanish set in US dollars (phase 16 M3, `es-usd/`, ADR-035)
+
+The Spanish demo content moved to US dollars; this directory is its set of samples (the pesos ones above stay on purpose: the system
+still accepts lists in Uruguayan pesos, a real client can work in pesos, and those fixtures test that path). Every price says "US$" (a bare "$" would be read as pesos by the extractor prompt). Fictitious
+data, no real company:
+
+| File                                       | What it is                                                                                           |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `es-usd/lista-septiembre.pdf`              | 1-page September list, written by `scripts/fixtures/build-spanish-usd-pdf.mjs` (deterministic bytes) |
+| `es-usd/lista-octubre-foto.jpg`            | the October list "photographed" on a desk (SVG rendered with sharp, `build-spanish-usd-photo.mjs`)   |
+| `es-usd/voice-transcript.txt`              | Groq `whisper-large-v3` transcript of a synthetic voice note (Echogarden, local eSpeak voice)        |
+| `es-usd/injection-message.txt`             | Spanish prompt-injection text; it must end in `needs_review`, like the others                        |
+| `../sheets/es-usd/precios-multiples*.xlsx` | Spanish spreadsheets in dollars, built by `scripts/fixtures/build-sheet-fixtures.ts`                 |
+
+Its recorded outputs are made with `ai:record-golden --lang es-usd`.

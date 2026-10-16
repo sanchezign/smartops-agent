@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, FileText, Lock, MessagesSquare } from "lucide-react";
+import { ArrowLeft, FileText, Info, Lock, MessagesSquare } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -115,7 +115,7 @@ function DetailBody({
             role="note"
             className="flex items-start gap-2 rounded-lg border-[1.5px] bg-muted/60 p-3 text-sm"
           >
-            <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
             {t("realAdminOnly")}
           </p>
         ) : null}

@@ -160,8 +160,12 @@ administrators can change them.
 - **Automatic replies:** the language of WhatsApp messages, the bot on or off, confirming to
   suppliers that their list arrived, and how long the bot stays paused after a person replies.
 - **Business hours:** outside them, non-urgent WhatsApp summaries wait until opening time.
-- **Prices:** from what percentage a change raises an alert, and above what increase or decrease
-  a price waits for review; creating new products automatically.
+- **Prices:** the catalog currency (USD unless you change it), from what percentage a change
+  raises an alert, and above what increase or decrease a price waits for review; creating new
+  products automatically. A list that does not say its currency is read in the product's own
+  currency; only a NEW product takes the catalog currency (and the report says it was assumed).
+  A price is never converted: a line in another currency is a review ("Change to CAD 79.90" or
+  "Keep $58.00").
 - **WhatsApp alerts to the team:** who receives the summaries, how often, and the hourly limits.
 - **Voice notes and opt-outs:** the longest voice note transcribed automatically, and the
   opt-out and opt-in words.

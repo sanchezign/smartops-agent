@@ -166,8 +166,12 @@ registrados. Solo los administradores pueden cambiarlas.
   después de que responde una persona.
 - **Horario de atención:** fuera de horario, los resúmenes por WhatsApp que no son urgentes
   esperan a la apertura.
-- **Precios:** desde qué porcentaje un cambio genera una alerta, y desde qué aumento o baja un
-  precio espera una revisión; crear productos nuevos automáticamente.
+- **Precios:** la moneda del catálogo (USD, salvo que la cambies), desde qué porcentaje un cambio
+  genera una alerta, y desde qué aumento o baja un precio espera una revisión; crear productos
+  nuevos automáticamente. Una lista que no dice su moneda se lee en la moneda del propio
+  producto; solo un producto NUEVO toma la del catálogo (y el informe avisa que se asumió). Un
+  precio nunca se convierte: una línea en otra moneda es una revisión ("Cambiar a UYU 2.990,00" o
+  "Mantener US$ 71,25").
 - **Avisos al equipo por WhatsApp:** quién recibe los resúmenes, cada cuánto, y los límites por
   hora.
 - **Audios y bajas:** el audio más largo que se transcribe automáticamente, y las palabras de

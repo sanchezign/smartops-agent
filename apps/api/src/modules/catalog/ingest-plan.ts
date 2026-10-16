@@ -252,8 +252,6 @@ export function planIngestion(input: PlanInput): IngestionPlan {
   // ─── Catalog indexes ───
   const byId = new Map(input.catalog.map((p) => [p.id, p]));
   const byNormalized = new Map(input.catalog.map((p) => [p.normalizedName, p]));
-  const currencies = new Set(input.catalog.map((p) => p.currency));
-  const singleCurrency = currencies.size === 1 ? [...currencies][0]! : null;
   const emptyCatalog = input.catalog.length === 0;
 
   // ─── Product resolution ───
@@ -328,19 +326,19 @@ export function planIngestion(input: PlanInput): IngestionPlan {
         newPrice = applyPercentage(p.price, item.priceChangePct);
       } else {
         newPrice = new Decimal(item.price!);
+        // ADR-035: line → list → the product's own currency (never the catalog's for a known product).
         currency = item.currency ?? output.currency;
-        if (currency === null && singleCurrency === p.currency) {
+        if (currency === null) {
           currency = p.currency;
           warnings.push({
             code: "currency_assumed",
-            message: `"${item.name}": sin moneda; se asume ${p.currency} (todos los productos del proveedor están en esa moneda).`,
+            message: `"${item.name}": sin moneda; se asume ${p.currency} (la moneda actual del producto).`,
             lineIndex: index,
           });
         }
       }
       if (newPrice.lte(0)) reasons.push("invalid_result");
-      if (currency === null) reasons.push("missing_currency");
-      else if (currency !== p.currency) reasons.push("currency_changed");
+      if (currency !== p.currency) reasons.push("currency_changed");
       else {
         changePct = computePriceChange(
           { price: p.price, currency: p.currency },
@@ -362,8 +360,16 @@ export function planIngestion(input: PlanInput): IngestionPlan {
       // New product (or a review line without candidates).
       if (item.priceChangePct !== null) reasons.push("pct_without_match");
       else newPrice = new Decimal(item.price!);
+      // ADR-035: line → list → the catalog currency (only a NEW product has nothing else to follow).
       currency = item.currency ?? output.currency;
-      if (currency === null) reasons.push("missing_currency");
+      if (currency === null && newPrice !== null) {
+        currency = settings.currency;
+        warnings.push({
+          code: "currency_assumed",
+          message: `"${item.name}": sin moneda; se asume ${settings.currency} (la moneda del catálogo).`,
+          lineIndex: index,
+        });
+      }
       if (resolution.target === "new") {
         if (!settings.autoCreateProducts) reasons.push("auto_create_disabled");
         if (item.available === false) reasons.push("stated_unavailable_new");

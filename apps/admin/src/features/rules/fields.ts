@@ -27,7 +27,8 @@ export type Field =
   | { key: string; kind: "keywords" }
   | { key: string; kind: "phones" }
   | { key: "businessHours"; kind: "hours" }
-  | { key: "business.language"; kind: "language" };
+  | { key: "business.language"; kind: "language" }
+  | { key: "catalog.currency"; kind: "currency" };
 
 export type SectionId = keyof Messages["rules"]["sections"];
 export type FieldMessageKey = keyof Messages["rules"]["fields"];
@@ -62,6 +63,7 @@ export const SECTIONS: Section[] = [
   {
     id: "prices",
     fields: [
+      { key: "catalog.currency", kind: "currency" },
       { key: "catalog.priceAlertPct", kind: "number", suffix: true, min: 0, max: 100000 },
       { key: "catalog.maxIncreasePct", kind: "number", suffix: true, min: 0.01, max: 100000 },
       { key: "catalog.maxDecreasePct", kind: "number", suffix: true, min: 0.01, max: 100 },
