@@ -848,6 +848,51 @@ export async function seedDemo(deps: {
         ),
       );
     }
+    // Phase 16 M2 (ADR-034): the run gate and the catalog-wide change the desktop E2E resolves
+    // as the PUBLIC operator (audit log), on their own supplier so no other test loses its data.
+    const gatesName = content.e2e.supplierName("gates");
+    const gates = await prisma.supplier.create({
+      data: {
+        id: demoUuid(`supplier:${gatesName}`),
+        name: gatesName,
+        normalizedName: normalizeSupplierName(gatesName),
+        taxIncluded: true,
+        taxIncludedAt: at(10),
+      },
+    });
+    const gatesIds = {
+      ...(await conversationFor(content.e2e.waId(3), gatesName, "supplier", gates.id)),
+      supplierId: gates.id,
+    };
+    const gatesSupplier = asSupplier(gatesName, true);
+    const gatesProducts = content.e2e.products("gates");
+    await ingestList(
+      gatesSupplier,
+      gatesIds,
+      at(9),
+      content.e2e.initialMessage,
+      list(
+        gatesSupplier,
+        gatesProducts.map((p) => item(p, 100)),
+      ),
+    );
+    await ingestList(
+      gatesSupplier,
+      gatesIds,
+      at(2),
+      story.injection.message,
+      list(gatesSupplier, [item(gatesProducts[0]!, 1)]),
+      { suspicious: true },
+    );
+    await ingestList(
+      gatesSupplier,
+      gatesIds,
+      at(1),
+      story.globalChange.message,
+      list(gatesSupplier, [item(gatesProducts[1]!, 108)], {
+        globalChangePct: story.globalChange.pct,
+      }),
+    );
   }
 
   // ── Customers: queries and orders (deterministic pre-filter, no LLM) ───────

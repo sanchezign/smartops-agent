@@ -406,7 +406,8 @@
     },
     "outcome": {
       "price": "Si apruebas, {product} pasa de {current} a {price}."
-    }
+    },
+    "realAdminOnly": "En una instalación real, esto lo resuelve un administrador."
   },
   "todo": {
     "description": "Lo que necesita una decisión tuya: listas de precios que el sistema no aplicó solo y mensajes para revisar a mano.",
@@ -457,7 +458,8 @@
     "optOutConfirm": "Dar de baja",
     "optOutReason": "Pidió no recibir más mensajes: “{phrase}” (confirmado en Pendientes)",
     "optOutDone": "Baja registrada.",
-    "optOutFailed": "No se pudo registrar la baja. Inténtalo de nuevo."
+    "optOutFailed": "No se pudo registrar la baja. Inténtalo de nuevo.",
+    "demoEmptyHint": "Se resolvió todo. Para ver más decisiones, envía un mensaje de ejemplo desde Probar el sistema, o reinicia la demo para volver a los datos originales."
   },
   "rules": {
     "description": "Cómo se comporta el sistema, sin tocar código. Los cambios aplican al instante y quedan registrados.",

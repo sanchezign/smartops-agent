@@ -1,4 +1,4 @@
-import { test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { E2E } from "./env";
 import { expectAccessible, login } from "./helpers";
 
@@ -40,9 +40,9 @@ for (const scheme of SCHEMES) {
       await page.goto("/todo");
       await ready(page);
       await expectAccessible(page);
-      // Unfolded too: "Waiting for an administrator" (phase 15).
-      await page.locator("main details summary").click();
-      await expectAccessible(page);
+      // "Waiting for an administrator" (phase 15) only exists outside the demo (ADR-034): the
+      // suite runs the demo, where nothing waits for an admin.
+      await expect(page.locator("main details")).toHaveCount(0);
       const hrefs = await page
         .locator('main a[href^="/reviews/"]')
         .evaluateAll((els) => els.map((e) => e.getAttribute("href")!));

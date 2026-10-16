@@ -1855,3 +1855,21 @@ a real client.**
       filter with the search), `demo-seed` (two waiting chats in EN and ES, answers from panel and phone, nothing in the
       future), `chat-layout.test.ts`, E2E (Needs a reply with the filter and the search; the reply box at the bottom
       for a short and a long chat, newest message right above it, earlier messages still load).
+    - M2 — DONE (ADR-034 accepted). First commit, ALONE: the review permission table with DEMO_MODE off, generated from
+      the phase 15 code (`test/fixtures/review-permissions-demo-off.json`, 2 roles × 51 cells; operator = line only) and
+      a test comparing `canResolveReview` with it cell by cell, with no record switch. Then the rule: with
+      `demoMode === true` (strict boolean, from env.DEMO_MODE only) an operator resolves every review; the panel mirror
+      too, plus `adminOnlyOutsideDemo` for the note "In a real installation an administrator resolves this" (To do row
+      and review detail). The re-recorded item matrix changed exactly 33 cells, all "on / operator / non-line"; its
+      "off" half is identical. New tests: a request claiming the demo (query, four headers, cookie, body) on an
+      installation without it gets 403, and the To do query still receives `demoMode: false`; the ROUTE matrix runs a
+      second app with the demo on and must match the same fixture (users, settings writes stay 403 for an operator).
+      Found on the way: the approve / reject body is not validated before the permission check, so a body claim is a
+      403 too. To do in the demo: nothing waits for an admin (no folded section), an empty To do offers "Try the
+      system" and "Reset demo" (`ResetDemoButton`, shared with Try the system). E2E: an E2E-only supplier ("E2E
+      Supplier gates", desktop) with its own suspicious message and across-the-board change, resolved by the PUBLIC
+      operator and checked in `audit_logs` (`review.approve`, user = the public operator); the specs that expected the
+      folded section for the operator now check the note (they run in DEMO_MODE). `demo-check`: nothing waits for an
+      admin in the demo, "skip" on an older deployment (required after the phase 16 release). Docs: guides EN / ES,
+      security.md, ADR-030 note. Full suites green (API 1679, panel 222, E2E desktop + iPhone 127 passed).
+

@@ -39,10 +39,9 @@ test("main screens in Spanish, es-UY money, and accessible", async ({ page, isMo
     await expectAccessible(page);
   };
   await open("/todo", "Pendientes");
-  // Folded for the operator (only an admin resolves it), with the reason in Spanish.
-  await page.locator("main details summary").click();
+  // In the demo the operator resolves it too, with the note in Spanish (ADR-034).
   await expect(
-    page.getByText("afecta una lista entera o todo el catálogo", { exact: false }),
+    page.getByText("En una instalación real, esto lo resuelve un administrador.").first(),
   ).toBeVisible();
   await expect(page.getByRole("main").getByText("Aumento general").first()).toBeVisible();
   await expectAccessible(page);

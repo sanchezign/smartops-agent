@@ -107,6 +107,19 @@ for (const expected of EXPECTED_SUPPLIERS[content]) {
         counts.reviews.canResolve >= 1,
       `GET /admin/todo/summary: ${counts.total} for the public operator (column mapping included, ADR-030)`,
     );
+    // Phase 16 (ADR-034): in the demo the public operator resolves EVERY review, so nothing waits
+    // for an administrator. Above 0 the deployment is older than phase 16: skipped until that
+    // release is deployed — then REQUIRED (a skip means an old image).
+    if (counts.reviews.waitingForAdmin === 0) {
+      check(
+        true,
+        "GET /admin/todo/summary: nothing waits for an administrator in the demo (ADR-034)",
+      );
+    } else {
+      console.log(
+        `skip ADR-034 (${counts.reviews.waitingForAdmin} reviews wait for an admin: deployment older than phase 16)`,
+      );
+    }
     const todo = await fetch(`${api}/admin/todo`, { headers: auth });
     const view = await todo.json();
     check(

@@ -406,7 +406,8 @@
     },
     "outcome": {
       "price": "If you approve, {product} goes from {current} to {price}."
-    }
+    },
+    "realAdminOnly": "In a real installation an administrator resolves this."
   },
   "todo": {
     "description": "What needs a decision from you: price lists the system did not apply on its own, and messages to check by hand.",
@@ -457,7 +458,8 @@
     "optOutConfirm": "Opt out",
     "optOutReason": "Asked to stop: “{phrase}” (confirmed in To do)",
     "optOutDone": "Opt-out recorded.",
-    "optOutFailed": "Could not record the opt-out. Try again."
+    "optOutFailed": "Could not record the opt-out. Try again.",
+    "demoEmptyHint": "Everything was resolved. To see more decisions, send a sample message from Try the system, or reset the demo to bring the original data back."
   },
   "rules": {
     "description": "How the system behaves, without touching code. Changes apply instantly and are recorded.",

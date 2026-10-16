@@ -13,7 +13,7 @@ import { useFormat } from "@/lib/use-format";
 import { useResolveReview, useReview, type ResolveInput } from "../hooks";
 import { isKnownReason, rawReason } from "../labels";
 import { useDemoInfo } from "@/features/demo/hooks";
-import { canResolve } from "../permissions";
+import { adminOnlyOutsideDemo, canResolve } from "../permissions";
 import { reviewQuestion } from "../question";
 import { quickDecision, type Money } from "../quick-decision";
 import type { ReviewItem } from "../types";
@@ -30,7 +30,7 @@ export function ReviewDetail({ id }: { id: string }) {
   const router = useRouter();
   const query = useReview(id);
   const user = useAuthStore((s) => s.user);
-  // ADR-030: in the public demo an operator also resolves the column-mapping review.
+  // ADR-030 / ADR-034: in the public demo an operator resolves every review.
   const demoMode = useDemoInfo().data != null;
   const mutation = useResolveReview(id, () => router.push("/todo"));
   const t = useTranslations("reviews");
@@ -58,6 +58,7 @@ export function ReviewDetail({ id }: { id: string }) {
           }
           pending={mutation.isPending}
           onResolve={(input) => mutation.mutate(input)}
+          realAdminOnly={adminOnlyOutsideDemo(user, query.data.item, { demoMode })}
         />
       )}
     </div>
@@ -69,11 +70,14 @@ function DetailBody({
   readOnly,
   pending,
   onResolve,
+  realAdminOnly = false,
 }: {
   item: ReviewItem;
   readOnly: boolean;
   pending: boolean;
   onResolve(input: ResolveInput): void;
+  /** ADR-034: the demo lets an operator resolve it; a real installation would need an admin. */
+  realAdminOnly?: boolean;
 }) {
   const props = { item, readOnly, pending, onResolve };
   const t = useTranslations("reviews");
@@ -106,6 +110,15 @@ function DetailBody({
           </p>
         ) : null}
         <p className="text-sm text-muted-foreground">{t(`help.${item.kind}`)}</p>
+        {realAdminOnly && item.status === "pending" ? (
+          <p
+            role="note"
+            className="flex items-start gap-2 rounded-lg border-[1.5px] bg-muted/60 p-3 text-sm"
+          >
+            <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
+            {t("realAdminOnly")}
+          </p>
+        ) : null}
         {item.reasons.length > 1 ? (
           <div className="flex flex-wrap gap-1.5">
             {item.reasons.map((r) => (

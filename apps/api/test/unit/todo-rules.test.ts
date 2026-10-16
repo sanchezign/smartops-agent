@@ -32,8 +32,8 @@ describe("splitPending", () => {
     expect(splitPending(groups, OPERATOR)).toEqual({ canResolve: 7, waitingForAdmin: 8 });
   });
 
-  it("in DEMO_MODE the operator also resolves column_mapping (ADR-030), nothing else", () => {
-    expect(splitPending(groups, DEMO_OPERATOR)).toEqual({ canResolve: 8, waitingForAdmin: 7 });
+  it("in DEMO_MODE the operator resolves everything (ADR-034): nothing waits for an admin", () => {
+    expect(splitPending(groups, DEMO_OPERATOR)).toEqual({ canResolve: 15, waitingForAdmin: 0 });
   });
 
   it("agrees with canResolveReview for every scope × kind × viewer, one item at a time", () => {
@@ -63,9 +63,8 @@ describe("resolvablePairs (what SQL treats as 'mine')", () => {
     const op = resolvablePairs(OPERATOR);
     expect(op.every((p) => p.scope === "line")).toBe(true);
     expect(op).toHaveLength(Object.values(ReviewKind).length);
-    const demo = resolvablePairs(DEMO_OPERATOR);
-    expect(demo).toHaveLength(op.length + 1);
-    expect(demo).toContainEqual({ scope: "run", kind: "column_mapping" });
+    // ADR-034: in the public demo the operator resolves every pair, like an admin
+    expect(resolvablePairs(DEMO_OPERATOR)).toEqual(resolvablePairs(ADMIN));
   });
 });
 

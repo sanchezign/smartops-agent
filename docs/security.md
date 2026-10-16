@@ -90,6 +90,13 @@ outside on the live server (`scripts/deploy/demo-abuse-check.mjs`).
 - The shared public operator cannot change passwords, roles or its saved language, cannot
   close other visitors' sessions, and is never locked out (a per-IP limit protects it). A demo
   reset is limited to once per 10 minutes for everyone.
+- In the demo the public operator resolves **every** review (ADR-034), including whole-list gates
+  (a suspicious message, an unknown sender, a change of tax basis) and catalog-wide changes. The
+  rule depends only on `env.DEMO_MODE` (never on a request: header, query, body or cookie claims
+  are tested and refused); users, settings writes and manual opt-in stay admin-only. Outside the
+  demo the permission table is frozen in `test/fixtures/review-permissions-demo-off.json`. Every
+  resolution is in the audit log with the public operator as its author; the AI is fake, so no
+  retry spends money; what a visitor changes is shared until the next reset.
 - Backups are encrypted with `age`; the private key lives only on the owner's computer. They go to a
   private Object Storage bucket that the server can only **append** to: it cannot overwrite, delete or
   read a backup (ADR-026); `backup-selftest.sh` proves it.
