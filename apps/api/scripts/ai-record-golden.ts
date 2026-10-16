@@ -4,7 +4,8 @@
  *
  *   pnpm --filter @smartops/api ai:record-golden --dry-run          # FREE: exact input tokens + cost estimate
  *   pnpm --filter @smartops/api ai:record-golden --confirm-spend    # SPENDS real credits (asks nothing else)
- *   ... --lang en|es   # which fixtures and which business language (default es; en = phase 14 M5)
+ *   ... --lang en|es|es-usd   # which fixtures and which business language (default es; en = phase 14 M5;
+ *                             # es-usd = the Spanish demo set in US dollars, phase 16 ADR-035, business language es)
  *
  * The real run goes through the same AiClient as production: budget guard + ai_usages
  * ledger (counts against AI_TOTAL_BUDGET_USD). Outputs are written UNMODIFIED to
@@ -66,11 +67,12 @@ const { values } = parseArgs({
     lang: { type: "string", default: "es" },
   },
 });
-if (values.lang !== "es" && values.lang !== "en") {
-  process.stderr.write("--lang must be es or en\n");
+if (values.lang !== "es" && values.lang !== "en" && values.lang !== "es-usd") {
+  process.stderr.write("--lang must be es, en or es-usd\n");
   process.exit(1);
 }
-const lang: BusinessLanguage = values.lang;
+const set = values.lang;
+const lang: BusinessLanguage = set === "en" ? "en" : "es";
 const env = loadEnv();
 const logger = createLogger(env);
 if (values["dry-run"] === values["confirm-spend"]) {
@@ -112,6 +114,35 @@ const SETUP = {
     ],
     newRow: { id: "R8", name: "Tanza para bordeadora 2mm", unit: "rollo" },
   },
+  // Phase 16 (ADR-035): the Spanish demo set in US dollars; "US$" explicit on every price.
+  "es-usd": {
+    dir: "es-usd/",
+    pdf: "lista-septiembre.pdf",
+    photo: "lista-octubre-foto.jpg",
+    sheet: "precios-multiples.xlsx",
+    text: "Lista septiembre: tornillo 6mm US$ 0,30, tuerca 6mm US$ 0,15",
+    sender: "Distribuidora Demo S.A.",
+    currency: "USD",
+    september: [
+      ["Tornillo 6mm", "unidad", "0.30"],
+      ["Tuerca 6mm", "unidad", "0.15"],
+      ["Arandela 6mm", "unidad", "0.10"],
+      ["Cable 2mm", "metro", "1.10"],
+      ["Lampara LED 9W", "unidad", "3.00"],
+      ["Pintura latex blanca 4L", "lata", "46.25"],
+      ["Cemento portland 25kg", "bolsa", "10.50"],
+    ],
+    november: [
+      ["Candado bronce 40mm", "unidad", "7.75"],
+      ["Cerradura de embutir", "unidad", "6.15"],
+      ["Bisagra 3 pulgadas", "unidad", "11.40"],
+      ["Tarugo 8mm x100", "caja", "3.60"],
+      ["Pegamento de contacto 250ml", "lata", "1.10"],
+      ["Cinta aisladora 20m", "rollo", "2.50"],
+      ["Guante de nitrilo talle M", "par", "2.90"],
+    ],
+    newRow: { id: "R8", name: "Tanza para bordeadora 2mm", unit: "rollo" },
+  },
   en: {
     dir: "en/",
     pdf: "price-list-september.pdf",
@@ -140,7 +171,7 @@ const SETUP = {
     ],
     newRow: { id: "R8", name: "Trimmer line 0.080 in", unit: "spool" },
   },
-}[lang];
+}[set];
 
 const fixtures = new URL(`../test/fixtures/extraction/${SETUP.dir}`, import.meta.url);
 const read = (name: string) => readFileSync(new URL(name, fixtures));

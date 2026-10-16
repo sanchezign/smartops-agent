@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, ChevronRight, History, Lock, Mic, UserX } from "lucide-react";
+import { CheckCircle2, ChevronRight, History, Info, Lock, Mic, UserX } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -294,7 +294,7 @@ function ItemRow({ item }: { item: ReviewItem }) {
           <span className="text-sm text-muted-foreground">{tReviews(`kinds.${item.kind}`)}</span>
           {realAdminOnly ? (
             <span className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Lock className="size-3.5 shrink-0" aria-hidden />
+              <Info className="size-3.5 shrink-0" aria-hidden />
               {tReviews("realAdminOnly")}
             </span>
           ) : null}

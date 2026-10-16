@@ -354,6 +354,26 @@ describe.skipIf(!testDatabaseUrl)("catalog ingest + human review (Postgres)", ()
     expect(await price(supplierId, "Silicona 280ml")).toBe("301");
   });
 
+  it("catalog.currency (ADR-035): a NEW product with no currency is created in it, a known one keeps its own", async () => {
+    const { conversation, supplierId } = await seededSupplier(); // its products are in UYU
+    await prisma.setting.create({ data: { key: "catalog.currency", value: "ARS" } });
+    const run = await extractedRun(
+      output({
+        currency: null,
+        items: [item({ price: "305" }), item({ name: "Martillo 500g", price: "90" })],
+      }),
+      conversation.id,
+    );
+    const result = await services().ingest.ingest(run.id, log);
+    expect(result.counts).toMatchObject({ created: 1, updated: 1, review: 0 });
+    const products = await prisma.product.findMany({ where: { supplierId } });
+    expect(products.find((p) => p.name === "Silicona 280ml")?.currency).toBe("UYU");
+    expect(products.find((p) => p.name === "Martillo 500g")?.currency).toBe("ARS");
+    // both lines are flagged, so a person can see what was assumed
+    expect(result.warnings.filter((w) => w.code === "currency_assumed")).toHaveLength(2);
+    expect(await prisma.reviewItem.count({ where: { ingestionRunId: run.id } })).toBe(0);
+  });
+
   // ─── Human review ───
 
   it("approving a product_match applies the change (source review) once, with an audit row", async () => {

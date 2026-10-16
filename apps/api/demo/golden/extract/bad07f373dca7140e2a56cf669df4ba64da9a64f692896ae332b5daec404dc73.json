@@ -1,0 +1,28 @@
+{
+  "isPriceList": true,
+  "listKind": "partial_update",
+  "fullListEvidence": null,
+  "supplierName": "Distribuidora Demo S.A.",
+  "currency": "USD",
+  "validFrom": null,
+  "taxIncluded": null,
+  "globalChangePct": null,
+  "items": [
+    {
+      "name": "Tornillo 6mm",
+      "sku": null,
+      "unit": "unidad",
+      "price": "0.35",
+      "priceChangePct": null,
+      "currency": "USD",
+      "available": null,
+      "stock": null,
+      "catalogRef": "P6",
+      "matchConfidence": "high",
+      "uncertain": false,
+      "note": null
+    }
+  ],
+  "warnings": ["La vigencia 'desde el lunes' es vaga, no se pudo determinar una fecha exacta."],
+  "suspiciousInstructions": false
+}

@@ -121,7 +121,8 @@ function apiEnv(): Record<string, string> {
     // Phase 15: E2E_DEMO_MODE=off runs the same seeded data WITHOUT the demo rules, only to take
     // screenshots of what a regular operator sees (ADR-030 off). The suite always runs the demo.
     DEMO_MODE: process.env.E2E_DEMO_MODE === "off" ? "false" : "true",
-    DEMO_CONTENT_LANGUAGE: "en",
+    // E2E_CONTENT_LANGUAGE=es only for screenshots of the Spanish demo content (phase 16 M3); the suite is English.
+    DEMO_CONTENT_LANGUAGE: process.env.E2E_CONTENT_LANGUAGE === "es" ? "es" : "en",
     // The per-project E2E suppliers exist only for the tests: the README / guide media (MEDIA=1) and
     // the phase screenshots (SHOTS=<label>, phase 15) are taken from a database seeded with the
     // demo content alone. Every Playwright run seeds the database again before it starts.

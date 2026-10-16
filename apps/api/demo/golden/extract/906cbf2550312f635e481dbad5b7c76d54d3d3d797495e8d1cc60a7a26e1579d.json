@@ -1,0 +1,101 @@
+{
+  "isPriceList": true,
+  "listKind": "partial_update",
+  "fullListEvidence": null,
+  "supplierName": "Distribuidora Demo S.A.",
+  "currency": "USD",
+  "validFrom": null,
+  "taxIncluded": true,
+  "globalChangePct": null,
+  "items": [
+    {
+      "name": "Tornillo 6mm",
+      "sku": null,
+      "unit": "unidad",
+      "price": "0.35",
+      "priceChangePct": null,
+      "currency": null,
+      "available": null,
+      "stock": null,
+      "catalogRef": "P6",
+      "matchConfidence": "high",
+      "uncertain": false,
+      "note": null
+    },
+    {
+      "name": "Tuerca 6mm",
+      "sku": null,
+      "unit": "unidad",
+      "price": "0.18",
+      "priceChangePct": null,
+      "currency": null,
+      "available": null,
+      "stock": null,
+      "catalogRef": "P7",
+      "matchConfidence": "high",
+      "uncertain": false,
+      "note": null
+    },
+    {
+      "name": "Arandela",
+      "sku": null,
+      "unit": "unidad",
+      "price": "0.10",
+      "priceChangePct": null,
+      "currency": null,
+      "available": null,
+      "stock": null,
+      "catalogRef": "P1",
+      "matchConfidence": "medium",
+      "uncertain": false,
+      "note": "El catálogo tiene 'Arandela 6mm' con medida específica, la línea no indica medida."
+    },
+    {
+      "name": "Cable 2mm (m)",
+      "sku": null,
+      "unit": "metro",
+      "price": "1.15",
+      "priceChangePct": null,
+      "currency": null,
+      "available": null,
+      "stock": null,
+      "catalogRef": "P2",
+      "matchConfidence": "high",
+      "uncertain": false,
+      "note": null
+    },
+    {
+      "name": "Lampara LED 9W",
+      "sku": null,
+      "unit": "unidad",
+      "price": "3.25",
+      "priceChangePct": null,
+      "currency": null,
+      "available": null,
+      "stock": null,
+      "catalogRef": "P4",
+      "matchConfidence": "high",
+      "uncertain": false,
+      "note": null
+    },
+    {
+      "name": "Cemento 25kg",
+      "sku": null,
+      "unit": "bolsa",
+      "price": "10.80",
+      "priceChangePct": null,
+      "currency": null,
+      "available": null,
+      "stock": null,
+      "catalogRef": "P3",
+      "matchConfidence": "high",
+      "uncertain": false,
+      "note": null
+    }
+  ],
+  "warnings": [
+    "La fecha de vigencia 'Octubre 2026' no especifica un día exacto, se dejó validFrom en null.",
+    "El texto final indica 'Solo precios actualizados. Los demás artículos no cambian', por lo que se trata de una actualización parcial aunque el encabezado dice 'LISTA DE PRECIOS'."
+  ],
+  "suspiciousInstructions": false
+}

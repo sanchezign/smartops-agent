@@ -95,7 +95,7 @@ describe("golden outputs (recorded from Claude)", () => {
         count += 1;
       }
     }
-    expect(count).toBe(14); // 7 Spanish + 7 English (phase 14 M5d)
+    expect(count).toBe(21); // 7 Spanish (pesos) + 7 English (phase 14 M5d) + 7 Spanish in dollars (phase 16 M3)
   });
 
   it("September PDF: 7 products with exact prices, UYU, VAT included", () => {

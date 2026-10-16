@@ -519,6 +519,10 @@
         "label": "Días y horas",
         "help": "Hora de Uruguay. Si el cierre es antes que la apertura, el horario sigue al día siguiente."
       },
+      "catalog_currency": {
+        "label": "Moneda del catálogo",
+        "help": "Código de tres letras (USD, UYU…). Un producto NUEVO cuya lista no indica la moneda se crea en esta. Un producto que ya existe conserva la suya y un precio nunca se convierte."
+      },
       "catalog_priceAlertPct": {
         "label": "Avisar cuando un precio cambia",
         "help": "Se aplica igual, pero se crea una alerta y entra en el resumen del equipo.",

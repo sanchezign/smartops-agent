@@ -393,19 +393,21 @@ test.describe("to do: one-click decisions (phase 15 M3)", () => {
     expect(Number((await productState(kept.productId)).price)).toBe(Number(kept.price));
   });
 
-  test("currency_changed shows both currencies on its buttons", async ({ page }, info) => {
+  test("currency_changed shows both currencies on its buttons (ADR-035: USD vs CAD, never converted)", async ({
+    page,
+  }, info) => {
     await insertReview({
       product: "Galvanized wire 14 ga",
       scope: "line",
       kind: "currency_changed",
       reasons: ["currency_changed"],
-      proposed: { price: "150", currency: "UYU" },
+      proposed: { price: "79.9", currency: "CAD" },
       tag: info.project.name,
     });
     await login(page, "operator");
     await openTodo(page);
     const wire = page.getByRole("group", { name: "Decision on Galvanized wire 14 ga" });
-    await expect(wire.getByRole("button", { name: /^Change to UYU/ })).toBeVisible();
+    await expect(wire.getByRole("button", { name: "Change to CAD 79.90" })).toBeVisible();
     await expect(wire.getByRole("button", { name: /^Keep \$/ })).toBeVisible();
     await wire.getByRole("button", { name: /^Keep \$/ }).click();
     await expect(wire).toHaveCount(0);
