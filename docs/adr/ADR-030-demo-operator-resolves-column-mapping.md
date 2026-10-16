@@ -38,3 +38,6 @@ The security audit before publication found one more effect of this rule: the ap
 accepts a `supplierId`, and with it the sender's contact is linked to that supplier, the decision that is admin-only
 everywhere else (`unknown_supplier`). Demo only, undone by the automatic reset. Planned: refuse `supplierId` /
 `createSupplier` from an operator allowed only by this rule, with a case in the item-level authz matrix.
+
+**Amended by [ADR-034](ADR-034-demo-operator-resolves-every-review.md) (phase 16, draft):** in DEMO_MODE the operator
+resolves every review; the audit note above is replaced by it.

@@ -52,3 +52,6 @@ counters. News (Activity) and technical errors (System status) never take the ye
 - Archivo replaces Geist Sans: the page weighs a little more (one variable font file, `latin` subset).
 - The yellow rules are reviewed at every milestone; a screen that spends yellow elsewhere is a bug.
 - Screenshots of the exploration stay local; the README gets a few optimized WebP images at the end of phase 14.
+
+**Amended by [ADR-033](ADR-033-visual-identity-v2.md) (phase 16, draft):** the palette (§1), the typography (§3) and
+the radius (§4) are replaced by the warm theme and Oxanium; the yellow rule (§2) stays.

@@ -99,8 +99,10 @@ milestone, is in `docs/history/phase-log.md`. Status as of 2026-10-12.
     portfolio kit — DONE (merged 2026-10-02).
 14. frontend clarity (UX) — DONE (M0–M7, M5 = demo content language, English by default; merged into `main`).
     Detail: `docs/history/phase-log.md` item 14.
-15. panel triage (To do / Activity / System status, ADR-032) — IN PROGRESS (branch `feat/phase-15-panel-triage`):
-    M0–M6 DONE; PR open to `main`, waiting for the owner's merge (no deploy: it goes in the next release).
+15. panel triage (To do / Activity / System status, ADR-032) — DONE (merged into `main`, released in 0.18.0).
+    Detail: `docs/history/phase-log.md` item 15.
+16. visual identity v2 + complete public demo + USD + conversations (ADR-033, 034, 035) — IN PROGRESS (branch
+    `feat/phase-16-identity-v2`): M0 (ADRs, "before" screenshots, swatch sheet) done, waiting for the owner.
 
 
 ## Data model (starting point — refine in phase 2 plan)
@@ -177,19 +179,24 @@ Add one line here for every new ADR.
 - [ADR-030](docs/adr/ADR-030-demo-operator-resolves-column-mapping.md) — In DEMO_MODE the public operator can resolve the column-mapping review
 - [ADR-031](docs/adr/ADR-031-content-and-business-language.md) — Demo content language per deployment; ONE business language that also decides how incoming messages are read
 - [ADR-032](docs/adr/ADR-032-panel-triage.md) — Panel triage: To do (one yellow counter), Activity, System status
+- [ADR-033](docs/adr/ADR-033-visual-identity-v2.md) — Visual identity v2: warm tweakcn theme, Oxanium, the yellow rule kept (replaces the palette and fonts of ADR-029)
+- [ADR-034](docs/adr/ADR-034-demo-operator-resolves-every-review.md) — In DEMO_MODE the public operator resolves every review (amends ADR-030)
+- [ADR-035](docs/adr/ADR-035-catalog-currency.md) — Catalog currency setting and the order that resolves a line's currency
 
 ## Current phase
-**Phases 1–14 are COMPLETE (phase 14, frontend clarity, merged into `main`; its log: `docs/history/phase-log.md` item 14). Phase 15 (panel triage, ADR-032) is IN PROGRESS on `feat/phase-15-panel-triage`.**
-Phase 15 (plan approved 2026-10-12): To do = pending reviews + action alerts, ONE yellow counter of what the
-current user can resolve (`canResolveReview`); Activity = news (no yellow, nothing to mark seen); System status
-= technical errors (admins; read-only in DEMO_MODE; no nav badge, a red line on the admin's Home); Home keeps
-its name with the pending block on top; reviews read as questions, one click only for price_outlier /
-currency_changed (linked product + proposed price), mark_unavailable (admin), manual_attention, "Not an
-opt-out" — buttons with concrete verbs and values, never Yes / No; a "Resolved" history view. Presentation
-only: no schema change, no change to decisions, permissions or digests. Order M0 (ADR + classification) → M1
-(read API) → M2 (To do + nav) → M3 (questions + one click) → M4 (Activity + System status) → M5 (Home) → M6
-(docs, media). One milestone at a time, one commit each, the owner reviews screenshots (EN / ES, light / dark,
-desktop + iPhone) in `C:/dev/smartops-phase15-shots/` before the next; NO push until the owner asks.
+**Phases 1–15 are COMPLETE (phase 15, panel triage, merged and released in 0.18.0; its log: `docs/history/phase-log.md` item 15). Phase 16 (visual identity v2, ADR-033 / 034 / 035) is IN PROGRESS on `feat/phase-16-identity-v2`.**
+Phase 16 (plan approved 2026-10-15): M0 diagnosis + ADRs + "before" screenshots + swatch sheet → M1 conversations
+("needs a reply" computed by the API; chat layout: reply box fixed at the bottom, messages stacked from the
+bottom) → M2 complete demo (in DEMO_MODE the public operator resolves EVERY review; the API decides with
+env.DEMO_MODE; nothing changes outside the demo; ADR-034) → M3 USD (setting "Catalog currency"; order line → list →
+the existing product's own currency → the catalog currency only for NEW products, always with `currency_assumed`;
+ES-USD goldens recorded ONLY after a free dry-run and the owner's OK, cap US$0.50; ADR-035) → M4 new tweakcn theme
+prototyped on Home + To do (dark primary #ce4b00 + white text; typography A = Oxanium everywhere vs B = Oxanium
+headings + IBM Plex Sans text, the owner picks from screenshots) → M5 theme everywhere + emphasis (supplier names,
+the "meta" line as a link to /todo?run=…, inverted contact-kind chips) → M6 Vercel Web Interface Guidelines audit,
+docs, media, demo-check, full suite, PR. One milestone at a time, one commit each, the owner reviews screenshots
+(EN / ES, light / dark, desktop + iPhone) in `C:/dev/smartops-phase16-shots/` before the next; NO push until the
+owner asks.
 The exploration branch `design/phase-14-exploration` stays LOCAL (never push: ~38 MB of screenshots).
 Everything already finished (what was built, decisions, measurements, incidents, real results) is
 in `docs/history/phase-log.md` — one entry per phase and milestone, textual. Read it only when you
@@ -210,7 +217,7 @@ Active state (2026-10-06):
   (security.yml, 03:30 Montevideo) owns what exists and turns RED on a finding (check it still runs:
   docs/ci-cd.md, "Is the nightly scan still running?").
 
-Next task: **the owner reviews and merges the phase 15 PR** (rebase-merge only when the owner says so). After the
+Next task: **phase 16 M0 review by the owner** (screenshots, swatch sheet, ADR drafts), then M1. After the
 next release is deployed, `demo-check` must show the /admin/todo lines as `ok` (a `skip` means an old image).
 
 Owner's checks still open for phase 12 (nothing to code):
@@ -249,6 +256,9 @@ needs a NEW ADR), F-05 (security headers sent by the panel itself, not only by C
 
 
 ## Known issues (out of scope)
+- **Phase 16 (ADR-035):** the extractor prompt (`extractor.md`, rule 4) turns a bare "$" into UYU when the business
+  works in Spanish; changing it needs a new prompt version and re-recorded goldens. The Spanish demo samples say
+  "US$" explicitly. Fix BEFORE a real client that quotes in dollars with a bare "$".
 - **GHCR images up to 0.17.0 contain personal data in `dist/`** (a code comment, removed from the
   repository history in 2026-10): the `smartops-api` and `smartops-admin` packages must stay PRIVATE. Before
   ever making them public, delete those versions (only once the VM runs 0.17.1 or later).
