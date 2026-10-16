@@ -87,6 +87,13 @@ same counters. Until a release with phase 15 is deployed the route answers 404 a
 `skip /admin/todo`. **Once that release is deployed, the check is REQUIRED:** a `skip` line after it
 means the VM runs an older image — treat it as a failed deploy (roll back or redeploy).
 
+**Manual check on a real iPhone (phase 16 M1, once per release that touches the chat).** The Chromium
+emulator cannot open the on-screen keyboard, so this one is done by hand on the deployed demo: open
+**Conversations**, open a chat, tap **Your reply**. The reply box must stay visible right above the
+keyboard (it moves up by the keyboard's height, `use-keyboard-inset.ts`), the last message right above
+the box, and it must go back to the bottom when the keyboard closes. Also on a short chat (one message):
+the box at the bottom of the screen, not in the middle.
+
 ## 2. Rollback
 
 ```bash

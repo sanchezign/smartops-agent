@@ -1831,7 +1831,8 @@ a real client.**
       1.48, a yellow in the charts, blue accents in dark. The owner replaced the orange primary with the khaki
       #a89667 (same hue as the yellow #FFC400, far less chroma): v2 sheet with K1 (dark #a89667 + dark text, light
       #857549 + white) and K2 (#857549 + white in both modes); K1 dark is 1.82:1 from the yellow (D17 asks 2.5) and is
-      shown anyway, the owner decides by eye. ADR-033 is updated when he chooses.
+      shown anyway, the owner decides by eye. The owner chose K2 (#857549 + white in both modes, 2026-10-15); ADR-033
+      records it and that K1 failed D17.
     - M1 — DONE. "Needs a reply" computed by the API (`needsReplyIds`, one SQL used for the filter and for each row's
       `needsReply`): a customer or a team member (never a supplier) with an inbound message classified
       `customer_query` / `internal_order` (pre-filter `customer_contact` or the classifier), not deleted, and NO outbound

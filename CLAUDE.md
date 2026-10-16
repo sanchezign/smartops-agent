@@ -191,7 +191,7 @@ bottom) → M2 complete demo (in DEMO_MODE the public operator resolves EVERY re
 env.DEMO_MODE; nothing changes outside the demo; ADR-034) → M3 USD (setting "Catalog currency"; order line → list →
 the existing product's own currency → the catalog currency only for NEW products, always with `currency_assumed`;
 ES-USD goldens recorded ONLY after a free dry-run and the owner's OK, cap US$0.50; ADR-035) → M4 new tweakcn theme
-prototyped on Home + To do (dark primary #ce4b00 + white text; typography A = Oxanium everywhere vs B = Oxanium
+prototyped on Home + To do (primary #857549 + white text in both modes, "K2"; typography A = Oxanium everywhere vs B = Oxanium
 headings + IBM Plex Sans text, the owner picks from screenshots) → M5 theme everywhere + emphasis (supplier names,
 the "meta" line as a link to /todo?run=…, inverted contact-kind chips) → M6 Vercel Web Interface Guidelines audit,
 docs, media, demo-check, full suite, PR. One milestone at a time, one commit each, the owner reviews screenshots
@@ -217,7 +217,9 @@ Active state (2026-10-06):
   (security.yml, 03:30 Montevideo) owns what exists and turns RED on a finding (check it still runs:
   docs/ci-cd.md, "Is the nightly scan still running?").
 
-Next task: **phase 16 M0 review by the owner** (screenshots, swatch sheet, ADR drafts), then M1. After the
+Phase 16 closing checklist (owner): after the deploy, check on a real iPhone that the chat's reply box stays above
+the keyboard (runbook §1, "Manual check on a real iPhone"); the emulator cannot open the keyboard.
+Next task: **phase 16 M2** (complete demo, ADR-034), then the owner's review. After the
 next release is deployed, `demo-check` must show the /admin/todo lines as `ok` (a `skip` means an old image).
 
 Owner's checks still open for phase 12 (nothing to code):
