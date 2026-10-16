@@ -1,13 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Geist_Mono } from "next/font/google";
+import { Fira_Code, IBM_Plex_Sans, Oxanium } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
-// ADR-029: Archivo (variable, with its width axis), self-hosted at build time by next/font.
-const archivo = Archivo({ variable: "--font-sans", subsets: ["latin"], axes: ["wdth"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+// ADR-033: Oxanium (variable wght) and Fira Code, self-hosted at build time by next/font (no Google Fonts at runtime).
+const oxanium = Oxanium({ variable: "--font-oxanium", subsets: ["latin"] });
+const firaCode = Fira_Code({ variable: "--font-fira-code", subsets: ["latin"] });
+// PROTOTYPE (phase 16 M4): variant B sets the text in IBM Plex Sans; the owner picks A or B from screenshots and
+// the loser (this font, the env var and the .type-b class) is deleted. Default: A (Oxanium everywhere).
+const plex = IBM_Plex_Sans({
+  variable: "--font-plex",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+const TYPE_B = process.env.NEXT_PUBLIC_TYPE_VARIANT === "b";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("meta");
@@ -23,8 +31,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ececea" },
-    { media: "(prefers-color-scheme: dark)", color: "#1b1c1f" },
+    { media: "(prefers-color-scheme: light)", color: "#fdfbf7" },
+    { media: "(prefers-color-scheme: dark)", color: "#1c1917" },
   ],
 };
 
@@ -33,7 +41,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const locale = await getLocale();
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body className={`${archivo.variable} ${geistMono.variable} font-sans antialiased`}>
+      <body
+        className={`${oxanium.variable} ${firaCode.variable} ${plex.variable} ${TYPE_B ? "type-b " : ""}font-sans antialiased`}
+      >
         {/* Rendered from a Server Component: inherits locale, messages and time zone. */}
         <NextIntlClientProvider>
           <Providers>{children}</Providers>

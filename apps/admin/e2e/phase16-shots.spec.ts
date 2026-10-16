@@ -228,3 +228,38 @@ for (const locale of LOCALES)
       await shoot("rules");
       writeFileSync(`${dir}/axe-${prefix}.json`, JSON.stringify(findings, null, 2));
     });
+
+/**
+ * M4 (ADR-033): the K2 theme prototype on Home and To do, for the demo operator. Run it twice, once per typography
+ * variant (NEXT_PUBLIC_TYPE_VARIANT=b builds the panel with IBM Plex Sans text; default = A, Oxanium everywhere).
+ */
+for (const locale of LOCALES)
+  for (const scheme of SCHEMES)
+    test(`theme ${locale} ${scheme}`, async ({ page, context, isMobile }, info) => {
+      test.skip(SET !== "theme", "SHOTS_SET");
+      test.setTimeout(240_000);
+      const dir = `${ROOT}/${LABEL}/${info.project.name}`;
+      mkdirSync(dir, { recursive: true });
+      const prefix = `operator-${locale}-${scheme}`;
+      const findings: Record<string, string[]> = {};
+      let n = 0;
+      const shoot = async (name: string) => {
+        const file = `${prefix}-${String(++n).padStart(2, "0")}-${name}.png`;
+        await page.screenshot({ path: `${dir}/${file}`, fullPage: true });
+        const axe = await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+          .analyze();
+        findings[file] = axe.violations.map((v) => `${v.id}: ${v.help} (${v.nodes.length})`);
+      };
+      if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
+      await context.addCookies([{ name: "smartops_locale", value: locale, url: E2E.panelUrl }]);
+      await page.emulateMedia({ colorScheme: scheme });
+      await signIn(page);
+      await page.goto("/");
+      await ready(page);
+      await shoot("home");
+      await page.goto("/todo");
+      await ready(page);
+      await shoot("todo");
+      writeFileSync(`${dir}/axe-${prefix}.json`, JSON.stringify(findings, null, 2));
+    });

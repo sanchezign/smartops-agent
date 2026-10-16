@@ -39,7 +39,7 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
           <span
             className={cn(
               "text-xs font-medium",
-              message.author === "human" ? "text-primary-foreground/80" : "text-muted-foreground",
+              message.author === "human" ? "text-primary-foreground" : "text-muted-foreground",
             )}
           >
             {author
@@ -67,7 +67,7 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
           className={cn(
             "flex items-center justify-end gap-1 text-[0.7rem]",
             message.author === "human" && outbound
-              ? "text-primary-foreground/70"
+              ? "text-primary-foreground"
               : "text-muted-foreground",
           )}
         >
