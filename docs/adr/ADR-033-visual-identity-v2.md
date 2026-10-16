@@ -19,21 +19,33 @@ Measured on the exported theme as it is (WCAG 2, hex converted from oklch; the s
 - the dark primary `#f97316` is 1.75:1 from the safety yellow `#FFC400` (distance in OKLab 0.19): two bright warm
   fills with dark ink read as the same signal.
 
+After the first swatch sheet the owner **replaced the orange primary with a khaki, `#a89667`** (oklch 0.678 0.067 89:
+the same hue as the yellow, about a third of its chroma). White on it is 2.91:1, so two options were shown side by side
+(swatch sheet v2):
+
+- **K1:** dark `#a89667` with dark text (6.02), light `#857549` with white text (4.53). Its dark primary is **1.82:1** from
+  the yellow, **below the 2.5:1 that D17 asks**: shown anyway, as the owner asked, to judge by eye.
+- **K2:** `#857549` with white text in both modes (4.53); 2.83:1 from the yellow in both. As the focus ring it is
+  3.86:1 on the dark background and 3.35:1 on the dark card.
+
+The orange options (P1 `#f97316`, P2 `#ce4b00`) are discarded.
+
 ## Decision
 
 1. **The theme is MAPPED, not pasted.** Tokens go into `apps/admin/src/app/globals.css` in **hex** (the contrast test
    parses hex; the source oklch is kept in a comment). Project tokens stay: `signal`, `signal-foreground`, `warning`,
    `surface`, `sidebar-muted`. Light and dark with the selector, as today.
 2. **Minimal contrast adjustments, same hue** (all verified, see the swatch sheet):
-   | Token                           | Theme                                                      | Adjusted                                          | Why                                               |
-   | ------------------------------- | ---------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------- |
-   | dark `--primary`                | `#f97316` + white 2.80                                     | **`#ce4b00` + white 4.53** (decided D1, "P2")     | text contrast and distance from the yellow (2.84) |
-   | light `--muted-foreground`      | `#78716c`                                                  | `#6f6863` (5.00 on card, 4.54 on muted)           | 4.38 / 3.98                                       |
-   | light / dark `--input`          | `#e4d9bc` / `#44403c`                                      | `#948c87` / `#726e6a`                             | control borders ≥ 3:1                             |
-   | dark `--destructive` (text)     | `#dc2626`                                                  | `#f1584e` (4.51 on card)                          | 3.62                                              |
-   | light `secondary-foreground`    | `#57534e`                                                  | `#4a3b33`                                         | 4.45                                              |
-   | charts                          | yellow in `chart-3` (dark) / `chart-5` (light), duplicates | `chart-1..5` distinct, none yellow, ≥ 3:1 on card | charts only use 1 and 2 today                     |
-   | dark `accent`, `sidebar-accent` | blue                                                       | warm grey                                         | "no blue needed" (owner)                          |
+   | Token                              | Theme                                                      | Adjusted                                                                                                                             | Why                                                                                 |
+   | ---------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+   | `--primary` (both modes)           | orange `#b45309` light / `#f97316` dark                    | **`#857549` + white 4.53** (owner: K2, 2026-10-15)                                                                                   | the owner's khaki; text contrast; 2.83:1 from the yellow (K1 dark failed D17: 1.82) |
+   | light `--muted-foreground`         | `#78716c`                                                  | `#6f6863` (5.00 on card, 4.54 on muted)                                                                                              | 4.38 / 3.98                                                                         |
+   | light / dark `--input`             | `#e4d9bc` / `#44403c`                                      | `#948c87` / `#726e6a`                                                                                                                | control borders ≥ 3:1                                                               |
+   | dark `--destructive` (text)        | `#dc2626`                                                  | `#f1584e` (4.51 on card)                                                                                                             | 3.62                                                                                |
+   | light `secondary-foreground`       | `#57534e`                                                  | `#4a3b33`                                                                                                                            | 4.45                                                                                |
+   | ring, `chart-1`, `sidebar-primary` | the orange                                                 | from the primary: ring and `sidebar-primary` `#857549` (+ white); `chart-1` `#857549` light / `#a89667` dark (5.22 on the dark card) | everything that depended on the orange                                              |
+   | charts                             | yellow in `chart-3` (dark) / `chart-5` (light), duplicates | `chart-1..5` distinct, none yellow, ≥ 3:1 on card                                                                                    | charts only use 1 and 2 today                                                       |
+   | dark `accent`, `sidebar-accent`    | blue                                                       | warm grey                                                                                                                            | "no blue needed" (owner)                                                            |
 3. **Light sidebar in light mode** (D2, as tweakcn); dark sidebar in dark mode. The yellow counter in the light
    sidebar keeps its ink frame (the yellow is 1.32:1 on `#f1e9da`; the frame is 14.5:1).
 4. **The yellow rule of ADR-029 / ADR-032 stays: `#FFC400` means "waits for a person", nothing else.** New in this
