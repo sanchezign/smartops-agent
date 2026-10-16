@@ -607,6 +607,7 @@
     "filter": "Filtro",
     "filters": {
       "all": "Todas",
+      "needs_reply": "Por responder",
       "human": "Atiende una persona",
       "suppliers": "Proveedores",
       "customers": "Clientes",
@@ -619,7 +620,7 @@
     "loadMore": "Ver más",
     "botPrefix": "Bot: ",
     "youPrefix": "Tú: ",
-    "unanswered": "Sin responder",
+    "unanswered": "Por responder",
     "contactFallback": "Contacto",
     "back": "Conversaciones",
     "backTo": "Volver a Conversaciones",

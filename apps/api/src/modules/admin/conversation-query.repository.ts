@@ -9,7 +9,7 @@ import { customerServiceWindow } from "../whatsapp/customer-service-window.js";
  * never logged.
  */
 
-export type InboxFilter = "all" | "human" | "opted_out" | "suppliers" | "customers";
+export type InboxFilter = "all" | "needs_reply" | "human" | "opted_out" | "suppliers" | "customers";
 
 export interface InboxItem {
   id: string;
@@ -17,6 +17,8 @@ export interface InboxItem {
   mode: "bot" | "human";
   humanUntil: Date | null;
   lastMessageAt: Date | null;
+  /** A customer / team member asked something and no person has answered (see `needsReplyIds`). */
+  needsReply: boolean;
   window: { open: boolean; closesAt: Date | null };
   lastMessage: {
     direction: "inbound" | "outbound";
@@ -81,8 +83,13 @@ const contactSelect = {
   supplier: { select: { id: true, name: true } },
 } as const;
 
-function inboxWhere(filter: InboxFilter, q: string | undefined): Prisma.ConversationWhereInput {
+function inboxWhere(
+  filter: InboxFilter,
+  q: string | undefined,
+  needReply: string[] | null,
+): Prisma.ConversationWhereInput {
   const and: Prisma.ConversationWhereInput[] = [{ lastMessageAt: { not: null } }];
+  if (filter === "needs_reply") and.push({ id: { in: needReply ?? [] } });
   if (filter === "human") and.push({ mode: "human" });
   if (filter === "opted_out") and.push({ contact: { optOutAt: { not: null } } });
   if (filter === "suppliers") and.push({ contact: { kind: "supplier" } });
@@ -100,6 +107,48 @@ function inboxWhere(filter: InboxFilter, q: string | undefined): Prisma.Conversa
   return { AND: and };
 }
 
+/**
+ * "Needs a reply" (phase 16 M1), computed here and never in the panel. A conversation of a
+ * CUSTOMER or a TEAM member needs a reply when it has an inbound message that
+ * - was classified customer_query or internal_order (by the deterministic pre-filter rule
+ *   `customer_contact` or by the classifier), and
+ * - was not deleted by its sender, and
+ * - has no outbound message written by a PERSON after it (from the panel or from the phone, i.e.
+ *   author "human"; a bot auto-reply never counts; a person's message that failed or was
+ *   canceled is not an answer).
+ * Chit-chat and acks ("ok", "thanks!!"), price lists already processed (suppliers) and messages
+ * not classified yet never mark a conversation. Pass `ids` to evaluate only those conversations.
+ */
+export async function needsReplyIds(prisma: PrismaClient, ids?: string[]): Promise<string[]> {
+  if (ids && ids.length === 0) return [];
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT c.id
+      FROM conversations c
+      JOIN contacts k ON k.id = c.contact_id
+     WHERE k.kind::text IN ('customer', 'internal')
+       AND (${ids ?? null}::uuid[] IS NULL OR c.id = ANY(${ids ?? null}::uuid[]))
+       AND EXISTS (
+         SELECT 1
+           FROM messages m
+           JOIN ingestion_runs r ON r.message_id = m.id
+          WHERE m.conversation_id = c.id
+            AND m.direction::text = 'inbound'
+            AND m.revoked_at IS NULL
+            AND r.classification::text IN ('customer_query', 'internal_order')
+            AND NOT EXISTS (
+              SELECT 1
+                FROM messages o
+               WHERE o.conversation_id = c.id
+                 AND o.direction::text = 'outbound'
+                 AND o.author::text = 'human'
+                 AND o.revoked_at IS NULL
+                 AND o.status::text NOT IN ('failed', 'canceled')
+                 AND COALESCE(o.wa_timestamp, o.created_at) > COALESCE(m.wa_timestamp, m.created_at)
+            )
+       )`;
+  return rows.map((r) => r.id);
+}
+
 export function createConversationQueryRepository(
   prisma: PrismaClient,
   now: () => Date = () => new Date(),
@@ -112,8 +161,9 @@ export function createConversationQueryRepository(
       cursor?: string;
       limit: number;
     }): Promise<{ items: InboxItem[]; nextCursor: string | null }> {
+      const needReply = input.filter === "needs_reply" ? await needsReplyIds(prisma) : null;
       const rows = await prisma.conversation.findMany({
-        where: inboxWhere(input.filter, input.q),
+        where: inboxWhere(input.filter, input.q, needReply),
         orderBy: [{ lastMessageAt: "desc" }, { id: "desc" }],
         take: input.limit + 1,
         ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
@@ -142,6 +192,13 @@ export function createConversationQueryRepository(
       });
       const page = rows.slice(0, input.limit);
       const at = now();
+      const waiting = new Set(
+        needReply ??
+          (await needsReplyIds(
+            prisma,
+            page.map((c) => c.id),
+          )),
+      );
       return {
         items: page.map((c) => {
           const m = c.messages[0];
@@ -151,6 +208,7 @@ export function createConversationQueryRepository(
             mode: c.mode,
             humanUntil: c.humanUntil,
             lastMessageAt: c.lastMessageAt,
+            needsReply: waiting.has(c.id),
             window: customerServiceWindow(c.lastInboundAt, at),
             lastMessage: m
               ? {

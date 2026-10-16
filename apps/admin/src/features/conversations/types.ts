@@ -1,6 +1,6 @@
 /** Conversations as the panel API returns them (phase 9 M3). */
 
-export type InboxFilter = "all" | "human" | "opted_out" | "suppliers" | "customers";
+export type InboxFilter = "all" | "needs_reply" | "human" | "opted_out" | "suppliers" | "customers";
 
 export interface ContactSummary {
   id: string;
@@ -23,6 +23,8 @@ export interface InboxItem {
   mode: "bot" | "human";
   humanUntil: string | null;
   lastMessageAt: string | null;
+  /** Computed by the API: someone asked and no person has answered (phase 16 M1). */
+  needsReply: boolean;
   window: WindowState;
   lastMessage: {
     direction: "inbound" | "outbound";

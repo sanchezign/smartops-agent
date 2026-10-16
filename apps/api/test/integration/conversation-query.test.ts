@@ -37,7 +37,7 @@ describe.skipIf(!testDatabaseUrl)("conversation query (Postgres)", () => {
   async function chat(input: {
     waId: string;
     name: string;
-    kind: "supplier" | "customer";
+    kind: "supplier" | "customer" | "internal";
     lastInboundMinutesAgo: number;
     messages: number;
     mode?: "bot" | "human";
@@ -199,6 +199,134 @@ describe.skipIf(!testDatabaseUrl)("conversation query (Postgres)", () => {
       name: "Jorge",
       conversationId: conversation.id,
       lastOptOut: { method: "keyword", keyword: "baja" },
+    });
+  });
+
+  describe("needs a reply (phase 16 M1)", () => {
+    type Cls = "customer_query" | "internal_order" | "other" | "price_list_full" | null;
+    const KIND = { customer: "customer", team: "internal", supplier: "supplier" } as const;
+
+    /** One conversation whose messages are [direction, author, minutesAgo, classification, extra]. */
+    async function thread(
+      name: string,
+      kind: keyof typeof KIND,
+      messages: {
+        out?: "human" | "bot";
+        minutesAgo: number;
+        cls?: Cls;
+        status?: "sent" | "failed" | "canceled";
+        revoked?: boolean;
+      }[],
+    ) {
+      const { conversation } = await chat({
+        waId: `5989900${String(Math.floor(Math.random() * 1e4)).padStart(4, "0")}`,
+        name,
+        kind: KIND[kind],
+        lastInboundMinutesAgo: 1,
+        messages: 0,
+      });
+      for (const m of messages) {
+        const at = minutesAgo(m.minutesAgo);
+        const message = await prisma.message.create({
+          data: {
+            conversationId: conversation.id,
+            direction: m.out ? "outbound" : "inbound",
+            type: "text",
+            author: m.out ?? "contact",
+            text: "x",
+            ...(m.out
+              ? { purpose: m.out === "human" ? ("human" as const) : ("auto_reply" as const) }
+              : {}),
+            status: m.out ? (m.status ?? "sent") : "received",
+            revokedAt: m.revoked ? at : null,
+            waTimestamp: at,
+            createdAt: at,
+          },
+        });
+        if (!m.out && m.cls)
+          await prisma.ingestionRun.create({
+            data: {
+              messageId: message.id,
+              classification: m.cls,
+              prefilterRule: "customer_contact",
+              status: "classified",
+            },
+          });
+      }
+      return conversation.id;
+    }
+    const waiting = async (filter: "all" | "needs_reply" = "all", q?: string) => {
+      const { items } = await repo().list({ filter, ...(q ? { q } : {}), limit: 50 });
+      return items.filter((i) => i.needsReply).map((i) => i.contact.name);
+    };
+
+    it("a question or an order nobody answered marks a customer and a team member", async () => {
+      await thread("Ana", "customer", [{ minutesAgo: 30, cls: "customer_query" }]);
+      await thread("Caroline", "team", [{ minutesAgo: 20, cls: "internal_order" }]);
+      expect((await waiting()).sort()).toEqual(["Ana", "Caroline"]);
+    });
+
+    it("a person's reply (panel or phone) answers it; a reply BEFORE the question does not", async () => {
+      await thread("Answered", "customer", [
+        { minutesAgo: 30, cls: "customer_query" },
+        { minutesAgo: 20, out: "human" },
+      ]);
+      await thread("Earlier", "customer", [
+        { minutesAgo: 40, out: "human" },
+        { minutesAgo: 30, cls: "customer_query" },
+      ]);
+      expect(await waiting()).toEqual(["Earlier"]);
+    });
+
+    it("a bot reply, a failed or canceled person's reply never answers it", async () => {
+      await thread("Bot", "customer", [
+        { minutesAgo: 30, cls: "customer_query" },
+        { minutesAgo: 29, out: "bot" },
+      ]);
+      await thread("Failed", "customer", [
+        { minutesAgo: 30, cls: "customer_query" },
+        { minutesAgo: 29, out: "human", status: "failed" },
+      ]);
+      await thread("Canceled", "customer", [
+        { minutesAgo: 30, cls: "customer_query" },
+        { minutesAgo: 29, out: "human", status: "canceled" },
+      ]);
+      expect((await waiting()).sort()).toEqual(["Bot", "Canceled", "Failed"]);
+    });
+
+    it("chit-chat, acks after an answered question and not-yet-classified messages do not mark it", async () => {
+      await thread("Chat", "customer", [{ minutesAgo: 30, cls: "other" }]);
+      await thread("Thanks", "customer", [
+        { minutesAgo: 30, cls: "customer_query" },
+        { minutesAgo: 20, out: "human" },
+        { minutesAgo: 10, cls: "other" },
+      ]);
+      await thread("Unclassified", "customer", [{ minutesAgo: 30, cls: null }]);
+      expect(await waiting()).toEqual([]);
+    });
+
+    it("a supplier never needs a reply (its list is processed), a deleted question neither", async () => {
+      await thread("Norte", "supplier", [{ minutesAgo: 30, cls: "price_list_full" }]);
+      await thread("Norte2", "supplier", [{ minutesAgo: 30, cls: "customer_query" }]);
+      await thread("Deleted", "customer", [
+        { minutesAgo: 30, cls: "customer_query", revoked: true },
+      ]);
+      expect(await waiting()).toEqual([]);
+    });
+
+    it("the filter lists only those, and works together with the search", async () => {
+      await thread("Ana", "customer", [{ minutesAgo: 30, cls: "customer_query" }]);
+      await thread("Anibal", "customer", [{ minutesAgo: 25, cls: "customer_query" }]);
+      await thread("Beto", "customer", [{ minutesAgo: 20, cls: "customer_query" }]);
+      await thread("Carla", "customer", [
+        { minutesAgo: 20, cls: "customer_query" },
+        { minutesAgo: 10, out: "human" },
+      ]);
+      expect((await waiting("needs_reply")).sort()).toEqual(["Ana", "Anibal", "Beto"]);
+      expect((await waiting("needs_reply", "an")).sort()).toEqual(["Ana", "Anibal"]);
+      expect(await waiting("needs_reply", "carla")).toEqual([]);
+      const { items } = await repo().list({ filter: "needs_reply", q: "beto", limit: 1 });
+      expect(items).toHaveLength(1);
     });
   });
 });

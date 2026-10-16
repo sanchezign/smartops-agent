@@ -107,7 +107,9 @@ const dashboardQuery = z
   .strict();
 const inboxQuery = z
   .object({
-    filter: z.enum(["all", "human", "opted_out", "suppliers", "customers"]).default("all"),
+    filter: z
+      .enum(["all", "needs_reply", "human", "opted_out", "suppliers", "customers"])
+      .default("all"),
     q: z.string().trim().min(1).max(100).optional(),
     cursor: z.uuid().optional(),
     limit: z.coerce.number().int().min(1).max(100).default(30),

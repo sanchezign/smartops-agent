@@ -3,11 +3,12 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Fragment, useEffect, useLayoutEffect, useRef } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { ErrorState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { TIME_ZONE } from "@/lib/format";
 import { Chip } from "@/components/list-row";
+import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
 import { useConversation, useMessages } from "../hooks";
@@ -25,7 +26,7 @@ export function ChatView({ id }: { id: string }) {
   const header = useConversation(id);
   const t = useTranslations("conversations");
   return (
-    <div className="mx-auto flex max-w-3xl flex-col">
+    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col">
       {header.isPending ? (
         <>
           <BackButton />
@@ -44,11 +45,27 @@ export function ChatView({ id }: { id: string }) {
         <>
           <ChatHeader conversation={header.data.conversation} />
           <MessageList id={id} />
-          <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur md:bottom-0 md:mx-0 md:px-0">
+          <ReplyBox>
             <Composer conversation={header.data.conversation} />
-          </div>
+          </ReplyBox>
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * The reply box: ALWAYS at the bottom of the screen (above the phone's bottom bar). With the
+ * keyboard open (iOS does not resize the layout viewport) it moves up by the keyboard's height.
+ */
+function ReplyBox({ children }: { children: ReactNode }) {
+  const keyboard = useKeyboardInset();
+  return (
+    <div
+      className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur md:bottom-0 md:mx-0 md:px-0"
+      style={keyboard > 0 ? { bottom: keyboard } : undefined}
+    >
+      {children}
     </div>
   );
 }
@@ -155,7 +172,11 @@ function MessageList({ id }: { id: string }) {
 
   let lastDay = "";
   return (
-    <section aria-label={t("messagesLabel")} className="flex flex-col gap-2 pb-4">
+    // flex-1 + justify-end: a short chat stacks from the bottom, right above the reply box.
+    <section
+      aria-label={t("messagesLabel")}
+      className="flex flex-1 flex-col justify-end gap-2 pb-4"
+    >
       {query.hasNextPage ? (
         <Button
           variant="ghost"

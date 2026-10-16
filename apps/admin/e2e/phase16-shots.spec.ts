@@ -16,8 +16,11 @@ const LABEL = process.env.SHOTS;
 const ROOT = process.env.SHOTS_DIR ?? "e2e/screens/phase-16";
 test.skip(!LABEL, "set SHOTS=<label> to take the phase 16 screenshots");
 
-const LOCALES = ["en", "es"] as const;
-const SCHEMES = ["light", "dark"] as const;
+// SHOTS_LOCALES=en SHOTS_SCHEMES=light,dark narrow the run (default: all four combinations).
+const pick = <T extends string>(all: readonly T[], env: string | undefined) =>
+  env ? all.filter((x) => env.split(",").includes(x)) : all;
+const LOCALES = pick(["en", "es"] as const, process.env.SHOTS_LOCALES);
+const SCHEMES = pick(["light", "dark"] as const, process.env.SHOTS_SCHEMES);
 
 const ready = async (page: Page) => {
   // (never "networkidle": the real-time stream stays open, ADR-020)
@@ -106,6 +109,14 @@ for (const locale of LOCALES) {
       await page.goto("/activity");
       await ready(page);
       await shoot("activity");
+
+      // M1: the inbox filtered by "Needs a reply" (the second filter button), at the END so the
+      // numbering of the shots above does not move.
+      await page.goto("/conversations");
+      await ready(page);
+      await page.getByRole("group").getByRole("button").nth(1).click();
+      await page.waitForTimeout(600);
+      await shoot("conversations-needs-reply");
 
       writeFileSync(`${dir}/axe-${prefix}.json`, JSON.stringify(findings, null, 2));
       writeFileSync(`${dir}/chat-geometry-${prefix}.json`, JSON.stringify(geometry, null, 2));

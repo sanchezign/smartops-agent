@@ -102,6 +102,23 @@ const CUSTOMER_MESSAGES: DemoContent["customerMessages"] = [
 ];
 
 /**
+ * People's answers (index into CUSTOMER_MESSAGES). Left WITHOUT an answer on purpose: message 4
+ * (Anna's paint order, 2 days old) and message 6 (Caroline's cement hold, today) — the two chats
+ * that really need a reply. Message 5 is answered by `humanReply` (the chat a person is handling).
+ */
+const TEAM_REPLIES: DemoContent["teamReplies"] = [
+  [0, "Yes, brass padlocks 1-1/2 in are $11.80 each. Want me to set some aside?", "phone", 25],
+  [1, "Got it, the 3 large planters will be ready for Saturday.", "panel", 40],
+  [2, "We're open 8 am to 1 pm on Saturdays.", "phone", 12],
+  [3, "Done: 10 rolls of electrical tape, ready tomorrow morning.", "panel", 55],
+];
+const SUPPLIER_REPLIES: DemoContent["supplierReplies"] = [
+  [0, "Thanks for the update, we'll take it into account.", "panel", 3, 13],
+  [1, "Can you confirm the delivery times for next week?", "phone", 6, 16],
+  [2, "Got the new list, thank you!", "panel", 1, 13],
+];
+
+/**
  * Supplier 0's spreadsheet in a format never approved: a column_mapping review. Four price
  * columns (ex tax, inc tax, wholesale, cash) → a person chooses (phase 9 M2).
  */
@@ -173,6 +190,8 @@ export const EN_CONTENT: DemoContent = {
   suppliers: SUPPLIERS,
   customers: CUSTOMERS,
   customerMessages: CUSTOMER_MESSAGES,
+  teamReplies: TEAM_REPLIES,
+  supplierReplies: SUPPLIER_REPLIES,
   humanCustomer: 1,
   optOutCustomer: 3,
   chitchat: ["hi", "thanks!!", "ok", "👍", "good morning", "sounds good"],

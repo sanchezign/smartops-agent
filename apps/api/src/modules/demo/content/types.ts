@@ -154,6 +154,14 @@ export interface DemoContent {
   customers: DemoCustomer[];
   /** [customer index, text, kind, days ago] */
   customerMessages: [number, string, "query" | "order", number][];
+  /**
+   * A PERSON's answer to `customerMessages[index]`, sent from the panel or from the phone (the
+   * WhatsApp Business app, ADR-016): [message index, text, via, minutes later]. A message with no
+   * entry here (and none from `humanReply`) is a conversation that really needs a reply.
+   */
+  teamReplies: [number, string, "panel" | "phone", number][];
+  /** The team also writes to suppliers: [supplier index, text, via, days ago, hour]. */
+  supplierReplies: [number, string, "panel" | "phone", number, number][];
   /** Index of the customer a person is handling right now / who asked to stop (opt-out). */
   humanCustomer: number;
   optOutCustomer: number;

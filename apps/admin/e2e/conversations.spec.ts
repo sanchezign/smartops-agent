@@ -74,6 +74,80 @@ test.describe("conversations (phase 9 M3)", () => {
     expect(box.height).toBeGreaterThan(lineHeight * 1.5); // …and it does use the second line
   });
 
+  test("inbox: Needs a reply marks only what really waits, and filters together with the search (phase 16 M1)", async ({
+    page,
+  }) => {
+    await login(page, "operator");
+    await openConversations(page);
+    // Anna's order (2 days old) and Caroline's request (today) have no answer from a person.
+    // Louis was answered, Martha too; Corvane's last message is a price list (processed).
+    const waiting = inbox(page).getByRole("link").filter({ hasText: "Needs a reply" });
+    await expect(waiting).toHaveCount(2);
+    await expect(waiting.filter({ hasText: "Anna Pearson" })).toHaveCount(1);
+    await expect(waiting.filter({ hasText: "Caroline" })).toHaveCount(1);
+    await expect(
+      inbox(page)
+        .getByRole("link", { name: /Corvane Sales Desk/ })
+        .getByText("Needs a reply"),
+    ).toHaveCount(0);
+
+    const filter = page.getByRole("button", { name: "Needs a reply" });
+    await filter.click();
+    await expect(filter).toHaveAttribute("aria-pressed", "true");
+    await expect(inbox(page).getByRole("link")).toHaveCount(2);
+    // together with the search
+    await page.getByLabel("Search by name, supplier or phone").fill("caroline");
+    await expect(inbox(page).getByRole("link")).toHaveCount(1);
+    await page.getByLabel("Search by name, supplier or phone").fill("tessaly");
+    await expect(page.getByText("Nothing matches the search")).toBeVisible();
+  });
+
+  test("chat: the reply box stays at the bottom of the screen, the messages stack from it (phase 16 M1)", async ({
+    page,
+  }) => {
+    await login(page, "operator");
+    await openConversations(page);
+    const reply = () => page.getByLabel("Your reply");
+    const gapBelow = async () => {
+      const box = (await reply().boundingBox())!;
+      return page.evaluate((bottom) => window.innerHeight - bottom, box.y + box.height);
+    };
+
+    // A SHORT chat (one message): the box is at the bottom, not under the message.
+    await inbox(page)
+      .getByRole("link", { name: /Caroline/ })
+      .click();
+    await expect(reply()).toBeVisible();
+    const messages = page.getByRole("region", { name: "Messages" });
+    expect(await gapBelow()).toBeLessThan(150); // before: 483 px (desktop) / 239 px (phone)
+    const box = (await reply().boundingBox())!;
+    const last = (await messages.locator("> *").last().boundingBox())!;
+    expect(box.y - (last.y + last.height)).toBeLessThan(60); // the newest message sits right above
+    expect(last.y + last.height).toBeLessThanOrEqual(box.y); // …and nothing is hidden under the box
+    await expectAccessible(page);
+
+    // A LONG chat: same place for the box, scrolled to the newest, earlier messages still load.
+    await page.goto("/conversations");
+    await expect(page.getByRole("heading", { name: "Conversations", level: 1 })).toBeVisible();
+    await page.getByLabel("Search by name, supplier or phone").fill("Corvane");
+    await inbox(page)
+      .getByRole("link", { name: /Corvane Sales Desk/ })
+      .click();
+    await expect(reply()).toBeVisible();
+    await expect.poll(gapBelow).toBeLessThan(150);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => document.documentElement.scrollHeight - window.scrollY - window.innerHeight,
+        ),
+      )
+      .toBeLessThan(3);
+    const before = await messages.locator("> *").count();
+    await page.getByRole("button", { name: "Show earlier messages" }).click();
+    await expect.poll(() => messages.locator("> *").count()).toBeGreaterThan(before);
+    expect(await gapBelow()).toBeLessThan(150);
+  });
+
   test("chat: the photo is loaded with the session (blob: URL, no token in the URL)", async ({
     page,
   }) => {

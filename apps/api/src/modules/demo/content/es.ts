@@ -97,6 +97,23 @@ const CUSTOMER_MESSAGES: [number, string, "query" | "order", number][] = [
   [4, "Necesito que me reserven 5 bolsas de portland para mañana", "order", 0],
 ];
 
+/**
+ * People's answers (index into CUSTOMER_MESSAGES). WITHOUT an answer on purpose: message 4 (Ana's
+ * latex order, 2 days old) and message 6 (Carolina's portland hold, today): the two chats that
+ * really need a reply. Message 5 is answered by `humanReply` (the chat a person is handling).
+ */
+const TEAM_REPLIES: DemoContent["teamReplies"] = [
+  [0, "Sí, los candados de 40mm cuestan $ 310 cada uno. ¿Te aparto algunos?", "phone", 25],
+  [1, "Listo, las 3 macetas grandes quedan para el sábado.", "panel", 40],
+  [2, "Los sábados abrimos de 8 a 13 h.", "phone", 12],
+  [3, "Hecho: 10 rollos de cinta aisladora, listos mañana a la mañana.", "panel", 55],
+];
+const SUPPLIER_REPLIES: DemoContent["supplierReplies"] = [
+  [0, "Gracias por el aviso, lo tendremos en cuenta.", "panel", 3, 13],
+  [1, "¿Puedes confirmarnos los horarios de entrega de la próxima semana?", "phone", 6, 16],
+  [2, "Recibimos la lista nueva, ¡gracias!", "panel", 1, 13],
+];
+
 /** Chit-chat that the deterministic pre-filter keeps away from the LLM. */
 const CHITCHAT = ["hola", "gracias!!", "ok", "👍", "buen día", "dale, te aviso"];
 
@@ -179,6 +196,8 @@ export const ES_CONTENT: DemoContent = {
   suppliers: SUPPLIERS,
   customers: CUSTOMERS,
   customerMessages: CUSTOMER_MESSAGES,
+  teamReplies: TEAM_REPLIES,
+  supplierReplies: SUPPLIER_REPLIES,
   humanCustomer: 1,
   optOutCustomer: 3,
   chitchat: CHITCHAT,

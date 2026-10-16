@@ -16,7 +16,14 @@ import { contactName, preview, supplierSuffix, whoAnswers } from "../labels";
 import type { InboxFilter, InboxItem } from "../types";
 import { WhoBadge } from "./who-badge";
 
-const FILTERS: InboxFilter[] = ["all", "human", "suppliers", "customers", "opted_out"];
+const FILTERS: InboxFilter[] = [
+  "all",
+  "needs_reply",
+  "human",
+  "suppliers",
+  "customers",
+  "opted_out",
+];
 
 export function Inbox() {
   const [filter, setFilter] = useState<InboxFilter>("all");
@@ -109,7 +116,9 @@ export function Inbox() {
 function InboxRow({ item }: { item: InboxItem }) {
   const who = whoAnswers(item);
   const m = item.lastMessage;
-  const unanswered = m?.direction === "inbound";
+  // Computed by the API (phase 16): a question or an order nobody has answered. The old rule, "the
+  // last message is inbound", also marked a supplier's list and an "ok".
+  const unanswered = item.needsReply;
   const t = useTranslations("conversations");
   const tKinds = useTranslations("contactKinds");
   const { formatRelative } = useFormat();

@@ -101,6 +101,10 @@ catálogo son para administradores.
 
 - Cada chat muestra quién está respondiendo: 🤖 **responde el bot**, 👤 **atiende una persona**
   (hasta una hora), o ⛔ **dado de baja**.
+- Un punto y el nombre en negrita marcan un chat que **está por responder**: un cliente o alguien del
+  equipo preguntó algo o hizo un pedido y ninguna persona le contestó todavía (desde el panel o desde
+  el teléfono). Las listas de precios, los «ok» y los «gracias» nunca marcan un chat. El filtro **Por
+  responder** muestra solo esos, y funciona junto con la búsqueda.
 - Busca por nombre, proveedor o teléfono, y filtra por tipo.
 
 ![Una conversación](media-es/chat.webp)
