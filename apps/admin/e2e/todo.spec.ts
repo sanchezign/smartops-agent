@@ -81,12 +81,10 @@ test.describe("to do (phase 15)", () => {
         (n, meta) => n + Number(/(\d+) pending/.exec(meta)?.[1] ?? Number.NaN),
         0,
       );
-    // The cards above hold only what the operator can resolve: no across-the-board change there.
     const lists = page.getByRole("list", { name: "Price lists" });
     // (the heading renders before the data: wait for both lists before counting anything)
     await expect(lists.getByRole("article").first()).toBeVisible();
     await expect(page.getByRole("list", { name: "Messages to check" })).toBeVisible();
-    await expect(lists.getByText("Across-the-board change")).toHaveCount(0);
     // What is visible above + the messages to check = the navigation counter.
     const messages = await page
       .getByRole("list", { name: "Messages to check" })
@@ -96,18 +94,18 @@ test.describe("to do (phase 15)", () => {
     const badgeText = await navLink(page, "To do").first().locator(".sr-only").textContent();
     const badge = Number(/(\d+) pending/.exec(badgeText ?? "")?.[1]);
     expect((await pendingOf(lists)) + messages).toBe(badge);
-    // A list with an admin-only item says so and leads to the section, which opens.
+    // ADR-034: in the public demo the operator resolves the admin-only item too — on the SAME
+    // card, with the note of what a real installation does; nothing is folded away.
     const card = lists.getByRole("article").filter({ hasText: "Cut-off wheel 4-1/2 in" }).first();
-    await expect(card.getByText("Nitrile gloves")).toHaveCount(0);
-    await card.getByRole("link", { name: "+1 waits for an administrator" }).click();
-    const waiting = page.getByRole("list", { name: "Waiting for an administrator" });
+    const gloves = card
+      .getByRole("link")
+      .filter({ hasText: "Mark Nitrile gloves, size M as unavailable?" });
+    await expect(gloves).toBeVisible();
     await expect(
-      waiting.getByText("Mark Nitrile gloves, size M as unavailable?").first(),
-    ).toBeInViewport();
-    await expect(waiting.getByText("Across-the-board change").first()).toBeVisible();
-    // The section's N is exactly what it shows.
-    const summary = await page.locator("main details summary").innerText();
-    expect(Number(/\((\d+)\)/.exec(summary)?.[1])).toBe(await pendingOf(waiting));
+      gloves.getByText("In a real installation an administrator resolves this."),
+    ).toBeVisible();
+    await expect(card.getByRole("link", { name: /waits for an administrator/ })).toHaveCount(0);
+    await expect(page.locator("main details")).toHaveCount(0);
     await expectAccessible(page);
   });
 
@@ -141,9 +139,14 @@ test.describe("to do (phase 15)", () => {
     await login(page, "operator");
     await openTodo(page);
     await expect(page.getByText("All caught up")).toBeVisible();
+    // In the public demo (ADR-034, D14) it points to what brings decisions back.
     await expect(
-      page.getByText("Everything that arrived was processed on its own.", { exact: false }),
+      page.getByText("To see more decisions, send a sample message", { exact: false }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("main").getByRole("link", { name: "Try the system" }),
+    ).toBeVisible();
+    await expect(page.getByRole("main").getByRole("button", { name: "Reset demo" })).toBeVisible();
     // No counter anywhere when nothing waits.
     await expect(page.getByRole("link", { name: /pending/ })).toHaveCount(0);
     await expectAccessible(page);
@@ -429,7 +432,7 @@ test.describe("to do: one-click decisions (phase 15 M3)", () => {
     );
   });
 
-  test("mark_unavailable: an admin keeps it available in one click; an operator only sees it waiting", async ({
+  test("mark_unavailable: in the demo the operator gets the one-click decision too (ADR-034); an admin keeps it available", async ({
     page,
   }, info) => {
     const sealant = await insertReview({
@@ -441,11 +444,15 @@ test.describe("to do: one-click decisions (phase 15 M3)", () => {
     });
     await login(page, "operator");
     await openTodo(page);
+    const entry = await todoEntry(page, "Mark Silicone sealant, clear as unavailable?");
+    await expect(entry).toBeVisible();
     await expect(
-      page.getByRole("group", { name: "Decision on Silicone sealant, clear" }),
-    ).toHaveCount(0);
+      entry.getByText("In a real installation an administrator resolves this."),
+    ).toBeVisible();
     await expect(
-      await todoEntry(page, "Mark Silicone sealant, clear as unavailable?"),
+      page
+        .getByRole("group", { name: "Decision on Silicone sealant, clear" })
+        .getByRole("button", { name: "Mark unavailable" }),
     ).toBeVisible();
 
     await page.context().clearCookies();

@@ -58,10 +58,14 @@ const fill = (path: string) => path.replace(/:(\w+)/g, (_m, name: string) => PAR
 let server: Server;
 let base: string;
 let routes: string[];
+/** The same app with DEMO_MODE on in the panel API (phase 16 M2, ADR-034): routes must not move. */
+let demoServer: Server;
+let demoBase: string;
 
-beforeAll(async () => {
-  const app = buildTestApp({
+function buildApp(demoMode: boolean) {
+  return buildTestApp({
     auth,
+    admin: { ...stubAdminDeps, demoMode },
     demo: {
       // The real demo Graph API router: its Bearer is the WhatsApp token, never a panel one.
       graphRouter: createDemoGraphRouter({
@@ -95,19 +99,27 @@ beforeAll(async () => {
       }),
     },
   });
+}
+
+beforeAll(async () => {
+  const app = buildApp(false);
   routes = listRoutes(app);
   server = app.listen(0, "127.0.0.1");
   await new Promise((r) => server.once("listening", r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  demoServer = buildApp(true).listen(0, "127.0.0.1");
+  await new Promise((r) => demoServer.once("listening", r));
+  demoBase = `http://127.0.0.1:${(demoServer.address() as AddressInfo).port}`;
 });
 afterAll(async () => {
   await new Promise((r) => server.close(r));
+  await new Promise((r) => demoServer.close(r));
 });
 
-async function outcome(route: string, who: Principal): Promise<Outcome> {
+async function outcome(route: string, who: Principal, at = base): Promise<Outcome> {
   const [method, path] = route.split(" ") as [string, string];
   const token = BEARER[who];
-  const res = await fetch(`${base}${fill(path)}${QUERY[route] ?? ""}`, {
+  const res = await fetch(`${at}${fill(path)}${QUERY[route] ?? ""}`, {
     method,
     headers: {
       ...(token ? { authorization: `Bearer ${token}` } : {}),
@@ -120,13 +132,13 @@ async function outcome(route: string, who: Principal): Promise<Outcome> {
   return res.status === 401 || res.status === 403 ? res.status : "allow";
 }
 
-async function observe(): Promise<Record<string, Row>> {
+async function observe(at = base): Promise<Record<string, Row>> {
   const out: Record<string, Row> = {};
   for (const route of routes) {
     out[route] = {
-      anonymous: await outcome(route, "anonymous"),
-      operator: await outcome(route, "operator"),
-      admin: await outcome(route, "admin"),
+      anonymous: await outcome(route, "anonymous", at),
+      operator: await outcome(route, "operator", at),
+      admin: await outcome(route, "admin", at),
     };
   }
   return out;
@@ -143,6 +155,28 @@ describe("authorization matrix", () => {
       Object.keys(expected).sort(),
     );
     for (const route of routes) expect(observed[route], route).toEqual(expected[route]);
+  });
+
+  it("DEMO_MODE on (ADR-034) does not change ANY route: users, settings (Rules) and opt-in stay admin-only", async () => {
+    const expected = JSON.parse(readFileSync(FIXTURE, "utf8")) as Record<string, Row>;
+    const observed = await observe(demoBase);
+    for (const route of routes)
+      expect(observed[route], `demo on: ${route}`).toEqual(expected[route]);
+    // spelled out for the routes the owner named: Users and Rules
+    const adminOnly = routes.filter(
+      (r) => r.includes(" /api/v1/admin/users") || r.startsWith("PUT /api/v1/admin/settings"),
+    );
+    expect(adminOnly.length).toBeGreaterThanOrEqual(7);
+    for (const route of adminOnly) {
+      expect(observed[route]!.operator, `demo on: ${route}`).toBe(403);
+      expect(expected[route]!.operator, `demo off: ${route}`).toBe(403);
+    }
+    // the declarative table is the same object whatever the mode
+    const roles = (demoMode: boolean) =>
+      adminRouteTable({ ...stubAdminDeps, demoMode }).map(
+        (r) => `${r.method} ${r.path} ${r.roles.join(",")}`,
+      );
+    expect(roles(true)).toEqual(roles(false));
   });
 
   it("invariants that no fixture can override", async () => {

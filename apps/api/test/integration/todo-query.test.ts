@@ -144,10 +144,10 @@ describe.skipIf(!testDatabaseUrl)("to do query (Postgres)", () => {
       reviews: { canResolve: 2, waitingForAdmin: 3 },
       alerts: 2,
     });
-    // demo operator: + column_mapping (ADR-030), nothing else
+    // demo operator (ADR-034): everything, like an admin — nothing waits for an administrator
     expect(await repo().summary(DEMO_OPERATOR)).toEqual({
-      total: 5,
-      reviews: { canResolve: 3, waitingForAdmin: 2 },
+      total: 7,
+      reviews: { canResolve: 5, waitingForAdmin: 0 },
       alerts: 2,
     });
     // todo() carries the same counters
@@ -186,11 +186,15 @@ describe.skipIf(!testDatabaseUrl)("to do query (Postgres)", () => {
       reviews: { canResolve: 0, waitingForAdmin: 1 },
     });
     expect(n).toMatchObject({ pending: 1, reviews: { canResolve: 0, waitingForAdmin: 1 } });
-    // the demo operator may resolve Norte's column mapping
+    // the demo operator (ADR-034) gets every item of every list, exactly like an admin
     const demo = await repo().todo(DEMO_OPERATOR);
     expect(demo.groups[2]!.reviews).toEqual({ canResolve: 1, waitingForAdmin: 0 });
     expect(demo.groups[2]!.items.map((i) => i.kind)).toEqual(["column_mapping"]);
     expect(n!.waitingItems.map((i) => i.kind)).toEqual(["column_mapping"]);
+    for (const g of demo.groups) expect(g.waitingItems).toEqual([]);
+    expect(demo.groups.map((g) => [g.reviews, g.items.map((i) => i.kind)])).toEqual(
+      admin.groups.map((g) => [g.reviews, g.items.map((i) => i.kind)]),
+    );
   });
 
   it("action alerts only, newest first, with the chat and the contact they refer to", async () => {

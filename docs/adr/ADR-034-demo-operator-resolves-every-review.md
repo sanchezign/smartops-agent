@@ -1,7 +1,8 @@
 # ADR-034: In DEMO_MODE the public operator resolves every review
 
 Date: 2026-10-15
-Status: DRAFT (phase 16 M0; accepted with the M2 implementation after the strictest security review of the phase).
+Status: accepted (the owner's decision, 2026-10-15; implemented in phase 16 M2 after the strictest security review of
+the phase).
 Amends [ADR-030](ADR-030-demo-operator-resolves-column-mapping.md) (which allowed one combination) and replaces its
 "Audit note (2026-10-09)", which was never implemented.
 
@@ -41,10 +42,26 @@ for an administrator (4)" and the visitor cannot try those reviews. The owner do
 
 ## Tests
 
-The full permission table role × scope × kind × mode with the invariant "demo off ⇒ unchanged"; the panel ↔ API sync
-test; the item-level authz matrix (demo off / on); `todo-rules`; an E2E where the public operator resolves
-`suspicious_instructions` and `global_change` and the audit-log entry exists; `demo-check` (nothing waiting for an
-admin in the demo).
+- `test/unit/review-permissions-frozen.test.ts` + `test/fixtures/review-permissions-demo-off.json`: the whole role ×
+  scope × kind table with DEMO_MODE off, generated from the phase 15 code and committed BEFORE the rule changed
+  (commit "freeze the review permission table"); no record switch, never regenerated.
+- `test/unit/review-permissions.test.ts`: the phase 8 rule restated; in the demo exactly the operator's non-line cells
+  differ; only a strict boolean `true` opens it.
+- `test/unit/review-permissions-sync.test.ts`: the panel mirror = the API rule, both modes.
+- `test/e2e/authz-review-matrix.test.ts`: approve and reject every scope × kind as anonymous / operator / admin with the
+  demo off and on, against a fixture and fixed invariants (only the 33 "on / operator / non-line" cells changed; the
+  "off" half is identical); a request that claims the demo (query, headers, cookie, body) on an installation without it
+  gets 403, and the To do counters still receive `demoMode: false`.
+- `test/e2e/authz-matrix.test.ts`: every route answers the same with the demo on; users and settings writes stay 403
+  for an operator in both modes.
+- `test/unit/demo-mode.test.ts` (existing): the demo forces the fakes, refuses any real key and any database not named
+  `*_demo`.
+- `test/unit/todo-rules.test.ts`, `test/integration/todo-query.test.ts`: in the demo nothing waits for an admin and the
+  operator sees exactly what an admin sees.
+- E2E (`reviews.spec.ts`): the public operator processes a suspicious message and applies an across-the-board change
+  (their own E2E supplier), and each one is in the audit log as `review.approve` by the public operator's user;
+  `todo.spec.ts`: the note on an admin-only item, no folded section, the empty To do with "Try the system" and "Reset
+  demo"; `demo-check`: nothing waits for an admin in the demo (once a phase 16 release is deployed).
 
 ## Consequences
 

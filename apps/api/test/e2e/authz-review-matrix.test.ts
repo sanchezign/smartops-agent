@@ -8,7 +8,7 @@ import { ReviewKind, ReviewScope } from "../../src/generated/prisma/enums.js";
 import { buildTestApp, stubAdminDeps, stubAuthService } from "../helpers/build-app.js";
 
 /**
- * Authorization matrix, ITEM-LEVEL section (ADR-030, phase 14 M4b). The route matrix
+ * Authorization matrix, ITEM-LEVEL section (ADR-030, phase 14 M4b; ADR-034, phase 16 M2). The route matrix
  * (authz-matrix.test.ts) answers "who may call this route"; whether someone may resolve a given
  * review item is decided inside the handler, per item, so it needs its own matrix.
  *
@@ -148,16 +148,95 @@ describe("authorization matrix: review items (role × scope × kind × DEMO_MODE
       expect(matrix.off.operator[key], `off operator ${key}`).toBe(
         scope === "line" ? "allow" : 403,
       );
-      // DEMO_MODE ON: the same, plus exactly the column-mapping review of a whole list
-      const demoExtra = scope === "run" && kind === "column_mapping";
-      expect(matrix.on.operator[key], `on operator ${key}`).toBe(
-        scope === "line" || demoExtra ? "allow" : 403,
-      );
+      // DEMO_MODE ON (ADR-034): the public operator resolves every review
+      expect(matrix.on.operator[key], `on operator ${key}`).toBe("allow");
     }
-    // the one difference between the two modes
+    // the only differences between the two modes: the operator's non-line items
     const differing = Object.keys(matrix.off.operator).filter(
       (k) => matrix.off.operator[k] !== matrix.on.operator[k],
     );
-    expect(differing).toEqual(["run/column_mapping"]);
+    expect(differing).toEqual(
+      items.filter((i) => i.scope !== "line").map((i) => `${i.scope}/${i.kind}`),
+    );
+  });
+});
+
+/**
+ * Phase 16 M2 (ADR-034): `demoMode` comes ONLY from env.DEMO_MODE on the server. A request that
+ * claims the demo — in the query, a header, a cookie or the body — on an installation WITHOUT the
+ * demo is still refused, and the To do counters are still computed as the real system.
+ */
+describe("DEMO_MODE cannot be claimed by a request (phase 16 M2)", () => {
+  const gate = { scope: "run", kind: "suspicious_instructions" } as const;
+  // Its own server (DEMO_MODE off): the matrix above already spent the rate limit of its servers.
+  const todo = vi.fn(async () => ({
+    counts: { total: 0, reviews: { canResolve: 0, waitingForAdmin: 0 }, alerts: 0 },
+    groups: [],
+    groupsTruncated: false,
+    alerts: [],
+  }));
+  const summary = vi.fn(async () => ({
+    total: 0,
+    reviews: { canResolve: 0, waitingForAdmin: 0 },
+    alerts: 0,
+  }));
+  let server: Server;
+  let base = "";
+  beforeAll(async () => {
+    const app = buildTestApp({
+      auth,
+      admin: { ...adminDeps(false), todoQuery: { todo, summary } as never },
+    });
+    server = app.listen(0, "127.0.0.1");
+    await new Promise((r) => server.once("listening", r));
+    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  });
+  afterAll(async () => {
+    await new Promise((r) => server.close(r));
+  });
+  const claims: { name: string; path?: string; headers?: Record<string, string>; body?: string }[] =
+    [
+      { name: "query", path: "?demoMode=true&demo_mode=true&DEMO_MODE=true&demo=1" },
+      {
+        name: "headers",
+        headers: { "x-demo-mode": "true", "demo-mode": "true", "x-demo": "1", demomode: "true" },
+      },
+      { name: "cookie", headers: { cookie: "demoMode=true; DEMO_MODE=true; demo=1" } },
+      { name: "body", body: JSON.stringify({ demoMode: true, DEMO_MODE: true }) },
+    ];
+
+  for (const claim of claims)
+    for (const action of ["approve", "reject"] as const)
+      it(`an operator claiming the demo in the ${claim.name} still gets 403 (${action})`, async () => {
+        current = gate;
+        const res = await fetch(`${base}/api/v1/admin/reviews/${ID}/${action}${claim.path ?? ""}`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: "Bearer operator-token",
+            ...claim.headers,
+          },
+          body: "{}",
+          signal: AbortSignal.timeout(5_000),
+        });
+        await res.body?.cancel();
+        expect(res.status).toBe(403);
+      });
+
+  it("the To do counters of a real installation ignore a demo claim (demoMode false reaches the query)", async () => {
+    for (const path of ["/admin/todo", "/admin/todo/summary"]) {
+      const res = await fetch(`${base}/api/v1${path}?demoMode=true`, {
+        headers: {
+          authorization: "Bearer operator-token",
+          "x-demo-mode": "true",
+          cookie: "demoMode=true",
+        },
+        signal: AbortSignal.timeout(5_000),
+      });
+      await res.body?.cancel();
+      expect(res.status, path).toBe(200);
+    }
+    expect(todo).toHaveBeenCalledWith({ role: "operator", demoMode: false });
+    expect(summary).toHaveBeenCalledWith({ role: "operator", demoMode: false });
   });
 });

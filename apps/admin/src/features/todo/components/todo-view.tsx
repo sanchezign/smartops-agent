@@ -24,7 +24,8 @@ import { alertText } from "@/features/catalog/alert-text";
 import { useAcknowledgeAlert } from "@/features/catalog/hooks";
 import { useDemoInfo } from "@/features/demo/hooks";
 import { resolveErrorKey } from "@/features/reviews/hooks";
-import { canResolve } from "@/features/reviews/permissions";
+import { ResetDemoButton } from "@/features/demo/components/reset-demo-button";
+import { adminOnlyOutsideDemo, canResolve } from "@/features/reviews/permissions";
 import { reviewQuestion } from "@/features/reviews/question";
 import { quickDecision, type Money, type QuickDecision } from "@/features/reviews/quick-decision";
 import { listOrder, sourceKind } from "@/features/reviews/source";
@@ -70,6 +71,9 @@ export function TodoView() {
 
 function TodoContent({ data }: { data: TodoData }) {
   const t = useTranslations("todo");
+  const tPages = useTranslations("pages");
+  // ADR-034 (D14): in the public demo, an empty To do points to what brings decisions back.
+  const demo = useDemoInfo().data != null;
   const { formatInt } = useFormat();
   const [waitingOpen, setWaitingOpen] = useState(false);
   // Each review lives in ONE place (owner, M2 review): what I can resolve on the cards above,
@@ -90,7 +94,17 @@ function TodoContent({ data }: { data: TodoData }) {
         <EmptyState
           icon={<CheckCircle2 className="size-8" aria-hidden />}
           title={t("emptyTitle")}
-          description={t("emptyHint")}
+          description={demo ? t("demoEmptyHint") : t("emptyHint")}
+          action={
+            demo ? (
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button asChild className="min-h-11">
+                  <Link href="/try">{tPages("try")}</Link>
+                </Button>
+                <ResetDemoButton />
+              </div>
+            ) : undefined
+          }
         />
       ) : null}
 
@@ -263,9 +277,10 @@ function ItemRow({ item }: { item: ReviewItem }) {
   const tReviews = useTranslations("reviews");
   const format = useFormat();
   const user = useAuthStore((s) => s.user);
-  const demoMode = useDemoInfo().data != null; // ADR-030
+  const demoMode = useDemoInfo().data != null; // ADR-030, ADR-034
   const quick = quickDecision(item, { canResolve: canResolve(user, item, { demoMode }) });
   const question = reviewQuestion(item, format);
+  const realAdminOnly = adminOnlyOutsideDemo(user, item, { demoMode });
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
       <Link
@@ -277,6 +292,12 @@ function ItemRow({ item }: { item: ReviewItem }) {
             {tReviews(`questions.${question.key}`, question.params)}
           </span>
           <span className="text-sm text-muted-foreground">{tReviews(`kinds.${item.kind}`)}</span>
+          {realAdminOnly ? (
+            <span className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Lock className="size-3.5 shrink-0" aria-hidden />
+              {tReviews("realAdminOnly")}
+            </span>
+          ) : null}
         </span>
         <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
       </Link>

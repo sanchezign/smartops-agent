@@ -11,7 +11,6 @@ import {
   Mic,
   OctagonAlert,
   PauseCircle,
-  RotateCcw,
   ShieldAlert,
   Table2,
 } from "lucide-react";
@@ -22,18 +21,11 @@ import { PageHeader } from "@/components/page-header";
 import { EmptyState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
-import { useDemoInfo, useInject, useResetDemo, useTrace } from "../hooks";
+import { useDemoInfo, useInject, useTrace } from "../hooks";
 import { timeline, type DemoSampleKind } from "../trace";
+import { ResetDemoButton } from "./reset-demo-button";
 
 /** The six samples (texts in "demo.samples.<kind>"). */
 const SAMPLES: { kind: DemoSampleKind; icon: typeof Mic }[] = [
@@ -56,17 +48,12 @@ interface Sent {
 export function TryView() {
   const info = useDemoInfo();
   const [sent, setSent] = useState<Sent[]>([]);
-  const [confirmReset, setConfirmReset] = useState(false);
   const t = useTranslations("demo");
   const tPages = useTranslations("pages");
   const { formatTime } = useFormat();
   const inject = useInject((kind, wamid) =>
     setSent((s) => [{ kind, wamid, at: new Date().toISOString() }, ...s].slice(0, 10)),
   );
-  const reset = useResetDemo(() => {
-    setSent([]);
-    setConfirmReset(false);
-  });
 
   if (info.isPending) return <LoadingState rows={3} />;
   if (!info.data) return <EmptyState title={t("onlyInDemo")} description={t("onlyInDemoHint")} />;
@@ -76,11 +63,7 @@ export function TryView() {
       <PageHeader
         title={tPages("try")}
         description={t("description")}
-        actions={
-          <Button variant="outline" className="min-h-11" onClick={() => setConfirmReset(true)}>
-            <RotateCcw aria-hidden /> {t("reset")}
-          </Button>
-        }
+        actions={<ResetDemoButton onDone={() => setSent([])} />}
       />
       {info.data.nextResetAt ? (
         <p className="mb-4 text-sm text-muted-foreground">
@@ -132,23 +115,6 @@ export function TryView() {
           <TraceCard key={s.wamid} sent={s} />
         ))}
       </section>
-
-      <Dialog open={confirmReset} onOpenChange={setConfirmReset}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("resetTitle")}</DialogTitle>
-            <DialogDescription>{t("resetBody")}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" className="min-h-11" onClick={() => setConfirmReset(false)}>
-              {t("cancel")}
-            </Button>
-            <Button className="min-h-11" disabled={reset.isPending} onClick={() => reset.mutate()}>
-              {reset.isPending ? t("resetting") : t("resetConfirm")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

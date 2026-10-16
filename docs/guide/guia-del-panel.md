@@ -67,7 +67,10 @@ Todo lo que espera una decisión, en un solo lugar. Nada de esto se aplicó toda
   después de confirmar: solo un administrador puede volver a dar de alta a un contacto).
 - **Esperan a un administrador:** lo que un operador no puede decidir (afecta una lista entera o
   todo el catálogo) queda plegado al final, y una lista que tiene algo así dice "+1 espera a un
-  administrador".
+  administrador". **En la demo pública** esa sección no existe: el operador compartido puede probar
+  todas las revisiones, y las que en una instalación real quedan para un administrador lo dicen
+  ("En una instalación real, esto lo resuelve un administrador"). Cuando no queda nada,
+  Pendientes ofrece **Probar el sistema** y **Reiniciar demo**.
 - **Ya resueltas** muestra las decisiones ya tomadas (aprobadas y rechazadas).
 
 **Una línea de producto, en su detalle** (por ejemplo, un cambio de precio fuera de lo normal):
@@ -93,7 +96,8 @@ la lista, y un **mensaje sospechoso** que intenta darle órdenes al sistema (no 
 léelo antes de procesarlo).
 
 Los operadores resuelven líneas de producto. Las revisiones que afectan una lista entera o todo el
-catálogo son para administradores.
+catálogo son para administradores (en la demo pública el operador también puede resolverlas, con
+una nota que lo aclara).
 
 ## Conversaciones
 

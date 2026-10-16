@@ -64,7 +64,10 @@ yet.
   confirmation — only an administrator can opt a contact back in).
 - **Waiting for an administrator:** what an operator cannot decide (it affects a whole list or the
   entire catalog) is folded at the end, and a list that has one says "+1 waits for an
-  administrator".
+  administrator". **In the public demo** there is no such section: the shared operator can try
+  every review, and the ones that a real installation leaves to an administrator say so ("In a
+  real installation an administrator resolves this"). When nothing is left, To do offers **Try
+  the system** and **Reset demo**.
 - **Resolved** shows the decisions already taken (approved and rejected).
 
 **A product line, in its detail** (for example, an unusual price change):
@@ -90,7 +93,7 @@ unavailable?"), an across-the-board change ("everything +8 %"), a change of tax 
 before processing it).
 
 Operators resolve product lines. Reviews that affect a whole list or the whole catalog are for
-administrators.
+administrators (in the public demo the operator can resolve them too, with a note saying so).
 
 ## Conversations
 
