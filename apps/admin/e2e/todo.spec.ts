@@ -77,7 +77,7 @@ test.describe("to do (phase 15)", () => {
     await login(page, "operator");
     await openTodo(page);
     const pendingOf = async (cards: ReturnType<typeof page.getByRole>) =>
-      (await cards.getByRole("article").locator("header p").allTextContents()).reduce(
+      (await cards.getByRole("article").locator("header a").allTextContents()).reduce(
         (n, meta) => n + Number(/(\d+) pending/.exec(meta)?.[1] ?? Number.NaN),
         0,
       );

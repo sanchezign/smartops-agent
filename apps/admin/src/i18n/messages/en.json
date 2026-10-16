@@ -412,6 +412,7 @@
   "todo": {
     "description": "What needs a decision from you: price lists the system did not apply on its own, and messages to check by hand.",
     "resolvedLink": "Resolved",
+    "showAll": "All pending",
     "resolvedDescription": "Decisions already taken. Open one to see what was applied.",
     "listsTitle": "Price lists",
     "messagesTitle": "Messages to check",

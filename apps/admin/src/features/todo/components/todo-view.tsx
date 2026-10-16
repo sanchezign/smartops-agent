@@ -1,7 +1,17 @@
 "use client";
 
-import { CheckCircle2, ChevronRight, History, Info, Lock, Mic, UserX } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ChevronRight,
+  History,
+  Info,
+  Lock,
+  Mic,
+  UserX,
+} from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -76,10 +86,13 @@ function TodoContent({ data }: { data: TodoData }) {
   const demo = useDemoInfo().data != null;
   const { formatInt } = useFormat();
   const [waitingOpen, setWaitingOpen] = useState(false);
+  // The meta line of a card links to /todo?run=<id>: only that list (ADR-033 §4).
+  const run = useSearchParams().get("run");
+  const groups = run ? data.groups.filter((g) => g.run.id === run) : data.groups;
   // Each review lives in ONE place (owner, M2 review): what I can resolve on the cards above,
   // what only an admin can resolve in the folded section, grouped by list the same way.
-  const mine = data.groups.filter((g) => g.reviews.canResolve > 0);
-  const theirs = data.groups.filter((g) => g.reviews.waitingForAdmin > 0);
+  const mine = groups.filter((g) => g.reviews.canResolve > 0);
+  const theirs = groups.filter((g) => g.reviews.waitingForAdmin > 0);
   const waiting = data.counts.reviews.waitingForAdmin;
   const openWaiting = () => {
     setWaitingOpen(true);
@@ -90,6 +103,15 @@ function TodoContent({ data }: { data: TodoData }) {
 
   return (
     <div className="flex flex-col gap-6">
+      {run ? (
+        <Link
+          href="/todo"
+          className="flex min-h-11 w-fit items-center gap-1.5 text-sm font-medium underline underline-offset-4"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          {t("showAll")}
+        </Link>
+      ) : null}
       {data.counts.total === 0 ? (
         <EmptyState
           icon={<CheckCircle2 className="size-8" aria-hidden />}
@@ -217,15 +239,24 @@ function ListCard({
       <header className="flex items-start gap-3">
         <SourceIcon kind={kind} className="mt-0.5 size-5 shrink-0" />
         <div className="flex min-w-0 flex-col gap-0.5">
-          <h3 className="font-medium break-words">{name}</h3>
-          {/* One meta line (owner, M2 review): kind · when · how many — never a count alone. */}
-          <p className="text-sm text-muted-foreground tabular-nums">
+          <h3 className="font-title text-lg break-words">{name}</h3>
+          {/* One meta line (owner, M2 review): kind · when · how many — never a count alone. It says what
+              waits, so it carries the yellow (ADR-033 §4) and links to this list alone. */}
+          <Link
+            href={`/todo?run=${group.run.id}`}
+            className={cn(
+              "w-fit text-sm font-semibold tabular-nums underline underline-offset-4",
+              waiting
+                ? "text-muted-foreground decoration-border"
+                : "text-foreground decoration-signal decoration-[3px] dark:text-signal dark:decoration-signal",
+            )}
+          >
             {t("cardMeta", {
               source: t(`source.${kind}`),
               when: formatRelative(group.message.receivedAt),
               pending: t("pendingInList", { count, n: formatInt(count) }),
             })}
-          </p>
+          </Link>
         </div>
       </header>
       <ul className="flex flex-col gap-1.5">

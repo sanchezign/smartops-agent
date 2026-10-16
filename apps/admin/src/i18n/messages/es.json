@@ -412,6 +412,7 @@
   "todo": {
     "description": "Lo que necesita una decisión tuya: listas de precios que el sistema no aplicó solo y mensajes para revisar a mano.",
     "resolvedLink": "Ya resueltas",
+    "showAll": "Todo lo pendiente",
     "resolvedDescription": "Decisiones ya tomadas. Abre una para ver qué se aplicó.",
     "listsTitle": "Listas de precios",
     "messagesTitle": "Mensajes para revisar",

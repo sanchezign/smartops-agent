@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--app-font);
+  --font-mono: var(--font-fira-code);
+  --font-heading: var(--font-oxanium);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -44,6 +44,12 @@
   --color-signal-foreground: var(--signal-foreground);
   --color-warning: var(--warning);
   --color-sidebar-muted: var(--sidebar-muted);
+  /* Shadows of the theme (ADR-033 §6): two layers tinted toward the warm background hue. */
+  --shadow-2xs: 0 1px 2px 0 rgb(74 59 51 / 0.05);
+  --shadow-xs: 0 1px 2px 0 rgb(74 59 51 / 0.08);
+  --shadow-sm: 0 1px 3px 0 rgb(74 59 51 / 0.1), 0 1px 2px -1px rgb(74 59 51 / 0.1);
+  --shadow-md: 0 2px 4px 0 rgb(74 59 51 / 0.1), 0 2px 4px -2px rgb(74 59 51 / 0.1);
+  --shadow-lg: 0 4px 8px 0 rgb(74 59 51 / 0.1), 0 4px 6px -4px rgb(74 59 51 / 0.1);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -54,87 +60,98 @@
 }
 
 /*
- * Phase 14 (ADR-029, "Señal"): graphite on concrete; safety yellow (--signal) ONLY for what waits
- * for a person. Hex on purpose: test/contrast.test.ts reads this file and checks WCAG contrast
- * of every pair (text 4.5:1, control borders and chart colors 3:1), light and dark.
+ * Phase 16 (ADR-033, K2): the owner's tweakcn theme MAPPED (warm cream light, warm grey dark) with the khaki primary
+ * #857549 + white text in both modes, and the minimal contrast adjustments listed in the ADR. "Señal" of ADR-029
+ * stays: the safety yellow (--signal) ONLY for what waits for a person. Hex on purpose: test/contrast.test.ts reads
+ * this file and checks WCAG contrast of every pair (text 4.5:1, control borders and chart colors 3:1), light and dark.
  */
 :root {
-  --background: #ececea;
-  --foreground: #1c1d20;
-  --card: #ffffff;
-  --card-foreground: #1c1d20;
-  --popover: #ffffff;
-  --popover-foreground: #1c1d20;
-  --primary: #1c1d20;
+  --background: #fdfbf7;
+  --foreground: #4a3b33;
+  --card: #f8f4ee;
+  --card-foreground: #4a3b33;
+  --popover: #f8f4ee;
+  --popover-foreground: #4a3b33;
+  --primary: #857549;
   --primary-foreground: #ffffff;
-  --secondary: #e1e1de;
-  --secondary-foreground: #1c1d20;
-  --muted: #e4e4e1;
-  --muted-foreground: #4d5056;
-  --accent: #e4e4e1;
-  --accent-foreground: #1c1d20;
-  --destructive: #b30d26;
-  --border: #c3c4c6;
-  --input: #7e8187;
-  --ring: #1c1d20;
-  --chart-1: #1c1d20;
-  --chart-2: #2f6b8f;
-  --chart-3: #6b6e75;
-  --chart-4: #8b8e94;
-  --chart-5: #b3b5ba;
-  --radius: 0.375rem;
-  --sidebar: #1c1d20;
-  --sidebar-foreground: #f1f1ee;
-  --sidebar-muted: #b4b6bb;
-  --sidebar-primary: #f1f1ee;
-  --sidebar-primary-foreground: #1c1d20;
-  --sidebar-accent: #33353a;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #33353a;
-  --sidebar-ring: #f1f1ee;
-  --surface: #f6f6f4;
+  --secondary: #e4c090;
+  --secondary-foreground: #4a3b33;
+  --muted: #f1e9da;
+  --muted-foreground: #6f6863;
+  --accent: #f2daba;
+  --accent-foreground: #57534e;
+  --destructive: #991b1b;
+  --border: #e4d9bc;
+  --input: #948c87;
+  --ring: #857549;
+  --chart-1: #857549;
+  --chart-2: #78716c;
+  --chart-3: #a16207;
+  --chart-4: #44403c;
+  --chart-5: #9a3412;
+  --radius: 0.3rem;
+  --sidebar: #f1e9da;
+  --sidebar-foreground: #4a3b33;
+  --sidebar-muted: #57534e;
+  --sidebar-primary: #857549;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e4d9bc;
+  --sidebar-accent-foreground: #4a3b33;
+  --sidebar-border: #e4d9bc;
+  --sidebar-ring: #857549;
+  --surface: #faf6ee;
   --signal: #ffc400;
-  --signal-foreground: #1c1d20;
+  --signal-foreground: #1c1917;
   --warning: #8a5a00;
 }
 
 .dark {
-  --background: #1b1c1f;
-  --foreground: #f1f1ee;
-  --card: #25272b;
-  --card-foreground: #f1f1ee;
-  --popover: #25272b;
-  --popover-foreground: #f1f1ee;
-  --primary: #f1f1ee;
-  --primary-foreground: #1b1c1f;
-  --secondary: #303237;
-  --secondary-foreground: #f1f1ee;
-  --muted: #2d2f33;
-  --muted-foreground: #a9abb1;
-  --accent: #303237;
-  --accent-foreground: #f1f1ee;
-  --destructive: #ff9aa2;
-  --border: #44474d;
-  --input: #7d8087;
-  --ring: #f1f1ee;
-  --chart-1: #e6e6e2;
-  --chart-2: #7fb2d3;
-  --chart-3: #a9abb1;
-  --chart-4: #7d8087;
-  --chart-5: #5a5d63;
-  --sidebar: #131416;
-  --sidebar-foreground: #f1f1ee;
-  --sidebar-muted: #b4b6bb;
-  --sidebar-primary: #f1f1ee;
-  --sidebar-primary-foreground: #131416;
-  --sidebar-accent: #2b2d31;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #2b2d31;
-  --sidebar-ring: #f1f1ee;
-  --surface: #202226;
+  --background: #1c1917;
+  --foreground: #f5f5f4;
+  --card: #292524;
+  --card-foreground: #f5f5f4;
+  --popover: #292524;
+  --popover-foreground: #f5f5f4;
+  --primary: #857549;
+  --primary-foreground: #ffffff;
+  --secondary: #57534e;
+  --secondary-foreground: #e7e5e4;
+  --muted: #201d1a;
+  --muted-foreground: #a8a29e;
+  --accent: #44403c;
+  --accent-foreground: #e7e5e4;
+  --destructive: #ff8a80;
+  --border: #44403c;
+  --input: #726e6a;
+  --ring: #857549;
+  --chart-1: #a89667;
+  --chart-2: #d6d3d1;
+  --chart-3: #fdba74;
+  --chart-4: #a8a29e;
+  --chart-5: #78716c;
+  --sidebar: #292524;
+  --sidebar-foreground: #f5f5f4;
+  --sidebar-muted: #bdb7b2;
+  --sidebar-primary: #857549;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #44403c;
+  --sidebar-accent-foreground: #f5f5f4;
+  --sidebar-border: #44403c;
+  --sidebar-ring: #a89667;
+  --surface: #231f1d;
   --signal: #ffc400;
-  --signal-foreground: #1b1c1f;
+  --signal-foreground: #1c1917;
   --warning: #f0b45a;
+}
+
+/* Text font: variant A (Oxanium everywhere); `.type-b` is the PROTOTYPE of variant B (IBM Plex Sans text, Oxanium
+   headings), deleted with the loser once the owner chooses (ADR-033 §5). */
+/* On body, not :root: next/font puts its variables on the body class. */
+body {
+  --app-font: var(--font-oxanium);
+}
+body.type-b {
+  --app-font: var(--font-plex);
 }
 
 @layer base {
@@ -147,9 +164,6 @@
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
-  }
-  html {
-    @apply font-sans;
   }
 }
 
@@ -165,16 +179,16 @@ html [data-sonner-toaster][data-sonner-theme="light"] {
   --error-text: hsl(360, 100%, 37%);
 }
 
-/* Headings (ADR-029): Archivo at 118 % width, weight 750; card titles a notch lighter. */
+/* Headings (ADR-033): Oxanium in both variants (it has no width axis); card titles a notch lighter. */
 @utility font-display {
-  font-stretch: 118%;
+  font-family: var(--font-oxanium);
   font-weight: 750;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 @utility font-title {
-  font-stretch: 112%;
+  font-family: var(--font-oxanium);
   font-weight: 700;
-  letter-spacing: -0.005em;
+  letter-spacing: 0;
 }
 
 /* The price-tag shape of the "a person is handling it" label (ADR-029): the point is the side
