@@ -1817,3 +1817,40 @@ a real client.**
       `demo-check`: GET /admin/todo/summary + /admin/todo for the public operator (counters add up, lists carry the
       same counters), skipped on 404 until a phase 15 release is deployed — then REQUIRED (runbook, "Checking a
       deployed version").
+
+16. visual identity v2 + complete public demo + USD + conversations (ADR-033, 034, 035) — IN PROGRESS (branch
+    `feat/phase-16-identity-v2`, from `main` at 0.18.0). Plan approved 2026-10-15 with the owner's decisions (dark
+    primary, light sidebar, no blue, no Merriweather, Fira Code, `/todo?run=…` for the meta line, ADR-034 own record
+    with a free `createSupplier` in the demo, ADR-035 order: line → list → the existing product's own currency → the
+    catalog currency only for NEW products; ES-USD goldens only after a free dry-run and the owner's OK, cap
+    US$0.50; typography A vs B decided by the owner from the M4 screenshots).
+    - M0 — DONE. Draft ADR-033 / 034 / 035; CLAUDE.md (phase 15 closed, phase 16 open, known issue: the bare "$" →
+      UYU rule of `extractor.md`); `e2e/phase16-shots.spec.ts` (screenshots + the chat's reply-box geometry);
+      "before" screenshots and swatch sheets outside the repo (`C:/dev/smartops-phase16-shots/`). Measured on the
+      tweakcn theme as exported: white on the dark primary 2.80, light muted text 4.38 / 3.98, control borders 1.28 /
+      1.48, a yellow in the charts, blue accents in dark. The owner replaced the orange primary with the khaki
+      #a89667 (same hue as the yellow #FFC400, far less chroma): v2 sheet with K1 (dark #a89667 + dark text, light
+      #857549 + white) and K2 (#857549 + white in both modes); K1 dark is 1.82:1 from the yellow (D17 asks 2.5) and is
+      shown anyway, the owner decides by eye. ADR-033 is updated when he chooses.
+    - M1 — DONE. "Needs a reply" computed by the API (`needsReplyIds`, one SQL used for the filter and for each row's
+      `needsReply`): a customer or a team member (never a supplier) with an inbound message classified
+      `customer_query` / `internal_order` (pre-filter `customer_contact` or the classifier), not deleted, and NO outbound
+      message by a PERSON after it (panel or phone, `author = human`; a bot reply, a failed or canceled one never
+      counts). Chit-chat, acks, processed lists and unclassified messages never mark a chat. New filter "Needs a reply"
+      (no counter, no yellow; works together with the search); the dot and bold of the inbox row use it (the old "last
+      message is inbound" also marked a supplier's list and an "ok"). Seed (EN + ES, same story): people's answers to
+      most customer messages (panel and phone) and to some supplier chats, exactly TWO chats that really wait (an
+      order two days old, a team request today); today's inbound was dated in the FUTURE before 15:00 (`at(0, 15)`):
+      clamped to now − 20 min. The new rows do not use `rand()`, so the rest of the seed (and its fingerprint) did not
+      move: only +7 messages (Spanish snapshot re-recorded). Chat layout: the shell is a flex column of at least
+      100dvh, only a chat (`isChatPath`) stretches to the bottom edge (main's padding cancelled; on a phone the bottom
+      bar's height stays reserved) and the message list stacks from the bottom (`justify-end`); the scroll is still the
+      window's, so the auto-scroll and "Show earlier messages" did not change. Short and long chats now have the reply
+      box in the same place (before: 483 px / 239 px of emptiness below a one-message chat on desktop / phone). With
+      the keyboard open the box moves up by the keyboard's height (`visualViewport`, `use-keyboard-inset.ts`): NOT
+      testable in the Chromium emulator, to be checked by the owner on a real iPhone. Pixel diff of Home, To do,
+      Catalog, Conversations and Activity before / after the shell change: 0 px (Home, To do, Catalog) and ≤ 0.09 %
+      ("x min ago" texts) on the others, same page heights. Tests: `conversation-query` (one case per clause, the
+      filter with the search), `demo-seed` (two waiting chats in EN and ES, answers from panel and phone, nothing in the
+      future), `chat-layout.test.ts`, E2E (Needs a reply with the filter and the search; the reply box at the bottom
+      for a short and a long chat, newest message right above it, earlier messages still load).

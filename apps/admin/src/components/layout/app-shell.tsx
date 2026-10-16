@@ -8,7 +8,7 @@ import { useState, type ReactNode } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useAuthStore } from "@/features/auth/store";
 import { cn } from "@/lib/utils";
-import { isActive, navFor } from "./nav-items";
+import { isActive, isChatPath, navFor } from "./nav-items";
 import { useTodoCounts } from "@/features/todo/hooks";
 import { PendingBadge } from "./pending-badge";
 import { LiveIndicator } from "@/features/realtime/live-indicator";
@@ -40,7 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const moreCount = more.reduce((sum, i) => sum + countFor(i.href), 0);
 
   return (
-    <div className="min-h-dvh bg-background">
+    <div className="flex min-h-dvh flex-col bg-background">
       <a
         href="#contenido"
         className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:shadow"
@@ -97,8 +97,22 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main id="contenido" className="px-4 pb-28 pt-4 md:ml-60 md:px-8 md:pb-10 md:pt-6">
-        <div className="mx-auto w-full max-w-6xl">{children}</div>
+      <main
+        id="contenido"
+        className="flex flex-1 flex-col px-4 pb-28 pt-4 md:ml-60 md:px-8 md:pb-10 md:pt-6"
+      >
+        {/* A chat fills the screen down to the bottom edge (the main padding is cancelled): the
+            reply box stays at the bottom and the messages stack from it (phase 16 M1). On a phone
+            the bottom bar's height (4.5rem + safe area) stays reserved: main's pb-28 is 7rem. */}
+        <div
+          className={cn(
+            "mx-auto w-full max-w-6xl",
+            isChatPath(pathname) &&
+              "mb-[calc(-2.5rem+env(safe-area-inset-bottom))] flex flex-1 flex-col md:-mb-10",
+          )}
+        >
+          {children}
+        </div>
       </main>
 
       {/* Bottom bar (phone) */}

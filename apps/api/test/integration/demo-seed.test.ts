@@ -11,6 +11,7 @@ import {
   createSettingsService,
 } from "../../src/modules/settings/settings.service.js";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { createConversationQueryRepository } from "../../src/modules/admin/conversation-query.repository.js";
 import { demoFingerprint } from "./demo-snapshot.js";
 import { testDatabaseUrl } from "./db.js";
 import {
@@ -263,4 +264,51 @@ describe.skipIf(!testDatabaseUrl)("demo seed (Postgres, <test>_demo)", () => {
       true,
     );
   }, 120_000);
+
+  it.each(["en", "es"] as const)(
+    "conversations (%s): most answered by the team from the panel AND the phone, exactly two really wait for a reply (phase 16 M1)",
+    async (language) => {
+      const settings = createSettingsService({ repository: createSettingsRepository(prisma) });
+      await seedDemo({
+        prisma,
+        catalog: createCatalogIngestService({
+          repository: createCatalogRepository(prisma),
+          settings,
+        }),
+        users: {
+          operator: {
+            email: "operador@demo.smartops",
+            password: "una frase pública de la demo",
+            name: "Operador demo",
+          },
+        },
+        logger: log,
+        now: NOW,
+        assetsDir: ASSETS,
+        content: getDemoContent(language),
+      });
+      const content = getDemoContent(language);
+      const inbox = await createConversationQueryRepository(prisma, () => NOW).list({
+        filter: "all",
+        limit: 100,
+      });
+      const waiting = inbox.items.filter((i) => i.needsReply);
+      expect(waiting.map((i) => i.contact.name).sort()).toEqual(
+        [content.customers[0]!.name, content.customers[4]!.name].sort(),
+      );
+      // The people's answers: from the panel (an author) and from the phone (none).
+      const human = await prisma.message.findMany({
+        where: { author: "human", direction: "outbound", status: { not: "canceled" } },
+        select: { authorUserId: true },
+      });
+      expect(human.some((m) => m.authorUserId)).toBe(true);
+      expect(human.some((m) => !m.authorUserId)).toBe(true);
+      // No inbound message is dated in the future (today's one used to be, before 15:00).
+      const future = await prisma.message.count({
+        where: { direction: "inbound", createdAt: { gt: NOW } },
+      });
+      expect(future).toBe(0);
+    },
+    180_000,
+  );
 });

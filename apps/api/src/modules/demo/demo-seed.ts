@@ -274,6 +274,8 @@ export async function seedDemo(deps: {
     author: "bot" | "human",
     purpose: "auto_reply" | "human" | "compliance",
     status: "read" | "delivered" | "sent" | "canceled" = "read",
+    /** A person's message: from the panel (has an author) or from the phone (the Business app). */
+    via: "panel" | "phone" = "panel",
   ) {
     messages += 1;
     await prisma.message.create({
@@ -287,7 +289,7 @@ export async function seedDemo(deps: {
         text,
         status,
         statusAt: when,
-        ...(author === "human" ? { authorUserId: operator.id } : {}),
+        ...(author === "human" && via === "panel" ? { authorUserId: operator.id } : {}),
         ...(status === "canceled" ? { errorCode: "human_takeover" } : {}),
         createdAt: when,
       },
@@ -859,11 +861,24 @@ export async function seedDemo(deps: {
     messageId: string;
     text: string;
   }[] = [];
-  for (const [who, text, kind, daysAgo] of content.customerMessages) {
+  for (const [index, [who, text, kind, daysAgo]] of content.customerMessages.entries()) {
     const ids = customerIds[who]!;
-    const when = at(daysAgo, 15);
+    // Never later than "now": today's message at 15:00 would otherwise be in the future.
+    const when = new Date(Math.min(at(daysAgo, 15).getTime(), now.getTime() - 20 * 60_000));
     const message = await inbound(ids.conversationId, text, when);
     customerMessages.push({ who, kind, messageId: message.id, text });
+    for (const [target, reply, via, minutes] of content.teamReplies) {
+      if (target === index)
+        await outbound(
+          ids.conversationId,
+          reply,
+          new Date(when.getTime() + minutes * 60_000),
+          "human",
+          "human",
+          "read",
+          via,
+        );
+    }
     await prisma.ingestionRun.create({
       data: {
         messageId: message.id,
@@ -885,6 +900,13 @@ export async function seedDemo(deps: {
         createdAt: when,
       },
     });
+  }
+  // The team also writes to suppliers (from the panel and from the phone).
+  for (const [who, reply, via, daysAgo, hour] of content.supplierReplies) {
+    const ids = await idsOf(DEMO_SUPPLIERS[who]!);
+    // No rand(): the rest of the seed must not shift (its fingerprint only gains these rows).
+    const when = new Date(now.getTime() - daysAgo * DAY + (hour - 12) * 3_600_000);
+    await outbound(ids.conversationId, reply, when, "human", "human", "read", via);
   }
   // A person is handling this customer's chat right now (bot paused, an auto reply cancelled).
   const luis = customerIds[content.humanCustomer]!;

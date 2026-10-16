@@ -98,6 +98,10 @@ administrators.
 
 - Each chat shows who is answering: 🤖 **the bot answers**, 👤 **a person is handling it** (until
   a time), or ⛔ **opted out**.
+- A dot and bold name mark a chat that **needs a reply**: a customer or a team member asked something
+  or placed an order and no person has answered yet (from the panel or from the phone). Price lists,
+  "ok" and "thanks" never mark a chat. The **Needs a reply** filter shows only those, and it works
+  together with the search.
 - Search by name, supplier or phone, and filter by type.
 
 ![A conversation](media-en/chat.webp)

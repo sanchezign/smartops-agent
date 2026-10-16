@@ -69,3 +69,12 @@ export function isActive(pathname: string, href: string): boolean {
   if (href === "/todo" && pathname.startsWith("/reviews/")) return true;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
+
+/**
+ * A chat (/conversations/<id>, not the opted-out list): the one page that fills the whole screen
+ * (phase 16 M1): the shell stretches its content to the bottom so the reply box stays at the
+ * bottom of the viewport and the messages stack from it, like WhatsApp.
+ */
+export function isChatPath(pathname: string): boolean {
+  return /^\/conversations\/(?!opted-out(?:\/|$))[^/]+\/?$/.test(pathname);
+}
