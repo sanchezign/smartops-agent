@@ -1686,7 +1686,7 @@ a real client.**
     - Closed — merged into `main` before the 2026-10-09 repository migration (CLAUDE.md said "PR open" until
       2026-10-12, corrected in phase 15 M0).
 
-15. panel triage (To do / Activity / System status) — IN PROGRESS (branch `feat/phase-15-panel-triage`, from `main`
+15. panel triage (To do / Activity / System status) — DONE, merged into `main` and released in 0.18.0 (branch `feat/phase-15-panel-triage`, from `main`
     with the review-order fix of PR #9). Input: real-use feedback — "pending reviews" and "open alerts" read as the same
     thing; news and technical errors added to the yellow; the Home did not answer "what do I have to do?". Plan approved
     2026-10-12 with the owner's changes: `stale_source` is NOT one-click (approving writes a price from an older message
