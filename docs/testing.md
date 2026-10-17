@@ -25,16 +25,15 @@ Root shortcuts: `pnpm test:fast` (API unit + panel), `pnpm test:integration`, `p
 - The panel is measured on its LOGIC only (`src/lib`, the pure `features/*.ts`). Components are
   covered by the browser E2E; React Testing Library is not used (decision of phase 10).
 
-## Current numbers (2026-10-12, phase 15)
+## Current numbers (2026-10-17, phase 16)
 
-- Tests: API unit + HTTP **1,417** (6 skipped), API against a real Postgres **241**, panel unit **216**, browser E2E
-  **171** (one local run: desktop Chrome, Pixel 7 and iPhone 15 on Chromium; CI runs the iPhone on WebKit). Coverage
-  below was measured on 2026-10-09, before phase 15.
-- API coverage (all suites): **90.4 % lines, 80.9 % branches, 90.9 % functions, 88.1 % statements.** Panel logic:
-  **85.7 % lines, 77.3 % branches.** Measured locally without `test/integration/document-conversion.test.ts` and
-  `test/unit/heuristics-es-identical.test.ts`, which time out under coverage instrumentation on the dev PC (they
-  pass without coverage and in CI), so the real figures are slightly higher. The gate is the ratchet in
-  `apps/api/coverage-thresholds.json`.
+- Tests: API unit + HTTP **1,453** (1 skipped in CI; on Windows 39 more skip because they need bash), API against a
+  real Postgres **250**, panel unit **247**, browser E2E **187** (Playwright lists 363 = 121 per project × desktop
+  Chrome, Pixel 7, iPhone; the rest are skipped per project on purpose; CI run 39073061254: 186 passed + 1 flaky,
+  iPhone on WebKit).
+- Coverage, measured in CI on 2026-10-17 (run 39073061254, `integration-coverage`, every suite included). API:
+  **91.0 % lines, 81.9 % branches, 91.9 % functions, 88.8 % statements.** Panel logic: **85.7 % lines, 79.3 %
+  branches, 80.7 % functions, 85.0 % statements.** The gate is the ratchet in `apps/*/coverage-thresholds.json`.
 
 The next section is the historical baseline, kept as it was.
 

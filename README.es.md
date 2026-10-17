@@ -25,13 +25,13 @@ acción. Una persona puede tomar cualquier chat en cualquier momento.
 
 La animación tiene textos en inglés. Las capturas de abajo son del panel en español:
 
-| Inicio                                                                                                                                                                                                                               | Pendientes                                                                                                                                                                                                                                                                |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ![Inicio: primero lo que espera por ti (las decisiones más nuevas y Ver todas), después los chats que atiende una persona, la automatización del período, el costo de IA y los mensajes por día](docs/guide/media-es/dashboard.webp) | ![Pendientes: una tarjeta por cada mensaje de un proveedor con sus decisiones como preguntas, respuestas de un clic con el valor (Actualizar a / Mantener), los mensajes para revisar y lo que espera a un administrador plegado al final](docs/guide/media-es/todo.webp) |
-| **Elegir la columna de precios de una planilla**                                                                                                                                                                                     | **Historial de precios**                                                                                                                                                                                                                                                  |
-| ![La revisión de un formato de planilla nuevo: cada columna de precios muestra valores reales del archivo y la sugerida viene preseleccionada](docs/guide/media-es/review-columns.webp)                                              | ![El historial de precios de un producto como gráfico escalonado, con cada cambio y el mensaje que lo causó](docs/guide/media-es/product.webp)                                                                                                                            |
-| **Una conversación**                                                                                                                                                                                                                 | **Novedades**                                                                                                                                                                                                                                                             |
-| ![El chat de un proveedor con la foto de una lista de precios, una planilla y las respuestas del bot](docs/guide/media-es/chat.webp)                                                                                                 | ![Novedades: lo que el sistema ya hizo, agrupado por día (hoy, ayer, fechas), cada una con un enlace al producto](docs/guide/media-es/activity.webp)                                                                                                                      |
+| Inicio                                                                                                                                                                                                                               | Pendientes                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![Inicio: primero lo que espera por ti (las decisiones más nuevas y Ver todas), después los chats que atiende una persona, la automatización del período, el costo de IA y los mensajes por día](docs/guide/media-es/dashboard.webp) | ![Pendientes: una tarjeta por cada mensaje de un proveedor con sus decisiones como preguntas, respuestas de un clic con el valor (Cambiar a / Mantener) y los mensajes para revisar](docs/guide/media-es/todo.webp) |
+| **Elegir la columna de precios de una planilla**                                                                                                                                                                                     | **Historial de precios**                                                                                                                                                                                            |
+| ![La revisión de un formato de planilla nuevo: cada columna de precios muestra valores reales del archivo y la sugerida viene preseleccionada](docs/guide/media-es/review-columns.webp)                                              | ![El historial de precios de un producto como gráfico escalonado, con cada cambio y el mensaje que lo causó](docs/guide/media-es/product.webp)                                                                      |
+| **Una conversación**                                                                                                                                                                                                                 | **Novedades**                                                                                                                                                                                                       |
+| ![El chat de un cliente que atiende una persona, a pantalla completa: sus respuestas, una respuesta del bot cancelada y la caja de respuesta fija abajo](docs/guide/media-es/chat.webp)                                              | ![Novedades: lo que el sistema ya hizo, agrupado por día (hoy, ayer, fechas), cada una con un enlace al producto](docs/guide/media-es/activity.webp)                                                                |
 
 ## Qué hace
 
@@ -40,22 +40,23 @@ La animación tiene textos en inglés. Las capturas de abajo son del panel en es
   salida estructurada y validada.
 - **Mantiene el catálogo correcto.** Reconoce productos aunque el nombre cambie, aplica los
   cambios de precio, guarda el historial y distingue una lista completa de una actualización
-  parcial. Vigila precios atípicos, cambios de moneda e IVA, y productos que desaparecen de una
-  lista completa.
-- **Nunca adivina.** Todo lo dudoso de un mensaje pasa a Pendientes para una persona, con el mensaje
-  original al lado: una coincidencia incierta, un mensaje sospechoso, un formato de planilla nuevo,
-  un audio que no se entendió.
-- **Te dice qué hacer.** Una sola lista de Pendientes reúne todo lo que espera a una persona —
-  contado para tu rol, el único número amarillo del panel— con cada decisión como una pregunta
-  simple y una respuesta de un clic cuando no hay nada que elegir. Las novedades y los errores
-  técnicos van aparte (Novedades y Estado del sistema), así nada más compite por tu atención.
-- **Trabaja con las personas.** La respuesta de una persona pausa solo las respuestas automáticas
-  del bot en ese chat, y el bot vuelve solo más tarde. Las palabras de baja se respetan. El equipo
-  recibe un resumen por WhatsApp por período en lugar de un mensaje por cada novedad.
+  parcial. Los precios conservan su moneda (la del catálogo es configurable, USD por defecto) y
+  nunca se convierten. Marca precios atípicos, cambios de moneda e IVA, y productos que faltan en
+  una lista completa.
+- **Nunca adivina.** Todo lo dudoso pasa a Pendientes para una persona, con el mensaje original al
+  lado: una coincidencia incierta, un mensaje sospechoso, un formato de planilla nuevo, un audio
+  confuso. En la demo pública, la cuenta de operador compartida puede resolver todas las revisiones.
+- **Te dice qué hacer.** Una sola lista de Pendientes reúne todo lo que espera a una persona —el
+  único número amarillo del panel— con cada decisión como una pregunta simple y una respuesta de un
+  clic cuando no hay nada que elegir. Las novedades y los errores van aparte (Novedades y Estado del
+  sistema).
+- **Trabaja con las personas.** Los chats que esperan la respuesta de una persona quedan marcados,
+  y un chat abierto ocupa toda la pantalla con la caja de respuesta abajo. La respuesta de una
+  persona pausa solo las respuestas automáticas del bot en ese chat. Las palabras de baja se
+  respetan; el equipo recibe un resumen por WhatsApp por período.
 - **Cuesta poco.** Un filtro previo determinístico deja fuera de la IA los saludos, los stickers y
   la charla de clientes. Las planillas con un formato conocido cuestan $0. Los topes de gasto se
-  controlan antes de cada llamada a la IA. Gasto total de IA durante todo el desarrollo:
-  **~$0,32**.
+  controlan antes de cada llamada a la IA. Gasto total de IA en todo el desarrollo: **~$0,32**.
 
 ## Cómo funciona
 
@@ -80,7 +81,7 @@ Detalles: [docs/architecture.md](docs/architecture.md) (en inglés).
 | Confiabilidad   | El webhook se guarda antes de responder 200, un outbox transaccional hacia n8n, colas con reintentos y mensajes muertos, e idempotencia en cada paso                                                    |
 | Seguridad de IA | Los documentos son datos, nunca instrucciones; las salidas se validan con Zod; las inyecciones detectadas pasan a revisión. Evaluación con el modelo real: 8/8 casos aprobados (6 ataques, 2 controles) |
 | Seguridad       | Webhooks firmados, sesiones con refresh rotativo y detección de reutilización, Argon2id, controles CSRF, roles, logs enmascarados, escaneo de secretos ([más](docs/security.md), en inglés)             |
-| Tests           | API: 1.417 tests unitarios y HTTP + 241 contra un Postgres real. Panel: 216 tests unitarios + 171 tests de navegador (Chrome de escritorio, Pixel 7, iPhone / WebKit) con axe. Mutation score de 80 %   |
+| Tests           | API: 1.453 tests unitarios y HTTP + 250 contra un Postgres real. Panel: 247 tests unitarios + 187 tests de navegador (Chrome de escritorio, Pixel 7, iPhone / WebKit) con axe. Mutation score de 80 %   |
 | CI/CD           | GitHub Actions: lint, tipos, tests, umbral de cobertura, E2E, escaneo de imágenes; release-please; imágenes amd64 + arm64                                                                               |
 | Idiomas         | Panel en inglés y español, a elección de cada usuario; textos de WhatsApp en el idioma del negocio                                                                                                      |
 | Accesibilidad   | Mobile first, WCAG 2.1 AA verificado con axe en los dos idiomas                                                                                                                                         |

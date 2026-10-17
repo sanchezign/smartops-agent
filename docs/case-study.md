@@ -52,8 +52,8 @@ the catalog and rules, updated live over SSE. Details: [architecture.md](archite
   an absent product untouched.
 - **Prompt injection:** 8 of 8 cases passed against the real model (6 attacks, 2 controls). The
   attacks were flagged and stopped for review, and no invented price was applied.
-- **Tests:** 1,417 API unit and HTTP tests and 241 against a real Postgres; 216 panel unit tests
-  and 171 browser tests on desktop Chrome, Pixel 7 and iPhone (WebKit), with accessibility checks
+- **Tests:** 1,453 API unit and HTTP tests and 250 against a real Postgres; 247 panel unit tests
+  and 187 browser tests on desktop Chrome, Pixel 7 and iPhone (WebKit), with accessibility checks
   in both languages. Mutation score 80 %.
 - **Resilience:** with n8n stopped and restarted, every message was delivered once, with one run
   each.
