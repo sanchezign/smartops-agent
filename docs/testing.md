@@ -248,6 +248,13 @@ every screen, EXCEPT while a menu, dialog or alert dialog is open (see below).
      root layout's title is an async `generateMetadata`); axe in that window reports `document-title`. Measured on
      WebKit: 3 of 30 checks, each one inside such a gap. Seen as a flaky test since at least 2026-10-06 (Pixel and
      iPhone, `reviews.spec.ts`), so not caused by phase 16.
+- **Then a rendered frame (found on WebKit after 0.19.0: `todo.spec.ts:479`, iPhone, flaky in CI).** WebKit reports
+  an animation `finished` as soon as its time has passed, but the computed style keeps the last frame it rendered;
+  right after a dialog opened no frame was rendered for ~450–550 ms, so wait (1) ended inside that gap with every
+  animation finished and the dialog's content still at `opacity` 0.65–0.9999 (white on the khaki button drops below
+  4.5:1 from 0.995). `expectAccessible` now also waits for two animation frames (`nextFrames`, 1 s cap). Measured in
+  the Playwright image, the opt-out spec × 40 with the CPU busy: 22 / 40 runs reached axe with the content's opacity
+  below 1 before, 0 / 40 after.
 - **Retries are idempotent.** Specs that insert their own rows clean what an earlier attempt of the same test left
   (`insertReview` supersedes the pending review of the same product and project; the opt-out spec dismisses the
   alert with its phrase), so a retry never sees two copies (strict-mode violation).

@@ -19,7 +19,8 @@ export async function login(page: Page, who: "operator" | "admin" = "admin") {
  * - every FINITE animation or transition has finished. Mid-fade, axe blends the text with what is
  *   behind and reports a contrast no user sees for more than a moment: toasts (phase 11, CI) and the
  *   dialogs' fade + zoom, which reduced motion does not cancel (phase 16: 4.46 on the khaki button of
- *   an opening alert dialog, 4.53 once open). Infinite ones (spinners) are ignored.
+ *   an opening alert dialog, 4.53 once open). Infinite ones (spinners) are ignored. Then a rendered frame, so the
+ *   computed style is the end state (WebKit; see nextFrames).
  * - the document has its title. On a client navigation Next.js takes the <title> out while the new
  *   route's metadata arrives (~300 ms measured on WebKit, phase 16); axe in that window reports
  *   document-title (a flaky test since at least 2026-10-06, on Pixel and iPhone).
@@ -34,6 +35,7 @@ export async function expectAccessible(page: Page) {
         (a) => a.playState !== "running" || a.effect?.getComputedTiming().endTime === Infinity,
       ),
   );
+  await nextFrames(page);
   await settle(page, () => !!document.head.querySelector("title")?.textContent?.trim());
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
@@ -60,6 +62,22 @@ async function settle(page: Page, condition: () => boolean) {
   } catch (error) {
     if (!(error instanceof errors.TimeoutError)) throw error;
   }
+}
+
+/**
+ * WebKit (phase 16, measured): an animation reads "finished" as soon as its time has passed, but the
+ * computed style keeps the last frame rendered — up to ~550 ms without a frame after a dialog opened,
+ * opacity 0.65–0.9999 with every animation finished. Two animation frames render the end state.
+ * Bounded like the other waits (1 s): if no frame comes, axe measures the page as it is.
+ */
+async function nextFrames(page: Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, 1_000);
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
 }
 
 /** Opens To do from the navigation (phase 15, ADR-032). */
