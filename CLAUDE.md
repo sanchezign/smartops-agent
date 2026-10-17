@@ -188,7 +188,8 @@ Add one line here for every new ADR.
 merged via PR #11, released in 0.19.0 and deployed 2026-10-17; demo-check PASSED with every line `ok`, real iPhone
 keyboard check passed; its log: `docs/history/phase-log.md` item 16). No phase is open.**
 Carried to the next phase: the khaki primary `#857549` with white text is 4.53:1 against the 4.5 minimum (ADR-033) —
-almost no margin; any change of the primary or its text must be re-measured (consider a slightly darker khaki).
+almost no margin; any change of the primary or its text must be re-measured. Measured in phase 16: at 4.53 an opacity
+of 0.995 (a fade not quite over) already drops it below 4.5, so a slightly darker khaki gains real margin.
 The exploration branch `design/phase-14-exploration` stays LOCAL (never push: ~38 MB of screenshots).
 Everything already finished (what was built, decisions, measurements, incidents, real results) is
 in `docs/history/phase-log.md` — one entry per phase and milestone, textual. Read it only when you
