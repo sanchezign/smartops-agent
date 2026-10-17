@@ -49,7 +49,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       </a>
 
       {demo ? (
-        <div className="relative z-40 bg-sidebar px-4 py-1.5 text-center text-[11px] leading-snug text-sidebar-foreground sm:text-xs md:ml-60">
+        <div
+          role="region"
+          aria-label={tShell("demoRegion")}
+          className="relative z-40 bg-sidebar px-4 py-1.5 text-center text-[11px] leading-snug text-sidebar-foreground sm:text-xs md:ml-60"
+        >
           {tShell.rich("demoBanner", { strong: (chunks) => <strong>{chunks}</strong> })}{" "}
           <Link href="/try" className="font-medium underline underline-offset-2">
             {tShell("tryLink")}

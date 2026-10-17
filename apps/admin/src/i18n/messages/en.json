@@ -49,6 +49,7 @@
   "shell": {
     "skipToContent": "Skip to content",
     "demoBanner": "<strong>Demo mode</strong>: sample data, no real WhatsApp and no cost.",
+    "demoRegion": "Demo mode",
     "tryLink": "Try the system",
     "pendingCount": "{count} pending"
   },
