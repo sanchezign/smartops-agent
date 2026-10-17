@@ -284,7 +284,10 @@ for (const locale of LOCALES)
       // the chat's actions menu, open
       await page.goto("/conversations");
       await ready(page);
-      await page.locator('main a[href^="/conversations/"]:not([href$="opted-out"])').first().click();
+      await page
+        .locator('main a[href^="/conversations/"]:not([href$="opted-out"])')
+        .first()
+        .click();
       await ready(page);
       const more = page.getByRole("button", { name: /More actions|Más acciones/ });
       if ((await more.count()) > 0) {
