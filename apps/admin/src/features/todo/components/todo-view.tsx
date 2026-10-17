@@ -16,7 +16,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
-import { Chip, RowList } from "@/components/list-row";
+import { Chip, RowList, WAITS_LINE } from "@/components/list-row";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import {
   AlertDialog,
@@ -246,10 +246,10 @@ function ListCard({
           <Link
             href={`/todo?run=${group.run.id}`}
             className={cn(
-              "w-fit text-sm font-semibold tabular-nums underline underline-offset-4",
+              "w-fit text-sm tabular-nums",
               waiting
-                ? "text-muted-foreground decoration-border"
-                : "text-foreground decoration-signal decoration-[3px] dark:text-signal dark:decoration-signal",
+                ? "font-semibold text-muted-foreground underline decoration-border underline-offset-4"
+                : WAITS_LINE,
             )}
           >
             {t("cardMeta", {

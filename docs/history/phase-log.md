@@ -1915,3 +1915,8 @@ a real client.**
       (white text ~3.2:1, the pressed "Needs a reply" filter under the mouse); the hover now darkens it (88 % primary +
       black, 5.6:1 light) and the contrast test checks that mix in both themes.
       Screenshots: `C:/dev/smartops-phase16-shots/m5/{panel,todo,money}/{desktop,iphone-chromium}`.
+      Owner's M5 review fix (2026-10-17): the time of each Home task ("3 h ago") was camouflaged; it now has the To do
+      meta line's treatment (dark yellow text underlined, light ink text with a thick yellow underline), recorded in
+      ADR-033 §4. Both share `WAITS_LINE` (list-row.tsx); the contrast test now covers the waiting line in both themes
+      (it did not cover the M4 meta line before) and checks the class itself. Screenshots:
+      `C:/dev/smartops-phase16-shots/m5-fix/`.

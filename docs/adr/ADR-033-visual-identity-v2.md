@@ -53,7 +53,11 @@ The orange options (P1 `#f97316`, P2 `#ce4b00`) are discarded.
 4. **The yellow rule of ADR-029 / ADR-032 stays: `#FFC400` means "waits for a person", nothing else.** New in this
    ADR: the **meta line of a To do card** ("Spreadsheet · 19 min ago · 1 pending", a real link to `/todo?run=<runId>`)
    uses it, because it says what waits. Dark: yellow text, underlined (9.5:1 on the card). Light: ink text with a thick
-   yellow underline (the yellow text would be 1.46:1). The primary button is never yellow; the yellow is never the focus
+   yellow underline (the yellow text would be 1.46:1). **The time of each task in Home's "Waiting for you"** ("3 h ago",
+   "yesterday") gets the same treatment (owner, 2026-10-17, M5 review): those tasks wait for a person too; the row stays
+   the only link and the supplier name does not change. Both lines share one class (`WAITS_LINE`,
+   `components/list-row.tsx`), and the contrast test covers its text in both themes on the card, the background and
+   the muted hover. The primary button is never yellow; the yellow is never the focus
    ring or a chart colour. A test forbids any non-`signal` token in the yellow band and requires the primary to be at
    least 2.5:1 from the yellow in both themes.
 5. **Typography: Oxanium for headings, IBM Plex Sans for text and lists** (owner, 2026-10-17: variant B, chosen from
