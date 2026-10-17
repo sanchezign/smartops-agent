@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { PageHeader } from "@/components/page-header";
 import { RowList, WAITS_LINE } from "@/components/list-row";
 import { ErrorState, LoadingState } from "@/components/states";
@@ -22,6 +22,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/features/auth/store";
+import { pickOne } from "@/lib/url-filters";
+import { useUrlParam } from "@/lib/use-url-param";
 import { cn } from "@/lib/utils";
 import { alertText } from "@/features/catalog/alert-text";
 import { useDemoInfo } from "@/features/demo/hooks";
@@ -47,7 +49,10 @@ const PERIODS = [7, 14, 30] as const;
  * with its own period switch; the charts and the pre-filter list last.
  */
 export function DashboardView() {
-  const [days, setDays] = useState<(typeof PERIODS)[number]>(14);
+  // The period lives in the URL (refresh and Back keep it); 14 days = no param.
+  const [rawDays, setRawDays] = useUrlParam("days");
+  const days = pickOne(rawDays, PERIODS, 14);
+  const setDays = (d: (typeof PERIODS)[number]) => setRawDays(d === 14 ? null : String(d));
   const query = useApiQuery<DashboardData>(["dashboard", days], `/admin/dashboard?days=${days}`);
   const tPages = useTranslations("pages");
   const t = useTranslations("dashboard");
@@ -149,6 +154,7 @@ function TaskRow({ task }: { task: Task }) {
         </span>
         <span className="flex flex-wrap gap-x-3 text-sm text-muted-foreground">
           <span
+            translate={task.kind === "review" ? "no" : undefined}
             className={cn(
               "truncate",
               task.kind === "review" && "font-semibold text-foreground", // the supplier (ADR-033 §7)
@@ -240,7 +246,7 @@ function PeriodContent({
                 variant={days === p ? "secondary" : "ghost"}
                 aria-pressed={days === p}
                 onClick={() => onDays(p)}
-                className="min-h-9"
+                className="min-h-11 md:min-h-9"
               >
                 {t("days", { count: p })}
               </Button>

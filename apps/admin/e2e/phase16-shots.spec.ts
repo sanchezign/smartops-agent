@@ -230,6 +230,85 @@ for (const locale of LOCALES)
     });
 
 /**
+ * M6a (Web Interface Guidelines fixes), what changed and the other sets do not show: filters opened from the URL
+ * (Conversations, Catalog, Home), a line review with its inputs (44 px on a phone), Rules (native select, curly
+ * quotes on "Save “…”"), the chat's actions menu ("…" on the options that open a dialog) and, as admin, the
+ * rename-supplier dialog.
+ */
+for (const locale of LOCALES)
+  for (const scheme of SCHEMES)
+    test(`m6a ${locale} ${scheme}`, async ({ page, context, isMobile }, info) => {
+      test.skip(SET !== "m6a", "SHOTS_SET");
+      test.setTimeout(300_000);
+      const dir = `${ROOT}/${LABEL}/${info.project.name}`;
+      mkdirSync(dir, { recursive: true });
+      const prefix = `${locale}-${scheme}`;
+      const findings: Record<string, string[]> = {};
+      let n = 0;
+      const shoot = async (name: string, fullPage = true) => {
+        const file = `${prefix}-${String(++n).padStart(2, "0")}-${name}.png`;
+        await page.screenshot({ path: `${dir}/${file}`, fullPage });
+        const axe = await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+          .analyze();
+        findings[file] = axe.violations.map((v) => `${v.id}: ${v.help} (${v.nodes.length})`);
+      };
+      if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
+      await context.addCookies([{ name: "smartops_locale", value: locale, url: E2E.panelUrl }]);
+      await page.emulateMedia({ colorScheme: scheme });
+      await signIn(page);
+      await page.goto("/conversations?filter=needs_reply");
+      await ready(page);
+      await shoot("conversations-url-filter");
+      await page.goto("/catalog?availability=available");
+      await ready(page);
+      await shoot("catalog-url-filter");
+      await page.goto("/?days=30");
+      await ready(page);
+      await shoot("home-30-days");
+      // a line review with inputs: the product-match question ("Is “Washer” the same product…")
+      await page.goto("/todo");
+      await ready(page);
+      const line = page
+        .locator('main a[href^="/reviews/"]')
+        .filter({ hasText: /Washer|Arandela/ })
+        .first();
+      if ((await line.count()) > 0) {
+        await page.goto((await line.getAttribute("href"))!);
+        await ready(page);
+        await shoot("review-line");
+      }
+      await page.goto("/rules");
+      await ready(page);
+      await shoot("rules");
+      // the chat's actions menu, open
+      await page.goto("/conversations");
+      await ready(page);
+      await page.locator('main a[href^="/conversations/"]:not([href$="opted-out"])').first().click();
+      await ready(page);
+      const more = page.getByRole("button", { name: /More actions|Más acciones/ });
+      if ((await more.count()) > 0) {
+        await more.click();
+        await page.getByRole("menu").waitFor();
+        await shoot("chat-menu", false);
+        await page.keyboard.press("Escape");
+      }
+      // as admin: the rename dialog of a supplier (Catalog)
+      await page.context().clearCookies();
+      await context.addCookies([{ name: "smartops_locale", value: locale, url: E2E.panelUrl }]);
+      await signIn(page, "admin");
+      await page.goto("/catalog");
+      await ready(page);
+      await page.getByRole("combobox", { name: /^(Supplier|Proveedor)$/ }).click();
+      await page.getByRole("option").nth(1).click();
+      await page.getByRole("button", { name: /Rename|Renombrar/ }).click();
+      await page.getByRole("dialog").waitFor();
+      await page.waitForTimeout(400);
+      await shoot("rename-dialog", false);
+      writeFileSync(`${dir}/axe-${prefix}.json`, JSON.stringify(findings, null, 2));
+    });
+
+/**
  * M4 (ADR-033): the K2 theme on Home and To do, for the demo operator.
  */
 for (const locale of LOCALES)

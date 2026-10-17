@@ -36,6 +36,29 @@ test.describe("catalog (phase 9 M5)", () => {
     await expectAccessible(page);
   });
 
+  test("supplier and availability live in the URL, the search text never does (phase 16 M6a)", async ({
+    page,
+    isMobile,
+  }) => {
+    await login(page, "operator");
+    await goTo(page, "Catalog", isMobile);
+    await page.getByRole("combobox", { name: "Supplier" }).click();
+    await page.getByRole("option", { name: /Corvane Fasteners Inc./ }).click();
+    await page.getByRole("button", { name: "Available", exact: true }).click();
+    await expect(page).toHaveURL(/\/catalog\?supplier=[\w-]+&availability=available$/);
+    await page.getByLabel("Search product").fill("hex bolt");
+    expect(page.url()).not.toContain("hex");
+    // Back from a product keeps the filters
+    await page.getByRole("list", { name: "Products" }).getByRole("link").first().click();
+    await expect(page.getByRole("heading", { level: 1 })).not.toHaveText("Catalog");
+    await page.goBack();
+    await expect(page.getByRole("combobox", { name: "Supplier" })).toContainText("Corvane");
+    await expect(page.getByRole("button", { name: "Available", exact: true })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
   test("activity: price changes already applied, with links to the product", async ({
     page,
     isMobile,

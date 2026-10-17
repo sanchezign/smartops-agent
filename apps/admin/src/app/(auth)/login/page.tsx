@@ -12,7 +12,9 @@ export default async function LoginPage() {
     <main className="relative flex min-h-screen flex-col items-center justify-center gap-6 p-8">
       <LocaleSelect className="absolute right-4 top-4" />
       <div className="text-center">
-        <h1 className="font-display text-3xl">SmartOps</h1>
+        <h1 className="font-display text-3xl" translate="no">
+          SmartOps
+        </h1>
         <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
       <Suspense>

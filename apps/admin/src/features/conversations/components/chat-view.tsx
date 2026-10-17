@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { TIME_ZONE } from "@/lib/format";
 import { KindChip } from "@/components/list-row";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
+import { useDocumentTitle } from "@/lib/use-document-title";
 import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
 import { useConversation, useMessages } from "../hooks";
@@ -98,6 +99,7 @@ function ChatHeader({ conversation }: { conversation: ConversationHeader }) {
   const t = useTranslations("conversations");
   const tKinds = useTranslations("contactKinds");
   const { formatTime } = useFormat();
+  useDocumentTitle(contactName(c, t("contactFallback")));
   const until = conversation.humanUntil
     ? t("humanUntil", { time: formatTime(conversation.humanUntil) })
     : t("humanUntilResumed");
@@ -113,13 +115,18 @@ function ChatHeader({ conversation }: { conversation: ConversationHeader }) {
           <BackButton iconOnly />
         </div>
         <div className="col-span-2 col-start-2 row-start-1 flex min-w-0 flex-col pr-12">
-          <h1 className="font-display line-clamp-2 text-lg leading-tight break-words">
+          <h1
+            className="font-display line-clamp-2 text-lg leading-tight break-words"
+            translate="no"
+          >
             {contactName(c, t("contactFallback"))}
           </h1>
           <p className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
             <KindChip>{tKinds(c.kind)}</KindChip>
             {supplierSuffix(c) ? (
-              <span className="truncate font-semibold text-foreground">{supplierSuffix(c)}</span>
+              <span className="truncate font-semibold text-foreground" translate="no">
+                {supplierSuffix(c)}
+              </span>
             ) : null}
             {c.waId ? <span className="shrink-0 tabular-nums">+{c.waId}</span> : null}
           </p>

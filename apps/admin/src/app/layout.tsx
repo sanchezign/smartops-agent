@@ -3,6 +3,7 @@ import { Fira_Code, IBM_Plex_Sans, Oxanium } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Providers } from "@/components/providers";
+import { THEME_COLOR } from "@/lib/theme-color";
 import "./globals.css";
 
 // ADR-033: Oxanium (variable wght, headings), IBM Plex Sans (text and lists) and Fira Code, self-hosted at build time
@@ -29,8 +30,9 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fdfbf7" },
-    { media: "(prefers-color-scheme: dark)", color: "#1c1917" },
+    // ThemeColorSync (providers.tsx) follows the theme chosen in the user menu.
+    { media: "(prefers-color-scheme: light)", color: THEME_COLOR.light },
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLOR.dark },
   ],
 };
 

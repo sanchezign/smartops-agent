@@ -155,6 +155,29 @@
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
+  /* Phase 16 M6a (Web Interface Guidelines): the sticky header (h-14 / md:h-16) and the phone's bottom bar
+     (4.5rem + safe area) never cover the element focused with the keyboard or scrolled to by an anchor. */
+  html {
+    scroll-padding-top: 4.5rem;
+    scroll-padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
+  @media (width >= 48rem) {
+    html {
+      scroll-padding-top: 5rem;
+      scroll-padding-bottom: 1rem;
+    }
+  }
+  /* No double-tap zoom delay on controls; the zoom of the page itself stays (never disabled). */
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  label,
+  summary,
+  [role="button"] {
+    touch-action: manipulation;
+  }
 }
 
 /* Toasts (sonner, richColors). Its default light-theme texts fail WCAG AA on their tinted
@@ -179,6 +202,23 @@ html [data-sonner-toaster][data-sonner-theme="light"] {
   font-family: var(--font-oxanium);
   font-weight: 700;
   letter-spacing: 0;
+}
+
+/* Loading states appear only after 200 ms, so a fast answer never flashes a skeleton (phase 16 M6a). The
+   element is in the DOM from the start (role=status is announced), only invisible during the delay. */
+@keyframes appear-late {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@utility appear-late {
+  animation: appear-late 150ms ease-out 200ms both;
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 1ms;
+  }
 }
 
 /* The price-tag shape of the "a person is handling it" label (ADR-029): the point is the side

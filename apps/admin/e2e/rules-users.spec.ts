@@ -77,16 +77,16 @@ test.describe("rules and users changes (desktop only)", () => {
     await login(page);
     await openFromMore(page, "Rules", false);
     await page.getByRole("switch", { name: "The bot replies to contacts" }).click();
-    await page.getByRole("button", { name: 'Save "Automatic replies"' }).click();
+    await page.getByRole("button", { name: "Save “Automatic replies”" }).click();
     await expect(page.getByText("Saved.")).toBeVisible();
     await expect(page.getByText("Bot off")).toBeVisible();
 
     await page.getByRole("switch", { name: "The bot replies to contacts" }).click();
-    await page.getByRole("button", { name: 'Save "Automatic replies"' }).click();
+    await page.getByRole("button", { name: "Save “Automatic replies”" }).click();
     await expect(page.getByText("Bot off")).toHaveCount(0);
 
     await page.getByLabel("Maximum summaries per hour").fill("1,500"); // ambiguous in English
-    await page.getByRole("button", { name: 'Save "WhatsApp alerts to the team"' }).click();
+    await page.getByRole("button", { name: "Save “WhatsApp alerts to the team”" }).click();
     await expect(
       page.getByRole("alert").filter({ hasText: "without a thousands separator" }),
     ).toBeVisible();
@@ -101,18 +101,18 @@ test.describe("rules and users changes (desktop only)", () => {
     const field = page.getByLabel("Catalog currency");
     await expect(field).toHaveValue("USD");
     await field.fill("us");
-    await page.getByRole("button", { name: 'Save "Prices"' }).click();
+    await page.getByRole("button", { name: "Save “Prices”" }).click();
     await expect(
       page.getByRole("alert").filter({ hasText: "The currency is 3 letters" }),
     ).toBeVisible();
     await field.fill("cad"); // typed in lower case: shown and stored in capitals
     await expect(field).toHaveValue("CAD");
-    await page.getByRole("button", { name: 'Save "Prices"' }).click();
+    await page.getByRole("button", { name: "Save “Prices”" }).click();
     await expect(page.getByText("Saved.")).toBeVisible();
     await page.reload();
     await expect(page.getByLabel("Catalog currency")).toHaveValue("CAD");
     await page.getByLabel("Catalog currency").fill("USD"); // leave the shared demo as it was
-    await page.getByRole("button", { name: 'Save "Prices"' }).click();
+    await page.getByRole("button", { name: "Save “Prices”" }).click();
     await expect(page.getByText("Saved.")).toBeVisible();
     await page.reload();
     await expect(page.getByLabel("Catalog currency")).toHaveValue("USD");
@@ -125,7 +125,7 @@ test.describe("rules and users changes (desktop only)", () => {
     for (const day of ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]) {
       await page.getByRole("checkbox", { name: day }).check();
     }
-    await page.getByRole("button", { name: 'Save "Business hours"' }).click();
+    await page.getByRole("button", { name: "Save “Business hours”" }).click();
     await expect(page.getByText("Saved.")).toBeVisible();
     await page.reload();
     await expect(page.getByRole("textbox", { name: "Friday: opens" })).toHaveValue("09:00");

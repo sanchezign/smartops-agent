@@ -102,6 +102,12 @@ test.describe("panel shell + dashboard (phase 9 M1)", () => {
     await login(page);
     await page.getByRole("button", { name: "30 days" }).click();
     await expect(page.getByText("Last 30 days")).toBeVisible();
+    // phase 16 M6a: the period lives in the URL, so a refresh keeps it
+    await expect(page).toHaveURL(/\/\?days=30$/);
+    await page.reload();
+    await expect(page.getByText("Last 30 days")).toBeVisible();
+    await page.getByRole("button", { name: "14 days" }).click();
+    await expect(page).toHaveURL(/\/$/);
   });
 
   test("navigation: bottom bar on phones, sidebar on desktop", async ({ page, isMobile }) => {

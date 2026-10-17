@@ -52,6 +52,8 @@ const eslintConfig = [
               "autoComplete",
               "inputMode",
               "lang",
+              // translate="no": an HTML switch (keep names out of browser auto-translate), not text.
+              "translate",
               "rel",
               "target",
               "referrerPolicy",

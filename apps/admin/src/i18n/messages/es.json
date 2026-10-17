@@ -169,11 +169,11 @@
     "currencyFormat": "La moneda son 3 letras, por ejemplo UYU o USD.",
     "priceNeededForNew": "Para crear el producto hace falta el precio.",
     "nameRequired": "Escribe el nombre del producto.",
-    "pickPriceColumn": "Elige la columna de precio de la hoja \"{sheet}\".",
+    "pickPriceColumn": "Elige la columna de precio de la hoja “{sheet}”.",
     "keywordsEmpty": "Escribe al menos una palabra.",
     "keywordsTooMany": "Como máximo 20 palabras.",
     "keywordTooLong": "Cada palabra, hasta 40 letras.",
-    "phoneInvalid": "\"{value}\" no parece un número de WhatsApp con código de país.",
+    "phoneInvalid": "“{value}” no parece un número de WhatsApp con código de país.",
     "phonesTooMany": "Como máximo 10 números.",
     "hoursFormat": "{day}: usa horas como 09:00.",
     "hoursEqual": "{day}: la apertura y el cierre no pueden ser iguales."
@@ -363,7 +363,7 @@
       "notes": "Notas de la lectura",
       "approve": "Usar esta columna",
       "reject": "Descartar la planilla",
-      "sheetQuestion": "Hoja \"{sheet}\": ¿qué precio cargamos en el catálogo?",
+      "sheetQuestion": "Hoja “{sheet}”: ¿qué precio cargamos en el catálogo?",
       "sheetLabel": "Columna de precio de la hoja {sheet}",
       "columnN": "Columna {n}",
       "suggested": "Sugerida",
@@ -470,7 +470,7 @@
     "saveFailed": "No se pudo guardar.",
     "noChanges": "No hay cambios para guardar.",
     "saving": "Guardando…",
-    "saveSection": "Guardar \"{section}\"",
+    "saveSection": "Guardar “{section}”",
     "useHours": "Usar horario de atención",
     "daysAndHours": "Días y horas",
     "opens": "{day}: abre",
@@ -487,7 +487,7 @@
       },
       "hours": {
         "title": "Horario de atención",
-        "description": "Fuera de horario, los resúmenes por WhatsApp que no son urgentes esperan a la apertura y el panel muestra \"fuera de horario\". Los avisos críticos salen igual."
+        "description": "Fuera de horario, los resúmenes por WhatsApp que no son urgentes esperan a la apertura y el panel muestra “fuera de horario”. Los avisos críticos salen igual."
       },
       "prices": {
         "title": "Precios",
@@ -509,7 +509,7 @@
       },
       "bot_supplierAck": {
         "label": "Confirmar a los proveedores que recibimos su lista",
-        "help": "Envía un \"Recibimos su lista\" con el resumen de lo que se aplicó."
+        "help": "Envía un “Recibimos su lista” con el resumen de lo que se aplicó."
       },
       "coexistence_humanTakeoverMinutes": {
         "label": "Cuando responde una persona, el bot se pausa",
@@ -611,6 +611,7 @@
     "description": "Quién escribió, quién le está respondiendo y qué quedó pendiente.",
     "optedOutLink": "Dados de baja",
     "search": "Buscar por nombre, proveedor o teléfono",
+    "searchPlaceholder": "Buscar por nombre, proveedor o teléfono…",
     "filter": "Filtro",
     "filters": {
       "all": "Todas",
@@ -680,7 +681,7 @@
       "photoAlt": "Foto: {name}",
       "photoAltGeneric": "Foto enviada por WhatsApp",
       "photoFailed": "No se pudo cargar la foto.",
-      "loadingPhoto": "Cargando foto",
+      "loadingPhoto": "Cargando foto…",
       "listen": "Escuchar audio",
       "audioFailed": "No se pudo cargar el audio.",
       "loadingAudio": "Cargando audio…",
@@ -696,11 +697,11 @@
       "paused": "Bot pausado: ahora atiendes tú.",
       "resumed": "El bot vuelve a responder.",
       "resume": "Reactivar el bot",
-      "pause": "Pausar el bot",
+      "pause": "Pausar el bot…",
       "more": "Más acciones",
-      "optInAction": "Registrar alta (vuelve a recibir mensajes)",
+      "optInAction": "Registrar alta (vuelve a recibir mensajes)…",
       "optInAdminOnly": "Registrar un alta es solo para administradores",
-      "optOutAction": "Registrar baja (no enviarle más mensajes)",
+      "optOutAction": "Registrar baja (no enviarle más mensajes)…",
       "pauseTitle": "Pausar el bot en este chat",
       "pauseBody": "Mientras esté pausado el bot no le responde. Las listas de precios se siguen procesando y el equipo sigue recibiendo avisos.",
       "duration": "Duración",
@@ -748,7 +749,7 @@
       "empty": "Nadie pidió la baja",
       "listLabel": "Contactos dados de baja",
       "recorded": "Baja registrada",
-      "keyword": "Escribió \"{keyword}\"",
+      "keyword": "Escribió “{keyword}”",
       "offWhatsapp": "Lo pidió fuera de WhatsApp (registrado)",
       "offWhatsappBy": "Lo pidió fuera de WhatsApp (registrado por {by})",
       "manual": "Registrada a mano",
@@ -760,6 +761,7 @@
     "supplier": "Proveedor",
     "allSuppliers": "Todos los proveedores",
     "search": "Buscar producto",
+    "searchPlaceholder": "Buscar producto…",
     "availability": "Disponibilidad",
     "availabilityOptions": {
       "all": "Todos",
@@ -770,7 +772,7 @@
     "lastList": " · última lista {when}",
     "taxIncluded": " · precios con IVA",
     "taxExcluded": " · precios sin IVA",
-    "rename": "Renombrar",
+    "rename": "Renombrar…",
     "noMatches": "Ningún producto coincide",
     "empty": "No hay productos aquí",
     "listLabel": "Productos",
@@ -854,7 +856,7 @@
   },
   "users": {
     "description": "Quién entra al panel y qué puede hacer. Siempre queda al menos un administrador activo.",
-    "newUser": "Nuevo usuario",
+    "newUser": "Nuevo usuario…",
     "listLabel": "Usuarios",
     "roles": {
       "admin": "Administrador",
@@ -871,7 +873,7 @@
     "changeToOperator": "Cambiar a operador",
     "deactivate": "Desactivar",
     "reactivate": "Reactivar",
-    "newPassword": "Nueva contraseña",
+    "newPassword": "Nueva contraseña…",
     "unlock": "Desbloquear",
     "revokeSessions": "Cerrar sus sesiones",
     "updated": "Usuario actualizado. Sus sesiones abiertas se cerraron.",
