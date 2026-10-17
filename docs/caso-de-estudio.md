@@ -55,8 +55,8 @@ reglas, actualizado en vivo con SSE. Detalle:
   dudoso a revisión y no tocó un producto ausente.
 - **Prompt injection:** 8 de 8 casos correctos contra el modelo real (6 ataques, 2 controles).
   Los ataques quedaron marcados y frenados para revisión, y no se aplicó ningún precio inventado.
-- **Tests:** 1.417 tests unitarios y HTTP de la API y 241 contra un Postgres real; 216 tests
-  unitarios del panel y 171 tests en navegador (Chrome de escritorio, Pixel 7 e iPhone con
+- **Tests:** 1.453 tests unitarios y HTTP de la API y 250 contra un Postgres real; 247 tests
+  unitarios del panel y 187 tests en navegador (Chrome de escritorio, Pixel 7 e iPhone con
   WebKit), con controles de accesibilidad en los dos idiomas. Puntaje de mutación: 80 %.
 - **Resiliencia:** con n8n detenido y vuelto a levantar, cada mensaje se entregó una sola vez,
   con una sola corrida cada uno.
