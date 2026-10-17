@@ -93,6 +93,30 @@ test.describe("rules and users changes (desktop only)", () => {
     await expectAccessible(page);
   });
 
+  test("unsaved edits make reload / close ask first; after saving, they do not (phase 16 M6a)", async ({
+    page,
+  }) => {
+    await login(page);
+    await openFromMore(page, "Rules", false);
+    // a cancelable beforeunload that the page's own listener may cancel: true = the browser would ask
+    const asks = () =>
+      page.evaluate(() => {
+        const event = new Event("beforeunload", { cancelable: true });
+        window.dispatchEvent(event);
+        return event.defaultPrevented;
+      });
+    expect(await asks()).toBe(false); // nothing edited
+    const bot = page.getByRole("switch", { name: "The bot replies to contacts" });
+    await bot.click();
+    expect(await asks()).toBe(true); // an unsaved edit
+    await page.getByRole("button", { name: "Save “Automatic replies”" }).click();
+    await expect(page.getByText("Saved.")).toBeVisible();
+    await expect.poll(asks).toBe(false); // saved: nothing pending
+    await bot.click(); // leave the shared demo as it was
+    await page.getByRole("button", { name: "Save “Automatic replies”" }).click();
+    await expect(page.getByText("Bot off")).toHaveCount(0);
+  });
+
   test("the catalog currency is three letters, upper-cased, and saved (ADR-035)", async ({
     page,
   }) => {
