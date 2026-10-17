@@ -6,6 +6,52 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.19.0](https://github.com/sanchezign/smartops-agent/compare/v0.18.0...v0.19.0) (2026-10-17)
+
+
+### Features
+
+* **admin:** phase 16 M1 — conversations that need a reply, a chat that fills the screen ([e8e0fd5](https://github.com/sanchezign/smartops-agent/commit/e8e0fd5dfa14b681d0c3b2aa3fb7d4f9d5c4d252))
+* **admin:** phase 16 M4 — K2 theme prototype on Home and To do, typography A / B (ADR-033) ([418b08a](https://github.com/sanchezign/smartops-agent/commit/418b08a1fba81cf13fc609ccbfc42438079811f5))
+* **admin:** phase 16 M4 — typography B, Oxanium headings + IBM Plex Sans text (ADR-033 accepted) ([a006c9b](https://github.com/sanchezign/smartops-agent/commit/a006c9b5ddcaf0bb311abbea8a549fad65c37c98))
+* **admin:** phase 16 M5 — theme everywhere, names and review values emphasized (ADR-033 §7) ([38a8218](https://github.com/sanchezign/smartops-agent/commit/38a82185f7ecebfd0bd4795c2798f2a5a58536ff))
+* **admin:** phase 16 M5 fix — Home task times carry the waiting line (ADR-033 §4) ([c0753fb](https://github.com/sanchezign/smartops-agent/commit/c0753fbd20be753c977b64e582bfdff7dffa6736))
+* **admin:** phase 16 M6a — Web Interface Guidelines fixes ([7ff209a](https://github.com/sanchezign/smartops-agent/commit/7ff209a8e98677c596e2f9d885c310c11a112a2c))
+* **admin:** phase 16 M6b — demo banner as a labelled region, axe region rule in the E2E ([4228347](https://github.com/sanchezign/smartops-agent/commit/42283471827ad9d0c02c0328c386dd4704dd509d))
+* **api,admin:** phase 16 M2 — in the public demo the operator resolves every review (ADR-034) ([3b7811c](https://github.com/sanchezign/smartops-agent/commit/3b7811cce53d01a883890dc54c8b8d9e1e730fb2))
+* **api,admin:** phase 16 M3 — USD everywhere, catalog currency setting (ADR-035) ([2e9eb1b](https://github.com/sanchezign/smartops-agent/commit/2e9eb1b9fe0a832bbf963ad9cfd4ad1046bcae5f))
+
+
+### Bug Fixes
+
+* **admin:** lighter dark-mode secondary text (ADR-033) ([e09382a](https://github.com/sanchezign/smartops-agent/commit/e09382a358e9aaefe125d4c130ce6bf988044953))
+
+
+### Performance
+
+* **admin:** URL filters update the address with history.replaceState ([01af47a](https://github.com/sanchezign/smartops-agent/commit/01af47a32fce471817d5db6f219abe92d963c0ce))
+
+
+### CI/CD
+
+* Browser E2E step timeout 15 min (was 12), comment with today's test count and time ([12d07cc](https://github.com/sanchezign/smartops-agent/commit/12d07cc3a6dd17eb0cacdcdb56d8c05c87b7a4a3))
+* Browser E2E step timeout 20 min, job 25, with the time measured in CI ([9db142a](https://github.com/sanchezign/smartops-agent/commit/9db142a2fc058d937792c9c1ba7d9e85d2768a69))
+* main-guard retries while GitHub links the merged commit to its pull request ([c863d3a](https://github.com/sanchezign/smartops-agent/commit/c863d3abeedd3f6b0683cbcd1b9fcbc383aed2f8))
+
+
+### Documentation
+
+* **adr:** ADR-033 records the owner's khaki primary (K2); iPhone keyboard check in the runbook ([ade3b96](https://github.com/sanchezign/smartops-agent/commit/ade3b9685bb2b8c71f82ab1aee3bbfbd02cab404))
+* **adr:** phase 16 M0 — identity v2, demo reviews, catalog currency ([d06ee45](https://github.com/sanchezign/smartops-agent/commit/d06ee456a30154223cc2bc439cd7ab3e6fb705f5))
+* phase 16 M6b — guides, ADR-033, testing, phase log, regenerated media ([54a8901](https://github.com/sanchezign/smartops-agent/commit/54a890164cd86c5056d79bacafd12bba28c70ed1))
+
+
+### Tests
+
+* **admin:** axe measures a settled page; one-click To do specs survive a retry ([757663b](https://github.com/sanchezign/smartops-agent/commit/757663b90137e8acc2ea318cf2b9e189517ab6b8))
+* **admin:** cover use-unsaved-warning in Rules; exclude only the two new hooks from coverage ([2dfbc57](https://github.com/sanchezign/smartops-agent/commit/2dfbc570534145d9c182f7a3950cc6b5011f9272))
+* **api:** freeze the review permission table with DEMO_MODE off (phase 16 M2) ([f28c021](https://github.com/sanchezign/smartops-agent/commit/f28c02103f166d3896e458359b91f2f7f9c78afd))
+
 ## [0.18.0](https://github.com/sanchezign/smartops-agent/compare/v0.17.1...v0.18.0) (2026-10-13)
 
 
