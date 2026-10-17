@@ -7,7 +7,7 @@ import { Fragment, useEffect, useLayoutEffect, useRef, type ReactNode } from "re
 import { ErrorState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { TIME_ZONE } from "@/lib/format";
-import { Chip } from "@/components/list-row";
+import { KindChip } from "@/components/list-row";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
@@ -117,8 +117,10 @@ function ChatHeader({ conversation }: { conversation: ConversationHeader }) {
             {contactName(c, t("contactFallback"))}
           </h1>
           <p className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-            <Chip>{tKinds(c.kind)}</Chip>
-            {supplierSuffix(c) ? <span className="truncate">{supplierSuffix(c)}</span> : null}
+            <KindChip>{tKinds(c.kind)}</KindChip>
+            {supplierSuffix(c) ? (
+              <span className="truncate font-semibold text-foreground">{supplierSuffix(c)}</span>
+            ) : null}
             {c.waId ? <span className="shrink-0 tabular-nums">+{c.waId}</span> : null}
           </p>
         </div>

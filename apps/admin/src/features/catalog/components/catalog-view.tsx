@@ -172,7 +172,9 @@ function ProductRowLink({ product, showSupplier }: { product: ProductRow; showSu
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="truncate font-medium">{product.name}</span>
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-          {showSupplier ? <span className="truncate">{product.supplier.name}</span> : null}
+          {showSupplier ? (
+            <span className="truncate font-semibold text-foreground">{product.supplier.name}</span>
+          ) : null}
           {product.unit ? <Chip>{product.unit}</Chip> : null}
           {product.stock !== null ? (
             <span>{t("stock", { count: formatInt(product.stock) })}</span>

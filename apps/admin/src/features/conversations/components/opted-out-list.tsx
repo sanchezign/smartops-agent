@@ -3,7 +3,7 @@
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Chip, RowLink, RowList, rowClass } from "@/components/list-row";
+import { KindChip, RowLink, RowList, rowClass } from "@/components/list-row";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
@@ -57,11 +57,11 @@ export function OptedOutList() {
             const body = (
               <>
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <span className="truncate font-medium">
+                  <span className="truncate font-heading text-base font-semibold">
                     {contactName(c, t("contactFallback"))}
                   </span>
                   <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                    <Chip>{tKinds(c.kind)}</Chip>
+                    <KindChip>{tKinds(c.kind)}</KindChip>
                     <span>{howText(c)}</span>
                     {c.optOutAt ? (
                       <span className="tabular-nums">{formatDateTime(c.optOutAt)}</span>

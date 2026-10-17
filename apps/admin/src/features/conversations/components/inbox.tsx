@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Chip, RowLink, RowList } from "@/components/list-row";
+import { KindChip, RowLink, RowList } from "@/components/list-row";
 import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
 import { useInbox } from "../hooks";
@@ -136,11 +136,17 @@ function InboxRow({ item }: { item: InboxItem }) {
                 className="size-2 shrink-0 -translate-y-0.5 self-center rounded-full bg-foreground"
               />
             ) : null}
-            <span className={cn("truncate", unanswered ? "font-semibold" : "font-medium")}>
+            {/* The contact larger and bold (ADR-033 §7); one notch bolder when it needs a reply. */}
+            <span
+              className={cn(
+                "truncate font-heading text-base",
+                unanswered ? "font-bold" : "font-semibold",
+              )}
+            >
               {name}
             </span>
             {company ? (
-              <span className="hidden truncate text-sm text-muted-foreground sm:inline">
+              <span className="hidden truncate text-sm font-semibold text-foreground sm:inline">
                 {company}
               </span>
             ) : null}
@@ -158,7 +164,7 @@ function InboxRow({ item }: { item: InboxItem }) {
         </span>
         <span className="flex items-center justify-between gap-3">
           <span className="flex min-w-0 items-center gap-2">
-            <Chip>{tKinds(item.contact.kind)}</Chip>
+            <KindChip>{tKinds(item.contact.kind)}</KindChip>
             <span className="truncate text-sm text-muted-foreground">
               {m ? (
                 <>

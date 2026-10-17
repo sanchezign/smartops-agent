@@ -22,8 +22,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/features/auth/store";
+import { cn } from "@/lib/utils";
 import { alertText } from "@/features/catalog/alert-text";
 import { useDemoInfo } from "@/features/demo/hooks";
+import { QuestionText } from "@/features/reviews/components/question-text";
 import { reviewQuestion } from "@/features/reviews/question";
 import { sourceKind } from "@/features/reviews/source";
 import { SourceIcon } from "@/features/reviews/source-icon";
@@ -113,18 +115,17 @@ function PendingBlock() {
 
 /** One decision, light: what is asked and where, as a link (deciding happens in To do). */
 function TaskRow({ task }: { task: Task }) {
-  const tReviews = useTranslations("reviews");
   const tAlerts = useTranslations("alerts");
   const tTodo = useTranslations("todo");
   const format = useFormat();
   let href: string;
-  let title: string;
+  let title: ReactNode;
   let detail: string;
   let icon: ReactNode;
   if (task.kind === "review") {
     const question = reviewQuestion(task.item, format);
     href = `/reviews/${task.item.id}`;
-    title = tReviews(`questions.${question.key}`, question.params);
+    title = <QuestionText question={question} />;
     detail = task.item.supplier?.name ?? tTodo("unknownSupplier");
     icon = <SourceIcon kind={sourceKind(task.item.message)} className="size-5 shrink-0" />;
   } else {
@@ -142,9 +143,19 @@ function TaskRow({ task }: { task: Task }) {
     >
       {icon}
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="text-sm font-medium break-words">{title}</span>
+        {/* A review question carries its own emphasis (its values); an alert title stays medium. */}
+        <span className={cn("text-sm break-words", task.kind !== "review" && "font-medium")}>
+          {title}
+        </span>
         <span className="flex flex-wrap gap-x-3 text-sm text-muted-foreground">
-          <span className="truncate">{detail}</span>
+          <span
+            className={cn(
+              "truncate",
+              task.kind === "review" && "font-semibold text-foreground", // the supplier (ADR-033 §7)
+            )}
+          >
+            {detail}
+          </span>
           <span className="tabular-nums">{format.formatRelative(task.at)}</span>
         </span>
       </span>
