@@ -102,7 +102,7 @@ milestone, is in `docs/history/phase-log.md`. Status as of 2026-10-12.
 15. panel triage (To do / Activity / System status, ADR-032) — DONE (merged into `main`, released in 0.18.0).
     Detail: `docs/history/phase-log.md` item 15.
 16. visual identity v2 + complete public demo + USD + conversations (ADR-033, 034, 035) — IN PROGRESS (branch
-    `feat/phase-16-identity-v2`): M0, M1 (conversations), M2 (complete demo, ADR-034) and M3 (USD, ADR-035) done; M4 (K2 theme prototype, A / B) waiting for the owner.
+    `feat/phase-16-identity-v2`): M0, M1 (conversations), M2 (complete demo, ADR-034), M3 (USD, ADR-035) and M4 (K2 theme, typography B, ADR-033 accepted) done; next M5.
 
 
 ## Data model (starting point — refine in phase 2 plan)
@@ -179,7 +179,7 @@ Add one line here for every new ADR.
 - [ADR-030](docs/adr/ADR-030-demo-operator-resolves-column-mapping.md) — In DEMO_MODE the public operator can resolve the column-mapping review
 - [ADR-031](docs/adr/ADR-031-content-and-business-language.md) — Demo content language per deployment; ONE business language that also decides how incoming messages are read
 - [ADR-032](docs/adr/ADR-032-panel-triage.md) — Panel triage: To do (one yellow counter), Activity, System status
-- [ADR-033](docs/adr/ADR-033-visual-identity-v2.md) — Visual identity v2: warm tweakcn theme, Oxanium, the yellow rule kept (replaces the palette and fonts of ADR-029)
+- [ADR-033](docs/adr/ADR-033-visual-identity-v2.md) — Visual identity v2: warm tweakcn theme, Oxanium + IBM Plex Sans, the yellow rule kept (replaces the palette and fonts of ADR-029)
 - [ADR-034](docs/adr/ADR-034-demo-operator-resolves-every-review.md) — In DEMO_MODE the public operator resolves every review (amends ADR-030)
 - [ADR-035](docs/adr/ADR-035-catalog-currency.md) — Catalog currency setting and the order that resolves a line's currency
 
@@ -191,8 +191,8 @@ bottom) → M2 complete demo (in DEMO_MODE the public operator resolves EVERY re
 env.DEMO_MODE; nothing changes outside the demo; ADR-034) → M3 USD (setting "Catalog currency"; order line → list →
 the existing product's own currency → the catalog currency only for NEW products, always with `currency_assumed`;
 ES-USD goldens recorded ONLY after a free dry-run and the owner's OK, cap US$0.50; ADR-035) → M4 new tweakcn theme
-prototyped on Home + To do (primary #857549 + white text in both modes, "K2"; typography A = Oxanium everywhere vs B = Oxanium
-headings + IBM Plex Sans text, the owner picks from screenshots) → M5 theme everywhere + emphasis (supplier names,
+on Home + To do (primary #857549 + white text in both modes, "K2"; DONE: the owner chose typography B on 2026-10-17 =
+Oxanium headings + IBM Plex Sans text and lists, ADR-033 accepted) → M5 theme everywhere + emphasis (supplier names,
 the "meta" line as a link to /todo?run=…, inverted contact-kind chips) → M6 Vercel Web Interface Guidelines audit,
 docs, media, demo-check, full suite, PR. One milestone at a time, one commit each, the owner reviews screenshots
 (EN / ES, light / dark, desktop + iPhone) in `C:/dev/smartops-phase16-shots/` before the next; NO push until the
@@ -219,7 +219,8 @@ Active state (2026-10-06):
 
 Phase 16 closing checklist (owner): after the deploy, check on a real iPhone that the chat's reply box stays above
 the keyboard (runbook §1, "Manual check on a real iPhone"); the emulator cannot open the keyboard.
-Next task: **the owner picks typography A or B from the M4 screenshots**, then M5 (theme everywhere + emphasis). After the
+Next task: **M5 (theme everywhere + emphasis, ADR-033 §7)**: plan shown to the owner first, screenshots in
+`C:/dev/smartops-phase16-shots/m5/` before M6. After the
 next release is deployed, `demo-check` must show the /admin/todo lines as `ok` (a `skip` means an old image).
 
 Owner's checks still open for phase 12 (nothing to code):

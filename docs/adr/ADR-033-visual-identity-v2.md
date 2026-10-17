@@ -1,7 +1,7 @@
 # ADR-033: Visual identity v2 — warm theme (tweakcn), Oxanium, the yellow rule kept
 
 Date: 2026-10-15
-Status: DRAFT (phase 16 M0; becomes "accepted" when the owner approves the M4 prototype). Replaces the **palette**
+Status: accepted (2026-10-17, the owner approved the M4 prototype and chose typography B). Replaces the **palette**
 (ADR-029 §1), the **typography** (§3) and the **radius** (§4) of [ADR-029](ADR-029-panel-visual-identity.md). Keeps
 ADR-029 §2 (the yellow rule, as amended by ADR-032), §5 and §6.
 
@@ -56,13 +56,13 @@ The orange options (P1 `#f97316`, P2 `#ce4b00`) are discarded.
    yellow underline (the yellow text would be 1.46:1). The primary button is never yellow; the yellow is never the focus
    ring or a chart colour. A test forbids any non-`signal` token in the yellow band and requires the primary to be at
    least 2.5:1 from the yellow in both themes.
-5. **Typography.** Oxanium (OFL; variable `wght` 200–800; digits are tabular by default: all ten advance widths are
-   equal, so amounts and counters align without `tnum`) and Fira Code (OFL) replace Archivo and Geist Mono, self-hosted
-   at build time by `next/font` (CSP `font-src 'self'`; no Google Fonts at runtime). Merriweather is NOT loaded: nothing
-   uses a serif. Oxanium has no `→` glyph (the browser falls back). **Variants A (Oxanium everywhere) and B (Oxanium
-   headings + IBM Plex Sans text and lists) are shown on the M4 prototype; the owner chooses by looking.** The text
-   font of B, if chosen, is IBM Plex Sans (OFL, tabular digits by default, full Spanish coverage). The losing variant
-   leaves no code behind. The decision is recorded here when taken.
+5. **Typography: Oxanium for headings, IBM Plex Sans for text and lists** (owner, 2026-10-17: variant B, chosen from
+   the M4 screenshots). Oxanium (OFL; variable `wght` 200–800; tabular digits by default) sets the page and card
+   titles (`font-display`, `font-title`, `font-heading`); IBM Plex Sans (OFL; weights 400–700; tabular digits by
+   default, so amounts and counters align without `tnum`; full Spanish coverage) is the text font (`font-sans`); Fira
+   Code (OFL) the monospace. They replace Archivo and Geist Mono and are self-hosted at build time by `next/font` (CSP
+   `font-src 'self'`; no Google Fonts at runtime). Merriweather is NOT loaded: nothing uses a serif. Variant A (Oxanium
+   everywhere) was shown next to B on the M4 prototype and left no code behind.
 6. **Radius 0.3 rem; shadows of the theme** (two layers, tinted toward the background hue), through the current
    multiplicative radius scale (`sm` 2.9 px … `lg` 4.8 px), not tweakcn's `calc(radius - 4px)` (which would give 0.8 px).
 7. **Emphasis (M5):** supplier / contact names larger and bold in To do, Catalog and Conversations; contact-kind chips

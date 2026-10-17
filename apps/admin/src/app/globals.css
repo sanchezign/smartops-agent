@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--app-font);
+  --font-sans: var(--font-plex);
   --font-mono: var(--font-fira-code);
   --font-heading: var(--font-oxanium);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -144,16 +144,6 @@
   --warning: #f0b45a;
 }
 
-/* Text font: variant A (Oxanium everywhere); `.type-b` is the PROTOTYPE of variant B (IBM Plex Sans text, Oxanium
-   headings), deleted with the loser once the owner chooses (ADR-033 §5). */
-/* On body, not :root: next/font puts its variables on the body class. */
-body {
-  --app-font: var(--font-oxanium);
-}
-body.type-b {
-  --app-font: var(--font-plex);
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -179,7 +169,7 @@ html [data-sonner-toaster][data-sonner-theme="light"] {
   --error-text: hsl(360, 100%, 37%);
 }
 
-/* Headings (ADR-033): Oxanium in both variants (it has no width axis); card titles a notch lighter. */
+/* Headings (ADR-033): Oxanium (the text is IBM Plex Sans); card titles a notch lighter. */
 @utility font-display {
   font-family: var(--font-oxanium);
   font-weight: 750;

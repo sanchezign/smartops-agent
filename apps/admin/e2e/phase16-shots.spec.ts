@@ -230,8 +230,7 @@ for (const locale of LOCALES)
     });
 
 /**
- * M4 (ADR-033): the K2 theme prototype on Home and To do, for the demo operator. Run it twice, once per typography
- * variant (NEXT_PUBLIC_TYPE_VARIANT=b builds the panel with IBM Plex Sans text; default = A, Oxanium everywhere).
+ * M4 (ADR-033): the K2 theme on Home and To do, for the demo operator.
  */
 for (const locale of LOCALES)
   for (const scheme of SCHEMES)
