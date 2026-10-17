@@ -19,7 +19,8 @@ export default defineConfig({
       include: ["src/lib/**/*.ts", "src/features/**/*.ts", "src/i18n/locales.ts"],
       exclude: [
         "**/hooks.ts",
-        "src/lib/use-*.ts",
+        "src/lib/use-url-param.ts",
+        "src/lib/use-unsaved-warning.ts",
         "**/store.ts",
         "**/types.ts",
         "src/features/auth/api.ts",

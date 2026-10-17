@@ -1961,6 +1961,7 @@ a real client.**
       (no worker) and then with `N8N_DELIVERY_ENABLED=false` (the demo entry defaults it to true). Full suite: format,
       lint, typecheck green; API unit 1447 (+ integration 250), panel 247, browser E2E 186 passed on desktop, Pixel 7 and
       iPhone-on-Chromium (WebKit does not start on this PC; CI runs the real one). The panel's coverage gate (functions
-      77.96 % < 78 %) was already failing on the branch since the M6a hooks (`src/lib/use-*.ts`, covered by the E2E
-      by the project's own policy): they are now excluded from the panel coverage (functions 86.7 %); thresholds
-      unchanged.
+      77.96 % < 78 %) was already failing on the branch since the M6a hooks: only the two new ones,
+      `use-url-param.ts` and `use-unsaved-warning.ts`, are excluded by name (covered by the E2E by the project's
+      own policy; the other `use-*` files count); functions 80.7 %, thresholds unchanged. `use-unsaved-warning` got
+      its E2E in Rules (an unsaved edit → `beforeunload` is cancelled; after saving, it is not).
