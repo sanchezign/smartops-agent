@@ -80,4 +80,8 @@ The orange options (P1 `#f97316`, P2 `#ce4b00`) are discarded.
   pairs and the counter's frame on it.
 - The prototype (Home + To do) is reviewed before the rest of the panel is touched (the owner's rule).
 - Screenshots and README media are regenerated at the end of phase 16.
+- Dark secondary text (owner, 2026-10-17, after the M6a review): `--muted-foreground` and `--sidebar-muted` are
+  `#c9c2bb` (table above, commit 11d77de); the contrast test still covers every pair.
+- M6b: the demo banner is a labelled landmark (`role="region"`, "Demo mode") and the best-practice rule `region` runs
+  in the E2E suite on every screen without an open menu or dialog (docs/testing.md, "Accessibility checks").
 - Out of scope: APCA (the standard that is measured and tested here is WCAG 2 AA).

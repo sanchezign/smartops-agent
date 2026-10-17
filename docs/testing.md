@@ -218,6 +218,27 @@ Proposed jobs (Linux runners; times measured on the dev PC, CI estimated ×2 + i
   values for every required secret in `playwright.config.ts` (real provider keys are blanked, so
   a developer's keys never reach the E2E API either).
 
+## Accessibility checks (axe)
+
+Every screen is checked in light and dark, in English and (smoke) in Spanish: WCAG 2.1 A / AA with axe, zero
+violations (`a11y.spec.ts`, `i18n-es.spec.ts` and the `expectAccessible` calls of the other specs, `e2e/helpers.ts`).
+Since phase 16 M6b the same helper also runs the best-practice rule **`region`** (all content inside a landmark) on
+every screen, EXCEPT while a menu, dialog or alert dialog is open (see below).
+
+- **Phase 16 M6b pass.** Every axe _best-practice_ rule over 16 screens plus the chat menu and the rename dialog,
+  desktop and iPhone (Chromium), light and dark (4 runs, identical results). One real finding: `region` on the demo
+  banner (it sat outside any landmark); it is now a `role="region"` labelled "Demo mode" / "Modo demo", with no visual
+  change. Nothing else.
+- **Known false positives with Radix while a menu or dialog is open.** A modal Radix menu or dialog sets
+  `aria-hidden` on everything outside it (and `pointer-events: none` on `body`). axe then reports `aria-hidden-focus`
+  (the skip link, the demo banner, the sidebar, `<main>`, the header and the account button are "hidden but
+  focusable") and, with the best-practice rules, `landmark-one-main`, `page-has-heading-one` and `region` on the popper
+  wrapper (it cannot see `<main>` or the `<h1>`). They are not bugs: **focus cannot leave the open menu.** Checked by
+  keyboard on the chat's "More actions" menu (2026-10-17, Chromium, desktop): after opening it with Enter, 12 presses
+  alternating Tab and ArrowDown and 6 of Shift+Tab left the focus on a `menuitem` of the menu every time, the menu
+  stayed open, and Escape closed it and returned the focus to the "More actions" button. That is why
+  `expectAccessible` skips `region` while one is open.
+
 ## Mutation testing (M9) — report only, no gate
 
 - Stryker 10.0.0 (`@stryker-mutator/core`, pinned exactly): `pnpm --filter @smartops/api mutation`.

@@ -41,7 +41,7 @@ puede decidir).
 - Debajo, solo cuando hay algo: los chats que **atiende una persona** y, para los
   administradores, una línea roja cuando hay **errores técnicos sin revisar** (abre Estado del
   sistema).
-- **Automatización**, con 7, 14 o 30 días: mensajes recibidos, **resuelto sin intervención** (la
+- **Automatización**, con 7, 14 o 30 días (el período elegido queda en la dirección): mensajes recibidos, **resuelto sin intervención** (la
   parte de los mensajes procesados que no necesitó a nadie) y **filtrado sin IA** (saludos,
   stickers, charla de clientes que no costaron nada, con el ahorro estimado).
 - Los gráficos muestran los mensajes por día y el costo de IA por día, con los presupuestos
@@ -109,7 +109,8 @@ una nota que lo aclara).
   equipo preguntó algo o hizo un pedido y ninguna persona le contestó todavía (desde el panel o desde
   el teléfono). Las listas de precios, los «ok» y los «gracias» nunca marcan un chat. El filtro **Por
   responder** muestra solo esos, y funciona junto con la búsqueda.
-- Busca por nombre, proveedor o teléfono, y filtra por tipo.
+- Busca por nombre, proveedor o teléfono, y filtra por tipo. El filtro elegido queda en la dirección:
+  un enlace o una recarga abre la misma lista; lo que escribes en la búsqueda nunca se pone ahí.
 
 ![Una conversación](media-es/chat.webp)
 
@@ -130,7 +131,7 @@ una nota que lo aclara).
 ![El historial de precios de un producto](media-es/product.webp)
 
 - Los productos de cada proveedor con su último precio y su último cambio. Busca por nombre o
-  filtra por proveedor y disponibilidad.
+  filtra por proveedor y disponibilidad (los dos quedan en la dirección; el texto de búsqueda no).
 - Abre un producto para ver su historial de precios: el gráfico y la lista de cambios, cada uno
   con un enlace al mensaje que lo causó.
 - Los administradores pueden **renombrar un proveedor** (por ejemplo, cuando se creó con el
@@ -176,6 +177,8 @@ registrados. Solo los administradores pueden cambiarlas.
   hora.
 - **Audios y bajas:** el audio más largo que se transcribe automáticamente, y las palabras de
   baja y de alta.
+
+Si editas una regla e intentas recargar o cerrar la pestaña sin guardar, el navegador pregunta antes.
 
 ## Usuarios (administradores)
 

@@ -40,7 +40,7 @@ panel is the one on **To do**: how many things wait for **you** (what your role 
 - Below, only when there is something: the chats **a person is handling**, and — for
   administrators — a red line when there are **technical errors not reviewed** (it opens System
   status).
-- **Automation**, with 7, 14 or 30 days: messages received, **resolved without a person** (the
+- **Automation**, with 7, 14 or 30 days (the period you pick stays in the address): messages received, **resolved without a person** (the
   share of processed messages that needed nobody) and **filtered without AI** (greetings,
   stickers, customers' chat that never cost anything, with the estimated saving).
 - The charts show messages per day and the AI cost per day, with the daily and total budgets.
@@ -105,7 +105,8 @@ administrators (in the public demo the operator can resolve them too, with a not
   or placed an order and no person has answered yet (from the panel or from the phone). Price lists,
   "ok" and "thanks" never mark a chat. The **Needs a reply** filter shows only those, and it works
   together with the search.
-- Search by name, supplier or phone, and filter by type.
+- Search by name, supplier or phone, and filter by type. The filter you chose is kept in the address,
+  so a link or a reload opens the same list; what you type in the search box is never put there.
 
 ![A conversation](media-en/chat.webp)
 
@@ -126,7 +127,7 @@ administrators (in the public demo the operator can resolve them too, with a not
 ![A product's price history](media-en/product.webp)
 
 - Every supplier's products with their last price and last change. Search by name or filter by
-  supplier and availability.
+  supplier and availability (both stay in the address; the search text does not).
 - Open a product to see its price history: the chart and the list of changes, each with a link to
   the message that caused it.
 - Administrators can **rename a supplier** (for example, when it was created with a WhatsApp
@@ -169,6 +170,8 @@ administrators can change them.
 - **WhatsApp alerts to the team:** who receives the summaries, how often, and the hourly limits.
 - **Voice notes and opt-outs:** the longest voice note transcribed automatically, and the
   opt-out and opt-in words.
+
+If you edit a rule and try to reload or close the tab before saving, the browser asks first.
 
 ## Users (administrators)
 

@@ -102,7 +102,7 @@ milestone, is in `docs/history/phase-log.md`. Status as of 2026-10-12.
 15. panel triage (To do / Activity / System status, ADR-032) — DONE (merged into `main`, released in 0.18.0).
     Detail: `docs/history/phase-log.md` item 15.
 16. visual identity v2 + complete public demo + USD + conversations (ADR-033, 034, 035) — IN PROGRESS (branch
-    `feat/phase-16-identity-v2`): M0, M1 (conversations), M2 (complete demo, ADR-034), M3 (USD, ADR-035), M4 (K2 theme, typography B, ADR-033 accepted), M5 (theme everywhere + emphasis) and M6a (Web Interface Guidelines fixes) done; M6b after the owner reviews the M6a screenshots.
+    `feat/phase-16-identity-v2`): M0, M1 (conversations), M2 (complete demo, ADR-034), M3 (USD, ADR-035), M4 (K2 theme, typography B, ADR-033 accepted), M5 (theme everywhere + emphasis) M6a (Web Interface Guidelines fixes), the dark secondary-text fix and M6b (axe best-practice, docs, media, demo-check, full suite) done; the PR to `main` is open and NOT merged (the owner decides).
 
 
 ## Data model (starting point — refine in phase 2 plan)
@@ -219,10 +219,10 @@ Active state (2026-10-06):
 
 Phase 16 closing checklist (owner): after the deploy, check on a real iPhone that the chat's reply box stays above
 the keyboard (runbook §1, "Manual check on a real iPhone"); the emulator cannot open the keyboard.
-Next task: **the owner reviews the M6a screenshots** (`C:/dev/smartops-phase16-shots/m6a/`), then M6b (axe
-best-practice pass, docs EN / ES, README media, local demo-check, full suite, PR; do NOT touch
-`C:/dev/smartops-portfolio-kit/` until the owner says it was restored from the backup). After the
-next release is deployed, `demo-check` must show the /admin/todo lines as `ok` (a `skip` means an old image).
+Next task: **the owner reviews the phase 16 PR** (`feat/phase-16-identity-v2` → `main`, checks must be green) and says when
+to merge it (rebase-merge ONLY on the owner's word); then release, deploy, `demo-check` with the /admin/todo lines as `ok`
+(a `skip` means an old image) and the iPhone keyboard check above. `C:/dev/smartops-portfolio-kit/` was restored by the
+owner (2026-10-17): never overwrite what is there.
 
 Owner's checks still open for phase 12 (nothing to code):
 - 2026-10-07: Console `CpuUtilization` plateau (~33 %) and daily p95 (expected ≥ ~30 %).

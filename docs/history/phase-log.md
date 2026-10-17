@@ -1920,7 +1920,7 @@ a real client.**
       ADR-033 §4. Both share `WAITS_LINE` (list-row.tsx); the contrast test now covers the waiting line in both themes
       (it did not cover the M4 meta line before) and checks the class itself. Screenshots:
       `C:/dev/smartops-phase16-shots/m5-fix/`.
-    - M6a — DONE, waiting for the owner's screenshot review. Vercel Web Interface Guidelines audit (commit `434b7f9`
+    - M6a — DONE (screenshots approved by the owner, 2026-10-17). Vercel Web Interface Guidelines audit (commit `434b7f9`
       of vercel-labs/web-interface-guidelines, 2026-10-05) against the panel code; the owner approved findings 1–17
       (18, the chat image without dimensions, stays: its container already limits the shift). Not adopted on purpose:
       Vercel's copy rules (Title Case, "&") and APCA (ADR-033 measures WCAG 2). Fixed: `scroll-padding` on `<html>` so
@@ -1939,3 +1939,28 @@ a real client.**
       contain` on the sheet and the dialogs; `translate="no"` on the brand and the data names (ESLint allows the
       attribute); the tab title names the product / contact (`useDocumentTitle`). Screenshots:
       `C:/dev/smartops-phase16-shots/m6a/`.
+    - Dark secondary text (owner request after the M6a review, commit `11d77de`, 2026-10-17): in dark mode
+      `--muted-foreground` (`#a8a29e`, 6.93 on the background) camouflaged with the background (Rules descriptions,
+      "stock 18", "Last 30 days", the quoted text of a review). Three warm tones were compared on Catalog and Rules
+      (A `#bab3ad`, B `#c9c2bb`, C `#d8d2cb`; contrasts and screenshots in `muted-options/`); the owner chose B.
+      `--muted-foreground` and `--sidebar-muted` are `#c9c2bb` (9.92 on background, 8.61 on card, 9.52 on muted; 5.83 on
+      the active sidebar item), only in dark mode; recorded in the ADR-033 table. Screenshots: `muted-fix/`.
+    - M6b — DONE (PR `feat/phase-16-identity-v2` → `main`, not merged). axe best-practice pass over 16 screens + the
+      chat menu + the rename dialog (desktop and iPhone Chromium, light and dark, identical in the 4 runs): ONE real
+      finding, `region` on the demo banner → now `role="region"` labelled "Demo mode" / "Modo demo" (`shell.demoRegion`),
+      no visual change; the rule `region` joined `expectAccessible` on every screen except while a menu or dialog is
+      open. `aria-hidden-focus` (and `landmark-one-main`, `page-has-heading-one`, `region` on the popper wrapper) with
+      the chat menu open are Radix false positives: checked by keyboard (12 × Tab / ArrowDown and 6 × Shift+Tab never
+      left the menu, Escape returned the focus to "More actions"); documented in `docs/testing.md`, "Accessibility
+      checks". Docs: guides EN / ES (filters kept in the address but never the search text, Home period, Rules asks
+      before leaving with unsaved edits), ADR-033 (dark secondary text, M6b), testing.md. README media and both guides'
+      screenshots regenerated from a fresh database with the new theme (README media 6.1 MB ≤ 8, Spanish guide 360 KB);
+      the MP4 and subtitles went to a scratch folder, NOT to the portfolio kit (it already had its own). `demo-check`
+      against a local single-process demo server (`demo-server.ts`, `DEMO_ORCHESTRATOR=internal`, port 4200, own PIDs,
+      stopped afterwards): PASSED, six samples in 4–8 s; first attempts failed only because I ran the API alone
+      (no worker) and then with `N8N_DELIVERY_ENABLED=false` (the demo entry defaults it to true). Full suite: format,
+      lint, typecheck green; API unit 1447 (+ integration 250), panel 247, browser E2E 186 passed on desktop, Pixel 7 and
+      iPhone-on-Chromium (WebKit does not start on this PC; CI runs the real one). The panel's coverage gate (functions
+      77.96 % < 78 %) was already failing on the branch since the M6a hooks (`src/lib/use-*.ts`, covered by the E2E
+      by the project's own policy): they are now excluded from the panel coverage (functions 86.7 %); thresholds
+      unchanged.
