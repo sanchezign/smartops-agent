@@ -93,7 +93,7 @@ milestone, is in `docs/history/phase-log.md`. Status as of 2026-10-12.
     properties, mutation, real-model eval) — DONE.
 11. CI/CD (GitHub Actions, Docker images, releases, supply-chain checks) — DONE (v0.11.0).
 12. deploy ($0): Oracle Always Free E2.1.Micro, light demo profile, Caddy, backups, monitoring,
-    keep-alive — DONE in the repo (closed 2026-10-06; v0.16.2 deployed, keep-alive ON at 50 %). The
+    keep-alive — DONE in the repo (closed 2026-10-06; 0.19.0 deployed since 2026-10-17, keep-alive ON at 50 %). The
     owner's checks on the VM / Console that remain are listed in "Current phase".
 13. i18n (panel EN + neutral ES) + English docs + screenshots/video + panel guide + case study +
     portfolio kit — DONE (merged 2026-10-02).
@@ -101,8 +101,8 @@ milestone, is in `docs/history/phase-log.md`. Status as of 2026-10-12.
     Detail: `docs/history/phase-log.md` item 14.
 15. panel triage (To do / Activity / System status, ADR-032) — DONE (merged into `main`, released in 0.18.0).
     Detail: `docs/history/phase-log.md` item 15.
-16. visual identity v2 + complete public demo + USD + conversations (ADR-033, 034, 035) — IN PROGRESS (branch
-    `feat/phase-16-identity-v2`): M0, M1 (conversations), M2 (complete demo, ADR-034), M3 (USD, ADR-035), M4 (K2 theme, typography B, ADR-033 accepted), M5 (theme everywhere + emphasis) M6a (Web Interface Guidelines fixes), the dark secondary-text fix and M6b (axe best-practice, docs, media, demo-check, full suite) done; the PR to `main` is open and NOT merged (the owner decides).
+16. visual identity v2 + complete public demo + USD + conversations (ADR-033, 034, 035) — DONE (merged into `main`
+    via PR #11, released in 0.19.0, deployed 2026-10-17). Detail: `docs/history/phase-log.md` item 16.
 
 
 ## Data model (starting point — refine in phase 2 plan)
@@ -184,27 +184,19 @@ Add one line here for every new ADR.
 - [ADR-035](docs/adr/ADR-035-catalog-currency.md) — Catalog currency setting and the order that resolves a line's currency
 
 ## Current phase
-**Phases 1–15 are COMPLETE (phase 15, panel triage, merged and released in 0.18.0; its log: `docs/history/phase-log.md` item 15). Phase 16 (visual identity v2, ADR-033 / 034 / 035) is IN PROGRESS on `feat/phase-16-identity-v2`.**
-Phase 16 (plan approved 2026-10-15): M0 diagnosis + ADRs + "before" screenshots + swatch sheet → M1 conversations
-("needs a reply" computed by the API; chat layout: reply box fixed at the bottom, messages stacked from the
-bottom) → M2 complete demo (in DEMO_MODE the public operator resolves EVERY review; the API decides with
-env.DEMO_MODE; nothing changes outside the demo; ADR-034) → M3 USD (setting "Catalog currency"; order line → list →
-the existing product's own currency → the catalog currency only for NEW products, always with `currency_assumed`;
-ES-USD goldens recorded ONLY after a free dry-run and the owner's OK, cap US$0.50; ADR-035) → M4 new tweakcn theme
-on Home + To do (primary #857549 + white text in both modes, "K2"; DONE: the owner chose typography B on 2026-10-17 =
-Oxanium headings + IBM Plex Sans text and lists, ADR-033 accepted) → M5 theme everywhere + emphasis (supplier names,
-the "meta" line as a link to /todo?run=…, inverted contact-kind chips) → M6 Vercel Web Interface Guidelines audit,
-docs, media, demo-check, full suite, PR. One milestone at a time, one commit each, the owner reviews screenshots
-(EN / ES, light / dark, desktop + iPhone) in `C:/dev/smartops-phase16-shots/` before the next; NO push until the
-owner asks.
+**Phases 1–16 are COMPLETE (phase 16, visual identity v2 + complete demo + USD + conversations, ADR-033 / 034 / 035:
+merged via PR #11, released in 0.19.0 and deployed 2026-10-17; demo-check PASSED with every line `ok`, real iPhone
+keyboard check passed; its log: `docs/history/phase-log.md` item 16). No phase is open.**
+Carried to the next phase: the khaki primary `#857549` with white text is 4.53:1 against the 4.5 minimum (ADR-033) —
+almost no margin; any change of the primary or its text must be re-measured (consider a slightly darker khaki).
 The exploration branch `design/phase-14-exploration` stays LOCAL (never push: ~38 MB of screenshots).
 Everything already finished (what was built, decisions, measurements, incidents, real results) is
 in `docs/history/phase-log.md` — one entry per phase and milestone, textual. Read it only when you
 need the detail of a closed milestone (see "History" at the end of this file).
 
-Active state (2026-10-06):
+Active state (2026-10-17):
 - Public demo ONLINE: https://smartops-demo.duckdns.org — one Oracle Always Free E2.1.Micro,
-  light profile (ADR-023, ADR-025), v0.16.2 deployed. Phase 12 log: `docs/history/phase-log.md`
+  light profile (ADR-023, ADR-025), 0.19.0 deployed (2026-10-17). Phase 12 log: `docs/history/phase-log.md`
   item 12.
 - Keep-alive load (ADR-027, `docs/deploy/keepalive.md`): ON since 2026-10-05, `CPUQuota=50%` since
   0.16.2 (trial of 2026-10-06 passed: Console ~33–35 %, slowest sample 9.9 s, health p95 538 ms).
@@ -217,11 +209,7 @@ Active state (2026-10-06):
   (security.yml, 03:30 Montevideo) owns what exists and turns RED on a finding (check it still runs:
   docs/ci-cd.md, "Is the nightly scan still running?").
 
-Phase 16 closing checklist (owner): after the deploy, check on a real iPhone that the chat's reply box stays above
-the keyboard (runbook §1, "Manual check on a real iPhone"); the emulator cannot open the keyboard.
-Next task: **the owner reviews the phase 16 PR** (`feat/phase-16-identity-v2` → `main`, checks must be green) and says when
-to merge it (rebase-merge ONLY on the owner's word); then release, deploy, `demo-check` with the /admin/todo lines as `ok`
-(a `skip` means an old image) and the iPhone keyboard check above. `C:/dev/smartops-portfolio-kit/` was restored by the
+Next task: **the owner defines the next phase** (nothing open). `C:/dev/smartops-portfolio-kit/` was restored by the
 owner (2026-10-17): never overwrite what is there.
 
 Owner's checks still open for phase 12 (nothing to code):
@@ -291,9 +279,7 @@ needs a NEW ADR), F-05 (security headers sent by the panel itself, not only by C
   updated or the exception renewed (max 30 days for HIGH, 7 for CRITICAL) with a new justification.
 - **Phase 11:** the API image is 864 MB (full prod node_modules incl. Prisma CLI for migrations,
   Debian slim). Slimming (separate migrations image, distroless) left for phase 12 if it matters.
-- **Phase 11:** `main` is protected only by convention (main-guard detects, does not prevent)
-  until the repo is public and a ruleset is created. Release PRs opened by `GITHUB_TOKEN` get no
-  CI checks (GitHub rule).
+- **Phase 11:** release PRs opened by `GITHUB_TOKEN` get no CI checks (GitHub rule).
 - **Phase 11:** the v0.11.0 CHANGELOG compare link (`v0.1.0...v0.11.0`) is broken — no `v0.1.0`
   tag exists. Accepted by the user (first release only).
 - **Phase 11:** GHCR package visibility (private) and repository link not verified by API: the
