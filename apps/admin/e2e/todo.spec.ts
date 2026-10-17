@@ -275,6 +275,14 @@ async function insertReview(input: {
       [input.product],
     );
     const p = rows[0]!;
+    // Idempotent on a retry: a failed first attempt may leave its review pending, and the retry would
+    // show two (strict-mode violation). Each product is used once per project, so this only touches
+    // what an earlier attempt of the same test left.
+    await db.query(
+      `UPDATE review_items SET status = 'superseded', updated_at = now()
+        WHERE status = 'pending' AND product_id = $1 AND dedupe_key LIKE $2`,
+      [p.id, `e2e-quick:${input.tag}:%`],
+    );
     let runId = input.runId;
     if (!runId) {
       const message = await db.query<{ id: string }>(
@@ -475,6 +483,12 @@ test.describe("to do: one-click decisions (phase 15 M3)", () => {
     const db = new pg.Client({ connectionString: E2E.databaseUrl });
     await db.connect();
     try {
+      // Idempotent on a retry: dismiss what a failed first attempt left open with the same phrase.
+      await db.query(
+        `UPDATE alerts SET status = 'dismissed', updated_at = now()
+          WHERE type = 'possible_opt_out' AND status IN ('open', 'sent') AND payload->>'matched' = $1`,
+        [phrase],
+      );
       await db.query(
         `INSERT INTO alerts (id, type, severity, status, title, payload, created_at, updated_at)
          SELECT gen_random_uuid(), 'possible_opt_out', 'info', 'open', 'e2e opt-out',

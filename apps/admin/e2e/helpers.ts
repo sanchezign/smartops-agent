@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, type Page } from "@playwright/test";
+import { errors, expect, type Page } from "@playwright/test";
 import { E2E } from "./env";
 
 export async function login(page: Page, who: "operator" | "admin" = "admin") {
@@ -15,20 +15,26 @@ export async function login(page: Page, who: "operator" | "admin" = "admin") {
 }
 
 /**
- * WCAG 2.1 A/AA checks (axe) on the current page. Toasts are measured only once their entry
- * transition has finished: mid-fade, axe blends the text with what is behind and reports a
- * contrast that no user ever sees for more than 0.4 s (phase 11, CI). The config also emulates
- * reduced motion (sonner then skips the transitions); this wait covers any other motion.
+ * WCAG 2.1 A/AA checks (axe) on the current page, measured on a settled page:
+ * - every FINITE animation or transition has finished. Mid-fade, axe blends the text with what is
+ *   behind and reports a contrast no user sees for more than a moment: toasts (phase 11, CI) and the
+ *   dialogs' fade + zoom, which reduced motion does not cancel (phase 16: 4.46 on the khaki button of
+ *   an opening alert dialog, 4.53 once open). Infinite ones (spinners) are ignored.
+ * - the document has its title. On a client navigation Next.js takes the <title> out while the new
+ *   route's metadata arrives (~300 ms measured on WebKit, phase 16); axe in that window reports
+ *   document-title (a flaky test since at least 2026-10-06, on Pixel and iPhone).
+ * Each wait has a timeout; when it runs out the check goes on and axe reports what it finds (a title
+ * that never comes back IS a document-title violation), so nothing real is hidden.
  */
 export async function expectAccessible(page: Page) {
-  await page.waitForFunction(
-    () =>
-      Array.from(document.querySelectorAll("[data-sonner-toast]")).every((el) =>
-        el.getAnimations({ subtree: true }).every((a) => a.playState !== "running"),
+  await settle(page, () =>
+    document
+      .getAnimations()
+      .every(
+        (a) => a.playState !== "running" || a.effect?.getComputedTiming().endTime === Infinity,
       ),
-    undefined,
-    { timeout: 5_000 },
   );
+  await settle(page, () => !!document.head.querySelector("title")?.textContent?.trim());
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
@@ -45,6 +51,15 @@ export async function expectAccessible(page: Page) {
       (v) => `${v.id}: ${v.help} → ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
     ),
   ).toEqual([]);
+}
+
+/** Waits up to 5 s for `condition`; on timeout it returns and lets axe measure the page as it is. */
+async function settle(page: Page, condition: () => boolean) {
+  try {
+    await page.waitForFunction(condition, undefined, { timeout: 5_000 });
+  } catch (error) {
+    if (!(error instanceof errors.TimeoutError)) throw error;
+  }
 }
 
 /** Opens To do from the navigation (phase 15, ADR-032). */

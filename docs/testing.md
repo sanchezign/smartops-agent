@@ -238,6 +238,46 @@ every screen, EXCEPT while a menu, dialog or alert dialog is open (see below).
   alternating Tab and ArrowDown and 6 of Shift+Tab left the focus on a `menuitem` of the menu every time, the menu
   stayed open, and Escape closed it and returned the focus to the "More actions" button. That is why
   `expectAccessible` skips `region` while one is open.
+- **Two waits before axe measures (phase 16, found on WebKit in CI).** `expectAccessible` first waits, each wait
+  with a 5 s timeout, for (1) every _finite_ animation of the document to finish (infinite ones, the spinners, are
+  ignored) and (2) a non-empty `<title>` in `<head>`. On a timeout it does not throw and does not skip anything: axe
+  runs on the page as it is and reports what it finds.
+  1. A dialog opens with a fade + zoom that reduced motion does not cancel: measured on WebKit, when the dialog's
+     text is already visible its content is still at `opacity: 0` / `scale(0.95)`, and axe blended the khaki button
+     with the background (4.46:1 for white on `#86764a`; 4.53:1 on the real `#857549` once open).
+  2. On a client navigation Next.js takes the `<title>` out for ~300 ms while the new route's metadata arrives (the
+     root layout's title is an async `generateMetadata`); axe in that window reports `document-title`. Measured on
+     WebKit: 3 of 30 checks, each one inside such a gap. Seen as a flaky test since at least 2026-10-06 (Pixel and
+     iPhone, `reviews.spec.ts`), so not caused by phase 16.
+- **Retries are idempotent.** Specs that insert their own rows clean what an earlier attempt of the same test left
+  (`insertReview` supersedes the pending review of the same product and project; the opt-out spec dismisses the
+  alert with its phrase), so a retry never sees two copies (strict-mode violation).
+
+### WebKit locally (the real iPhone project)
+
+Playwright's WebKit does not start on Windows; the official Playwright image (same version as
+`@playwright/test`, 1.63.0) runs it in Docker against the dev Postgres of `docker-compose.yml` (network
+`smartops_default`). Run from the repository root, with the dev stack up:
+
+```bash
+mkdir -p ../pw-repro
+git archive --format=tar -o ../pw-repro/repo.tar HEAD    # committed code only, no node_modules / .env
+# ../pw-repro/e2e.env (never committed), the dev database URL with host "postgres":
+#   E2E_BASE_DATABASE_URL=postgresql://<user>:<password>@postgres:5432/smartops
+#   CI=true
+docker run -d --name smartops-pw-repro --network smartops_default --env-file ../pw-repro/e2e.env \
+  -v "$(pwd)/../pw-repro:/in" --ipc=host --shm-size=1g mcr.microsoft.com/playwright:v1.63.0-noble sleep infinity
+docker exec smartops-pw-repro bash -c 'mkdir -p /work && tar -xf /in/repo.tar -C /work && cd /work &&
+  corepack enable && COREPACK_ENABLE_DOWNLOAD_PROMPT=0 pnpm install --frozen-lockfile &&
+  pnpm --filter @smartops/api db:generate'
+# one project / some specs, or the whole suite as CI runs it:
+docker exec -w /work/apps/admin smartops-pw-repro ./node_modules/.bin/playwright test e2e/todo.spec.ts --project=iphone
+docker exec -w /work/apps/admin smartops-pw-repro ./node_modules/.bin/playwright test
+docker rm -f smartops-pw-repro    # when done
+```
+
+It seeds and uses `<dev db>_e2e_demo`, like the local E2E. On Git Bash for Windows prefix the docker commands with
+`MSYS_NO_PATHCONV=1`. A failure that depends on what desktop and Pixel did before shows up only in the whole run.
 
 ## Mutation testing (M9) — report only, no gate
 
