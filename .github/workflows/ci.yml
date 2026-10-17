@@ -202,7 +202,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.code == 'true' && needs.plan.outputs.e2e == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     permissions:
       contents: read
     services:
@@ -236,11 +236,12 @@ jobs:
       # CI=true: one retry, and a test that only passes on the retry is reported as flaky.
       # Playwright is called directly, not through pnpm: pnpm 12 runs children in a new process
       # group, out of reach of the runner when a step times out. Build + 187 tests (desktop, Pixel 7, iPhone)
-      # take about 14 min on a dev PC and 12+ min here (2026-10-17, phase 16; slowest green run before: 10.2 min, 2026-10-13).
-      # The step timeout is 1.5x that green run and caps any hang (phase 11: a web server that never stopped burned 30 min).
+      # take about 14 min on a dev PC and 12.7 min here (764 s measured in CI, 2026-10-17, phase 16; the slowest green
+      # run before took 10.2 min). The step timeout is 1.5x the measured time, rounded up, and caps any hang (phase 11: a web server
+      # that never stopped burned 30 min).
       - name: Browser E2E
         working-directory: apps/admin
-        timeout-minutes: 15
+        timeout-minutes: 20
         run: ./node_modules/.bin/playwright test
       - name: Upload the report and traces (failures only, 7 days — artifacts share 500 MB)
         if: failure()
