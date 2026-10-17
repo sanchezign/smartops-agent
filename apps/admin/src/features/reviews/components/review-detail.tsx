@@ -19,6 +19,7 @@ import { quickDecision, type Money } from "../quick-decision";
 import type { ReviewItem } from "../types";
 import { ColumnMappingResolver } from "./column-mapping-resolver";
 import { LineResolver } from "./line-resolver";
+import { QuestionText } from "./question-text";
 import {
   GateResolver,
   GlobalChangeResolver,
@@ -96,7 +97,9 @@ function DetailBody({
             <Badge variant="outline">{t(`statuses.${item.status}`)}</Badge>
           ) : null}
         </div>
-        <p className="font-medium">{t(`questions.${question.key}`, question.params)}</p>
+        <p>
+          <QuestionText question={question} />
+        </p>
         {/* Only where it adds what the question does not say (owner, M3 review): the question of a
             price change names the new price, not today's; a currency change already says "from
             … to …" and "Mark … as unavailable?" says it all. */}

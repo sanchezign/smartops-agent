@@ -34,6 +34,8 @@ export function contrast(a: string, b: string): number {
 /** [foreground token, background token] */
 const TEXT: [string, string][] = [
   ["foreground", "background"],
+  // the inverted contact-kind chip (ADR-033 §7): background-coloured letters on an ink fill
+  ["background", "foreground"],
   ["card-foreground", "card"],
   ["popover-foreground", "popover"],
   ["foreground", "surface"],
@@ -104,6 +106,12 @@ describe.each([
   ] as const)("destructive text on its own tint over %s (%s) ≥ 4.5:1", (bg, alpha) => {
     const tint = mix(value("destructive"), value(bg), alpha);
     expect(contrast(value("destructive"), tint)).toBeGreaterThanOrEqual(4.5);
+  });
+  // The hover of a primary button / badge (components/ui): 88 % primary + black. A lighter hover
+  // (bg-primary/80 over the light page) left white text at ~3.2:1 (phase 16 M5).
+  it("primary-foreground on the hovered primary ≥ 4.5:1", () => {
+    const hover = mix(value("primary"), "#000000", 0.88);
+    expect(contrast(value("primary-foreground"), hover)).toBeGreaterThanOrEqual(4.5);
   });
   it.each(["background", "card"])("signal tile edge against %s ≥ 3:1", (bg) => {
     expect(contrast(value(SIGNAL_EDGE[name]), value(bg))).toBeGreaterThanOrEqual(3);

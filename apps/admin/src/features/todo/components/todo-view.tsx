@@ -33,6 +33,7 @@ import { useAuthStore } from "@/features/auth/store";
 import { alertText } from "@/features/catalog/alert-text";
 import { useAcknowledgeAlert } from "@/features/catalog/hooks";
 import { useDemoInfo } from "@/features/demo/hooks";
+import { QuestionText } from "@/features/reviews/components/question-text";
 import { resolveErrorKey } from "@/features/reviews/hooks";
 import { ResetDemoButton } from "@/features/demo/components/reset-demo-button";
 import { adminOnlyOutsideDemo, canResolve } from "@/features/reviews/permissions";
@@ -319,8 +320,8 @@ function ItemRow({ item }: { item: ReviewItem }) {
         className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       >
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="text-sm font-medium break-words">
-            {tReviews(`questions.${question.key}`, question.params)}
+          <span className="text-sm break-words">
+            <QuestionText question={question} />
           </span>
           <span className="text-sm text-muted-foreground">{tReviews(`kinds.${item.kind}`)}</span>
           {realAdminOnly ? (

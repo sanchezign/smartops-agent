@@ -45,3 +45,16 @@ export function Chip({ children, className }: { children: ReactNode; className?:
     </span>
   );
 }
+
+/**
+ * The kind of a contact (supplier, customer, team), inverted (ADR-033 §7): ink fill, background
+ * letters — black on white in dark, the reverse in light. The three kinds look identical: the word
+ * tells them apart, never a color.
+ */
+export function KindChip({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex shrink-0 items-center rounded bg-foreground px-1.5 py-0.5 text-[0.7rem] leading-4 font-semibold text-background">
+      {children}
+    </span>
+  );
+}

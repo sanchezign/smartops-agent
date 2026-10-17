@@ -1899,3 +1899,19 @@ a real client.**
       caught two dark tokens (sidebar-muted on the active item 4.07; destructive on its own 20 % tint 3.48): adjusted in
       the ADR table. axe found the own-message chat bubble (white at 70-80 % on khaki): its footer text is solid now.
       Screenshots: `C:/dev/smartops-phase16-shots/m4/{variant-a-oxanium,variant-b-plex}/{desktop,iphone-chromium}`.
+    - M5 — DONE, waiting for the owner's screenshot review (ADR-033 §7). The K2 tokens and IBM Plex Sans already reach
+      every page (global tokens; page and card titles were already `font-display` / `font-title`); the two existing
+      greens (the check of Try the system, the "live" dot) stay, by the owner's decision. Emphasis: supplier / contact
+      names larger and bold — Home tasks and Catalog rows (`font-semibold text-foreground`), the product page
+      (`font-title`), the inbox (`font-heading text-base`, bold when it needs a reply, semibold otherwise; the dot
+      stays), the opted-out list, the company in the chat header (the To do card already had it since M4). Contact-kind
+      chips inverted with a new `KindChip` (`bg-foreground text-background`, the three kinds identical; `Chip` stays
+      for units); the contrast test gained the reversed pair. Review questions (To do rows, review detail, Home tasks)
+      set their values — product, line, price, current, pct — in `<strong class="font-semibold">` over normal-weight
+      text: next-intl 4.14 takes only strings / numbers / dates as values, so `features/reviews/emphasis.ts` passes
+      private-use markers, translates as usual and splits the result (catalogs unchanged; numbers pass through, the
+      plural `count` needs them); unit tested. No new colour; the yellow stays only on what waits. Found by axe in the
+      screenshots: the hover of a primary button / badge (`bg-primary/80`) LIGHTENED the khaki over the light page
+      (white text ~3.2:1, the pressed "Needs a reply" filter under the mouse); the hover now darkens it (88 % primary +
+      black, 5.6:1 light) and the contrast test checks that mix in both themes.
+      Screenshots: `C:/dev/smartops-phase16-shots/m5/{panel,todo,money}/{desktop,iphone-chromium}`.

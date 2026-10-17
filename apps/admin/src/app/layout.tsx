@@ -39,7 +39,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const locale = await getLocale();
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body className={`${oxanium.variable} ${plex.variable} ${firaCode.variable} font-sans antialiased`}>
+      <body
+        className={`${oxanium.variable} ${plex.variable} ${firaCode.variable} font-sans antialiased`}
+      >
         {/* Rendered from a Server Component: inherits locale, messages and time zone. */}
         <NextIntlClientProvider>
           <Providers>{children}</Providers>

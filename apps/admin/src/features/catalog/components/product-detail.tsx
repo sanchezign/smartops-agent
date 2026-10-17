@@ -57,7 +57,7 @@ function Body({ product }: { product: Product }) {
       <header className="mb-5 flex flex-col gap-2">
         <h1 className="font-display text-2xl">{product.name}</h1>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          <span>{product.supplier.name}</span>
+          <span className="font-title text-base text-foreground">{product.supplier.name}</span>
           {product.unit ? <Chip>{product.unit}</Chip> : null}
           {product.sku ? <span>{t("sku", { sku: product.sku })}</span> : null}
         </p>
