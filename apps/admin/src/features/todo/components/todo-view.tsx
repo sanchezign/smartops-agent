@@ -240,7 +240,9 @@ function ListCard({
       <header className="flex items-start gap-3">
         <SourceIcon kind={kind} className="mt-0.5 size-5 shrink-0" />
         <div className="flex min-w-0 flex-col gap-0.5">
-          <h3 className="font-title text-lg break-words">{name}</h3>
+          <h3 className="font-title text-lg break-words" translate="no">
+            {name}
+          </h3>
           {/* One meta line (owner, M2 review): kind · when · how many — never a count alone. It says what
               waits, so it carries the yellow (ADR-033 §4) and links to this list alone. */}
           <Link

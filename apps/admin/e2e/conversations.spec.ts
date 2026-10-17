@@ -102,6 +102,27 @@ test.describe("conversations (phase 9 M3)", () => {
     await expect(page.getByText("Nothing matches the search")).toBeVisible();
   });
 
+  test("inbox: the filter lives in the URL, the search text never does (phase 16 M6a)", async ({
+    page,
+  }) => {
+    await login(page, "operator");
+    await openConversations(page);
+    await page.getByRole("button", { name: "Needs a reply" }).click();
+    await expect(page).toHaveURL(/\/conversations\?filter=needs_reply$/);
+    await page.getByLabel("Search by name, supplier or phone").fill("caroline");
+    await expect(inbox(page).getByRole("link")).toHaveCount(1);
+    // a customer's name or phone typed in the search never reaches the history or the proxy logs
+    expect(page.url()).not.toContain("caroline");
+    await page.reload();
+    await expect(page.getByRole("button", { name: "Needs a reply" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(inbox(page).getByRole("link")).toHaveCount(2);
+    await page.getByRole("button", { name: "All", exact: true }).click();
+    await expect(page).toHaveURL(/\/conversations$/);
+  });
+
   test("chat: the reply box stays at the bottom of the screen, the messages stack from it (phase 16 M1)", async ({
     page,
   }) => {
@@ -184,7 +205,7 @@ test.describe("conversations (phase 9 M3)", () => {
     await page.getByRole("link", { name: "Opted out", exact: true }).click();
     const list = page.getByRole("list", { name: "Opted-out contacts" });
     await expect(list.getByText("George Rodgers")).toBeVisible();
-    await expect(list.getByText(/Wrote "STOP"/)).toBeVisible();
+    await expect(list.getByText(/Wrote “STOP”/)).toBeVisible();
     await expectAccessible(page);
   });
 });

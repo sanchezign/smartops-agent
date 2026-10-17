@@ -4,6 +4,8 @@ import { Search, UserX } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useDeferredValue, useState } from "react";
+import { pickOne } from "@/lib/url-filters";
+import { useUrlParam } from "@/lib/use-url-param";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
@@ -26,7 +28,10 @@ const FILTERS: InboxFilter[] = [
 ];
 
 export function Inbox() {
-  const [filter, setFilter] = useState<InboxFilter>("all");
+  // The filter lives in the URL; the search text does NOT (it can hold a customer phone or name).
+  const [rawFilter, setRawFilter] = useUrlParam("filter");
+  const filter = pickOne(rawFilter, FILTERS, "all");
+  const setFilter = (f: InboxFilter) => setRawFilter(f === "all" ? null : f);
   const [search, setSearch] = useState("");
   const q = useDeferredValue(search.trim());
   const query = useInbox(filter, q);
@@ -57,7 +62,7 @@ export function Inbox() {
           <Input
             type="search"
             aria-label={t("search")}
-            placeholder={t("search")}
+            placeholder={t("searchPlaceholder")}
             className="min-h-11 pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -70,7 +75,7 @@ export function Inbox() {
               size="sm"
               variant={filter === f ? "default" : "outline"}
               aria-pressed={filter === f}
-              className="min-h-9 shrink-0 rounded-full"
+              className="min-h-11 shrink-0 rounded-full md:min-h-9"
               onClick={() => setFilter(f)}
             >
               {t(`filters.${f}`)}
@@ -143,7 +148,7 @@ function InboxRow({ item }: { item: InboxItem }) {
                 unanswered ? "font-bold" : "font-semibold",
               )}
             >
-              {name}
+              <span translate="no">{name}</span>
             </span>
             {company ? (
               <span className="hidden truncate text-sm font-semibold text-foreground sm:inline">

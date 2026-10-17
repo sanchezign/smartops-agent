@@ -59,7 +59,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Sidebar (tablet / desktop) */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
-        <div className="font-display flex h-16 items-center px-5 text-lg">SmartOps</div>
+        <div className="font-display flex h-16 items-center px-5 text-lg" translate="no">
+          SmartOps
+        </div>
         <nav aria-label={t("sections")} className="flex flex-1 flex-col gap-1 px-3">
           {items.map((item) => {
             const active = isActive(pathname, item.href);
@@ -86,7 +88,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Top bar */}
       <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b bg-background/90 px-4 backdrop-blur md:ml-60 md:h-16 md:px-8">
-        <span className="font-display text-base md:hidden">SmartOps</span>
+        <span className="font-display text-base md:hidden" translate="no">
+          SmartOps
+        </span>
         <span className="hidden md:block" />
         <div className="flex items-center gap-3">
           <StatusChips />

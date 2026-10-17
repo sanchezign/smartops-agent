@@ -19,7 +19,9 @@ export function LiveIndicator() {
         aria-hidden
         className={cn(
           "size-2 rounded-full",
-          status === "live" ? "bg-emerald-600" : "animate-pulse bg-warning",
+          status === "live"
+            ? "bg-emerald-600"
+            : "animate-pulse bg-warning motion-reduce:animate-none",
         )}
       />
       {t(status)}

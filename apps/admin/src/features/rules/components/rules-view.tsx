@@ -31,6 +31,7 @@ import { isAppLocale, LOCALE_NAMES, LOCALES, type AppLocale } from "@/i18n/local
 import { parseNumberInput, toNumberInput, type InputError } from "@/lib/number-input";
 import { useFormat } from "@/lib/use-format";
 import { useInputErrorText } from "@/lib/use-input-error";
+import { useUnsavedWarning } from "@/lib/use-unsaved-warning";
 import { fromRows, toRows, type BusinessHours, type DayRow } from "../business-hours";
 import { BUSINESS_LANGUAGE_KEY, languageChange } from "../language-change";
 import {
@@ -160,6 +161,13 @@ function SectionCard({
   } | null>(null);
   const [errors, setErrors] = useState<Record<string, InputError>>({});
   const queryClient = useQueryClient();
+  // Unsaved edits in this section: reloading or closing the tab asks first.
+  const dirty =
+    !readOnly &&
+    section.fields.some(
+      (f) => JSON.stringify(draft[f.key]) !== JSON.stringify(toDraft(f, settings[f.key], locale)),
+    );
+  useUnsavedWarning(dirty);
 
   const save = useMutation({
     mutationFn: async (changes: [string, unknown][]) => {
@@ -322,7 +330,7 @@ function FieldControl({
         <Label htmlFor={id}>{label}</Label>
         <select
           id={id}
-          className="min-h-11 w-48 rounded-md border border-input bg-background px-2"
+          className="min-h-11 w-48 rounded-md border border-input bg-background px-2 text-foreground"
           value={String(value)}
           disabled={readOnly}
           aria-describedby={describedBy}

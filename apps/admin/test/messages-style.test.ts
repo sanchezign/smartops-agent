@@ -107,3 +107,31 @@ describe("tax wording (phase 14)", () => {
     expect(strings(es).some((t) => /\btax\b/i.test(t))).toBe(false);
   });
 });
+
+describe("typography (phase 16 M6a, Web Interface Guidelines)", () => {
+  const catalogs = { en, es } as const;
+  it.each(["en", "es"] as const)("%s: curly quotes and the ellipsis character only", (lang) => {
+    for (const text of strings(catalogs[lang])) {
+      expect(text, text).not.toContain('"');
+      expect(text, text).not.toContain("...");
+    }
+  });
+  it.each(["en", "es"] as const)(
+    "%s: menu options that open a dialog and placeholders end with an ellipsis",
+    (lang) => {
+      const c = catalogs[lang];
+      for (const text of [
+        c.catalog.rename,
+        c.catalog.searchPlaceholder,
+        c.conversations.searchPlaceholder,
+        c.conversations.actions.pause,
+        c.conversations.actions.optInAction,
+        c.conversations.actions.optOutAction,
+        c.users.newUser,
+        c.users.newPassword,
+      ]) {
+        expect(text.endsWith("…"), text).toBe(true);
+      }
+    },
+  );
+});

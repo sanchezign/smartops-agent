@@ -28,7 +28,7 @@ export function LocaleSelect({ className }: { className?: string }) {
         onChange={(event) => {
           if (isAppLocale(event.target.value)) void change(event.target.value);
         }}
-        className="min-h-11 rounded-md border border-input bg-background px-2"
+        className="min-h-11 rounded-md border border-input bg-background px-2 text-foreground"
       >
         {LOCALES.map((value) => (
           <option key={value} value={value} lang={value}>

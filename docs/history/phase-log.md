@@ -1920,3 +1920,22 @@ a real client.**
       ADR-033 §4. Both share `WAITS_LINE` (list-row.tsx); the contrast test now covers the waiting line in both themes
       (it did not cover the M4 meta line before) and checks the class itself. Screenshots:
       `C:/dev/smartops-phase16-shots/m5-fix/`.
+    - M6a — DONE, waiting for the owner's screenshot review. Vercel Web Interface Guidelines audit (commit `434b7f9`
+      of vercel-labs/web-interface-guidelines, 2026-10-05) against the panel code; the owner approved findings 1–17
+      (18, the chat image without dimensions, stays: its container already limits the shift). Not adopted on purpose:
+      Vercel's copy rules (Title Case, "&") and APCA (ADR-033 measures WCAG 2). Fixed: `scroll-padding` on `<html>` so
+      the sticky header and the phone's bottom bar never cover the focused element; 44 px touch targets on phones
+      (base `Input` h-11 / md:h-8; the inbox filter pills and the Catalog / Home segmented buttons min-h-11 /
+      md:min-h-9); filters in the URL (`?filter=` in Conversations, `?supplier=` + `?availability=` in Catalog,
+      `?days=` in Home; `lib/url-filters.ts` + `use-url-param.ts`, the history entry is replaced) and, by the owner's
+      rule, NEVER the free text of a search box (it can hold a customer's phone or name: browser history, proxy logs);
+      Rules asks before reload / close with unsaved edits (`beforeunload` only, links not intercepted);
+      `transition-all` → explicit properties (Button, Badge, Switch, Tabs); `motion-reduce:animate-none` on the
+      skeleton and the "live" dot (spinners stay); `theme-color` follows the theme chosen in the user menu
+      (`ThemeColorSync`, `lib/theme-color.ts`, tested against `--background`); loading states appear after 200 ms
+      (`appear-late`); curly quotes in both catalogs and "…" on the search placeholders (own keys, the aria-labels
+      stay), the menu options that open a dialog and "Loading photo" (tested in `messages-style.test.ts`); native
+      `<select>` with an explicit text colour; `touch-action: manipulation` on controls; `overscroll-behavior:
+      contain` on the sheet and the dialogs; `translate="no"` on the brand and the data names (ESLint allows the
+      attribute); the tab title names the product / contact (`useDocumentTitle`). Screenshots:
+      `C:/dev/smartops-phase16-shots/m6a/`.

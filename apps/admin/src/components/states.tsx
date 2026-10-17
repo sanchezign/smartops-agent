@@ -17,7 +17,8 @@ import { ApiError } from "@/lib/api-client";
 export function LoadingState({ rows = 3, label }: { rows?: number; label?: string }) {
   const t = useTranslations("common");
   return (
-    <div role="status" aria-live="polite" className="flex flex-col gap-3">
+    // Shown only after 200 ms (appear-late): a fast answer never flashes a skeleton.
+    <div role="status" aria-live="polite" className="appear-late flex flex-col gap-3">
       <span className="sr-only">{label ?? t("loading")}</span>
       {Array.from({ length: rows }, (_, i) => (
         <Skeleton key={i} className="h-20 w-full rounded-xl" />

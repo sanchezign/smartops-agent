@@ -13,7 +13,7 @@ export function QuestionText({ question }: { question: Question }) {
     <>
       {parts.map((part, i) =>
         part.strong ? (
-          <strong key={i} className="font-semibold">
+          <strong key={i} className="font-semibold" translate="no">
             {part.text}
           </strong>
         ) : (

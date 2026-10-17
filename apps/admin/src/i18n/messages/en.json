@@ -169,11 +169,11 @@
     "currencyFormat": "The currency is 3 letters, for example UYU or USD.",
     "priceNeededForNew": "A price is needed to create the product.",
     "nameRequired": "Enter the product name.",
-    "pickPriceColumn": "Choose the price column of the sheet \"{sheet}\".",
+    "pickPriceColumn": "Choose the price column of the sheet “{sheet}”.",
     "keywordsEmpty": "Enter at least one word.",
     "keywordsTooMany": "20 words at most.",
     "keywordTooLong": "Each word, up to 40 letters.",
-    "phoneInvalid": "\"{value}\" does not look like a WhatsApp number with a country code.",
+    "phoneInvalid": "“{value}” does not look like a WhatsApp number with a country code.",
     "phonesTooMany": "10 numbers at most.",
     "hoursFormat": "{day}: use times like 09:00.",
     "hoursEqual": "{day}: opening and closing cannot be the same."
@@ -363,7 +363,7 @@
       "notes": "Reading notes",
       "approve": "Use this column",
       "reject": "Discard the spreadsheet",
-      "sheetQuestion": "Sheet \"{sheet}\": which price goes into the catalog?",
+      "sheetQuestion": "Sheet “{sheet}”: which price goes into the catalog?",
       "sheetLabel": "Price column of the sheet {sheet}",
       "columnN": "Column {n}",
       "suggested": "Suggested",
@@ -470,7 +470,7 @@
     "saveFailed": "Could not save.",
     "noChanges": "There are no changes to save.",
     "saving": "Saving…",
-    "saveSection": "Save \"{section}\"",
+    "saveSection": "Save “{section}”",
     "useHours": "Use business hours",
     "daysAndHours": "Days and hours",
     "opens": "{day}: opens",
@@ -487,7 +487,7 @@
       },
       "hours": {
         "title": "Business hours",
-        "description": "Outside business hours, non-urgent WhatsApp summaries wait until opening time and the panel shows \"outside business hours\". Critical alerts go out anyway."
+        "description": "Outside business hours, non-urgent WhatsApp summaries wait until opening time and the panel shows “outside business hours”. Critical alerts go out anyway."
       },
       "prices": {
         "title": "Prices",
@@ -509,7 +509,7 @@
       },
       "bot_supplierAck": {
         "label": "Confirm to suppliers that we received their list",
-        "help": "Sends a \"We received your list\" message with a summary of what was applied."
+        "help": "Sends a “We received your list” message with a summary of what was applied."
       },
       "coexistence_humanTakeoverMinutes": {
         "label": "When a person replies, the bot pauses",
@@ -611,6 +611,7 @@
     "description": "Who wrote, who is answering them and what is still pending.",
     "optedOutLink": "Opted out",
     "search": "Search by name, supplier or phone",
+    "searchPlaceholder": "Search by name, supplier or phone…",
     "filter": "Filter",
     "filters": {
       "all": "All",
@@ -680,7 +681,7 @@
       "photoAlt": "Photo: {name}",
       "photoAltGeneric": "Photo sent over WhatsApp",
       "photoFailed": "Could not load the photo.",
-      "loadingPhoto": "Loading photo",
+      "loadingPhoto": "Loading photo…",
       "listen": "Play voice note",
       "audioFailed": "Could not load the voice note.",
       "loadingAudio": "Loading voice note…",
@@ -696,11 +697,11 @@
       "paused": "Bot paused: you are handling it now.",
       "resumed": "The bot answers again.",
       "resume": "Reactivate the bot",
-      "pause": "Pause the bot",
+      "pause": "Pause the bot…",
       "more": "More actions",
-      "optInAction": "Record opt-in (receives messages again)",
+      "optInAction": "Record opt-in (receives messages again)…",
       "optInAdminOnly": "Recording an opt-in is for administrators only",
-      "optOutAction": "Record opt-out (send no more messages)",
+      "optOutAction": "Record opt-out (send no more messages)…",
       "pauseTitle": "Pause the bot in this chat",
       "pauseBody": "While it is paused, the bot doesn't answer them. Price lists are still processed and the team still gets alerts.",
       "duration": "Duration",
@@ -748,7 +749,7 @@
       "empty": "Nobody has opted out",
       "listLabel": "Opted-out contacts",
       "recorded": "Opt-out recorded",
-      "keyword": "Wrote \"{keyword}\"",
+      "keyword": "Wrote “{keyword}”",
       "offWhatsapp": "Asked outside WhatsApp (recorded)",
       "offWhatsappBy": "Asked outside WhatsApp (recorded by {by})",
       "manual": "Recorded by hand",
@@ -760,6 +761,7 @@
     "supplier": "Supplier",
     "allSuppliers": "All suppliers",
     "search": "Search product",
+    "searchPlaceholder": "Search product…",
     "availability": "Availability",
     "availabilityOptions": {
       "all": "All",
@@ -770,7 +772,7 @@
     "lastList": " · last list {when}",
     "taxIncluded": " · prices with tax",
     "taxExcluded": " · prices without tax",
-    "rename": "Rename",
+    "rename": "Rename…",
     "noMatches": "No product matches",
     "empty": "No products here",
     "listLabel": "Products",
@@ -854,7 +856,7 @@
   },
   "users": {
     "description": "Who signs in to the panel and what they can do. There is always at least one active administrator.",
-    "newUser": "New user",
+    "newUser": "New user…",
     "listLabel": "Users",
     "roles": {
       "admin": "Administrator",
@@ -871,7 +873,7 @@
     "changeToOperator": "Change to operator",
     "deactivate": "Deactivate",
     "reactivate": "Reactivate",
-    "newPassword": "New password",
+    "newPassword": "New password…",
     "unlock": "Unlock",
     "revokeSessions": "Close their sessions",
     "updated": "User updated. Their open sessions were closed.",

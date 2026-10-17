@@ -3,6 +3,8 @@
 import { ArrowDown, ArrowUp, ChevronRight, Pencil, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useDeferredValue, useState } from "react";
+import { idParam, pickOne } from "@/lib/url-filters";
+import { useUrlParam } from "@/lib/use-url-param";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
@@ -27,8 +29,12 @@ const AVAILABILITY: Availability[] = ["all", "available", "unavailable"];
 const ALL = "__all__";
 
 export function CatalogView() {
-  const [supplierId, setSupplierId] = useState<string | null>(null);
-  const [availability, setAvailability] = useState<Availability>("all");
+  // Supplier and availability live in the URL; the search text does NOT (owner, phase 16 M6a).
+  const [rawSupplier, setSupplierId] = useUrlParam("supplier");
+  const supplierId = idParam(rawSupplier);
+  const [rawAvailability, setRawAvailability] = useUrlParam("availability");
+  const availability = pickOne(rawAvailability, AVAILABILITY, "all");
+  const setAvailability = (a: Availability) => setRawAvailability(a === "all" ? null : a);
   const [search, setSearch] = useState("");
   const q = useDeferredValue(search.trim());
   const [renaming, setRenaming] = useState(false);
@@ -72,7 +78,7 @@ export function CatalogView() {
           <Input
             type="search"
             aria-label={t("search")}
-            placeholder={t("search")}
+            placeholder={t("searchPlaceholder")}
             className="min-h-11 pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -91,7 +97,7 @@ export function CatalogView() {
               size="sm"
               variant={availability === a ? "secondary" : "ghost"}
               aria-pressed={availability === a}
-              className="min-h-9"
+              className="min-h-11 md:min-h-9"
               onClick={() => setAvailability(a)}
             >
               {t(`availabilityOptions.${a}`)}
@@ -170,10 +176,14 @@ function ProductRowLink({ product, showSupplier }: { product: ProductRow; showSu
   return (
     <RowLink href={`/catalog/${product.id}`}>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="truncate font-medium">{product.name}</span>
+        <span className="truncate font-medium" translate="no">
+          {product.name}
+        </span>
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
           {showSupplier ? (
-            <span className="truncate font-semibold text-foreground">{product.supplier.name}</span>
+            <span className="truncate font-semibold text-foreground" translate="no">
+              {product.supplier.name}
+            </span>
           ) : null}
           {product.unit ? <Chip>{product.unit}</Chip> : null}
           {product.stock !== null ? (

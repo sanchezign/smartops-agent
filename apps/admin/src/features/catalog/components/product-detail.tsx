@@ -14,6 +14,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { useDocumentTitle } from "@/lib/use-document-title";
 import { useFormat } from "@/lib/use-format";
 import { useProduct } from "../hooks";
 import { chartPoints } from "../price-chart";
@@ -46,6 +47,7 @@ export function ProductDetail({ id }: { id: string }) {
 }
 
 function Body({ product }: { product: Product }) {
+  useDocumentTitle(product.name);
   const points = chartPoints(product);
   const t = useTranslations("catalog");
   const { formatInt, formatMoney, formatNumber, formatShortDate } = useFormat();
@@ -55,9 +57,13 @@ function Body({ product }: { product: Product }) {
   return (
     <>
       <header className="mb-5 flex flex-col gap-2">
-        <h1 className="font-display text-2xl">{product.name}</h1>
+        <h1 className="font-display text-2xl" translate="no">
+          {product.name}
+        </h1>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          <span className="font-title text-base text-foreground">{product.supplier.name}</span>
+          <span className="font-title text-base text-foreground" translate="no">
+            {product.supplier.name}
+          </span>
           {product.unit ? <Chip>{product.unit}</Chip> : null}
           {product.sku ? <span>{t("sku", { sku: product.sku })}</span> : null}
         </p>
