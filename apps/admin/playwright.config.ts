@@ -98,8 +98,6 @@ export default defineConfig({
       env: {
         API_PROXY_TARGET: `http://localhost:${E2E.apiPort}`,
         NEXT_DIST_DIR: ".next-e2e",
-        // PROTOTYPE (phase 16 M4): "b" builds the panel with the text in IBM Plex Sans (typography variant B).
-        NEXT_PUBLIC_TYPE_VARIANT: process.env.NEXT_PUBLIC_TYPE_VARIANT ?? "",
       },
     },
   ],

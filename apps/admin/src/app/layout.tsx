@@ -5,17 +5,15 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
-// ADR-033: Oxanium (variable wght) and Fira Code, self-hosted at build time by next/font (no Google Fonts at runtime).
+// ADR-033: Oxanium (variable wght, headings), IBM Plex Sans (text and lists) and Fira Code, self-hosted at build time
+// by next/font (no Google Fonts at runtime).
 const oxanium = Oxanium({ variable: "--font-oxanium", subsets: ["latin"] });
-const firaCode = Fira_Code({ variable: "--font-fira-code", subsets: ["latin"] });
-// PROTOTYPE (phase 16 M4): variant B sets the text in IBM Plex Sans; the owner picks A or B from screenshots and
-// the loser (this font, the env var and the .type-b class) is deleted. Default: A (Oxanium everywhere).
 const plex = IBM_Plex_Sans({
   variable: "--font-plex",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
-const TYPE_B = process.env.NEXT_PUBLIC_TYPE_VARIANT === "b";
+const firaCode = Fira_Code({ variable: "--font-fira-code", subsets: ["latin"] });
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("meta");
@@ -41,9 +39,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const locale = await getLocale();
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body
-        className={`${oxanium.variable} ${firaCode.variable} ${plex.variable} ${TYPE_B ? "type-b " : ""}font-sans antialiased`}
-      >
+      <body className={`${oxanium.variable} ${plex.variable} ${firaCode.variable} font-sans antialiased`}>
         {/* Rendered from a Server Component: inherits locale, messages and time zone. */}
         <NextIntlClientProvider>
           <Providers>{children}</Providers>

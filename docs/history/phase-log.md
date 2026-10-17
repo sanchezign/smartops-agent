@@ -1887,11 +1887,13 @@ a real client.**
       REAL cost US$ 0.0762, reviewed output by output (all USD; the photo sends "Arandela" to review like the pesos set).
       Also: the "real installation" note uses the Info icon instead of the lock (the lock stays where something really
       cannot be done). Known issue kept: a bare "$" is read as pesos by the extractor prompt in Spanish.
-    - M4 — PROTOTYPE (ADR-033 stays DRAFT until the owner chooses). K2 mapped into `globals.css` (hex; light cream, warm
+    - M4 — DONE (ADR-033 accepted 2026-10-17). K2 mapped into `globals.css` (hex; light cream, warm
       grey dark, khaki #857549 + white in both modes, radius 0.3 rem, two-layer warm shadows, Oxanium + Fira Code through
-      next/font). Typography A (Oxanium everywhere) vs B (Oxanium headings + IBM Plex Sans text) is a build-time switch
-      (`NEXT_PUBLIC_TYPE_VARIANT=b`, class `.type-b`): both are in the code ONLY until the owner picks (the loser is then
-      deleted). To do: the supplier name is bigger (`font-title text-lg`) and the WHOLE meta line is a real link to
+      next/font). Typography A (Oxanium everywhere) vs B (Oxanium headings + IBM Plex Sans text) was a build-time switch
+      (`NEXT_PUBLIC_TYPE_VARIANT=b`, class `.type-b`) for the prototype; the owner chose **B** (2026-10-17) and the switch
+      was deleted: `font-sans` is IBM Plex Sans (400–700), the heading utilities stay Oxanium, no env var, no class, no
+      variant left in layout.tsx, playwright.config.ts or the screenshot spec. The screenshots were re-taken after the
+      PC was formatted (the first copy was lost; Playwright's Chromium reinstalled). To do: the supplier name is bigger (`font-title text-lg`) and the WHOLE meta line is a real link to
       `/todo?run=<id>` (dark: yellow text + underline; light: ink text + thick yellow underline; the "waiting for an
       admin" copy stays grey), and `/todo?run=` shows that list alone with "All pending" to go back. The contrast test
       caught two dark tokens (sidebar-muted on the active item 4.07; destructive on its own 20 % tint 3.48): adjusted in

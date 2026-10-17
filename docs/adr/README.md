@@ -35,6 +35,6 @@ one Oracle Cloud E2.1.Micro) supersedes ADR-007.
 - [ADR-030](ADR-030-demo-operator-resolves-column-mapping.md) — In DEMO_MODE the public operator can resolve the column-mapping review
 - [ADR-031](ADR-031-content-and-business-language.md) — Demo content language per deployment; ONE business language that also decides how incoming messages are read
 - [ADR-032](ADR-032-panel-triage.md) — Panel triage: To do (one yellow counter), Activity, System status
-- [ADR-033](ADR-033-visual-identity-v2.md) — Visual identity v2: warm tweakcn theme, Oxanium, the yellow rule kept
+- [ADR-033](ADR-033-visual-identity-v2.md) — Visual identity v2: warm tweakcn theme, Oxanium + IBM Plex Sans, the yellow rule kept
 - [ADR-034](ADR-034-demo-operator-resolves-every-review.md) — In DEMO_MODE the public operator resolves every review
 - [ADR-035](ADR-035-catalog-currency.md) — Catalog currency setting and the currency resolution order
