@@ -309,14 +309,32 @@ jobs:
       contents: read
       pull-requests: read
     steps:
+      # GitHub takes a few seconds to link the commit to its pull request after a rebase-merge: on
+      # 2026-10-17 the guard asked 6 s after the merge of PR #11, got no pull request and failed (a false
+      # positive; the same query answered #11 minutes later). So it asks up to 6 times, 10 s apart, also
+      # when the request itself fails, and only fails if no merged pull request shows up by then.
       - name: The pushed commit must belong to a merged pull request
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           SHA: ${{ github.sha }}
         run: |
-          prs=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/$REPO/commits/$SHA/pulls" | jq '[.[] | select(.merged_at != null)] | length')
+          prs=0
+          for attempt in 1 2 3 4 5 6; do
+            if body=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$REPO/commits/$SHA/pulls"); then
+              prs=$(jq '[.[] | select(.merged_at != null)] | length' <<<"$body") || prs=0
+              if [ "$prs" -gt 0 ]; then
+                break
+              fi
+              echo "Attempt $attempt/6: no merged pull request linked to $SHA yet."
+            else
+              echo "Attempt $attempt/6: the request to the GitHub API failed."
+            fi
+            if [ "$attempt" -lt 6 ]; then
+              sleep 10
+            fi
+          done
           if [ "$prs" -eq 0 ]; then
             echo "::error::Direct push to main ($SHA): main only changes through a merged pull request."
             exit 1
