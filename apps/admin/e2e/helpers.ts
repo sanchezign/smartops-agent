@@ -32,8 +32,16 @@ export async function expectAccessible(page: Page) {
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
+  // Phase 16 M6b: the best-practice rule "region" (all content inside a landmark) runs on every screen EXCEPT
+  // while a menu or dialog is open: Radix hides everything outside it with aria-hidden, so axe cannot see
+  // <main> and flags the rest (a false positive; docs/testing.md, "Accessibility checks").
+  const modalOpen =
+    (await page.locator('[role="menu"], [role="dialog"], [role="alertdialog"]').count()) > 0;
+  const landmarks = modalOpen
+    ? { violations: [] }
+    : await new AxeBuilder({ page }).withRules(["region"]).analyze();
   expect(
-    results.violations.map(
+    [...results.violations, ...landmarks.violations].map(
       (v) => `${v.id}: ${v.help} → ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
     ),
   ).toEqual([]);
