@@ -3,8 +3,9 @@
 #   the pull request without running twice). Pull requests from forks run it too.
 # - plan → integration-coverage + e2e: pull requests to main, the nightly run and manual runs,
 #   following the E2E_POLICY repository variable (apps/api/scripts/ci/e2e-policy.ts).
-# - main-guard: soft enforcement while branch protection is unavailable (private repo on
-#   GitHub Free): a push to main must come from a merged pull request.
+# - main-guard: a second safety net behind the active ruleset on main (pull request required,
+#   rebase only, the five checks quick / plan / integration-coverage / e2e / images): a push to
+#   main must come from a merged pull request.
 # Every action is pinned to a full commit SHA (version in the comment); Renovate updates them.
 # No real key is ever used: the tests and the E2E run with fake values (DEMO_MODE forces fakes).
 name: CI

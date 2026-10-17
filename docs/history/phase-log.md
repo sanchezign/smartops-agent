@@ -1818,8 +1818,8 @@ a real client.**
       same counters), skipped on 404 until a phase 15 release is deployed — then REQUIRED (runbook, "Checking a
       deployed version").
 
-16. visual identity v2 + complete public demo + USD + conversations (ADR-033, 034, 035) — IN PROGRESS (branch
-    `feat/phase-16-identity-v2`, from `main` at 0.18.0). Plan approved 2026-10-15 with the owner's decisions (dark
+16. visual identity v2 + complete public demo + USD + conversations (ADR-033, 034, 035) — DONE, merged into `main`
+    (PR #11), released in 0.19.0 and deployed 2026-10-17 (branch `feat/phase-16-identity-v2`, from `main` at 0.18.0). Plan approved 2026-10-15 with the owner's decisions (dark
     primary, light sidebar, no blue, no Merriweather, Fira Code, `/todo?run=…` for the meta line, ADR-034 own record
     with a free `createSupplier` in the demo, ADR-035 order: line → list → the existing product's own currency → the
     catalog currency only for NEW products; ES-USD goldens only after a free dry-run and the owner's OK, cap
@@ -1965,3 +1965,29 @@ a real client.**
       `use-url-param.ts` and `use-unsaved-warning.ts`, are excluded by name (covered by the E2E by the project's
       own policy; the other `use-*` files count); functions 80.7 %, thresholds unchanged. `use-unsaved-warning` got
       its E2E in Rules (an unsaved edit → `beforeunload` is cancelled; after saving, it is not).
+    - PR #11 in CI (WebKit). The Browser E2E step hit its 12 min timeout: raised to 20 min (job 25) from the
+      measured 764 s for 187 tests. Then the real iPhone / WebKit project failed where the local iPhone-on-Chromium
+      run passed; reproduced with the official image (`mcr.microsoft.com/playwright:v1.63.0-noble`, command in
+      `docs/testing.md`, "WebKit locally"). Three causes: (1) axe `color-contrast` measured a dialog while its
+      tw-animate-css entry animation was still running (reduced motion does not cancel it); (2) `document-title`
+      during the ~300 ms in which Next's soft navigation leaves the page without a `<title>` (already flaky since
+      2026-10-06 on Pixel and iPhone); (3) Playwright retries of the one-click To do specs found the first
+      attempt's review / alert still pending (strict-mode duplicates). Fixes (commit `757663b`): `expectAccessible`
+      waits for running animations to finish and for a non-empty `<title>`, each with a 5 s timeout that continues
+      and lets axe report what is still wrong (no own error, nothing ignored); the specs supersede / dismiss their own
+      leftovers before inserting, so a retry is idempotent. Separate commit `01af47a`: `useUrlParam` writes the
+      address with `window.history.replaceState` instead of `router.replace` (no RSC round trip, no title gap;
+      checked first that no page reads `searchParams` on the server). PR #11 rebase-merged on the owner's word.
+    - main-guard false positive (2026-10-17): the push of PR #11's merge failed `main-guard` (run 39060529836)
+      because GitHub had not yet linked the merged commit to its pull request; the re-run passed. Fix PR #13
+      (`c863d3a`): the check retries up to 6 times, 10 s apart, with the same error when the count stays 0 (tested
+      with a fake curl); its own merge needed the second attempt, the release merge passed on the first.
+    - Release and close (2026-10-17). Release PR #12 rebase-merged (`755b9a4`); release run 39062568522 green
+      (release-please, 4 native builds, publish of both images); tag `v0.19.0` and GitHub release published;
+      `smartops-api` and `smartops-admin` `0.19.0` multi-arch (amd64 + arm64, checked by the publish job's Inspect
+      step: both platforms declare 0.19.0); `main-guard` of that push green. The owner deployed 0.19.0 on the VM
+      (2026-10-17 21:43 UTC, from 0.18.0; backup `pre-deploy-0.19.0` ok; no pending migrations); `demo-check`
+      against https://smartops-demo.duckdns.org: DEMO CHECK PASSED with every line `ok` (the /admin/todo lines
+      included); the manual check on a real iPhone passed (the chat's reply box stays above the keyboard).
+      Pending for the next phase: the khaki primary `#857549` with white text measures 4.53:1, only 0.03 over the
+      WCAG AA 4.5 minimum (ADR-033): any shift of the primary or of its text breaks it.

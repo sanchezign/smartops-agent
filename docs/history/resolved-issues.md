@@ -36,3 +36,8 @@ superseded or implemented. Open issues stay in CLAUDE.md.
 - **Phase 12 — at the phase close:** delete the local test images `smartops-local/smartops-{api,admin}:m0a|m0b`
   (user, 2026-09-28). RESOLVED 2026-10-06: they (and the `smartops-m2light_*` / `smartops-m2full_*` harness volumes)
   do not exist on the new laptop (migrated 2026-10-05); nothing to delete.
+- **Phase 11:** `main` is protected only by convention (main-guard detects, does not prevent)
+  until the repo is public and a ruleset is created. RESOLVED (checked 2026-10-17): the public
+  repository has an active ruleset on `main` (pull request required, rebase only, linear history,
+  no force push / deletion, required checks `quick`, `plan`, `integration-coverage`, `e2e`,
+  `images`); main-guard stays as a second safety net (docs/ci-cd.md).

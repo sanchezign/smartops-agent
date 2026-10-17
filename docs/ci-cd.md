@@ -3,11 +3,14 @@
 Design decisions: [ADR-022](adr/ADR-022-ci-cd.md). Test suites and what they cover:
 [testing.md](testing.md).
 
-The repository is **private on GitHub Free** while the demo is built. That shapes the design:
-no branch protection / rulesets, no CodeQL, no GitHub secret scanning or push protection, no
-dependency-review action and no artifact attestations API on private repos. Each gap has a
-free replacement below. Going public is NOT automatic: it comes after a separate full security
-audit (user decision, 2026-09-27).
+The design started on a **private repository on GitHub Free**: no branch protection / rulesets,
+no CodeQL, no GitHub secret scanning or push protection, no dependency-review action and no
+artifact attestations API on private repos. Each gap got a free replacement below. Since
+2026-10-09 the repository is **public**: `main` has an active ruleset (pull request required,
+rebase-merge only, linear history, no force push, no deletion, and the five required checks
+`quick`, `plan`, `integration-coverage`, `e2e`, `images`), secret scanning with push protection
+and private vulnerability reporting are on, and `E2E_POLICY` is `public` (checked 2026-10-17).
+CodeQL is still not configured.
 
 ## Workflows
 
@@ -52,8 +55,10 @@ audit (user decision, 2026-09-27).
   SIGTERM → exit 0, fake values only) and Trivy (fixable HIGH/CRITICAL OS packages: a warning in the pull
   request, blocking in the release).
 - **main-guard** — push to `main`: fails if the commit does not belong to a merged pull
-  request (soft enforcement while branch protection is unavailable). Together with the local
-  pre-push hook (`pnpm hooks:install` once per clone; `ALLOW_PUSH_TO_MAIN=1` overrides it).
+  request. A second safety net behind the ruleset on `main` (which already refuses a push without a
+  pull request), together with the local pre-push hook (`pnpm hooks:install` once per clone;
+  `ALLOW_PUSH_TO_MAIN=1` overrides it). GitHub links a merged commit to its pull request a few
+  seconds after the merge, so the check retries up to 6 times, 10 s apart (PR #13, 2026-10-17).
 
 ### E2E policy (one variable)
 
@@ -258,12 +263,12 @@ Names follow the GitHub UI in September 2026 and may move slightly.
    check visibility **private** and that each is linked to this repository.
 7. **At phase close**: the first push to `main` after a rebase-merge must show `main-guard`
    green — it asks the API which PR contains the commit, which can lag a few seconds after the
-   merge; if it fails right after a legitimate merge, re-run the job.
+   merge (it retries for about a minute); if it still fails right after a legitimate merge,
+   re-run the job.
 
-When the repository goes public (after the security audit): create a branch ruleset for
-`main` (pull request required, required checks, no force push, no deletion), enable secret
-scanning + push protection, CodeQL and private vulnerability reporting, and switch
-`E2E_POLICY` to `public`.
+Done after the repository went public (checked 2026-10-17): the ruleset for `main` (pull request
+required, rebase only, the five required checks, no force push, no deletion), secret scanning +
+push protection, private vulnerability reporting, and `E2E_POLICY=public`. Still open: CodeQL.
 
 ### The image declares the version it is tagged with
 
