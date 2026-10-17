@@ -27,6 +27,14 @@ export function RowLink({
   return <Link className={cn(rowClass(emphasis), className)} {...props} />;
 }
 
+/**
+ * A line that says what waits for a person (ADR-033 §4): the To do card's meta line and the time of a
+ * Home task. Dark: yellow text, underlined; light: ink text with a thick yellow underline (yellow text
+ * would be ~1.5:1 there). test/contrast.test.ts checks both.
+ */
+export const WAITS_LINE =
+  "font-semibold underline underline-offset-4 text-foreground decoration-signal decoration-[3px] dark:text-signal dark:decoration-signal";
+
 /** A list of rows with space between them (not one box with dividers). */
 export function RowList({ className, ...props }: ComponentProps<"ul">) {
   return <ul className={cn("flex flex-col gap-2", className)} {...props} />;

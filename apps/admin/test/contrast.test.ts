@@ -113,11 +113,34 @@ describe.each([
     const hover = mix(value("primary"), "#000000", 0.88);
     expect(contrast(value("primary-foreground"), hover)).toBeGreaterThanOrEqual(4.5);
   });
+  // The line that says what waits (ADR-033 §4: the To do meta line, the time of a Home task; WAITS_LINE
+  // in components/list-row.tsx): yellow text in dark, ink text (yellow underline only) in light. On the
+  // card, and on muted (the hover of a Home task row).
+  it.each(["card", "muted", "background"])("waiting line text on %s ≥ 4.5:1", (bg) => {
+    const text = name === "dark" ? value("signal") : value("foreground");
+    expect(contrast(text, value(bg))).toBeGreaterThanOrEqual(4.5);
+  });
   it.each(["background", "card"])("signal tile edge against %s ≥ 3:1", (bg) => {
     expect(contrast(value(SIGNAL_EDGE[name]), value(bg))).toBeGreaterThanOrEqual(3);
   });
   it.each(NON_TEXT)("non-text: %s against %s ≥ 3:1", (fg, bg) => {
     expect(contrast(value(fg), value(bg))).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("waiting line (ADR-033 §4)", () => {
+  it("WAITS_LINE draws ink text in light and yellow text in dark, always with the yellow underline", () => {
+    const src = readFileSync(new URL("../src/components/list-row.tsx", import.meta.url), "utf8");
+    const classes = /WAITS_LINE =\s*"([^"]+)"/.exec(src)?.[1]?.split(/\s+/) ?? [];
+    for (const c of [
+      "text-foreground",
+      "dark:text-signal",
+      "decoration-signal",
+      "decoration-[3px]",
+    ]) {
+      expect(classes, c).toContain(c);
+    }
+    expect(classes).not.toContain("text-signal"); // yellow text only in dark (~1.5:1 in light)
   });
 });
 

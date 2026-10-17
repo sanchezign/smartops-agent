@@ -16,7 +16,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/page-header";
-import { RowList } from "@/components/list-row";
+import { RowList, WAITS_LINE } from "@/components/list-row";
 import { ErrorState, LoadingState } from "@/components/states";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -156,7 +156,8 @@ function TaskRow({ task }: { task: Task }) {
           >
             {detail}
           </span>
-          <span className="tabular-nums">{format.formatRelative(task.at)}</span>
+          {/* It waits for a person: the yellow line of To do (ADR-033 §4); not a link of its own (the row is). */}
+          <span className={cn("tabular-nums", WAITS_LINE)}>{format.formatRelative(task.at)}</span>
         </span>
       </span>
       <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
