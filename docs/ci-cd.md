@@ -127,7 +127,7 @@ test over the 5 s timeout under coverage (bomb sized down), the panel image assu
 unversioned empty `public/` (now `robots.txt`, optional copy), toast colors below WCAG AA
 (darker texts), and the E2E hanging ~24 min after its last test — pnpm 12 runs children in a
 new process group, so Playwright's kill of the web server's group missed them; web servers
-now run plain `node` + `exec`, with `gracefulShutdown` and a 12 min step timeout.
+now run plain `node` + `exec`, with `gracefulShutdown` and a 15 min step timeout (12 until phase 16).
 
 ## Releases
 
