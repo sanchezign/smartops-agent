@@ -29,7 +29,7 @@ services:
       start_period: 10s
 
   n8n:
-    image: docker.n8n.io/n8nio/n8n:2.40.6
+    image: docker.n8n.io/n8nio/n8n:2.44.6@sha256:d02752c6ab446ae9db8deec2f9cc887c378f77cdcad31650814df936b7386dfb
     restart: unless-stopped
     depends_on:
       postgres:

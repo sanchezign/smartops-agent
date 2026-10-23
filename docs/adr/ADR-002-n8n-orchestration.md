@@ -5,7 +5,7 @@ Status: accepted
 
 ## Decision
 
-Self-hosted n8n (Docker image pinned by tag, currently `2.40.6`, Postgres-backed
+Self-hosted n8n (Docker image pinned by tag, currently `2.44.6`, Postgres-backed
 in its own `n8n` database and role) orchestrates the three agents: receiver
 (classify), processor (extract + ingest) and notifier (alerts). n8n calls the
 backend as tools and never writes to the application database.

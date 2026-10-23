@@ -138,7 +138,7 @@ services:
 
   n8n:
     <<: *hardening
-    image: docker.n8n.io/n8nio/n8n:2.40.6@sha256:9c7871d5cc4fc2565bb905e4df5bf7d6a5a4bf2f4313fb99a2b3fa380f331d7c
+    image: docker.n8n.io/n8nio/n8n:2.44.6@sha256:d02752c6ab446ae9db8deec2f9cc887c378f77cdcad31650814df936b7386dfb
     depends_on:
       postgres:
         condition: service_healthy
