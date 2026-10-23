@@ -2,7 +2,7 @@
 # The same exceptions, with their reasons, live in security/audit-exceptions.json ("imageExceptions"):
 # a test keeps both identical. Trivy stops ignoring them on the date after exp, so they block again.
 #
-# No OS-package exceptions today. (The Perl CVEs were fixed in the Dockerfiles, which upgrade perl-base.)
+# No OS-package exceptions today. (The Perl CVEs are fixed by the node 24.22.1 base image, which brings perl-base >= deb12u4.)
 #
 # Library findings seen by the NIGHTLY scan of the published images (security.yml; CI and the release only scan OS
 # packages). Same accepted risks as the pnpm audit exceptions (GHSA ids there, the id Trivy reports here); same expiry.

@@ -51,14 +51,10 @@ describe("image (Trivy) exceptions", () => {
     expect(ignoreLines.sort()).toEqual(list.map((e) => `${e.cve} exp:${e.expires}`).sort());
   });
 
-  it("no Perl exception is left: both Dockerfiles upgrade perl-base and fail the build below deb12u4", () => {
+  it("no Perl exception is left: the node base image already brings perl-base >= deb12u4 (no workaround step)", () => {
     expect(list.filter((e) => e.package === "perl-base")).toEqual([]);
     for (const file of ["apps/api/Dockerfile", "apps/admin/Dockerfile"]) {
-      const text = read(file);
-      expect(text, file).toContain("--only-upgrade perl-base");
-      expect(text, file).toContain("dpkg --compare-versions");
-      expect(text, file).toContain("5.36.0-7+deb12u4");
-      expect(text, file).toContain("rm -rf /var/lib/apt/lists/*");
+      expect(read(file), file).not.toContain("--only-upgrade perl-base");
     }
   });
 
