@@ -6,6 +6,28 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.19.1](https://github.com/sanchezign/smartops-agent/compare/v0.19.0...v0.19.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* **deps:** n8n 2.44.6 pinned by index digest ([5fb76dd](https://github.com/sanchezign/smartops-agent/commit/5fb76ddb7f33098557e8e106901610d3fbb4311f))
+* **deps:** next and eslint-config-next 15.5.28 ([8318f74](https://github.com/sanchezign/smartops-agent/commit/8318f74ed09071095b86e1f7ef3fe8756309521e))
+* **deps:** node 24.22.1 base images and engines floor ([b12a0f5](https://github.com/sanchezign/smartops-agent/commit/b12a0f5e160091684e805a55e06847bd79424f25))
+
+
+### Documentation
+
+* close phase 16 — 0.19.0 deployed, demo-check and iPhone check passed ([1a21baa](https://github.com/sanchezign/smartops-agent/commit/1a21baab4ef16f2500b956626b2c6939878440ee))
+* README and test numbers up to date after phase 16 ([d6951f4](https://github.com/sanchezign/smartops-agent/commit/d6951f40f028b8424b7ec9e11e1b044c2f05bad2))
+* record the 2026-10-23 security patch in CLAUDE.md ([f62df28](https://github.com/sanchezign/smartops-agent/commit/f62df2851b5c015c9e8f387c6c71668964d8d084))
+* the khaki margin note records that an opacity of 0.995 drops it below 4.5 ([1f84c8c](https://github.com/sanchezign/smartops-agent/commit/1f84c8c3f84e4aefb446442f290ffae8d6f68110))
+
+
+### Tests
+
+* **admin:** axe waits for a rendered frame after the animations end (WebKit) ([3d2e3c5](https://github.com/sanchezign/smartops-agent/commit/3d2e3c599a9092544253ca3f315eda0c93a13bab))
+
 ## [0.19.0](https://github.com/sanchezign/smartops-agent/compare/v0.18.0...v0.19.0) (2026-10-17)
 
 
