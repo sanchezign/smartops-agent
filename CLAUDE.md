@@ -228,10 +228,14 @@ Owner's checks still open for phase 12 (nothing to code):
   Observatory B+ (no nonce CSP, decided 2026-10-03).
 - No release 1.0.0 until the SEPARATE full security audit.
 
+Security patch 2026-10-23 (branch `fix/security-patch-2026-10`, PR open; NOT released or deployed until the owner approves):
+- Node 24.21.0 -> 24.22.1 (Node security release of 2026-10-21: Brotli RCE CVE-2026-111497, TLS hostname bypasses CVE-2026-105483 / -106069). Both Dockerfiles pin `node:24.22.1-bookworm-slim` by multi-arch index digest; `engines` >= 24.22.1; `.nvmrc` stays `24` (the floor is `engines`).
+- Perl workaround step removed from both Dockerfiles: the new base image already ships perl-base 5.36.0-7+deb12u4 (the guard test now asserts the step is gone; no Perl exception).
+- next and eslint-config-next 15.5.27/15.5.26 -> 15.5.28 (Next.js update of 2026-10-14: two Critical RCEs, one High DoS); sharp stays 0.35.5 (>= the fixed 0.35.5).
+- n8n 2.40.6 -> 2.44.6 (latest stable; advisories of 2026-10-01 and 2026-10-14, fixed in >= 2.43.5), pinned by index digest in docker-compose.yml and deploy/compose.yaml; ADR-002 updated. No breaking changes in the 2.41-2.44 notes; `n8n:contract` unchanged; the 4 workflows import and publish on a disposable 2.44.6 (SQLite, no network). Existing n8n databases migrate forward on first start.
+
 Dates that will bite:
-- Perl (perl-base deb12u3, seven CVEs): fixed 2026-10-09 in both Dockerfiles (`apt-get install --only-upgrade perl-base`
-  + `dpkg --compare-versions` guard >= deb12u4); the exceptions are gone. Remove that RUN step when the node base
-  image digest already brings perl-base >= 5.36.0-7+deb12u4. (libpcre2 exception removed 2026-10-06.)
+- Perl (perl-base deb12u3, seven CVEs): fixed in the node 24.22.1 base image (2026-10-23); the Dockerfile workaround was removed. (libpcre2 exception removed 2026-10-06.)
 - 2026-10-27: the four audit exceptions in `security/audit-exceptions.json` expire together
   (postcss ×2, deepmerge-ts, mysql2; shortened from 10-31 to fit the 30-day HIGH limit, ADR-028;
   the braces one was removed 2026-10-06). `quick` (diff mode) only fails for a CHANGE that
@@ -370,7 +374,7 @@ needs a NEW ADR), F-05 (security headers sent by the panel itself, not only by C
 - `webhook_events` has no retention yet: every delivery is kept forever (payloads
   up to 3 MB). Future: scheduled pg-boss cleanup job (e.g. delete `processed` events
   older than N days, keep `failed` longer), N configurable.
-- n8n 2.40.6 logs "Failed to start Python task runner… Python 3 is missing"
+- n8n (2.40.6 when noted) logs "Failed to start Python task runner… Python 3 is missing"
   at startup. JS Code nodes work; Python Code nodes would need an external
   runner. Not needed so far.
 - ESLint 9.x is flagged deprecated by npm; blocked on eslint-config-next 15.5.
