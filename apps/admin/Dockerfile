@@ -4,7 +4,7 @@
 # Build from the repository root:  docker build -f apps/admin/Dockerfile -t smartops-admin .
 # NEXT_PUBLIC_API_BASE is inlined into the browser bundle at BUILD time (default /api/v1).
 
-ARG NODE_IMAGE=node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
+ARG NODE_IMAGE=node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205
 
 FROM ${NODE_IMAGE} AS build
 ARG NEXT_PUBLIC_API_BASE=/api/v1
@@ -28,16 +28,6 @@ RUN pnpm install --offline --frozen-lockfile --filter @smartops/admin \
 FROM ${NODE_IMAGE} AS runtime
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 WORKDIR /app
-# Perl security fix (CVE-2026-13221 and six more): the pinned base image still ships perl-base
-# 5.36.0-7+deb12u3. Upgrade it from bookworm-security WITHOUT pinning a version (a pinned u4 would
-# break the build once Debian publishes u5) and fail the build with a clear message if the result
-# is older than u4. REMOVE this step when the NODE_IMAGE digest already brings perl-base >= u4.
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends --only-upgrade perl-base \
-  && v="$(dpkg-query -W -f='${Version}' perl-base)" \
-  && { dpkg --compare-versions "$v" ge 5.36.0-7+deb12u4 \
-       || { echo "ERROR: perl-base $v is older than 5.36.0-7+deb12u4 (the Perl CVE fix)" >&2; exit 1; }; } \
-  && rm -rf /var/lib/apt/lists/*
 # Nothing at runtime needs npm, npx or corepack (CMD is `node ...`): drop them, and with them
 # their bundled dependencies, from the attack surface and the vulnerability scans.
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
