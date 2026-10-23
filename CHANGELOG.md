@@ -6,6 +6,13 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.19.2](https://github.com/sanchezign/smartops-agent/compare/v0.19.1...v0.19.2) (2026-10-23)
+
+
+### Documentation
+
+* 0.19.1 is released and deployed (security patch 2026-10-23) ([7236705](https://github.com/sanchezign/smartops-agent/commit/7236705a605e494055106b8078573e25798a0862))
+
 ## [0.19.1](https://github.com/sanchezign/smartops-agent/compare/v0.19.0...v0.19.1) (2026-10-23)
 
 
