@@ -1,12 +1,10 @@
-# Accepted OS-package findings in the Docker images (CI "images" job and release.yml, Trivy --ignorefile).
+# Accepted findings in the Docker images (CI "images" job and release.yml, Trivy --ignorefile).
 # The same exceptions, with their reasons, live in security/audit-exceptions.json ("imageExceptions"):
 # a test keeps both identical. Trivy stops ignoring them on the date after exp, so they block again.
 #
-# No OS-package exceptions today. (The Perl CVEs are fixed by the node 24.22.1 base image, which brings perl-base >= deb12u4.)
+# No exceptions today. (The Perl CVEs were fixed by the node 24.22.1 base image; the postcss, mysql2 and
+# deepmerge-ts library findings by the 2026-11 dependency updates.)
 #
 # Library findings seen by the NIGHTLY scan of the published images (security.yml; CI and the release only scan OS
-# packages). Same accepted risks as the pnpm audit exceptions (GHSA ids there, the id Trivy reports here); same expiry.
-CVE-2026-40345 exp:2026-10-27
-GHSA-3f6p-5ww8-9rcr exp:2026-10-27
-CVE-2026-45623 exp:2026-10-27
-CVE-2026-73646 exp:2026-10-27
+# packages) would go here: same accepted risks as the pnpm audit exceptions (GHSA ids there, the id Trivy reports
+# here); same expiry.
