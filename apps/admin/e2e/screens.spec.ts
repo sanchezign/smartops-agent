@@ -21,7 +21,7 @@ const PAGES = [
 
 const REVIEWS: [string, string][] = [
   ["Corvane Fasteners price list.xlsx", "planilla"],
-  ["Arena gruesa", "linea"],
+  ["Coarse sand", "linea"],
   ["Across-the-board change", "aumento"],
   ["Suspicious message", "sospechoso"],
 ];
