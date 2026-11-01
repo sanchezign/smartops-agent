@@ -51,8 +51,34 @@
       "description": "vitest and @vitest/coverage-v8 always move together to the same exact version (phase 10 rule, guarded by coverage-thresholds.test.ts): one PR for any update type, majors included.",
       "matchPackageNames": ["vitest", "@vitest/coverage-v8"],
       "groupName": "vitest"
+    },
+    {
+      "description": "The ONLY automerge: patch updates, through GitHub's auto-merge (it waits for the required checks of the ruleset and merges by rebase). A grouped PR merges itself only when every update in it is a patch. Packages pinned on purpose are excluded (the next rule excludes the base images).",
+      "matchUpdateTypes": ["patch"],
+      "matchPackageNames": [
+        "!prisma",
+        "!@prisma/client",
+        "!@prisma/adapter-pg",
+        "!next",
+        "!eslint-config-next",
+        "!react",
+        "!react-dom",
+        "!eslint",
+        "!@eslint/js"
+      ],
+      "automerge": true
+    },
+    {
+      "description": "Base images (node, postgres) are never automerged, whatever the update type: the owner merges.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["node", "postgres"],
+      "automerge": false
     }
   ],
+  "automerge": false,
+  "automergeType": "pr",
+  "automergeStrategy": "rebase",
+  "platformAutomerge": true,
   "customManagers": [
     {
       "description": "Tool images run with `docker run image:tag@sha256:…` inside workflow steps (actionlint, zizmor, gitleaks).",
@@ -66,6 +92,7 @@
   ],
   "lockFileMaintenance": {
     "enabled": true,
+    "automerge": false,
     "schedule": ["before 6am on the first day of the month"]
   },
   "vulnerabilityAlerts": {
