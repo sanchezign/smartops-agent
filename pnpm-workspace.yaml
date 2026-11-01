@@ -17,3 +17,9 @@ allowBuilds:
   # optional dependencies; the postinstall fallbacks (build from source / wasm) are not needed.
   "@parcel/watcher": false
   "@swc/core": false
+
+# next 15.5 pins postcss 8.4.31 exactly, which has GHSA-6g55-p6wh-862q (file read via sourceMappingURL)
+# and GHSA-r28c-9q8g-f849 (path traversal in previous source map loading). Only next's postcss is moved,
+# to a patched release; tailwind brings its own. Remove when next stops pinning postcss 8.4.x.
+overrides:
+  "next>postcss": "8.5.28"
