@@ -221,7 +221,7 @@ commit is activity; re-enable with `gh workflow enable security.yml` (and `ci.ym
   security runs) it is strict: every finding counts.
   Exceptions need a justification, a `severity` and an expiry that is at most **7 days (critical) / 30 days
   (high)** after `addedAt` (a test enforces it for the pnpm audit and the image exceptions; a `high` exception
-  never covers a critical advisory). **The four current exceptions expire on 2026-10-27**.
+  never covers a critical advisory). **No exceptions are open today (2026-11-01)**: the four earlier ones were fixed by updating the dependencies. `pnpm-workspace.yaml` has an `overrides` entry `"next>postcss": "8.5.28"`: next 15.5 pins postcss 8.4.31 exactly (GHSA-6g55-p6wh-862q, GHSA-r28c-9q8g-f849); remove it when next stops pinning postcss 8.4.x.
 - Docker image OS packages (Trivy): in a **pull request** a fixable HIGH/CRITICAL finding is a warning
   annotation (the release still blocks, `release.yml`); both images are always scanned. Accepted CVEs live in `.trivyignore` (mounted into the Trivy container, `--ignorefile`,
   `--show-suppressed` prints what was ignored) and, with the reason and expiry, in the same

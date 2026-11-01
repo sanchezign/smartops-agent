@@ -41,3 +41,11 @@ superseded or implemented. Open issues stay in CLAUDE.md.
   repository has an active ruleset on `main` (pull request required, rebase only, linear history,
   no force push / deletion, required checks `quick`, `plan`, `integration-coverage`, `e2e`,
   `images`); main-guard stays as a second safety net (docs/ci-cd.md).
+- **Phase 11:** the 4 accepted audit exceptions (postcss ×2 via next 15.5, deepmerge-ts, mysql2 — see
+  `security/audit-exceptions.json`) EXPIRE 2026-10-27 (30-day HIGH limit): after that a change introducing them
+  fails `quick`, and the nightly scan fails, until the dependency is updated or the exception renewed (max 30 days
+  for HIGH, 7 for CRITICAL) with a new justification. RESOLVED 2026-11-01: the nightly scan went red on 2026-10-27;
+  instead of renewing, the dependencies were updated (prisma, @prisma/client and @prisma/adapter-pg 7.10.1 bring
+  mysql2 3.24.4 and deepmerge-ts 8.0.2; a `next>postcss` override in `pnpm-workspace.yaml` moves next's postcss
+  8.4.31 to 8.5.28) and the four exceptions with their `imageExceptions` mirrors and `.trivyignore` lines were
+  deleted. The same run also had two new HIGH findings, fixed by body-parser 2.4.0 (lockfile only) and zod 4.6.7.

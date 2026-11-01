@@ -236,10 +236,12 @@ Security patch 2026-10-23 (PR #18, merged): released as 0.19.1 and deployed 2026
 
 Dates that will bite:
 - Perl (perl-base deb12u3, seven CVEs): fixed in the node 24.22.1 base image (2026-10-23); the Dockerfile workaround was removed. (libpcre2 exception removed 2026-10-06.)
-- 2026-10-27: the four audit exceptions in `security/audit-exceptions.json` expire together
-  (postcss ×2, deepmerge-ts, mysql2; shortened from 10-31 to fit the 30-day HIGH limit, ADR-028;
-  the braces one was removed 2026-10-06). `quick` (diff mode) only fails for a CHANGE that
-  introduces such a finding; the nightly scan (security.yml) is what goes red.
+- No audit exception is open (2026-11-01): the four that expired on 2026-10-27 (postcss ×2, deepmerge-ts,
+  mysql2) were REMOVED by updating the dependencies (prisma 7.10.1, `next>postcss` override), plus body-parser
+  2.4.0 and zod 4.6.7. The nightly Trivy step scans the LAST RELEASE's images, so it stays red until a release
+  that contains these updates is published (the release-please PR). `quick` (diff mode) only fails for a CHANGE
+  that introduces a finding; the nightly scan (security.yml) is what goes red.
+- Remove the `next>postcss` override in `pnpm-workspace.yaml` when next stops pinning postcss 8.4.x.
 - ~2026-10-28: the Oracle Free Trial ends (the Console shows the exact date): `docs/runbook.md` §12.
 - 2026-12-31: GHCR read token expires (renew by 2026-12-15; Healthchecks reminder check).
 
@@ -278,10 +280,8 @@ needs a NEW ADR), F-05 (security headers sent by the panel itself, not only by C
   deleted) per third-party reports: alert + start it from the Console (runbook §10 plan B);
   backups live off the VM. The earlier text of this entry is in
   `docs/history/resolved-issues.md`.
-- **Phase 11:** the 4 accepted audit exceptions (postcss ×2 via next 15.5, deepmerge-ts,
-  mysql2 — see `security/audit-exceptions.json`) EXPIRE 2026-10-27 (30-day HIGH limit): after that
-  a change introducing them fails `quick`, and the nightly scan fails, until the dependency is
-  updated or the exception renewed (max 30 days for HIGH, 7 for CRITICAL) with a new justification.
+- **Phase 11:** `security/audit-exceptions.json` is empty since 2026-11-01 (the four accepted findings were fixed
+  by updates, not renewed). A new exception needs a justification and lives at most 30 days (HIGH) / 7 (CRITICAL).
 - **Phase 11:** the API image is 864 MB (full prod node_modules incl. Prisma CLI for migrations,
   Debian slim). Slimming (separate migrations image, distroless) left for phase 12 if it matters.
 - **Phase 11:** release PRs opened by `GITHUB_TOKEN` get no CI checks (GitHub rule).
@@ -378,7 +378,7 @@ needs a NEW ADR), F-05 (security headers sent by the panel itself, not only by C
   at startup. JS Code nodes work; Python Code nodes would need an external
   runner. Not needed so far.
 - ESLint 9.x is flagged deprecated by npm; blocked on eslint-config-next 15.5.
-- Prisma CLI prints an "Update available 7.10.0 -> 8.0.0-rc" banner on every
+- Prisma CLI prints an "Update available 7.10.x -> 8.0.0-rc" banner on every
   generate. Ignore it (see pin decision).
 - Startup fail-fast log when the DB is unreachable is terse ("Invalid
   `prisma.$queryRaw()` invocation"); the cause is in `err.meta`. Cosmetic.
