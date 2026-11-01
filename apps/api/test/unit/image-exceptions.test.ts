@@ -109,7 +109,9 @@ describe("image (Trivy) exception rules, on examples", () => {
     expect(mirrorProblem([], [])).toBeNull();
     expect(mirrorProblem(lines.slice(1), entries)).not.toBeNull();
     expect(mirrorProblem([...lines, "CVE-2026-99999 exp:2026-11-30"], entries)).not.toBeNull();
-    expect(mirrorProblem(["CVE-2026-40345 exp:2026-11-29", lines[1] ?? ""], entries)).not.toBeNull();
+    expect(
+      mirrorProblem(["CVE-2026-40345 exp:2026-11-29", lines[1] ?? ""], entries),
+    ).not.toBeNull();
   });
 
   it("twin: a library exception with its pnpm audit twin (same expiry) passes; none or another expiry fails", () => {
