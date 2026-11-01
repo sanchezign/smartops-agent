@@ -6,6 +6,22 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.19.2](https://github.com/sanchezign/smartops-agent/compare/v0.19.1...v0.19.2) (2026-11-01)
+
+
+### Bug Fixes
+
+* **deps:** body-parser 2.4.0 (lockfile) ([7ebf80a](https://github.com/sanchezign/smartops-agent/commit/7ebf80a5c510098763f29a86769632873adb62a7))
+* **deps:** override next&gt;postcss to 8.5.28 ([9a31c50](https://github.com/sanchezign/smartops-agent/commit/9a31c508a8050ef17c4a453ac8c0d5cdbab48c29))
+* **deps:** prisma, @prisma/client and @prisma/adapter-pg 7.10.1 ([fa8a3f2](https://github.com/sanchezign/smartops-agent/commit/fa8a3f27287a47a3745093e01b9427a9af15082d))
+* **deps:** zod 4.6.7 ([88e9a63](https://github.com/sanchezign/smartops-agent/commit/88e9a63777b8593e674ac471aae34a4fd81f3ca4))
+
+
+### Documentation
+
+* 0.19.1 is released and deployed (security patch 2026-10-23) ([7236705](https://github.com/sanchezign/smartops-agent/commit/7236705a605e494055106b8078573e25798a0862))
+* no audit exceptions open; explain the next&gt;postcss override ([8a76500](https://github.com/sanchezign/smartops-agent/commit/8a765006edb4190a99aa80b2e33817b9caaf4c98))
+
 ## [0.19.1](https://github.com/sanchezign/smartops-agent/compare/v0.19.0...v0.19.1) (2026-10-23)
 
 
