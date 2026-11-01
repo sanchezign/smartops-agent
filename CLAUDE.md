@@ -93,7 +93,7 @@ milestone, is in `docs/history/phase-log.md`. Status as of 2026-10-12.
     properties, mutation, real-model eval) — DONE.
 11. CI/CD (GitHub Actions, Docker images, releases, supply-chain checks) — DONE (v0.11.0).
 12. deploy ($0): Oracle Always Free E2.1.Micro, light demo profile, Caddy, backups, monitoring,
-    keep-alive — DONE in the repo (closed 2026-10-06; 0.19.1 deployed since 2026-10-23, keep-alive ON at 50 %). The
+    keep-alive — DONE in the repo (closed 2026-10-06; 0.19.2 deployed since 2026-11-01, keep-alive ON at 50 %). The
     owner's checks on the VM / Console that remain are listed in "Current phase".
 13. i18n (panel EN + neutral ES) + English docs + screenshots/video + panel guide + case study +
     portfolio kit — DONE (merged 2026-10-02).
@@ -197,7 +197,7 @@ need the detail of a closed milestone (see "History" at the end of this file).
 
 Active state (2026-10-23):
 - Public demo ONLINE: https://smartops-demo.duckdns.org — one Oracle Always Free E2.1.Micro,
-  light profile (ADR-023, ADR-025), 0.19.1 deployed (2026-10-23). Phase 12 log: `docs/history/phase-log.md`
+  light profile (ADR-023, ADR-025), 0.19.2 deployed (2026-11-01). Phase 12 log: `docs/history/phase-log.md`
   item 12.
 - Keep-alive load (ADR-027, `docs/deploy/keepalive.md`): ON since 2026-10-05, `CPUQuota=50%` since
   0.16.2 (trial of 2026-10-06 passed: Console ~33–35 %, slowest sample 9.9 s, health p95 538 ms).
@@ -228,6 +228,8 @@ Owner's checks still open for phase 12 (nothing to code):
   Observatory B+ (no nonce CSP, decided 2026-10-03).
 - No release 1.0.0 until the SEPARATE full security audit.
 
+Security patch 2026-11-01 (PR #22, merged): released as 0.19.2 and deployed 2026-11-01 (demo-check PASSED; nightly Security green with 0.19.2 published): body-parser 2.4.0, zod 4.6.7, prisma 7.10.1, `next>postcss` override; the four audit exceptions were removed (see "Dates that will bite").
+
 Security patch 2026-10-23 (PR #18, merged): released as 0.19.1 and deployed 2026-10-23 (demo-check passed; VM: Postgres 17.11, no reboot pending):
 - Node 24.21.0 -> 24.22.1 (Node security release of 2026-10-21: Brotli RCE CVE-2026-111497, TLS hostname bypasses CVE-2026-105483 / -106069). Both Dockerfiles pin `node:24.22.1-bookworm-slim` by multi-arch index digest; `engines` >= 24.22.1; `.nvmrc` stays `24` (the floor is `engines`).
 - Perl workaround step removed from both Dockerfiles: the new base image already ships perl-base 5.36.0-7+deb12u4 (the guard test now asserts the step is gone; no Perl exception).
@@ -238,9 +240,9 @@ Dates that will bite:
 - Perl (perl-base deb12u3, seven CVEs): fixed in the node 24.22.1 base image (2026-10-23); the Dockerfile workaround was removed. (libpcre2 exception removed 2026-10-06.)
 - No audit exception is open (2026-11-01): the four that expired on 2026-10-27 (postcss ×2, deepmerge-ts,
   mysql2) were REMOVED by updating the dependencies (prisma 7.10.1, `next>postcss` override), plus body-parser
-  2.4.0 and zod 4.6.7. The nightly Trivy step scans the LAST RELEASE's images, so it stays red until a release
-  that contains these updates is published (the release-please PR). `quick` (diff mode) only fails for a CHANGE
-  that introduces a finding; the nightly scan (security.yml) is what goes red.
+  2.4.0 and zod 4.6.7. The nightly Trivy step scans the LAST RELEASE's images: it went green on 2026-11-01 with
+  0.19.2 published. `quick` (diff mode) only fails for a CHANGE that introduces a finding; the nightly scan
+  (security.yml) is what goes red.
 - Remove the `next>postcss` override in `pnpm-workspace.yaml` when next stops pinning postcss 8.4.x.
 - ~2026-10-28: the Oracle Free Trial ends (the Console shows the exact date): `docs/runbook.md` §12.
 - 2026-12-31: GHCR read token expires (renew by 2026-12-15; Healthchecks reminder check).
