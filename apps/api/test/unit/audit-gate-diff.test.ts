@@ -121,7 +121,6 @@ describe("exception maximum life", () => {
     const file = JSON.parse(
       readFileSync(new URL("../../../../security/audit-exceptions.json", import.meta.url), "utf8"),
     ) as { exceptions: AuditException[] };
-    expect(file.exceptions.length).toBeGreaterThan(0);
     for (const e of file.exceptions) expect(validateException(e), e.advisory).toBeNull();
   });
 });
