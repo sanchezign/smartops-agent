@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 
 type Rule = {
   matchDatasources?: string[];
+  matchManagers?: string[];
   matchPackageNames?: string[];
   schedule?: string[];
   automerge?: boolean;
@@ -76,6 +77,13 @@ describe("renovate.json", () => {
     const merging = config.packageRules.filter((r) => r.automerge === true);
     expect(merging).toHaveLength(1);
     expect(merging[0]?.matchUpdateTypes).toEqual(["patch"]);
+  });
+
+  it("the automerge rule is limited to npm: GitHub Actions and tool / n8n images are merged by the owner", () => {
+    const rule = config.packageRules.find((r) => r.automerge === true);
+    expect(rule?.matchManagers).toEqual(["npm"]);
+    // a rule without matchManagers would also cover github-actions, docker-compose and the regex image pins
+    expect(config.packageRules.filter((r) => r.automerge === true && !r.matchManagers)).toEqual([]);
   });
 
   it("the automerge rule excludes the packages pinned on purpose", () => {

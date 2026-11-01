@@ -212,12 +212,14 @@ commit is activity; re-enable with `gh workflow enable security.yml` (and `ci.ym
   their own PR and never automerged (ADR-028), majors disabled for Prisma,
   ESLint, Next, React and the Node/Postgres images (planned upgrades only). Dependabot cannot
   update pnpm 12 lockfiles, so it is used for **alerts only**.
-- Renovate automerge (2026-11-01): **only `patch` updates** merge themselves, through GitHub's auto-merge
-  (`platformAutomerge`), so the ruleset's required checks decide and the merge is a **rebase** (the repo does not
-  squash: it would break the release-please changelog); the 3-day release age still applies. A grouped PR merges
-  itself only when every update in it is a patch. **Never automerged:** the pinned packages (prisma, @prisma/client,
-  @prisma/adapter-pg, next, eslint-config-next, react, react-dom, eslint, @eslint/js), the `node` and `postgres`
-  images, minor / major updates and lockFileMaintenance. Needs **Settings → General → Allow auto-merge** on.
+- Renovate automerge (2026-11-01): **only `patch` updates of npm packages** (`matchManagers: ["npm"]`, the lockfile
+  dependencies) merge themselves, through GitHub's auto-merge (`platformAutomerge`), so the ruleset's required checks
+  decide and the merge is a **rebase** (the repo does not squash: it would break the release-please changelog); the
+  3-day release age still applies. A grouped PR merges itself only when every update in it is a patch. **The owner
+  always merges:** GitHub Actions and the tool / n8n / base images (they run inside CI or with release permissions:
+  supply-chain risk), the pinned packages (prisma, @prisma/client, @prisma/adapter-pg, next, eslint-config-next,
+  react, react-dom, eslint, @eslint/js), minor / major updates and lockFileMaintenance. Needs **Settings → General →
+  Allow auto-merge** on.
 - `pnpm audit --prod` gate (`apps/api/scripts/security/audit-gate.ts --base auto`, ADR-028), **diff mode**:
   the same audit runs on the base (merge-base with `origin/main`; the previous tip of `main` on a push to
   `main`) and on the head, and only HIGH/CRITICAL findings the change **introduces** (an advisory, package and

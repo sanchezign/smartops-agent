@@ -53,7 +53,8 @@
       "groupName": "vitest"
     },
     {
-      "description": "The ONLY automerge: patch updates, through GitHub's auto-merge (it waits for the required checks of the ruleset and merges by rebase). A grouped PR merges itself only when every update in it is a patch. Packages pinned on purpose are excluded (the next rule excludes the base images).",
+      "description": "The ONLY automerge: patch updates of npm packages (never GitHub Actions or tool images: they run inside CI), through GitHub's auto-merge (it waits for the required checks of the ruleset and merges by rebase). A grouped PR merges itself only when every update in it is a patch. Packages pinned on purpose are excluded (the next rule excludes the base images).",
+      "matchManagers": ["npm"],
       "matchUpdateTypes": ["patch"],
       "matchPackageNames": [
         "!prisma",
