@@ -6,6 +6,24 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.19.3](https://github.com/sanchezign/smartops-agent/compare/v0.19.2...v0.19.3) (2026-11-05)
+
+
+### Bug Fixes
+
+* **docker:** bump node base image to 24.22.2 digest with apt 2.6.2 (CVE-2026-109518) ([79aa555](https://github.com/sanchezign/smartops-agent/commit/79aa5557174e0f5ceffa850a9986e1e36bd53523))
+* **renovate:** limit the automerge rule to npm packages ([7f7032a](https://github.com/sanchezign/smartops-agent/commit/7f7032a5940f23bfdad2010953f63269cc4f8ee0))
+
+
+### Documentation
+
+* 0.19.2 is released and deployed (security patch 2026-11-01) ([00d6a20](https://github.com/sanchezign/smartops-agent/commit/00d6a207a7eb96b39834182731539c55eaafa22e))
+
+
+### Tests
+
+* **admin:** look for "Coarse sand" in the screenshots helper ([5ed1a63](https://github.com/sanchezign/smartops-agent/commit/5ed1a631a572f4ff24493b2ba6a468a1b1bfd3e9))
+
 ## [0.19.2](https://github.com/sanchezign/smartops-agent/compare/v0.19.1...v0.19.2) (2026-11-01)
 
 
