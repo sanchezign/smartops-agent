@@ -228,6 +228,8 @@ Owner's checks still open for phase 12 (nothing to code):
   Observatory B+ (no nonce CSP, decided 2026-10-03).
 - No release 1.0.0 until the SEPARATE full security audit.
 
+Base image patch 2026-11-05 (CVE-2026-109518, HIGH, apt / libapt-pkg6.0 2.6.1, fixed in 2.6.2): the nightly scan of the published 0.19.2 images went red on 2026-11-05. Both Dockerfiles move to `node:24.22.2-bookworm-slim` pinned by the index digest rebuilt on 2026-11-05 (sha256:01d566e8…, Debian 12.15, apt 2.6.2 checked in the image's dpkg status). The digest Renovate proposed in PR #26 (sha256:c86ecead…) still ships apt 2.6.1. Needs a new release (0.19.3) so the published images change. No exception added: the runtime never runs apt (CMD node, USER node), but the fix exists.
+
 Security patch 2026-11-01 (PR #22, merged): released as 0.19.2 and deployed 2026-11-01 (demo-check PASSED; nightly Security green with 0.19.2 published): body-parser 2.4.0, zod 4.6.7, prisma 7.10.1, `next>postcss` override; the four audit exceptions were removed (see "Dates that will bite").
 
 Security patch 2026-10-23 (PR #18, merged): released as 0.19.1 and deployed 2026-10-23 (demo-check passed; VM: Postgres 17.11, no reboot pending):
