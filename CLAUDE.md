@@ -93,7 +93,7 @@ milestone, is in `docs/history/phase-log.md`. Status as of 2026-10-12.
     properties, mutation, real-model eval) — DONE.
 11. CI/CD (GitHub Actions, Docker images, releases, supply-chain checks) — DONE (v0.11.0).
 12. deploy ($0): Oracle Always Free E2.1.Micro, light demo profile, Caddy, backups, monitoring,
-    keep-alive — DONE in the repo (closed 2026-10-06; 0.19.2 deployed since 2026-11-01, keep-alive ON at 50 %). The
+    keep-alive — DONE in the repo (closed 2026-10-06; 0.19.3 deployed since 2026-11-10, keep-alive ON at 50 %). The
     owner's checks on the VM / Console that remain are listed in "Current phase".
 13. i18n (panel EN + neutral ES) + English docs + screenshots/video + panel guide + case study +
     portfolio kit — DONE (merged 2026-10-02).
@@ -197,7 +197,7 @@ need the detail of a closed milestone (see "History" at the end of this file).
 
 Active state (2026-10-23):
 - Public demo ONLINE: https://smartops-demo.duckdns.org — one Oracle Always Free E2.1.Micro,
-  light profile (ADR-023, ADR-025), 0.19.2 deployed (2026-11-01). Phase 12 log: `docs/history/phase-log.md`
+  light profile (ADR-023, ADR-025), 0.19.3 deployed (2026-11-10). Phase 12 log: `docs/history/phase-log.md`
   item 12.
 - Keep-alive load (ADR-027, `docs/deploy/keepalive.md`): ON since 2026-10-05, `CPUQuota=50%` since
   0.16.2 (trial of 2026-10-06 passed: Console ~33–35 %, slowest sample 9.9 s, health p95 538 ms).
@@ -228,7 +228,7 @@ Owner's checks still open for phase 12 (nothing to code):
   Observatory B+ (no nonce CSP, decided 2026-10-03).
 - No release 1.0.0 until the SEPARATE full security audit.
 
-Base image patch 2026-11-05 (CVE-2026-109518, HIGH, apt / libapt-pkg6.0 2.6.1, fixed in 2.6.2): the nightly scan of the published 0.19.2 images went red on 2026-11-05. Both Dockerfiles move to `node:24.22.2-bookworm-slim` pinned by the index digest rebuilt on 2026-11-05 (sha256:01d566e8…, Debian 12.15, apt 2.6.2 checked in the image's dpkg status). The digest Renovate proposed in PR #26 (sha256:c86ecead…) still ships apt 2.6.1. Needs a new release (0.19.3) so the published images change. No exception added: the runtime never runs apt (CMD node, USER node), but the fix exists.
+Base image patch 2026-11-05 (CVE-2026-109518, HIGH, apt / libapt-pkg6.0 2.6.1, fixed in 2.6.2): the nightly scan of the published 0.19.2 images went red on 2026-11-05. Both Dockerfiles move to `node:24.22.2-bookworm-slim` pinned by the index digest rebuilt on 2026-11-05 (sha256:01d566e8…, Debian 12.15, apt 2.6.2 checked in the image's dpkg status). The digest Renovate proposed in PR #26 (sha256:c86ecead…) still ships apt 2.6.1. Merged as PR #29, released as 0.19.3 (2026-11-05; manual Security run green: Trivy gate clean on both 0.19.3 images) and deployed 2026-11-10 (demo-check PASSED). No exception added: the runtime never runs apt (CMD node, USER node), but the fix exists.
 
 Security patch 2026-11-01 (PR #22, merged): released as 0.19.2 and deployed 2026-11-01 (demo-check PASSED; nightly Security green with 0.19.2 published): body-parser 2.4.0, zod 4.6.7, prisma 7.10.1, `next>postcss` override; the four audit exceptions were removed (see "Dates that will bite").
 
