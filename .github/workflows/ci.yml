@@ -32,7 +32,7 @@ jobs:
     if: >-
       github.event_name == 'push' || github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -96,7 +96,7 @@ jobs:
   plan:
     name: plan
     if: github.event_name != 'push'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -163,7 +163,7 @@ jobs:
     if: >-
       needs.plan.outputs.code == 'true' &&
       (github.event_name != 'schedule' || needs.plan.outputs.e2e == 'true')
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 25
     permissions:
       contents: read
@@ -202,7 +202,7 @@ jobs:
     name: e2e
     needs: plan
     if: needs.plan.outputs.code == 'true' && needs.plan.outputs.e2e == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 25
     permissions:
       contents: read
@@ -259,7 +259,7 @@ jobs:
     name: images
     needs: plan
     if: needs.plan.outputs.docker == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:
       contents: read
@@ -304,7 +304,7 @@ jobs:
   main-guard:
     name: main-guard
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
       contents: read
