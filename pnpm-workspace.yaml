@@ -22,4 +22,4 @@ allowBuilds:
 # and GHSA-r28c-9q8g-f849 (path traversal in previous source map loading). Only next's postcss is moved,
 # to a patched release; tailwind brings its own. Remove when next stops pinning postcss 8.4.x.
 overrides:
-  "next>postcss": "8.5.28"
+  "next>postcss": "8.5.32"
