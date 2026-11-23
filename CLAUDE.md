@@ -182,6 +182,7 @@ Add one line here for every new ADR.
 - [ADR-033](docs/adr/ADR-033-visual-identity-v2.md) — Visual identity v2: warm tweakcn theme, Oxanium + IBM Plex Sans, the yellow rule kept (replaces the palette and fonts of ADR-029)
 - [ADR-034](docs/adr/ADR-034-demo-operator-resolves-every-review.md) — In DEMO_MODE the public operator resolves every review (amends ADR-030)
 - [ADR-035](docs/adr/ADR-035-catalog-currency.md) — Catalog currency setting and the order that resolves a line's currency
+- [ADR-036](docs/adr/ADR-036-renovate-security-only.md) — Renovate opens security fix PRs only since 2026-11-23; Docker images and transitive deps rely on the nightly Trivy / audit scan (amends ADR-028)
 
 ## Current phase
 **Phases 1–16 are COMPLETE (phase 16, visual identity v2 + complete demo + USD + conversations, ADR-033 / 034 / 035:
@@ -206,6 +207,9 @@ Active state (2026-10-23):
   (personal data removed; it keeps the old PRs, e.g. #45, #55, and stays private forever). PR numbers and a
   few commit hashes in the docs refer to the predecessor (docs/history/README.md). The old-to-new commit
   map is outside the repo (`C:/dev/smartops-migration-commit-map.txt`).
+- Renovate (ADR-036, owner 2026-11-23): SECURITY FIX PRs ONLY — every normal update (incl. docker, github-actions,
+  lockfile maintenance) is off. Docker base images and transitive deps are covered ONLY by the nightly scan: when it
+  turns red, bump the digest / package by hand.
 - Security alerts policy (ADR-028): PRs block only what they introduce; the nightly scan
   (security.yml, 03:30 Montevideo) owns what exists and turns RED on a finding (check it still runs:
   docs/ci-cd.md, "Is the nightly scan still running?").

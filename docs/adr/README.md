@@ -38,3 +38,4 @@ one Oracle Cloud E2.1.Micro) supersedes ADR-007.
 - [ADR-033](ADR-033-visual-identity-v2.md) — Visual identity v2: warm tweakcn theme, Oxanium + IBM Plex Sans, the yellow rule kept
 - [ADR-034](ADR-034-demo-operator-resolves-every-review.md) — In DEMO_MODE the public operator resolves every review
 - [ADR-035](ADR-035-catalog-currency.md) — Catalog currency setting and the currency resolution order
+- [ADR-036](ADR-036-renovate-security-only.md) — Renovate opens security fix pull requests only (amends ADR-028)

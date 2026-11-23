@@ -1,7 +1,9 @@
 # ADR-028: Security alerts — pull requests block what they introduce, a nightly scan owns what already exists
 
 Date: 2026-10-06
-Status: accepted (the owner's decision, 2026-10-06, reduced scope). Refines ADR-022 (CI/CD).
+Status: accepted (the owner's decision, 2026-10-06, reduced scope). Refines ADR-022 (CI/CD). Point 5 amended by
+[ADR-036](ADR-036-renovate-security-only.md) (2026-11-23): Renovate opens security fix PRs only, so the daily digest
+PRs no longer happen and Docker base images rely on the nightly scan.
 
 ## Context
 

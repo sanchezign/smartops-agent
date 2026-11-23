@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Renovate (phase 11 M3, ADR-022): dependency update PRs. Dependabot stays on for ALERTS only (it does not support pnpm 12). Renovate does not read pnpm's minimumReleaseAge, so it is set here, above pnpm's 1-day default — never add a release-age exclusion without asking (CLAUDE.md).",
+  "description": "Renovate (phase 11 M3, ADR-022): SECURITY FIX PRs ONLY since 2026-11-23 (owner decision: minimize updates) — every normal update (major, minor, patch, digest, lockfile maintenance, docker, github-actions) is disabled; the rules below still shape the security PRs. Dependabot stays on for ALERTS only (it does not support pnpm 12). Renovate does not read pnpm's minimumReleaseAge, so it is set here, above pnpm's 1-day default — never add a release-age exclusion without asking (CLAUDE.md).",
   "extends": ["config:recommended", "helpers:pinGitHubActionDigestsToSemver", ":semanticCommits"],
   "timezone": "America/Montevideo",
   "schedule": ["before 6am on monday"],
@@ -9,6 +9,11 @@
   "prConcurrentLimit": 3,
   "labels": ["dependencies"],
   "packageRules": [
+    {
+      "description": "Security fixes only (same rule as the official security:only-security-updates preset): every normal update is disabled for every package. Vulnerability-fix PRs still arrive because Renovate adds them as rules with force: { ...vulnerabilityAlerts }, and vulnerabilityAlerts.enabled is true below.",
+      "matchPackageNames": ["*"],
+      "enabled": false
+    },
     {
       "description": "One weekly PR for everything that is not a major version (saves CI minutes).",
       "matchUpdateTypes": ["minor", "patch", "pin", "digest", "pinDigest"],
@@ -92,11 +97,13 @@
     }
   ],
   "lockFileMaintenance": {
-    "enabled": true,
+    "enabled": false,
     "automerge": false,
     "schedule": ["before 6am on the first day of the month"]
   },
+  "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
+    "enabled": true,
     "labels": ["security"],
     "minimumReleaseAge": "1 day"
   }
