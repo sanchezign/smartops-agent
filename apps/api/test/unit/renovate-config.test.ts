@@ -28,10 +28,35 @@ const config = JSON.parse(
   automergeType?: string;
   automergeStrategy?: string;
   minimumReleaseAge?: string;
-  lockFileMaintenance?: { automerge?: boolean };
+  lockFileMaintenance?: { enabled?: boolean; automerge?: boolean };
+  osvVulnerabilityAlerts?: boolean;
+  vulnerabilityAlerts?: { enabled?: boolean };
 };
 
 describe("renovate.json", () => {
+  it("opens security fix PRs ONLY: every normal update is disabled (ADR-036)", () => {
+    // the catch-all rule of the official security:only-security-updates preset
+    const catchAll = config.packageRules.filter(
+      (r) =>
+        r.enabled === false &&
+        r.matchPackageNames?.length === 1 &&
+        r.matchPackageNames[0] === "*" &&
+        !r.matchUpdateTypes &&
+        !r.matchManagers &&
+        !r.matchDatasources,
+    );
+    expect(catchAll).toHaveLength(1);
+    // no later rule turns updates back on
+    expect(config.packageRules.filter((r) => r.enabled === true)).toEqual([]);
+    expect(config.lockFileMaintenance?.enabled).toBe(false);
+  });
+
+  it("keeps vulnerability-fix PRs on: they override the catch-all through force (ADR-036)", () => {
+    // Renovate adds each alert as a rule with force: { ...vulnerabilityAlerts }: enabled MUST be explicit
+    expect(config.vulnerabilityAlerts?.enabled).toBe(true);
+    expect(config.osvVulnerabilityAlerts).toBe(true);
+  });
+
   it("never proposes majors of ESLint (eslint and @eslint/js), Prisma, Next or React", () => {
     const blocked = config.packageRules
       .filter((r) => r.enabled === false && r.matchUpdateTypes?.includes("major"))

@@ -206,13 +206,19 @@ commit is activity; re-enable with `gh workflow enable security.yml` (and `ci.ym
 ## Supply chain
 
 - Actions pinned to full commit SHAs (version in a comment); tool images pinned as
-  `image:tag@sha256:…`; Renovate updates both (custom regex manager for the image pins).
-- Renovate (Mend app, free): weekly, Mondays before 06:00 Montevideo, minimum release age 3
-  days (1 day for security fixes), non-major updates grouped; the `node` and `postgres` image **digests daily**, in
-  their own PR and never automerged (ADR-028), majors disabled for Prisma,
-  ESLint, Next, React and the Node/Postgres images (planned upgrades only). Dependabot cannot
-  update pnpm 12 lockfiles, so it is used for **alerts only**.
-- Renovate automerge (2026-11-01): **only `patch` updates of npm packages** (`matchManagers: ["npm"]`, the lockfile
+  `image:tag@sha256:…`; since 2026-11-23 they are bumped by hand (Renovate opens security PRs only, ADR-036).
+- Renovate (Mend app, free): **security fix PRs only since 2026-11-23** (owner decision, ADR-036, amends ADR-028).
+  A first package rule `{ matchPackageNames: ["*"], enabled: false }` turns off every normal update (major, minor,
+  patch, pin, digest, Docker images, GitHub Actions, tool images) and `lockFileMaintenance` is off;
+  `vulnerabilityAlerts.enabled: true` (label `security`, release age 1 day) and `osvVulnerabilityAlerts: true` keep
+  the security PRs, because Renovate adds each alert as a rule with `force: { ...vulnerabilityAlerts }` (same as the
+  official `security:only-security-updates` preset). Security PRs ignore the schedule and `prConcurrentLimit`.
+  Alerts come from Dependabot alerts (needs the Mend app with `read` on "Dependabot alerts") and OSV, both for
+  **direct** dependencies only: **Docker base images and transitive dependencies are covered ONLY by the nightly
+  scan** (Trivy + strict audit); when it turns red, the fix is a manual PR. The older rules (grouping, the daily
+  `node` / `postgres` digest rule, majors disabled for Prisma, ESLint, Next, React and the Node/Postgres images) are
+  kept but no longer create PRs. Dependabot cannot update pnpm 12 lockfiles, so it is used for **alerts only**.
+- Renovate automerge (2026-11-01; since ADR-036 it only applies to security fix PRs): **only `patch` updates of npm packages** (`matchManagers: ["npm"]`, the lockfile
   dependencies) merge themselves, through GitHub's auto-merge (`platformAutomerge`), so the ruleset's required checks
   decide and the merge is a **rebase** (the repo does not squash: it would break the release-please changelog); the
   3-day release age still applies. A grouped PR merges itself only when every update in it is a patch. **The owner
