@@ -250,6 +250,8 @@ Dates that will bite:
   0.19.2 published. `quick` (diff mode) only fails for a CHANGE that introduces a finding; the nightly scan
   (security.yml) is what goes red.
 - Remove the `next>postcss` override in `pnpm-workspace.yaml` when next stops pinning postcss 8.4.x.
+- Remove the `@prisma/config>effect` override (3.22.5, GHSA-7589-6fvf-x4pw, added 2026-11-23) in `pnpm-workspace.yaml`
+  when Prisma ships an `@prisma/config` with effect >= 3.22.1 (7.10.1 pins 3.20.0 exactly).
 - ~2026-10-28: the Oracle Free Trial ends (the Console shows the exact date): `docs/runbook.md` §12.
 - 2026-12-31: GHCR read token expires (renew by 2026-12-15; Healthchecks reminder check).
 
