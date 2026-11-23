@@ -219,9 +219,6 @@ owner (2026-10-17): never overwrite what is there.
 
 Owner's checks still open for phase 12 (nothing to code):
 - 2026-10-07: Console `CpuUtilization` plateau (~33 %) and daily p95 (expected ≥ ~30 %).
-- Before 2026-10-28: the Oracle Free Trial checklist, `docs/runbook.md` §12 (every OCI resource,
-  whether it is Always Free, the Object Storage limit that deletes everything above 20 GB, the
-  reserved IP). Repeat it on 2026-10-29.
 - GHCR package versions 0.12.0–0.12.2 (wrong label / no images): the owner deletes them in the
   GitHub UI.
 - Standing rule (not a check): NEVER delete the `~/.oci` folder or the `[SMARTOPS_BASTION]` profile:
