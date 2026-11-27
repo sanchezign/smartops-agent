@@ -6,6 +6,19 @@ maintained by [release-please](https://github.com/googleapis/release-please) fro
 whole repository (API, panel and images share it). v1.0.0 is reserved for the deployed and
 audited public demo.
 
+## [0.19.5](https://github.com/sanchezign/smartops-agent/compare/v0.19.4...v0.19.5) (2026-11-27)
+
+
+### Bug Fixes
+
+* **images:** upgrade libpam in the runtime stage (CVE-2025-6020) ([494902e](https://github.com/sanchezign/smartops-agent/commit/494902e590d1e52ad78f1c886eebef7354bcacb2))
+
+
+### Documentation
+
+* 0.19.4 is released and deployed (security patch 2026-11-23) ([d62dd61](https://github.com/sanchezign/smartops-agent/commit/d62dd617241d4c157de260b8256bb467813fc78c))
+* the Oracle Free Trial checks are done ([edc0311](https://github.com/sanchezign/smartops-agent/commit/edc03117d30f172528e1bd9e373b6caa3264fd72))
+
 ## [0.19.4](https://github.com/sanchezign/smartops-agent/compare/v0.19.3...v0.19.4) (2026-11-23)
 
 
