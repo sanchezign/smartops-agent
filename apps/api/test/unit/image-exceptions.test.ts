@@ -146,6 +146,23 @@ describe("image (Trivy) exceptions", () => {
     }
   });
 
+  it("CVE-2025-6020 is fixed in the images, not accepted: libpam is upgraded in the runtime stage", () => {
+    // Remove this test together with the Dockerfile step once the pinned node base image ships
+    // libpam >= 1.5.2-6+deb12u3 (check with Trivy on the new digest).
+    expect(list.filter((e) => e.cve === "CVE-2025-6020")).toEqual([]);
+    expect(ignoreLines.join("\n")).not.toContain("CVE-2025-6020");
+    for (const dockerfile of ["apps/api/Dockerfile", "apps/admin/Dockerfile"]) {
+      const text = read(dockerfile);
+      const runtime = text.slice(text.indexOf("AS runtime"));
+      expect(runtime, dockerfile).toMatch(
+        /--only-upgrade\s*\\\s*libpam0g libpam-modules libpam-modules-bin libpam-runtime/,
+      );
+      expect(runtime, dockerfile).toContain("rm -rf /var/lib/apt/lists/*");
+      // Upgraded as root, before the image switches to the unprivileged user.
+      expect(runtime.indexOf("--only-upgrade"), dockerfile).toBeLessThan(runtime.indexOf("USER node"));
+    }
+  });
+
   it("the library findings accepted for the nightly scan mirror the pnpm audit exceptions (same expiry)", () => {
     expect(twinProblems(list, file.exceptions)).toEqual([]);
   });

@@ -240,7 +240,7 @@ commit is activity; re-enable with `gh workflow enable security.yml` (and `ci.ym
   annotation (the release still blocks, `release.yml`); both images are always scanned. Accepted CVEs live in `.trivyignore` (mounted into the Trivy container, `--ignorefile`,
   `--show-suppressed` prints what was ignored) and, with the reason and expiry, in the same
   `security/audit-exceptions.json` under `imageExceptions` (a test keeps both identical). Current: no OS exceptions (the seven Perl CVEs
-  of 2026-10 are fixed by the node 24.22.1 base image, perl-base 5.36.0-7+deb12u4; the Dockerfile workaround step was removed on 2026-10-23). Base-image digest bumps that fix OS
+  of 2026-10 are fixed by the node 24.22.1 base image, perl-base 5.36.0-7+deb12u4; the Dockerfile workaround step was removed on 2026-10-23). Since 2026-11-27 both Dockerfiles upgrade libpam0g / libpam-modules / libpam-modules-bin / libpam-runtime in the runtime stage (CVE-2025-6020, fixed in 1.5.2-6+deb12u3, not yet in any node bookworm-slim digest): remove that step and its guard test when the base image brings the fix. Base-image digest bumps that fix OS
   CVEs are security patches: the `minimumReleaseAge` rule does not apply to them (2026-10-06: digest moved to
   `d6aa754f…`, which fixed libpcre2 CVE-2026-103111).
 - gitleaks: new commits on every push, the whole history weekly; `.gitleaks.toml` allowlists
