@@ -32,6 +32,13 @@ WORKDIR /app
 # their bundled dependencies, from the attack surface and the vulnerability scans.
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
   /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+# CVE-2025-6020 (HIGH, linux-pam directory traversal): the base image (also its 2026-11-24 rebuild,
+# sha256:873f586f…) still ships libpam 1.5.2-6+deb12u2; Debian's fix is 1.5.2-6+deb12u3. Upgrade only those
+# four packages. Remove this step once the pinned node base image brings libpam >= 1.5.2-6+deb12u3.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends --only-upgrade \
+     libpam0g libpam-modules libpam-modules-bin libpam-runtime \
+  && rm -rf /var/lib/apt/lists/*
 COPY --from=build --chown=node:node /repo/apps/admin/.next/standalone ./
 USER node
 EXPOSE 3000
