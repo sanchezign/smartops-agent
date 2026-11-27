@@ -159,7 +159,9 @@ describe("image (Trivy) exceptions", () => {
       );
       expect(runtime, dockerfile).toContain("rm -rf /var/lib/apt/lists/*");
       // Upgraded as root, before the image switches to the unprivileged user.
-      expect(runtime.indexOf("--only-upgrade"), dockerfile).toBeLessThan(runtime.indexOf("USER node"));
+      expect(runtime.indexOf("--only-upgrade"), dockerfile).toBeLessThan(
+        runtime.indexOf("USER node"),
+      );
     }
   });
 
